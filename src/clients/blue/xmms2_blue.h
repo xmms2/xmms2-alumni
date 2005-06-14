@@ -65,4 +65,7 @@ int blue_put_echo_expect(int dev, char* c, char *expect);
 int blue_menu(int dev, char *title, struct cmds *items, int init, void *user);
 int blue_select(int dev, char *title, char **item, int init);
 
+/* max steps: 10 */
+int blue_percent(int dev, char *title, int steps, int init, int (*updfunc)(int perc, void *user), void *user);
+
 #endif

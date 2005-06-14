@@ -258,6 +258,37 @@ cmd_rate (xmmsc_connection_t *connection, int user, int dev)
 }
 
 
+static int
+cmd_volupd (int perc, void *connection)
+{
+	debug("Volume upd: %i\n", perc);
+	return 0;
+}
+
+
+static int
+cmd_vol (xmmsc_connection_t *connection, int user, int dev)
+{
+	int vol, oldvol;
+
+/*	xmmsc_result_t *res;
+	res = xmmsc_playback_stop (conn);
+	xmmsc_result_wait (res);
+	if (xmmsc_result_iserror (res)) {
+		fprintf (stderr, "Couldn't stop playback: %s\n", xmmsc_result_get_error (res));
+	}
+	xmmsc_result_unref (res);
+*/
+	oldvol = 5;
+	
+	vol = blue_percent(dev, "xmms2 - volume", 10, oldvol, cmd_volupd, connection);
+
+	debug("New Volume: %i.\n", vol);
+
+	return 0;
+}
+
+
 
 
 /**
@@ -272,6 +303,7 @@ struct cmds mainmenu[] = {
 	{ "next", cmd_next, 0 },
 	{ "prev", cmd_prev, 0 },
 	{ "rate", cmd_rate, 0 },
+	{ "volume", cmd_vol, 0 },
 	{ "shuffle", cmd_shuffle, 0 },
 	{ NULL, NULL, 0 },
 };

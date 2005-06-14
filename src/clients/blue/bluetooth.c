@@ -208,3 +208,47 @@ int blue_select(int dev, char *title, char **items, int init)
 	return item;
 }
 
+
+int blue_percent(int dev, char *title, int steps, int init, int (*updfunc)(int perc, void *user), void *user)
+{
+	char buf[256], rbuf[256];
+	int perc;
+	
+	sprintf(buf, "AT*EAID=4,0,\"%s\",%d,%d", title, steps, init);
+	if (blue_put_expect(dev, buf, "OK")) return -1;
+	
+		
+	for (;;) {
+		blue_get_block(dev, rbuf);
+		if (!strcasecmp("*EAII", rbuf)) {
+			/* aborted */
+			return -1;
+		} else if (!strcasecmp("*EAII: 0", rbuf)) {
+			/* rejected */
+			return 0;
+		} else if (!strncasecmp("*EAII: 15,", rbuf, 10)) {
+			if (!updfunc) continue;
+			perc = atoi(rbuf+10);
+			if ((perc < 0) || (perc > 100)) {
+				debug("Percentage %i out of range.\n", perc);
+				return -1;
+			}
+			updfunc(perc, user);
+		} else if (!strncasecmp("*EAII: 4,", rbuf, 9)) {
+			perc = atoi(rbuf+9);
+			if ((perc < 0) || (perc > 100)) {
+				debug("Percentage %i out of range.\n", perc);
+				return -1;
+			}
+			return perc;
+		} else {
+			debug("unmatched sequence \"%s\"", rbuf);
+			return -1;
+		}
+	}
+	
+	return 0;
+}
+
+
+
