@@ -172,3 +172,39 @@ int blue_menu(int dev, char *title, struct cmds *items, int init, void *user)
 	return 0;
 }
 
+
+int blue_select(int dev, char *title, char **items, int init)
+{
+	int i;
+	char buf[256], buf2[256], rbuf[256];
+	int item = init;
+	
+	buf[0]='\0';
+	for (i=0; items[i]; i++) {
+		sprintf(buf+strlen(buf), ",\"%s\"", items[i]);
+	}
+
+	sprintf(buf2, "AT*EAID=5,0,\"%s\",%d,%d%s", title, item, i, buf);
+	if (blue_put_expect(dev, buf2, "OK")) return -1;
+	
+	blue_get_block(dev, rbuf);
+	if (!strcasecmp("*EAII", rbuf)) {
+		/* aborted */
+		return -1;
+	} else if (!strcasecmp("*EAII: 0", rbuf)) {
+		/* rejected */
+		return 0;
+	} else if (!strncasecmp("*EAII: 5,", rbuf, 9)) {
+		item = atoi(rbuf+9);
+		if ((item < 0) || (item > i)) {
+			debug("Item %i out of range.\n", item);
+			return -1;
+		}
+	} else {
+		debug("unmatched sequence \"%s\"", rbuf);
+		return -1;
+	}
+	
+	return item;
+}
+

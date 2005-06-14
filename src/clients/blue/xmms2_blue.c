@@ -234,35 +234,11 @@ cmd_prev (xmmsc_connection_t *connection, int user, int dev)
 
 
 static int
-cmd_rateset (xmmsc_connection_t *connection, int user, int dev)
+cmd_rate (xmmsc_connection_t *connection, int user, int dev)
 {
-/*	xmmsc_result_t *res;
-	res = xmmsc_playback_stop (conn);
-	xmmsc_result_wait (res);
-	if (xmmsc_result_iserror (res)) {
-		fprintf (stderr, "Couldn't stop playback: %s\n", xmmsc_result_get_error (res));
-	}
-	xmmsc_result_unref (res);*/
+	int rating, oldrating;
+	char *items[] =  {"", "*", "**", "***", "****", "*****", NULL};
 
-	debug("setting rating to %i\n", user);
-	
-	return 0;
-}
-
-struct cmds ratemenu[] = {
-	{ "-", cmd_rateset, 0 },
-	{ "*", cmd_rateset, 1 },
-	{ "**", cmd_rateset, 2 },
-	{ "***", cmd_rateset, 3 },
-	{ "****", cmd_rateset, 4 },
-	{ "*****", cmd_rateset, 5 },
-	{ NULL, NULL, 0 },
-};
-
-static int
-cmd_rate (xmmsc_connection_t *connection, int argc, int dev)
-{
-	int oldrating;
 /*	xmmsc_result_t *res;
 	res = xmmsc_playback_stop (conn);
 	xmmsc_result_wait (res);
@@ -271,8 +247,14 @@ cmd_rate (xmmsc_connection_t *connection, int argc, int dev)
 	}
 	xmmsc_result_unref (res);
 */
-	oldrating = 1;
-	return blue_menu(dev, "xmms2 - rate", ratemenu, oldrating, connection);
+	oldrating = 0;
+	
+	rating = blue_select(dev, "xmms2 - rate", items, oldrating+1) - 1;
+	if (rating < 0) return rating + 1;
+
+	debug("New Rating: %i.\n", rating);
+
+	return 0;
 }
 
 

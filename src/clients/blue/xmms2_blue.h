@@ -63,5 +63,6 @@ int blue_put_expect(int dev, char* c, char *expect);
 int blue_put_echo_expect(int dev, char* c, char *expect);
 
 int blue_menu(int dev, char *title, struct cmds *items, int init, void *user);
+int blue_select(int dev, char *title, char **item, int init);
 
 #endif
