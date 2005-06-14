@@ -1,6 +1,11 @@
 /*
  *  XMMS2 Bluetooth Client
  *  Copyright (C) 2005 Jens Taprogge
+ *
+ *  This code is heavily based on the XMMS2 CLI client by
+ *  Peter Alm, Tobias Rundström, Anders Gustafsson.
+ *
+ *  It is inspired by Tom Gilbert's XMMS Bluetooth client 'bluexmms'
  */
 
 #ifndef __XMMS2_BLUE_H

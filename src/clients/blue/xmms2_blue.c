@@ -1,18 +1,13 @@
-/*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
- *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
- *                   
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
+/*
+ *  XMMS2 Bluetooth Client.
+ *  Copyright (C) 2005 Jens Taprogge
+ *
+ *  This code is heavily based on the XMMS2 CLI client by
+ *  Peter Alm, Tobias Rundström, Anders Gustafsson.
+ *
+ *  It is inspired by Tom Gilbert's XMMS Bluetooth client 'bluexmms'
  */
+
 
 #include "xmms2_blue.h"
 

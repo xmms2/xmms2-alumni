@@ -1,6 +1,12 @@
 /*
- *  XMMS2 Bluetooth Client
+ *  Bluetooth Stubs.
  *  Copyright (C) 2005 Jens Taprogge
+ *
+ *  Based on Sony Ericcson's "AT Commands Online Reference - T68, T68i, T300,
+ *  T310, T610, Z600, T230/T238/T226, T630, T290" 
+ *  dated October 2004.
+ *
+ *  The documentation seems to apply to later models as well.
  */
 
 #include "xmms2_blue.h"
