@@ -237,7 +237,6 @@ static int
 cmd_rate (xmmsc_connection_t *connection, int user, int dev)
 {
 	int rating, oldrating;
-	char *items[] =  {"", "*", "**", "***", "****", "*****", NULL};
 
 /*	xmmsc_result_t *res;
 	res = xmmsc_playback_stop (conn);
@@ -249,9 +248,10 @@ cmd_rate (xmmsc_connection_t *connection, int user, int dev)
 */
 	oldrating = 0;
 	
-	rating = blue_select(dev, "xmms2 - rate", items, oldrating+1) - 1;
-	if (rating < 0) return rating + 1;
-
+	rating = blue_percent(dev, "xmms2 - rate", 5, oldrating, NULL, NULL);
+	if (rating < 0) return rating;
+	
+	rating /= 20;
 	debug("New Rating: %i.\n", rating);
 
 	return 0;
