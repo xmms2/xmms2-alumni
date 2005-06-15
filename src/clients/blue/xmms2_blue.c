@@ -258,7 +258,45 @@ cmd_rate (xmmsc_connection_t *connection, int user, int dev)
 static int
 cmd_volupd (int perc, void *connection)
 {
-	debug("Volume upd: %i\n", perc);
+	int left, right;
+	char *vstr;
+	char nvol[8];
+	int oldvol;
+	xmmsc_result_t *res;
+	
+	res = xmmsc_configval_get(connection, "output.volume");
+	xmmsc_result_wait (res);
+	if (xmmsc_result_iserror (res) || !xmmsc_result_get_string(res, &vstr)) {
+		fprintf (stderr, "Couldn't get config value \"output.volume\": %s\n", 
+				xmmsc_result_get_error (res));
+		xmmsc_result_unref (res);
+		return -1;
+	}
+	sscanf(vstr, "%i/%i", &left, &right);
+	xmmsc_result_unref (res);
+	oldvol = (left + right) / 2;
+	left += perc - oldvol; right += perc - oldvol;
+
+	if (left > 100) {
+		left = 100;
+	} else if (left < 0) {
+		left = 0;
+	}
+	if (right > 100) {
+		right = 100;
+	} else if (right < 0) {
+		right = 0;
+	}
+
+	sprintf(nvol, "%d/%d", left, right);
+
+	res = xmmsc_configval_set (connection, "output.volume", nvol);
+	xmmsc_result_wait (res);
+	if (xmmsc_result_iserror (res)) {
+		fprintf (stderr, "Couldn't set config value \"output.volume\": %s\n", 
+				xmmsc_result_get_error (res));
+	}
+	xmmsc_result_unref (res);
 	return 0;
 }
 
@@ -266,22 +304,26 @@ cmd_volupd (int perc, void *connection)
 static int
 cmd_vol (xmmsc_connection_t *connection, int user, int dev)
 {
-	int vol, oldvol;
-
-/*	xmmsc_result_t *res;
-	res = xmmsc_playback_stop (conn);
-	xmmsc_result_wait (res);
-	if (xmmsc_result_iserror (res)) {
-		fprintf (stderr, "Couldn't stop playback: %s\n", xmmsc_result_get_error (res));
-	}
-	xmmsc_result_unref (res);
-*/
-	oldvol = 5;
+	int left, right;
+	char *vstr;
+	int ret;
+	xmmsc_result_t *res;
 	
-	vol = blue_percent(dev, "xmms2 - volume", 10, oldvol, cmd_volupd, connection);
+	res = xmmsc_configval_get(connection, "output.volume");
+	xmmsc_result_wait (res);
+	if (xmmsc_result_iserror (res) || !xmmsc_result_get_string(res, &vstr)) {
+		fprintf (stderr, "Couldn't get config value \"output.volume\": %s\n", 
+				xmmsc_result_get_error (res));
+		xmmsc_result_unref (res);
+		return -1;
+	}
+	sscanf(vstr, "%i/%i", &left, &right);
+	xmmsc_result_unref (res);
 
-	debug("New Volume: %i.\n", vol);
-
+	if ((ret = blue_percent(dev, "xmms2 - volume", 10, (left + right) / 20,
+					cmd_volupd, connection)) < 0) {
+		return ret;
+	}
 	return 0;
 }
 
