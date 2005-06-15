@@ -13,6 +13,8 @@
 
 #include <locale.h>
 
+#define RETRY_INTERVAL 1 /* in seconds */
+
 /**
  * Utils
  */
@@ -333,22 +335,37 @@ main (int argc, char **argv)
 	bluepath = g_hash_table_lookup(config, "bluepath");
 	if (!bluepath) bluepath = "/dev/rfcomm0";
 
-	if ((bluedev = blue_open("/dev/rfcomm0")) < 0) {
-		exit(1);
-	}
-	
-	if (blue_init(bluedev) < 0) {
-		exit(1);
-	}
-
-
 	for (;;) {
-		blue_get_block(bluedev, buf);
-		if (!strcasecmp("*EAAI", buf)) {
-			blue_menu(bluedev, "xmms2", mainmenu, 1, connection);
-		} else {
-			debug("unmatched sequence \"%s\"", buf);
+		if ((bluedev = blue_open(bluepath)) < 0) {
+			/* retry */
+			sleep(RETRY_INTERVAL);
+			continue;
 		}
+		
+		if (blue_init(bluedev) < 0) {
+			debug("init failed\n");
+			if (close(bluedev)) perror("Close");
+
+			/* retry */
+			continue;
+		}
+
+
+		for (;;) {
+			if (blue_get_block(bluedev, buf) < 0) {
+				/* reopen device */
+				break;
+			}
+			if (!strcasecmp("*EAAI", buf)) {
+				if (blue_menu(bluedev, "xmms2", mainmenu, 1, connection) == -2) {
+					/* reopen device */
+					break;
+				}
+			} else {
+				debug("unmatched sequence \"%s\"", buf);
+			}
+		}
+		if (close(bluedev)) perror("Close");
 	}
 
 	return 0;

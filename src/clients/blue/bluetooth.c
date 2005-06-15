@@ -26,7 +26,7 @@ int blue_open(char *devname)
 
 	dev = open(devname, O_RDWR | O_NOCTTY);  
 	if (dev < 0) {
-		print_error("Open of Bletooth device failed.\n");
+		print_info("Open of Bletooth device failed.\n");
 		return -1;
 	}
 
@@ -52,16 +52,20 @@ int blue_open(char *devname)
 }
 
 
-void blue_put(int dev, char *c)
+ssize_t blue_put(int dev, char *c)
 {
+	ssize_t ret, sum = 0;
 	debug("blue_put: %s\n", c);
-	write(dev, c, strlen(c));
-	write(dev, "\r", 1);
+	if ((ret = write(dev, c, strlen(c))) < 0) return ret;
+	sum += ret;
+	if ((ret = write(dev, "\r", 1)) < 0) return ret;
+	sum += ret;
 	tcdrain(dev);
+	return sum;
 }
 
 
-void blue_get(int dev, char *a)
+ssize_t blue_get(int dev, char *a)
 {
 	char tmp[1];
 	unsigned int c, cs = 0;
@@ -72,7 +76,8 @@ void blue_get(int dev, char *a)
 			timeout++;
 			if (timeout == 5) {
 				a[0] = '\0';
-				return;
+				debug("reading timed out five times. device gone?\n");
+				return -1;
 			}
 			continue;
 		}
@@ -82,14 +87,14 @@ void blue_get(int dev, char *a)
 			if (!cs) continue;
 			a[cs] = '\0';
 			debug("blue_get: %s\n", a);
-			return;
+			return cs;
 		}
 		a[cs++] = tmp[0];
 	}
 }
 
 
-void blue_get_block(int dev, char *buf)
+int blue_get_block(int dev, char *buf)
 {
 	fd_set rfds;
 	
@@ -100,8 +105,7 @@ void blue_get_block(int dev, char *buf)
 		select(dev + 1, &rfds, NULL, NULL, NULL);
 		
 		if (FD_ISSET(dev, &rfds)) {
-			blue_get(dev, buf);
-			return;
+			return blue_get(dev, buf);
 		} else {
 			debug("timeout\n");
 		}
@@ -112,31 +116,38 @@ void blue_get_block(int dev, char *buf)
 int blue_put_expect(int dev, char* c, char *expect)
 {
 	static char buf[256];
-	blue_put(dev, c);
-	blue_get(dev, buf);
-	return strcasecmp(buf, expect);
+	
+	if (blue_put(dev, c) < 0) return -2;
+	if (blue_get(dev, buf) < 0) return -2;
+	return strcasecmp(buf, expect) ? -1 : 0;
 }
 
 
 int blue_put_echo_expect(int dev, char* c, char *expect)
 {
 	static char buf[256];
-	blue_put(dev, c);
-	blue_get(dev, buf);
+	
+	if (blue_put(dev, c) < 0) return -2;
+	if (blue_get(dev, buf) < 0) return -2;
 	if (strcasecmp(buf, c)) return -1;
-	blue_get(dev, buf);
-	return strcasecmp(buf, expect);
+	if (blue_get(dev, buf) < 0) return -2;
+	return strcasecmp(buf, expect) ? -1 : 0;
 }
 
 
 int blue_init(int dev)
 {
-	if (blue_put_echo_expect(dev, "ATZ", "OK") < 0)
-		return -1;
-	if (blue_put_echo_expect(dev, "ATE=0", "OK") < 0)
-		return -1;
-	if (blue_put_expect(dev, "AT*EAM=\"xmms2\"", "OK") < 0)
-		return -1;
+	int ret; 
+	
+	/* init */
+	if ((ret = blue_put_echo_expect(dev, "ATZ", "OK")) < 0)
+		return ret;
+	/* echo off */
+	if ((ret = blue_put_echo_expect(dev, "ATE=0", "OK")) < 0)
+		return ret;
+	/* Accessory name */
+	if ((ret = blue_put_expect(dev, "AT*EAM=\"xmms2\"", "OK")) < 0)
+		return ret;
 	return 0;
 }    
 
@@ -157,7 +168,7 @@ int blue_menu(int dev, char *title, struct cmds *items, int init, void *user)
 	if (blue_put_expect(dev, buf2, "OK")) return -1;
 	
 	while (item) {
-		blue_get_block(dev, rbuf);
+		if (blue_get_block(dev, rbuf) < 0) return -2;
 		if (!strncasecmp("*EAMI: ", rbuf, 7)) {
 			item = atoi(rbuf+7);
 			if (!item) break;
@@ -169,7 +180,7 @@ int blue_menu(int dev, char *title, struct cmds *items, int init, void *user)
 				return ret;
 			}
 		} else {
-			debug("unmatched sequence \"%s\"", rbuf);
+			debug("unmatched sequence \"%s\"\n", rbuf);
 		}
 		/* display the menu again */
 		sprintf(buf2, "AT*EASM=\"%s\",1,%i,%d%s", title, item, i, buf);
@@ -193,7 +204,7 @@ int blue_select(int dev, char *title, char **items, int init)
 	sprintf(buf2, "AT*EAID=5,0,\"%s\",%d,%d%s", title, item, i, buf);
 	if (blue_put_expect(dev, buf2, "OK")) return -1;
 	
-	blue_get_block(dev, rbuf);
+	if (blue_get_block(dev, rbuf) < 0) return -2;
 	if (!strcasecmp("*EAII", rbuf)) {
 		/* aborted */
 		return -1;
@@ -207,7 +218,7 @@ int blue_select(int dev, char *title, char **items, int init)
 			return -1;
 		}
 	} else {
-		debug("unmatched sequence \"%s\"", rbuf);
+		debug("unmatched sequence \"%s\"\n", rbuf);
 		return -1;
 	}
 	
@@ -225,7 +236,7 @@ int blue_percent(int dev, char *title, int steps, int init, int (*updfunc)(int p
 	
 		
 	for (;;) {
-		blue_get_block(dev, rbuf);
+		if (blue_get_block(dev, rbuf) < 0) return -2;
 		if (!strcasecmp("*EAII", rbuf)) {
 			/* aborted */
 			return -1;
@@ -248,7 +259,7 @@ int blue_percent(int dev, char *title, int steps, int init, int (*updfunc)(int p
 			}
 			return perc;
 		} else {
-			debug("unmatched sequence \"%s\"", rbuf);
+			debug("unmatched sequence \"%s\"\n", rbuf);
 			return -1;
 		}
 	}

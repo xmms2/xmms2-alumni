@@ -54,11 +54,11 @@ int blue_init(int dev);
 
 /* Get a line (ended by \n) from dev and copy to a.
  * FIXME: Boundary checking */
-void blue_get(int dev, char *a);
-void blue_get_block(int dev, char *a);
+ssize_t blue_get(int dev, char *a);
+ssize_t blue_get_block(int dev, char *a);
 
 /* Write c appended by '\r' to dev. */
-void blue_put(int dev, char *c);
+ssize_t blue_put(int dev, char *c);
 
 /* Write c to dev and check for answer expect. 
  * Use while device is _not_ in echo mode. 0 on success. */
