@@ -288,7 +288,7 @@ cmd_volupd (int perc, void *connection)
 		right = 0;
 	}
 
-	sprintf(nvol, "%d/%d", left, right);
+	snprintf(nvol, 8, "%d/%d", left, right);
 
 	res = xmmsc_configval_set (connection, "output.volume", nvol);
 	xmmsc_result_wait (res);
@@ -394,7 +394,7 @@ main (int argc, char **argv)
 
 
 		for (;;) {
-			if (blue_get_block(bluedev, buf) < 0) {
+			if (blue_get_block(bluedev, buf, 256) < 0) {
 				/* reopen device */
 				break;
 			}

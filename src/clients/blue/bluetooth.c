@@ -33,9 +33,9 @@ int blue_open(char *devname)
 	if (!isatty(dev)) {
 		close(dev);
 		dev = -1;
-		sprintf(errstring, "\"%s\" is not a tty.", devname);  
+		snprintf(errstring, 256, "\"%s\" is not a tty.\n", devname);  
 		print_error(errstring);
-		return -1;
+		return -2;
 	}
 
 	memset(&attr, 0, sizeof(attr));
@@ -45,7 +45,7 @@ int blue_open(char *devname)
 	if (tcsetattr(dev, TCSANOW, &attr) < 0) {
 		perror("tcsetattr");
 		close(dev);
-		return -1;
+		return -2;
 	}
 
 	return dev;
@@ -64,13 +64,12 @@ ssize_t blue_put(int dev, char *c)
 	return sum;
 }
 
-
-ssize_t blue_get(int dev, char *a)
+ssize_t blue_get(int dev, char *a, size_t size)
 {
 	char tmp[1];
 	unsigned int c, cs = 0;
 	unsigned int timeout = 0;
-	while(1) {
+	while(cs < size) {
 		c = read(dev, &tmp, 1);
 		if (!c) {
 			timeout++;
@@ -91,10 +90,12 @@ ssize_t blue_get(int dev, char *a)
 		}
 		a[cs++] = tmp[0];
 	}
+	a[size-1] = '\0';
+	return -2;
 }
 
 
-int blue_get_block(int dev, char *buf)
+int blue_get_block(int dev, char *buf, size_t size)
 {
 	fd_set rfds;
 	
@@ -105,7 +106,7 @@ int blue_get_block(int dev, char *buf)
 		select(dev + 1, &rfds, NULL, NULL, NULL);
 		
 		if (FD_ISSET(dev, &rfds)) {
-			return blue_get(dev, buf);
+			return blue_get(dev, buf, size);
 		} else {
 			debug("timeout\n");
 		}
@@ -116,9 +117,15 @@ int blue_get_block(int dev, char *buf)
 int blue_put_expect(int dev, char* c, char *expect)
 {
 	static char buf[256];
+
+#ifdef DEBUG
+	if (strlen(expect) > 255) {
+		debug("blue_put_expect: expect too long");
+	}
+#endif
 	
 	if (blue_put(dev, c) < 0) return -2;
-	if (blue_get(dev, buf) < 0) return -2;
+	if (blue_get(dev, buf, 256) < 0) return -2;
 	return strcasecmp(buf, expect) ? -1 : 0;
 }
 
@@ -127,10 +134,16 @@ int blue_put_echo_expect(int dev, char* c, char *expect)
 {
 	static char buf[256];
 	
+#ifdef DEBUG
+	if (strlen(expect) > 255) {
+		debug("blue_put_echo_expect: expect too long");
+	}
+#endif
+
 	if (blue_put(dev, c) < 0) return -2;
-	if (blue_get(dev, buf) < 0) return -2;
+	if (blue_get(dev, buf, 256) < 0) return -2;
 	if (strcasecmp(buf, c)) return -1;
-	if (blue_get(dev, buf) < 0) return -2;
+	if (blue_get(dev, buf, 256) < 0) return -2;
 	return strcasecmp(buf, expect) ? -1 : 0;
 }
 
@@ -161,14 +174,14 @@ int blue_menu(int dev, char *title, struct cmds *items, int init, void *user)
 	
 	buf[0]='\0';
 	for (i=0; items[i].name; i++) {
-		sprintf(buf+strlen(buf), ",\"%s\"", items[i].name);
+		snprintf(buf+strlen(buf), 256, ",\"%s\"", items[i].name);
 	}
 
-	sprintf(buf2, "AT*EASM=\"%s\",1,%d,%d%s", title, item, i, buf);
+	snprintf(buf2, 256, "AT*EASM=\"%s\",1,%d,%d%s", title, item, i, buf);
 	if (blue_put_expect(dev, buf2, "OK")) return -1;
 	
 	while (item) {
-		if (blue_get_block(dev, rbuf) < 0) return -2;
+		if (blue_get_block(dev, rbuf, 256) < 0) return -2;
 		if (!strncasecmp("*EAMI: ", rbuf, 7)) {
 			item = atoi(rbuf+7);
 			if (!item) break;
@@ -183,7 +196,7 @@ int blue_menu(int dev, char *title, struct cmds *items, int init, void *user)
 			debug("unmatched sequence \"%s\"\n", rbuf);
 		}
 		/* display the menu again */
-		sprintf(buf2, "AT*EASM=\"%s\",1,%i,%d%s", title, item, i, buf);
+		snprintf(buf2, 256, "AT*EASM=\"%s\",1,%i,%d%s", title, item, i, buf);
 		if (blue_put_expect(dev, buf2, "OK")) return -1;
 	}
 	return 0;
@@ -204,7 +217,7 @@ int blue_select(int dev, char *title, char **items, int init)
 	sprintf(buf2, "AT*EAID=5,0,\"%s\",%d,%d%s", title, item, i, buf);
 	if (blue_put_expect(dev, buf2, "OK")) return -1;
 	
-	if (blue_get_block(dev, rbuf) < 0) return -2;
+	if (blue_get_block(dev, rbuf, 256) < 0) return -2;
 	if (!strcasecmp("*EAII", rbuf)) {
 		/* aborted */
 		return -1;
@@ -236,7 +249,7 @@ int blue_percent(int dev, char *title, int steps, int init, int (*updfunc)(int p
 	
 		
 	for (;;) {
-		if (blue_get_block(dev, rbuf) < 0) return -2;
+		if (blue_get_block(dev, rbuf, 256) < 0) return -2;
 		if (!strcasecmp("*EAII", rbuf)) {
 			/* aborted */
 			return -1;
