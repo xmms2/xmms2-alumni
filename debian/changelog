@@ -1,3 +1,16 @@
+xmms2 (0.2+git20060328-0) sarge; urgency=low
+
+  * New git snapshot: 0.2 DrDolittle
+    (cae0d4328c6405e36ff0c82b60b58c8daa8efe3e).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Tue, 28 Mar 2006 00:21:33 +0200
+
+xmms2 (0.2+git20060226-0) sarge; urgency=low
+
+  * New git snapshot: 0.2 DrCox (f4014b80ed47b3668743737e20907881c1ca2ef6).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Sun, 26 Feb 2006 11:05:33 +0100
+
 xmms2 (0.2+git20060113-0) sarge; urgency=low
 
   * New git snapshot: 0.2 DrBombay (0bbf8e15b820db93ee287aad82db6044b0761f30).
