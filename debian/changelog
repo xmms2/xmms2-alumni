@@ -1,3 +1,9 @@
+xmms2 (0.2+git20060328-1) sarge; urgency=low
+
+  * Fixes for building on other archs then i386. 
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Wed, 29 Mar 2006 21:12:19 +0200
+
 xmms2 (0.2+git20060328-0) sarge; urgency=low
 
   * New git snapshot: 0.2 DrDolittle
