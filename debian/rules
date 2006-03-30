@@ -15,7 +15,7 @@ package=xmms2
 
 # Do not build ecore libraries for anything but i386
 ifeq (,$(filter $(DEB_BUILD_ARCH), i386))
-  DH_OPTIONS += -Nlibxmms2client-ecore \
+  export DH_OPTIONS += -Nlibxmms2client-ecore \
   	-Nlibxmms2client-ecore-dev \
   	-Nlibxmms2client-ecore-ruby \
 	-Nlibxmms2client-ecore-ruby1.8
