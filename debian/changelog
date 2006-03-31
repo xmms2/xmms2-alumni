@@ -1,4 +1,4 @@
-xmms2 (0.2+git20060328-1) sarge; urgency=low
+xmms2 (0.2+git20060328-1) etch; urgency=low
 
   * Fixes for building on other archs then i386. 
 
