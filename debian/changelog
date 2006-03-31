@@ -1,4 +1,10 @@
-xmms2 (0.2+git20060328-1) etch; urgency=low
+xmms2 (0.2+git20060328-2) etch; urgency=low
+
+  * Make etch the default release.
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Wed, 29 Mar 2006 21:12:19 +0200
+
+xmms2 (0.2+git20060328-1) sarge; urgency=low
 
   * Fixes for building on other archs then i386. 
 
