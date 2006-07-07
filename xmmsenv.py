@@ -6,6 +6,7 @@ import gzip
 from marshal import load
 from stat import *
 import operator
+from popen2 import popen3
 
 global_libpaths = ["/lib", "/usr/lib"]
 
@@ -40,7 +41,12 @@ class Target:
 		self.globs['platform'] = env.platform
 		self.globs['ConfigError'] = ConfigError
 
-		c = compile(file(target).read(), target, "exec")
+		x = file(target).read()
+		if x[-1] != '\n':
+			print "Missing linebreak in %s" % target
+			x += '\n'
+
+		c = compile(x, target, "exec")
 		eval(c, self.globs)
 
 		if not isinstance(self.globs.get("target"), str):
@@ -200,7 +206,9 @@ class XMMSEnvironment(Environment):
 		if self.config_cache.has_key(cmd):
 			ret = self.config_cache[cmd]
 		else:
-			ret = os.popen(cmd).read()
+			r, w, e = popen3(cmd)
+			ret = r.read()
+
 			if cmd.startswith("pkg-config"):
 				if ret == '':
 					print " ... no"
@@ -232,7 +240,23 @@ class XMMSEnvironment(Environment):
 				sys.exit(1)
 			raise ConfigError("Headerfile '%s' not found" % header)
 
-	def checklib(self, lib, func, fail=False):
+	def checkcppheader(self, header, fail=False):
+        
+		if isinstance(header, list):
+			key = ("HEADER", tuple(header))
+		else:
+			key = ("HEADER", header)
+
+		if not self.config_cache.has_key(key):
+			self.config_cache[key] = self.conf.CheckCXXHeader(header)
+		if not self.config_cache[key]:
+			if fail:
+				print "Aborting!"
+				sys.exit(1)
+			raise ConfigError("Headerfile '%s' not found" % header)
+
+
+	def checklib(self, lib, func, header=0, lang="c", fail=False):
 		key = (lib, func)
 
 		if not self.config_cache.has_key(key):
@@ -249,7 +273,7 @@ class XMMSEnvironment(Environment):
 			#		self.config_cache[key] = libtool_flags["dependency_libs"]+" "
 			#		break
 
-			if self.conf.CheckLib(lib, func, 0):
+			if self.conf.CheckLib(lib, func, header=header, language=lang):
 				self.config_cache[key] += "-l"+lib
 				self.parse_config_string("-l"+lib)
 				return
@@ -332,6 +356,7 @@ class XMMSEnvironment(Environment):
 		self["SHLIBPREFIX"]="libxmms_"
 		if self.platform == 'darwin':
 			self["SHLINKFLAGS"] += " -bundle"
+			self["SHLIBSUFFIX"] += ".so"
 		self.SharedLibrary(target, source)
 		self.Install(self.pluginpath, os.path.join(self.dir, self.shlibname(target)))
 
@@ -360,8 +385,6 @@ class XMMSEnvironment(Environment):
 				if self.platform == 'linux' or self.platform == 'freebsd':
 					self["SHLINKFLAGS"] += " -Wl,-soname," + self.shlibname(target)
 
-			self.SharedLibrary(target, source)
-
 			if loadable:
 				if self.platform == 'darwin':
 					self["SHLINKFLAGS"] = ' -bundle -undefined suppress -flat_namespace'
@@ -372,6 +395,11 @@ class XMMSEnvironment(Environment):
 					self["SHLINKFLAGS"] += " -dynamiclib"
 				if install:
 					self.Install(self.librarypath, os.path.join(self.dir, self.shlibname(target)))
+					if self.platform == 'darwin':
+						self["SHLINKFLAGS"] += " -install_name %s/%s" % (self.librarypath, self.shlibname(target))
+			
+			self.SharedLibrary(target, source)
+
 
 	def add_program(self, target, source):
 		self.programs.append(target)

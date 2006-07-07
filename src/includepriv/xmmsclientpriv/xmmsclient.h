@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2006 Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -67,7 +67,7 @@ xmmsc_result_t *xmmsc_send_msg (xmmsc_connection_t *c, xmms_ipc_msg_t *msg);
 xmmsc_result_t *xmmsc_send_msg_flush (xmmsc_connection_t *c, xmms_ipc_msg_t *msg);
 xmmsc_result_t *xmmsc_send_broadcast_msg (xmmsc_connection_t *c, uint32_t signalid);
 xmmsc_result_t *xmmsc_send_signal_msg (xmmsc_connection_t *c, uint32_t signalid);
-char *xmmsc_medialib_encode_url (const char *url);
+char *xmmsc_medialib_encode_url (const char *url, int narg, const char **args);
 
 void xmmsc_result_restartable (xmmsc_result_t *res, uint32_t signalid);
 void xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr);

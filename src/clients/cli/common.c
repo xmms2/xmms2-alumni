@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2006 Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -95,14 +95,8 @@ void
 print_entry (const void *key, xmmsc_result_value_type_t type, 
 			 const void *value, const gchar *source, void *udata)
 {
-	gchar *conv;
-	gsize r, w;
-	GError *err = NULL;
-
 	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
-		conv = g_locale_from_utf8 (value, -1, &r, &w, &err);
-		print_info ("[%s] %s = %s", source, key, conv);
-		g_free (conv);
+		print_info ("[%s] %s = %s", source, key, value);
 	} else {
 		print_info ("[%s] %s = %d", source, key, XPOINTER_TO_INT (value));
 	}

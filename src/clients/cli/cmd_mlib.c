@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2006 Peter Alm, Tobias Rundström, Anders Gustafsson
+ *  Copyright (C) 2003-2006 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -21,10 +21,10 @@
 /**
  * Function prototypes
  */
-static void cmd_mlib_topsongs (xmmsc_connection_t *conn,
-                               gint argc, gchar **argv);
-static void cmd_mlib_set (xmmsc_connection_t *conn,
-                          gint argc, gchar **argv);
+static void cmd_mlib_set_str (xmmsc_connection_t *conn,
+                              gint argc, gchar **argv);
+static void cmd_mlib_set_int (xmmsc_connection_t *conn,
+                              gint argc, gchar **argv);
 static void cmd_mlib_add (xmmsc_connection_t *conn,
                           gint argc, gchar **argv);
 static void cmd_mlib_loadall (xmmsc_connection_t *conn,
@@ -55,6 +55,8 @@ static void cmd_mlib_addpath (xmmsc_connection_t *conn,
                               gint argc, gchar **argv);
 static void cmd_mlib_rehash (xmmsc_connection_t *conn,
                              gint argc, gchar **argv);
+static void cmd_mlib_remove (xmmsc_connection_t *conn,
+                             gint argc, gchar **argv);
 
 cmds mlib_commands[] = {
 	{ "add", "[url] - Add 'url' to medialib", cmd_mlib_add },
@@ -72,8 +74,9 @@ cmds mlib_commands[] = {
 	{ "remove_playlist", "[playlistname] - Remove a playlist", cmd_mlib_playlist_remove },
 	{ "addpath", "[path] - Import metadata from all media files under 'path'", cmd_mlib_addpath },
 	{ "rehash", "Force the medialib to check whether its data is up to date", cmd_mlib_rehash },
-	{ "set", "[id, key, value, (source)] Set a property together with a medialib entry.", cmd_mlib_set },
-	{ "topsongs", "list the most played songs", cmd_mlib_topsongs },
+	{ "remove", "Remove an entry from medialib", cmd_mlib_remove },
+	{ "setstr", "[id, key, value, (source)] Set a string property together with a medialib entry.", cmd_mlib_set_str },
+	{ "setint", "[id, key, value, (source)] Set a int property together with a medialib entry.", cmd_mlib_set_int },
 	{ NULL, NULL, NULL },
 };
 
@@ -159,63 +162,27 @@ cmd_info (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 }
 
-
 static void
-cmd_mlib_topsongs (xmmsc_connection_t *conn, gint argc, gchar **argv)
-{
-	xmmsc_result_t *res;
-	const gchar *query;
-	GList *n = NULL;
-	
-	query = "select m.id as id, sum(l.value) as playsum from Log l left join Media m on l.id=m.id where m.key='url' group by l.id order by playsum desc limit 20";
-
-	res = xmmsc_medialib_select (conn, query);
-	xmmsc_result_wait (res);
-
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
-	}
-
-	while (xmmsc_result_list_valid (res)) {
-		gint id;
-
-		if (!xmmsc_result_get_dict_entry_int32 (res, "id", &id)) {
-			print_error ("Broken resultset");
-		}
-
-		n = g_list_prepend (n, XINT_TO_POINTER (id));
-		xmmsc_result_list_next (res);
-	}
-
-	n = g_list_reverse (n);
-	format_pretty_list (conn, n);
-	g_list_free (n);
-
-	xmmsc_result_unref (res);
-}
-
-
-static void
-cmd_mlib_set (xmmsc_connection_t *conn, gint argc, gchar **argv)
+cmd_mlib_set_str (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
 	gint id;
 
 	if (argc < 6) {
-		print_error ("usage: set [id] [key] [value] ([source])");
+		print_error ("usage: setstr [id] [key] [value] ([source])");
 	}
 
 	id = strtol (argv[3], NULL, 10);
 	
 	if (argc == 7) {
-		res = xmmsc_medialib_entry_property_set_with_source (conn,
-		                                                     id,
-		                                                     argv[6],
-		                                                     argv[4],
-		                                                     argv[5]);
+		res = xmmsc_medialib_entry_property_set_str_with_source (conn,
+		                                                         id,
+		                                                         argv[6],
+		                                                         argv[4],
+		                                                         argv[5]);
 	} else {
-		res = xmmsc_medialib_entry_property_set (conn, id, argv[4],
-		                                         argv[5]);
+		res = xmmsc_medialib_entry_property_set_str (conn, id, argv[4],
+		                                             argv[5]);
 	}
 	xmmsc_result_wait (res);
 
@@ -226,7 +193,36 @@ cmd_mlib_set (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_unref (res);
 }
 
+static void
+cmd_mlib_set_int (xmmsc_connection_t *conn, gint argc, gchar **argv)
+{
+	xmmsc_result_t *res;
+	gint id;
 
+	if (argc < 6) {
+		print_error ("usage: setint [id] [key] [value] ([source])");
+	}
+
+	id = strtol (argv[3], NULL, 10);
+	
+	if (argc == 7) {
+		res = xmmsc_medialib_entry_property_set_int_with_source (conn,
+		                                                         id,
+		                                                         argv[6],
+		                                                         argv[4],
+		                                                         atoi (argv[5]));
+	} else {
+		res = xmmsc_medialib_entry_property_set_int (conn, id, argv[4],
+		                                             atoi (argv[5]));
+	}
+	xmmsc_result_wait (res);
+
+	if (xmmsc_result_iserror (res)) {
+		print_error ("%s", xmmsc_result_get_error (res));
+	}
+
+	xmmsc_result_unref (res);
+}
 
 static void
 cmd_mlib_add (xmmsc_connection_t *conn, gint argc, gchar **argv)
@@ -361,7 +357,7 @@ cmd_mlib_searchadd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	query = mlib_query_from_args (argc, argv);
 	if (query == NULL) {
 		print_error ("Unable to generate query");
-	} 
+	}
 	
 	res = xmmsc_medialib_add_to_playlist (conn, query);
 	xmmsc_result_wait (res);
@@ -653,6 +649,28 @@ cmd_mlib_addpath (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_unref (res);
 }
 
+static void
+cmd_mlib_remove (xmmsc_connection_t *conn, gint argc, gchar **argv)
+{
+	int i;
+	int32_t entryid;
+	xmmsc_result_t *res;
+
+	if (argc < 4) {
+		print_error ("Supply an id to remove!");
+	}
+
+	for (i = 3; i < argc; i++) {
+		entryid = atoi (argv[i]);
+		print_info("Removing entry %i", entryid);
+		res = xmmsc_medialib_remove_entry (conn, entryid);
+		xmmsc_result_wait (res);
+		if (xmmsc_result_iserror (res)) {
+			print_error ("%s", xmmsc_result_get_error (res));
+		}
+		xmmsc_result_unref (res);
+	}
+}
 
 static void
 cmd_mlib_rehash (xmmsc_connection_t *conn, gint argc, gchar **argv)

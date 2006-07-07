@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2006 Peter Alm, Tobias Rundstr�m, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -27,15 +27,11 @@
 #endif
 
 #include "xmmspriv/xmms_plugin.h"
-#include "xmmspriv/xmms_transport.h"
-#include "xmmspriv/xmms_decoder.h"
 #include "xmmspriv/xmms_config.h"
 #include "xmmspriv/xmms_playlist.h"
 #include "xmmspriv/xmms_unixsignal.h"
 #include "xmmspriv/xmms_medialib.h"
 #include "xmmspriv/xmms_output.h"
-#include "xmmspriv/xmms_effect.h"
-#include "xmmspriv/xmms_visualisation.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmspriv/xmms_log.h"
 #include "xmmspriv/xmms_sqlite.h"
@@ -130,7 +126,7 @@ do_scriptdir (const gchar *scriptdir)
 
 	dir = g_dir_open (scriptdir, 0, &err);
 	if (!dir) {
-		XMMS_DBG ("Could not open %s error: %s", scriptdir, err->message);
+		xmms_log_error ("Could not open script dir '%s' error: %s", scriptdir, err->message);
 		return;
 	}
 
@@ -180,7 +176,7 @@ load_config ()
 static void
 change_output (xmms_object_t *object, gconstpointer data, gpointer userdata)
 {
-	xmms_plugin_t *plugin;
+	xmms_output_plugin_t *plugin;
 	xmms_main_t *mainobj = (xmms_main_t*)userdata;
 	gchar *outname = (gchar *) data;
 
@@ -189,7 +185,7 @@ change_output (xmms_object_t *object, gconstpointer data, gpointer userdata)
 
 	xmms_log_info ("Switching to output %s", outname);
 
-	plugin = xmms_plugin_find (XMMS_PLUGIN_TYPE_OUTPUT, outname);
+	plugin = (xmms_output_plugin_t *)xmms_plugin_find (XMMS_PLUGIN_TYPE_OUTPUT, outname);
 	if (!plugin) {
 		xmms_log_error ("Baaaaad output plugin, try to change the output.plugin config variable to something usefull");
 	} else {
@@ -225,7 +221,6 @@ xmms_main_destroy (xmms_object_t *object)
 	g_assert (conffile != NULL);
 	xmms_config_save (conffile);
 
-	xmms_visualisation_shutdown ();
 	xmms_config_shutdown ();
 	xmms_plugin_shutdown ();
 
@@ -301,10 +296,10 @@ install_scripts (const gchar *into_dir)
 	s++;
 
 	g_snprintf (path, PATH_MAX, "%s/scripts/%s", SHAREDDIR, s);
-	xmms_log_info ("installing scripts from %s", path);
+	xmms_log_info ("Installing scripts from %s", path);
 	dir = g_dir_open (path, 0, &err);
 	if (!dir) {
-		XMMS_DBG ("global script directory not found");
+		xmms_log_error ("Global script directory not found");
 		return;
 	}
 
@@ -327,7 +322,7 @@ install_scripts (const gchar *into_dir)
 int
 main (int argc, char **argv)
 {
-	xmms_plugin_t *o_plugin;
+	xmms_output_plugin_t *o_plugin;
 	xmms_config_property_t *cv;
 	xmms_main_t *mainobj;
 	int loglevel = 1;
@@ -392,8 +387,8 @@ main (int argc, char **argv)
 	}
 
 	if (version) {
-		printf ("XMMS version " XMMS_VERSION "\n");
-		printf ("Copyright (C) 2003-2006 XMMS Team\n");
+		printf ("XMMS2 version " XMMS_VERSION "\n");
+		printf ("Copyright (C) 2003-2006 XMMS2 Team\n");
 		printf ("This is free software; see the source for copying conditions.\n");
 		printf ("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		printf ("PARTICULAR PURPOSE.\n");
@@ -428,19 +423,11 @@ main (int argc, char **argv)
 		xmms_log_fatal ("IPC failed to init!");
 	}
 
-	xmms_config_property_register ("decoder.buffersize",
-			XMMS_DECODER_DEFAULT_BUFFERSIZE, NULL, NULL);
-	xmms_config_property_register ("transport.buffersize",
-			XMMS_TRANSPORT_DEFAULT_BUFFERSIZE, NULL, NULL);
-
-
 	if (!xmms_plugin_init (ppath))
 		return 1;
 
 	playlist = xmms_playlist_init ();
 
-	xmms_visualisation_init ();
-	
 	mainobj = xmms_object_new (xmms_main_t, xmms_main_destroy);
 
 	/* find output plugin. */
@@ -453,9 +440,9 @@ main (int argc, char **argv)
 
 	outname = xmms_config_property_get_string (cv);
 
-	xmms_log_info ("Using output: %s", outname);
+	xmms_log_info ("Using output plugin: %s", outname);
 
-	o_plugin = xmms_plugin_find (XMMS_PLUGIN_TYPE_OUTPUT, outname);
+	o_plugin = (xmms_output_plugin_t *)xmms_plugin_find (XMMS_PLUGIN_TYPE_OUTPUT, outname);
 
 	if (!o_plugin) {
 		xmms_log_error ("Baaaaad output plugin, try to change the output.plugin config variable to something usefull");

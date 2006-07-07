@@ -1,3 +1,19 @@
+xmms2 (0.2+git20060707-1) etch; urgency=low
+
+  * Update copyright file. 
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  7 Jul 2006 13:40:52 +0200
+
+xmms2 (0.2+git20060707-0) etch; urgency=low
+
+  * New git snapshot: 0.2 DrEvil
+    (d3de67d1c01924ce642461b208a8a4f06c050f7f).
+  * -ecore packages disabled for now
+  * mdns package added
+  * C++ libraries added
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  7 Jul 2006 09:36:53 +0200
+
 xmms2 (0.2+git20060328-2) etch; urgency=low
 
   * Make etch the default release.
