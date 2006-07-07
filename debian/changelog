@@ -1,3 +1,10 @@
+xmms2 (0.2+git20060707-2) etch; urgency=low
+
+  * Do not require glib to have the same micro version as the one used for
+    building.
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  7 Jul 2006 17:13:21 +0200
+
 xmms2 (0.2+git20060707-1) etch; urgency=low
 
   * Update copyright file. 
