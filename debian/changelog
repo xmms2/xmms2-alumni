@@ -1,3 +1,9 @@
+xmms2 (0.2+git20060707-3) etch; urgency=low
+
+  * Build musepack plugin. 
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  7 Jul 2006 21:54:45 +0200
+
 xmms2 (0.2+git20060707-2) etch; urgency=low
 
   * Do not require glib to have the same micro version as the one used for
