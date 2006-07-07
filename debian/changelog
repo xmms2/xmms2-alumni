@@ -1,3 +1,9 @@
+xmms2 (0.2+git20060707-1) etch; urgency=low
+
+  * Update copyright file. 
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  7 Jul 2006 13:40:52 +0200
+
 xmms2 (0.2+git20060707-0) etch; urgency=low
 
   * New git snapshot: 0.2 DrEvil

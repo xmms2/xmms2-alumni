@@ -53,11 +53,12 @@ binary-arch: build
 
 	# create copyright file
 	cp debian/copyright.header debian/copyright
-	cat AUTHORS >> debian/copyright
-	cat debian/copyright.footer >> debian/copyright
+	cat COPYING >> debian/copyright
+#	cat AUTHORS >> debian/copyright
+#	cat debian/copyright.footer >> debian/copyright
 	
 	dh_install --sourcedir=debian/tmp --list-missing
-	dh_installdocs README TODO 
+	dh_installdocs README TODO AUTHORS
 	dh_installchangelogs
 	dh_link
 	dh_strip
