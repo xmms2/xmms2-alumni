@@ -27,13 +27,14 @@ SCONSFLAGS=MANDIR=/usr/share/man PREFIX=/usr CCFLAGS="-O2 -Wall -g" RUBYARCHDIR=
 build:
 	dh_testdir
 	dh_testroot
-	scons $(SCONSFLAGS)
+	scons $(SCONSFLAGS) CONFIG=yes
 	touch build
 
 clean:
 	dh_testdir
 	rm -f build
 	scons -c $(SCONSFLAGS)
+	rm -rf .scon*
 	dh_clean
 
 binary-indep: build
