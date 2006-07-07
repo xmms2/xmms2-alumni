@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2006 Peter Alm, Tobias Rundstr�m, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -39,9 +39,8 @@
 
 static time_t start_time;
 static gchar *server_version = "unknown";
-static gchar *output_plugin = "unknown";
+static gchar *output_plugin;
 static gchar *system_name = "unknown";
-static gint playlist_loads = 0;
 static gint mlib_resolves = 0;
 
 static int send_socket;
@@ -63,10 +62,8 @@ send_msg (const gchar *status, GString *data)
 	g_string_append_printf (str, "output=%s\n", output_plugin);
 	g_string_append_printf (str, "starttime=%ld\n", start_time);
 	g_string_append_printf (str, "uptime=%ld\n", now - start_time);
-	g_string_append_printf (str, "playlistloads=%d\n", playlist_loads);
 	g_string_append_printf (str, "mlibresolves=%d\n", mlib_resolves);
 
-	playlist_loads = 0;
 	mlib_resolves = 0;
 
 	if (data)
@@ -88,12 +85,6 @@ static void
 handle_quit (xmmsc_result_t *res, void *data)
 {
 	g_main_loop_quit ((GMainLoop *) data);
-}
-
-static void
-handle_playlist_load (xmmsc_result_t *res, void *userdata)
-{
-	playlist_loads ++;
 }
 
 static void
@@ -119,16 +110,9 @@ handle_mediainfo_reader (xmmsc_result_t *res, void *userdata)
 static void
 handle_mediainfo (xmmsc_result_t *res, void *userdata)
 {
-	static gchar *props[] = {"decoder",
-				 "transport",
-				 "samplefmt:in",
-				 "samplefmt:out",
-				 "samplerate:in",
-				 "samplerate:out",
-				 "channels:in",
-				 "channels:out",
+	static gchar *props[] = {"chain",
 				 NULL};
-	static gchar *pref[] = {"server", NULL};
+	static const gchar *pref[] = {"server", NULL};
 	GString *str;
 	gchar *tstr;
 	gint tint, i;
@@ -184,17 +168,13 @@ handle_current_id (xmmsc_result_t *res, void *userdata)
 static void
 handle_config (xmmsc_result_t *res, void *userdata)
 {
-	char *key, *value;
+	char *value;
 
-	if (!xmmsc_result_get_dict_entry_str (res, "name", &key))
+	if (!xmmsc_result_get_dict_entry_str (res, "output.plugin", &value))
 		return;
 
-	if (!xmmsc_result_get_dict_entry_str (res, "value", &value))
-		return;
-
-	if (strcmp (key, "output.plugin") == 0) {
-		output_plugin = g_strdup (value);
-	}
+	g_free (output_plugin);
+	output_plugin = g_strdup (value);
 }
 
 static void
@@ -205,6 +185,7 @@ handle_config_val (xmmsc_result_t *res, void *userdata)
 	if (!xmmsc_result_get_string (res, &value))
 		return;
 
+	g_free (output_plugin);
 	output_plugin = g_strdup (value);
 }
 
@@ -242,10 +223,6 @@ main (int argc, char **argv)
 	printf ("Starting XMMS2 phone home agent...\n");
 
 	path = getenv ("XMMS_PATH");
-	if (!path) {
-		printf ("Sorry you need XMMS_PATH set\n");
-		exit (1);
-	}
 
 	conn = xmmsc_init ("xmms2-et");
 
@@ -258,6 +235,8 @@ main (int argc, char **argv)
 		printf ("Could not connect to xmms2d: %s\n", xmmsc_get_last_error (conn));
 		exit (1);
 	}
+
+	output_plugin = g_strdup ("unknown");
 
 	get_systemname ();
 
@@ -273,7 +252,6 @@ main (int argc, char **argv)
 	start_time = time (NULL);
 
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_playback_current_id, handle_current_id, conn);
-	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_medialib_playlist_loaded, handle_playlist_load, NULL);
 	XMMS_CALLBACK_SET (conn, xmmsc_main_stats, handle_stats, NULL);
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_configval_changed, handle_config, NULL);
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_quit, handle_quit, ml);

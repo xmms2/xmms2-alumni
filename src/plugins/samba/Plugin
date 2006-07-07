@@ -4,4 +4,3 @@ source=["samba.c"]
 def config(env):
 	env.checkheader("libsmbclient.h")
 	env.checklib("smbclient", "smbc_init")
-

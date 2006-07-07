@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2006 Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -110,6 +110,8 @@ cmd_seek (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_t *res;
 	guint id, ms, pt = 0;
 	gint dur = 0;
+	long arg;
+	gchar *endptr = NULL;
 
 	if (argc < 3) {
 		print_error ("You need to specify a number of seconds. Usage:\n"
@@ -142,7 +144,19 @@ cmd_seek (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 	xmmsc_result_unref (res);
 
+	/* parse the movement argument */
+	arg = strtol (argv[2], &endptr, 10);
+
+	if (endptr == argv[2]) {
+		print_error ("invalid argument");
+	}
+
 	if (argv[2][0] == '+' || argv[2][0] == '-') {
+		/* do we need to seek at all? */
+		if (!arg) {
+			return;
+		}
+
 		res = xmmsc_playback_playtime (conn);
 		xmmsc_result_wait (res);
 
@@ -156,7 +170,7 @@ cmd_seek (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		xmmsc_result_unref (res);
 	}
 
-	ms = pt + 1000 * strtol (argv[2], NULL, 10);
+	ms = pt + 1000 * arg;
 
 	if (dur && ms > dur) {
 		print_info ("Skipping to next song");

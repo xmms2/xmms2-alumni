@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003, 2004 Peter Alm, Tobias Rundström, Anders Gustafsson
+ *  Copyright (C) 2003-2006 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -14,6 +14,8 @@
  *  Lesser General Public License for more details.
  */
 
+#include <xmms/xmms_defs.h>
+
 #include <ruby.h>
 
 void Init_Client ();
@@ -21,6 +23,8 @@ void Init_Client ();
 void Init_xmmsclient (void)
 {
 	VALUE mXmms = rb_define_module ("Xmms");
+
+	rb_define_const (mXmms, "VERSION", rb_str_new2 (XMMS_VERSION));
 
 	Init_Client (mXmms); /* initializes Result, too */
 }

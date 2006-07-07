@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2006 Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -261,25 +261,28 @@ xmmsc_deinit (xmmsc_connection_t *c)
  * Set locking functions for a connection. Allows simultanous usage of
  * a connection from several threads.
  *
- * @param conn connection
+ * @param c connection
  * @param lock the locking primitive passed to the lock and unlock functions
  * @param lockfunc function called when entering critical region, called with lock as argument.
  * @param unlockfunc funciotn called when leaving critical region.
  */
 void
-xmmsc_lock_set (xmmsc_connection_t *conn, void *lock, void (*lockfunc)(void *), void (*unlockfunc)(void *))
+xmmsc_lock_set (xmmsc_connection_t *c, void *lock, void (*lockfunc)(void *), void (*unlockfunc)(void *))
 {
-	xmmsc_ipc_lock_set (conn->ipc, lock, lockfunc, unlockfunc);
+	x_check_conn (c,);
+
+	xmmsc_ipc_lock_set (c->ipc, lock, lockfunc, unlockfunc);
 }
 
 /**
  * Get a list of loaded plugins from the server
  */
 xmmsc_result_t *
-xmmsc_plugin_list (xmmsc_connection_t *c, uint32_t type)
+xmmsc_plugin_list (xmmsc_connection_t *c, xmms_plugin_type_t type)
 {
 	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
+
 	x_check_conn (c, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_PLUGIN_LIST);
@@ -310,6 +313,7 @@ xmmsc_result_t *
 xmmsc_quit (xmmsc_connection_t *c)
 {
 	x_check_conn (c, NULL);
+
 	return xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_QUIT);
 }
 
@@ -320,6 +324,8 @@ xmmsc_quit (xmmsc_connection_t *c)
 xmmsc_result_t *
 xmmsc_broadcast_quit (xmmsc_connection_t *c)
 {
+	x_check_conn (c, NULL);
+
 	return xmmsc_send_broadcast_msg (c, XMMS_IPC_SIGNAL_QUIT);
 }
 
@@ -382,6 +388,8 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res)
 				strncat (target, "00", len - strlen (target) - 1);
 			} else {
 				char seconds[10];
+				/* rounding */
+				duration += 500;
 				snprintf (seconds, sizeof(seconds), "%02d", (duration/1000)%60);
 				strncat (target, seconds, len - strlen (target) - 1);
 			}
@@ -394,6 +402,8 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res)
 				strncat (target, "00", len - strlen (target) - 1);
 			} else {
 				char minutes[10];
+				/* rounding */
+				duration += 500;
 				snprintf (minutes, sizeof(minutes), "%02d", duration/60000);
 				strncat (target, minutes, len - strlen (target) - 1);
 			}
