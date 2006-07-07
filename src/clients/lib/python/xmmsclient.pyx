@@ -48,8 +48,7 @@ cdef extern from "xmmsc/xmmsc_idnumbers.h":
 
 	ctypedef enum xmms_plugin_type_t:
 		XMMS_PLUGIN_TYPE_ALL,
-		XMMS_PLUGIN_TYPE_TRANSPORT,
-		XMMS_PLUGIN_TYPE_DECODER,
+		XMMS_PLUGIN_TYPE_XFORM,
 		XMMS_PLUGIN_TYPE_OUTPUT,
 		XMMS_PLUGIN_TYPE_PLAYLIST,
 		XMMS_PLUGIN_TYPE_EFFECT
@@ -69,8 +68,7 @@ PLAYLIST_CHANGED_MOVE = XMMS_PLAYLIST_CHANGED_MOVE
 PLAYLIST_CHANGED_SORT = XMMS_PLAYLIST_CHANGED_SORT
 
 PLUGIN_TYPE_ALL = XMMS_PLUGIN_TYPE_ALL
-PLUGIN_TYPE_TRANSPORT = XMMS_PLUGIN_TYPE_TRANSPORT
-PLUGIN_TYPE_DECODER = XMMS_PLUGIN_TYPE_DECODER
+PLUGIN_TYPE_XFORM = XMMS_PLUGIN_TYPE_XFORM
 PLUGIN_TYPE_OUTPUT = XMMS_PLUGIN_TYPE_OUTPUT
 PLUGIN_TYPE_PLAYLIST = XMMS_PLUGIN_TYPE_PLAYLIST
 PLUGIN_TYPE_EFFECT = XMMS_PLUGIN_TYPE_EFFECT
@@ -175,14 +173,17 @@ cdef extern from "xmmsclient/xmmsclient.h":
 	xmmsc_result_t *xmmsc_medialib_get_info(xmmsc_connection_t *, unsigned int id)
 	xmmsc_result_t *xmmsc_medialib_add_to_playlist(xmmsc_connection_t *c, char *query)
 	xmmsc_result_t *xmmsc_medialib_playlists_list (xmmsc_connection_t *)
+	xmmsc_result_t *xmmsc_medialib_playlist_list (xmmsc_connection_t *, char *playlist)
 	xmmsc_result_t *xmmsc_medialib_playlist_import(xmmsc_connection_t *c, char *name, char *url)
 	xmmsc_result_t *xmmsc_medialib_playlist_export(xmmsc_connection_t *c, char *name, char *mime)
 	xmmsc_result_t *xmmsc_medialib_playlist_remove (xmmsc_connection_t *c, char *name)
 	xmmsc_result_t *xmmsc_medialib_path_import (xmmsc_connection_t *c, char *path)
 	xmmsc_result_t *xmmsc_medialib_rehash(xmmsc_connection_t *c, unsigned int)
 	xmmsc_result_t *xmmsc_medialib_get_id (xmmsc_connection_t *c, char *url)
-	xmmsc_result_t *xmmsc_medialib_entry_property_set (xmmsc_connection_t *c, unsigned int id, char *key, char *value)
-	xmmsc_result_t *xmmsc_medialib_entry_property_set_with_source (xmmsc_connection_t *c, unsigned int id, char *source, char *key, char *value)
+	xmmsc_result_t *xmmsc_medialib_entry_property_set_int (xmmsc_connection_t *c, unsigned int id, char *key, int value)
+	xmmsc_result_t *xmmsc_medialib_entry_property_set_str (xmmsc_connection_t *c, unsigned int id, char *key, char *value)
+	xmmsc_result_t *xmmsc_medialib_entry_property_set_int_with_source (xmmsc_connection_t *c, unsigned int id, char *source, char *key, int value)
+	xmmsc_result_t *xmmsc_medialib_entry_property_set_str_with_source (xmmsc_connection_t *c, unsigned int id, char *source, char *key, char *value)
 	xmmsc_result_t *xmmsc_medialib_entry_property_remove (xmmsc_connection_t *c, unsigned int id, char *key)
 	xmmsc_result_t *xmmsc_medialib_entry_property_remove_with_source (xmmsc_connection_t *c, unsigned int id, char *source, char *key)
 
@@ -207,6 +208,7 @@ cdef extern from "xmmsclient/xmmsclient.h":
 from select import select
 from os import write
 import os
+import sys
 
 cdef to_unicode(char *s):
 	try:
@@ -245,9 +247,11 @@ cdef foreach_hash(signed char *key, xmmsc_result_value_type_t type, void *value,
 cdef ResultNotifier(xmmsc_result_t *res, obj):
 	if not obj.get_broadcast():
 		obj._del_ref()
-	obj._cb()
-	if not obj.get_broadcast():
-		xmmsc_result_unref(res)
+	try:
+		obj._cb()
+	finally:
+		if not obj.get_broadcast():
+			xmmsc_result_unref(res)
 
 class PropDict(dict):
 	def __init__(self, srcs):
@@ -268,12 +272,13 @@ class PropDict(dict):
 	def __getitem__(self, item):
 		if isinstance(item, str):
 			for src in self._sources:
-				if src == '*':
+				if src.endswith('*'):
 					for k,v in self.iteritems():
-						if k[1] == item:
+						if k[0].startswith(src[:-1]) and k[1] == item:
 							return v
 				try:
-					return dict.__getitem__(self, (src, item))
+					t = dict.__getitem__(self, (src, item))
+					return t
 				except KeyError:
 					pass
 			raise KeyError, item
@@ -290,9 +295,11 @@ cdef class XMMSResult:
 	cdef int broadcast
 	cdef object callback
 	cdef object c
+	cdef object exc
 
 	def __new__(self, c):
 		self.c = c
+		self.exc = None
 
 	def more_init(self, broadcast = 0):
 		self.orig = self.res
@@ -307,7 +314,10 @@ cdef class XMMSResult:
 		self._check()
 		if not self.callback:
 			return
-		self.callback(self)
+		try:
+			self.callback(self)
+		except:
+			self.exc = sys.exc_info()
 
 	def get_type(self):
 		"""
@@ -358,6 +368,8 @@ cdef class XMMSResult:
 		"""
 		self._check()
 		xmmsc_result_wait(self.res)
+		if self.exc is not None:
+			raise self.exc[0], self.exc[1], self.exc[2]
 
 	def disconnect(self):
 		""" @todo: Fail if this result isn't a signal or a broadcast """
@@ -449,7 +461,10 @@ cdef class XMMSResult:
 		@return: Error string from the result.
 		@rtype: String
 		"""
-		return xmmsc_result_get_error(self.res)
+		if xmmsc_result_get_error(self.res) == NULL:
+			return None
+		else:
+			return xmmsc_result_get_error(self.res)
 
 	def __dealloc__(self):
 		"""
@@ -488,7 +503,7 @@ cdef class XMMS:
 		c = from_unicode(clientname)
 		self.conn = xmmsc_init(c)
 		self.ObjectRef = []
-		self.sources = ["client/" + clientname, "server", "*"]
+		self.sources = ["client/" + clientname, "server", "plugins/*", "client/*", "*"]
 
 	def get_source_preference(self):
 		return self.sources
@@ -554,7 +569,7 @@ cdef class XMMS:
 		level function that should only be used in certain
 		circumstances. e.g. a custom event loop
 		"""
-		xmmsc_io_in_handle(self.conn)
+		return xmmsc_io_in_handle(self.conn)
 
 	def ioout(self):
 		"""
@@ -562,7 +577,7 @@ cdef class XMMS:
 		low level function that should only be used in certain
 		circumstances. e.g. a custom event loop
 		"""
-		xmmsc_io_out_handle(self.conn)
+		return xmmsc_io_out_handle(self.conn)
 
 	def want_ioout(self):
 		return xmmsc_io_want_out(self.conn)
@@ -1395,6 +1410,25 @@ cdef class XMMS:
 		
 		return ret
 
+	def medialib_playlist_list(self, name, cb = None):
+		"""
+		Get the specified playlist from medialib.
+		This function returns a list of IDs the files/streams
+		currently in the playlist. Use L{medialib_get_info} to
+		retrieve more specific information.
+		@rtype:	L{XMMSResult}(UIntList)
+		@return: The playlist with the given name.
+		"""
+		cdef XMMSResult ret
+		
+		ret = XMMSResult(self)
+		ret.callback = cb
+		
+		ret.res = xmmsc_medialib_playlist_list(self.conn, name)
+		ret.more_init()
+		
+		return ret
+
 	def medialib_playlist_import(self, name, url, cb = None):
 		"""
 		Import a playlist into the medialib.
@@ -1522,9 +1556,15 @@ cdef class XMMS:
 	
 		if source:
 			s = from_unicode(source)
-			ret.res = xmmsc_medialib_entry_property_set_with_source(self.conn,id,s,k,v)
+			if isinstance(value, int):
+				ret.res = xmmsc_medialib_entry_property_set_int_with_source(self.conn,id,s,k,v)
+			else:
+				ret.res = xmmsc_medialib_entry_property_set_str_with_source(self.conn,id,s,k,v)
 		else:
-			ret.res = xmmsc_medialib_entry_property_set(self.conn,id,k,v)
+			if isinstance(value, str):
+				ret.res = xmmsc_medialib_entry_property_set_str(self.conn,id,k,v)
+			else:
+				ret.res = xmmsc_medialib_entry_property_set_int(self.conn,id,k,v)
 
 		ret.more_init()
 		return ret
