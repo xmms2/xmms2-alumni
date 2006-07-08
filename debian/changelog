@@ -1,3 +1,9 @@
+xmms2 (0.2+git20060707-4) etch; urgency=low
+
+  * Make programs not depend on C++ libraries unnecessarily. 
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Sat,  8 Jul 2006 02:35:53 +0200
+
 xmms2 (0.2+git20060707-3) etch; urgency=low
 
   * Build musepack plugin. 
