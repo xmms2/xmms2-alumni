@@ -273,7 +273,7 @@ class XMMSEnvironment(Environment):
 			#		self.config_cache[key] = libtool_flags["dependency_libs"]+" "
 			#		break
 
-			if self.conf.CheckLib(lib, func, header=header, language=lang):
+			if self.conf.CheckLib(lib, func, header=header, language=lang, autoadd=0):
 				self.config_cache[key] += "-l"+lib
 				self.parse_config_string("-l"+lib)
 				return
