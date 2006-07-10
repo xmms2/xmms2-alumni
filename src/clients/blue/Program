@@ -1,9 +1,8 @@
 target="xmms2_blue"
 source=["xmms2_blue.c", "bluetooth.c"]
 def config(env):
-	env["LIBS"].append("xmmsclient")
 	env.Prepend(LIBPATH="src/clients/lib/xmmsclient")
-	env["LIBS"].append("xmmsclient-glib")
+	env.Append(LIBS=["xmmsclient"])
 	env.Prepend(LIBPATH="src/clients/lib/xmmsclient-glib")
+	env.Append(LIBS=["xmmsclient-glib"])
 	env.pkgconfig("glib-2.0")
-	return True
