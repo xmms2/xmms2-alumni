@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -63,8 +63,11 @@ gboolean xmms_playlist_advance (xmms_playlist_t *playlist);
 xmms_medialib_entry_t xmms_playlist_current_entry (xmms_playlist_t *playlist);
 gboolean xmms_playlist_addurl (xmms_playlist_t *playlist, gchar *nurl, xmms_error_t *err);
 GList * xmms_playlist_list (xmms_playlist_t *playlist, xmms_error_t *err);
+guint32 xmms_playlist_current_pos (xmms_playlist_t *playlist, xmms_error_t *err);
+guint xmms_playlist_set_current_position (xmms_playlist_t *playlist, guint32 pos, xmms_error_t *error);
 gboolean xmms_playlist_remove_by_entry (xmms_playlist_t *playlist, xmms_medialib_entry_t entry);
 
+void xmms_playlist_add_entry (xmms_playlist_t *playlist, xmms_medialib_entry_t file);
 
 xmms_mediainfo_reader_t *xmms_playlist_mediainfo_reader_get (xmms_playlist_t *playlist);
 

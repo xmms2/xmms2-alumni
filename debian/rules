@@ -9,22 +9,32 @@ export DH_COMPAT=4
 # from having to guess our platform (since we know it already)
 DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_BUILD_ARCH      ?= $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 
 package=xmms2
 
+# Do not build ecore libraries for anything but i386
+ifeq (,$(filter $(DEB_BUILD_ARCH), ""))
+  export DH_OPTIONS += -Nlibxmms2client-ecore \
+  	-Nlibxmms2client-ecore-dev \
+  	-Nlibxmms2client-ecore-ruby \
+	-Nlibxmms2client-ecore-ruby1.8
+endif
+
 RUBYARCHDIR=$(shell ruby -rrbconfig -e 'print Config::CONFIG["archdir"]')
-SCONSFLAGS=MANDIR=/usr/share/man PREFIX=/usr CCFLAGS="-O2 -Wall -g" RUBYARCHDIR=$(RUBYARCHDIR)
+SCONSFLAGS=MANDIR=/usr/share/man PREFIX=/usr CCFLAGS="-O2 -Wall -g" RUBYARCHDIR=$(RUBYARCHDIR) EXCLUDE="sdl-vis"
 
 build:
 	dh_testdir
 	dh_testroot
-	scons $(SCONSFLAGS)
+	scons $(SCONSFLAGS) CONFIG=yes
 	touch build
 
 clean:
 	dh_testdir
 	rm -f build
-	scons -c 
+	scons -c $(SCONSFLAGS)
+	rm -rf .scon*
 	dh_clean
 
 binary-indep: build
@@ -43,17 +53,21 @@ binary-arch: build
 
 	# create copyright file
 	cp debian/copyright.header debian/copyright
-	cat AUTHORS >> debian/copyright
-	cat debian/copyright.footer >> debian/copyright
+	cat COPYING >> debian/copyright
+#	cat AUTHORS >> debian/copyright
+#	cat debian/copyright.footer >> debian/copyright
 	
 	dh_install --sourcedir=debian/tmp --list-missing
-	dh_installdocs README TODO 
+	dh_installdocs README TODO AUTHORS
 	dh_installchangelogs
 	dh_link
 	dh_strip
 	dh_compress
 	dh_fixperms
-	dh_makeshlibs -plibxmms2client -plibxmms2client-ecore -plibxmms2client-glib
+	dh_makeshlibs -plibxmms2client -plibxmms2client-glib
+	if [ "$(DEB_BUILD_ARCH)" == "" ] ; then \
+		dh_makeshlibs -plibxmms2client-ecore ; \
+	fi
 	dh_python
 	dh_installdeb
 	dh_shlibdeps

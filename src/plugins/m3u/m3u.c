@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
+ *  Copyright (C) 2003-2006 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -36,7 +36,6 @@
  * Function prototypes
  */
 
-static gboolean xmms_m3u_can_handle (const gchar *mimetype);
 static gboolean xmms_m3u_read_playlist (xmms_transport_t *transport, guint playlist_id);
 /* hahahaha ... g string */
 static GString *xmms_m3u_write_playlist (guint32 *list);
@@ -50,19 +49,30 @@ xmms_plugin_get (void)
 {
 	xmms_plugin_t *plugin;
 
-	plugin = xmms_plugin_new (XMMS_PLUGIN_TYPE_PLAYLIST, "m3u",
-			"M3U Playlist " XMMS_VERSION,
-			"M3U Playlist reader / writer");
+	plugin = xmms_plugin_new (XMMS_PLUGIN_TYPE_PLAYLIST, 
+	                          XMMS_PLAYLIST_PLUGIN_API_VERSION,
+	                          "m3u",
+	                          "M3U Playlist",
+	                          XMMS_VERSION,
+	                          "M3U Playlist reader / writer");
+
+	if (!plugin) {
+		return NULL;
+	}
 
 	xmms_plugin_info_add (plugin, "URL", "http://www.xmms.org/");
 	xmms_plugin_info_add (plugin, "Author", "XMMS Team");
 
-	xmms_plugin_method_add (plugin, XMMS_PLUGIN_METHOD_CAN_HANDLE,
-				xmms_m3u_can_handle);
 	xmms_plugin_method_add (plugin, XMMS_PLUGIN_METHOD_READ_PLAYLIST,
 				xmms_m3u_read_playlist);
 	xmms_plugin_method_add (plugin, XMMS_PLUGIN_METHOD_WRITE_PLAYLIST,
 				xmms_m3u_write_playlist);
+
+	/* no magic here. we could add a check for #EXTM3U at the beginning,
+	 * but then only extended m3u files would be accepted.
+	 * so we rather not specify any magic at all and have the plugin
+	 * accept any data
+	 */
 
 	return plugin;
 }
@@ -71,30 +81,13 @@ xmms_plugin_get (void)
  * Member functions
  */
 
-static gboolean
-xmms_m3u_can_handle (const gchar *mime)
-{
-	g_return_val_if_fail (mime, FALSE);
-
-	XMMS_DBG ("xmms_m3u_can_handle (%s)", mime);
-
-	if ((g_strncasecmp (mime, "audio/mpegurl", 13) == 0))
-		return TRUE;
-
-	if ((g_strncasecmp (mime, "audio/x-mpegurl", 15) == 0))
-		return TRUE;
-
-	if ((g_strncasecmp (mime, "audio/m3u", 9) == 0))
-		return TRUE;
-
-	return FALSE;
-}
-
 static xmms_medialib_entry_t
-parse_line (const gchar *line, const gchar *m3u_path)
+parse_line (xmms_medialib_session_t *session, 
+			const gchar *line, const gchar *m3u_path)
 {
 	xmms_medialib_entry_t entry;
 	gchar newp[1024], *p;
+	xmms_error_t error;
 
 	g_assert (line);
 
@@ -130,7 +123,7 @@ parse_line (const gchar *line, const gchar *m3u_path)
 	/* in all code paths, newp should have been written */
 	g_assert (newp[0]);
 
-	entry = xmms_medialib_entry_new (newp);
+	entry = xmms_medialib_entry_new (session, newp, &error);
 
 	return entry;
 }
@@ -141,6 +134,7 @@ xmms_m3u_read_playlist (xmms_transport_t *transport, guint playlist_id)
 	gchar line[XMMS_TRANSPORT_MAX_LINE_SIZE];
 	xmms_error_t err;
 	gboolean extm3u = FALSE;
+	xmms_medialib_session_t *session;
 
 	g_return_val_if_fail (transport, FALSE);
 
@@ -158,54 +152,27 @@ xmms_m3u_read_playlist (xmms_transport_t *transport, guint playlist_id)
 		}
 	}
 
+	session = xmms_medialib_begin_write ();
+
 	do {
 		xmms_medialib_entry_t entry;
-		gchar *title = NULL, *duration = NULL;
 
 		if (extm3u && line[0] == '#') {
-			gchar *p;
-			gsize read, write;
-
-			p = strchr (line, ',');
-			if (p) {
-				*p = '\0';
-				*p++;
-			} else {
-				xmms_log_error ("Malformated m3u");
-				return FALSE;
-			}
-
-			/** @todo 
-			 *  check whether the data we read is actually
-			 *  ISO-8859-1, might be anything else as well.
-			 */
-			title = g_convert (p, strlen (p), "UTF-8", "ISO-8859-1",
-			                   &read, &write, NULL);
-			duration = g_strdup (line + 8);
-
-
-
+			/** Skip this */
 			if (!xmms_transport_read_line (transport, line, &err)) {
+				xmms_medialib_end (session);
 				return FALSE;
 			}
 		}
 
-		entry = parse_line (line,
+		entry = parse_line (session, line,
 				    xmms_transport_url_get (transport));
 
-		if (title) {
-			xmms_medialib_entry_property_set (entry, XMMS_MEDIALIB_ENTRY_PROPERTY_TITLE, title);
-			g_free (title);
-		}
-		if (duration) {
-			xmms_medialib_entry_property_set (entry, XMMS_MEDIALIB_ENTRY_PROPERTY_DURATION,
-			                                  duration);
-			g_free (duration);
-		}
-
-		xmms_medialib_playlist_add (playlist_id, entry);
+		xmms_medialib_playlist_add (session, playlist_id, entry);
 
 	} while (xmms_transport_read_line (transport, line, &err));
+
+	xmms_medialib_end (session);
 
 	return TRUE;
 }
@@ -216,10 +183,13 @@ xmms_m3u_write_playlist (guint32 *list)
 	xmms_error_t err;
 	gint i = 0;
 	GString *ret;
+	xmms_medialib_session_t *session;
 
 	g_return_val_if_fail (list, FALSE);
 
 	xmms_error_reset (&err);
+
+	session = xmms_medialib_begin ();
 
 	ret = g_string_new ("#EXTM3U\n");
 
@@ -229,13 +199,13 @@ xmms_m3u_write_playlist (guint32 *list)
 		gchar *artist, *title;
 		gint duration = 0;
 
-		duration = xmms_medialib_entry_property_get_int (entry,
+		duration = xmms_medialib_entry_property_get_int (session, entry,
 				XMMS_MEDIALIB_ENTRY_PROPERTY_DURATION);
 
-		artist = xmms_medialib_entry_property_get (entry,
+		artist = xmms_medialib_entry_property_get_str (session, entry,
 				XMMS_MEDIALIB_ENTRY_PROPERTY_ARTIST);
 
-		title = xmms_medialib_entry_property_get (entry,
+		title = xmms_medialib_entry_property_get_str (session, entry,
 				XMMS_MEDIALIB_ENTRY_PROPERTY_TITLE);
 
 		if (title && artist && duration) {
@@ -245,7 +215,7 @@ xmms_m3u_write_playlist (guint32 *list)
 			g_free (title);
 		}
 
-		url = xmms_medialib_entry_property_get (entry, XMMS_MEDIALIB_ENTRY_PROPERTY_URL);
+		url = xmms_medialib_entry_property_get_str (session, entry, XMMS_MEDIALIB_ENTRY_PROPERTY_URL);
 		g_assert (url);
 
 		if (g_strncasecmp (url, "file://", 7) == 0) {
@@ -257,6 +227,8 @@ xmms_m3u_write_playlist (guint32 *list)
 
 		i++;
 	}
+
+	xmms_medialib_end (session);
 
 	return ret;
 }

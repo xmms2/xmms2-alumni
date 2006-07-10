@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
+ *  Copyright (C) 2003-2006 XMMS2 Team
  * 
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  * 
@@ -22,7 +22,8 @@
 #define SYSCONFDIR "%SYSCONFDIR%"
 #define PKGLIBDIR "%PKGLIBDIR%"
 #define SHAREDDIR "%SHAREDDIR%"
-
+#define BINDIR "%BINDIR%"
+#define XMMS_OUTPUT_DEFAULT "%DEFAULT_OUTPUT%"
 #define XMMS_PATH_MAX 255
 
 #endif

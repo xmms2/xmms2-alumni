@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -22,6 +22,7 @@
 
 
 #include <glib.h>
+#include <xmms/xmms_object.h>
 
 #define XMMS_MEDIALIB_ENTRY_PROPERTY_MIME "mime"
 #define XMMS_MEDIALIB_ENTRY_PROPERTY_ID "id"
@@ -50,17 +51,31 @@
 #define XMMS_MEDIALIB_ENTRY_PROPERTY_TRACK_ID "track_id"
 #define XMMS_MEDIALIB_ENTRY_PROPERTY_ADDED "added"
 #define XMMS_MEDIALIB_ENTRY_PROPERTY_BPM "bpm"
-
+#define XMMS_MEDIALIB_ENTRY_PROPERTY_LASTSTARTED "laststarted"
+#define XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE "size"
+#define XMMS_MEDIALIB_ENTRY_PROPERTY_IS_VBR "isvbr"
+#define XMMS_MEDIALIB_ENTRY_PROPERTY_SUBTUNES "subtunes"
+#define XMMS_MEDIALIB_ENTRY_PROPERTY_CHAIN "chain"
+#define XMMS_MEDIALIB_ENTRY_PROPERTY_TIMESPLAYED "timesplayed"
 
 typedef guint32 xmms_medialib_entry_t;
+typedef struct xmms_medialib_session_St xmms_medialib_session_t;
 
-xmms_medialib_entry_t xmms_medialib_entry_new (const char *url);
-gboolean xmms_medialib_playlist_add (gint playlist_id, xmms_medialib_entry_t entry);
+xmms_medialib_entry_t xmms_medialib_entry_new (xmms_medialib_session_t *session, const char *url, xmms_error_t *error);
+gboolean xmms_medialib_playlist_add (xmms_medialib_session_t *session, gint playlist_id, xmms_medialib_entry_t entry);
 
-gchar *xmms_medialib_entry_property_get (xmms_medialib_entry_t entry, const gchar *property);
-guint xmms_medialib_entry_property_get_int (xmms_medialib_entry_t entry, const gchar *property);
-gboolean xmms_medialib_entry_property_set (xmms_medialib_entry_t entry, const gchar *property, const gchar *value);
+xmms_object_cmd_value_t *xmms_medialib_entry_property_get_cmd_value (xmms_medialib_session_t *session, xmms_medialib_entry_t entry, const gchar *property);
+gchar *xmms_medialib_entry_property_get_str (xmms_medialib_session_t *session, xmms_medialib_entry_t entry, const gchar *property);
+gint xmms_medialib_entry_property_get_int (xmms_medialib_session_t *session, xmms_medialib_entry_t entry, const gchar *property);
+gboolean xmms_medialib_entry_property_set_str (xmms_medialib_session_t *session, xmms_medialib_entry_t entry, const gchar *property, const gchar *value);
+gboolean xmms_medialib_entry_property_set_int (xmms_medialib_session_t *session, xmms_medialib_entry_t entry, const gchar *property, gint value);
+void xmms_medialib_entry_send_added (xmms_medialib_entry_t entry);
 void xmms_medialib_entry_send_update (xmms_medialib_entry_t entry);
-guint32 xmms_medialib_get_random_entry (void);
+
+#define xmms_medialib_begin() _xmms_medialib_begin(FALSE, __FILE__, __LINE__)
+#define xmms_medialib_begin_write() _xmms_medialib_begin(TRUE, __FILE__, __LINE__)
+
+xmms_medialib_session_t * _xmms_medialib_begin (gboolean write, const char *file, int line);
+void xmms_medialib_end (xmms_medialib_session_t *session);
 
 #endif /* __XMMS_MEDIALIB_H__ */

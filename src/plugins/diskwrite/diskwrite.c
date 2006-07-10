@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -17,10 +17,9 @@
 
 
 
-#include "xmms/xmms_plugin.h"
-#include "xmms/xmms_output.h"
-#include "xmms/xmms_log.h"
 #include "xmms/xmms_defs.h"
+#include "xmms/xmms_outputplugin.h"
+#include "xmms/xmms_log.h"
 
 #include <glib.h>
 #include <sys/types.h>
@@ -50,7 +49,7 @@
 
 #define PUT_STR(buf, str) do { \
 	size_t len = strlen (str); \
-	g_strlcpy ((gchar *)buf, str, len); \
+	strncpy ((gchar *) buf, str, len); \
 	buf += len; \
 } while (0)
 
@@ -67,53 +66,49 @@ typedef struct {
  * Function prototypes
  */
 
+static gboolean xmms_null_plugin_setup (xmms_output_plugin_t *plugin);
 static gboolean xmms_diskwrite_new (xmms_output_t *output);
 static void xmms_diskwrite_destroy (xmms_output_t *output);
 static gboolean xmms_diskwrite_open (xmms_output_t *output);
 static void xmms_diskwrite_close (xmms_output_t *output);
-static void xmms_diskwrite_write (xmms_output_t *output, gchar *buffer, gint len);
+static void xmms_diskwrite_write (xmms_output_t *output, gpointer buffer,
+                                  gint len, xmms_error_t *error);
 static void xmms_diskwrite_flush (xmms_output_t *output);
 
-static void on_playlist_entry_changed (xmms_object_t *object,
-                                       const xmms_object_cmd_arg_t *arg,
-                                       xmms_diskwrite_data_t *data);
-static void on_dest_directory_changed (xmms_object_t *object, gconstpointer value,
-                                       xmms_diskwrite_data_t *data);
+static void on_playlist_entry_changed (xmms_object_t *object, const xmms_object_cmd_arg_t *arg, xmms_diskwrite_data_t *data);
+static void on_dest_directory_changed (xmms_object_t *object, gconstpointer value, xmms_diskwrite_data_t *data);
 static void finalize_wave (xmms_diskwrite_data_t *data);
 
 /*
  * Plugin header
  */
 
-xmms_plugin_t *
-xmms_plugin_get (void)
+XMMS_OUTPUT_PLUGIN ("diskwrite", "Diskwriter Output", XMMS_VERSION,
+                    "Dumps audio data to disk",
+                    xmms_null_plugin_setup);
+
+static gboolean
+xmms_null_plugin_setup (xmms_output_plugin_t *plugin)
 {
-	xmms_plugin_t *plugin;
+	xmms_output_methods_t methods;
 
-	plugin = xmms_plugin_new (XMMS_PLUGIN_TYPE_OUTPUT, "diskwrite",
-	                          "Diskwriter output " XMMS_VERSION,
-	                          "Dumps audio data to disk");
+	XMMS_OUTPUT_METHODS_INIT (methods);
 
-	xmms_plugin_info_add (plugin, "URL", "http://www.xmms.org/");
-	xmms_plugin_info_add (plugin, "Author", "XMMS Team");
+	methods.new = xmms_diskwrite_new;
+	methods.destroy = xmms_diskwrite_destroy;
 
-	xmms_plugin_method_add (plugin, XMMS_PLUGIN_METHOD_NEW,
-	                        xmms_diskwrite_new);
-	xmms_plugin_method_add (plugin, XMMS_PLUGIN_METHOD_DESTROY,
-	                        xmms_diskwrite_destroy);
-	xmms_plugin_method_add (plugin, XMMS_PLUGIN_METHOD_OPEN,
-	                        xmms_diskwrite_open);
-	xmms_plugin_method_add (plugin, XMMS_PLUGIN_METHOD_CLOSE,
-	                        xmms_diskwrite_close);
-	xmms_plugin_method_add (plugin, XMMS_PLUGIN_METHOD_WRITE,
-	                        xmms_diskwrite_write);
-	xmms_plugin_method_add (plugin, XMMS_PLUGIN_METHOD_FLUSH,
-	                        xmms_diskwrite_flush);
+	methods.open = xmms_diskwrite_open;
+	methods.close = xmms_diskwrite_close;
 
-	xmms_plugin_config_value_register (plugin, "destination_directory",
-	                                   "/tmp", NULL, NULL);
+	methods.flush = xmms_diskwrite_flush;
+	methods.write = xmms_diskwrite_write;
 
-	return plugin;
+	xmms_output_plugin_methods_set (plugin, &methods);
+
+	xmms_output_plugin_config_property_register (plugin,
+	                                             "destination_directory",
+	                                             "/tmp", NULL, NULL);
+	return TRUE;
 }
 
 /*
@@ -124,8 +119,7 @@ static gboolean
 xmms_diskwrite_new (xmms_output_t *output)
 {
 	xmms_diskwrite_data_t *data;
-	xmms_plugin_t *plugin;
-	xmms_config_value_t *val;
+	xmms_config_property_t *val;
 	const gchar *tmp;
 
 	g_return_val_if_fail (output, FALSE);
@@ -137,13 +131,12 @@ xmms_diskwrite_new (xmms_output_t *output)
 
 	xmms_output_format_add (output, XMMS_SAMPLE_FORMAT_S16, 2, 44100);
 
-	plugin = xmms_output_plugin_get (output);
-	val = xmms_plugin_config_lookup (plugin, "destination_directory");
-	xmms_config_value_callback_set (val,
-	                                (xmms_object_handler_t) on_dest_directory_changed,
-	                                data);
+	val = xmms_output_config_lookup (output, "destination_directory");
+	xmms_config_property_callback_set (val,
+		(xmms_object_handler_t) on_dest_directory_changed, data);
 
-	if ((tmp = xmms_config_value_string_get (val))) {
+	tmp = xmms_config_property_get_string (val);
+	if (tmp) {
 		g_snprintf (data->destdir, sizeof (data->destdir), "%s", tmp);
 	}
 
@@ -158,16 +151,17 @@ xmms_diskwrite_new (xmms_output_t *output)
 static void
 xmms_diskwrite_destroy (xmms_output_t *output)
 {
-	xmms_plugin_t *plugin;
-	xmms_config_value_t *val;
+	xmms_config_property_t *val;
 
 	g_return_if_fail (output);
 
-	plugin = xmms_output_plugin_get (output);
-
-	val = xmms_plugin_config_lookup (plugin, "destination_directory");
-	xmms_config_value_callback_remove (val,
+	val = xmms_output_config_lookup (output, "destination_directory");
+	xmms_config_property_callback_remove (val,
 		(xmms_object_handler_t) on_dest_directory_changed);
+
+	xmms_object_disconnect (XMMS_OBJECT (output),
+	                        XMMS_IPC_SIGNAL_OUTPUT_CURRENTID,
+	                        (xmms_object_handler_t ) on_playlist_entry_changed);
 
 	g_free (xmms_output_private_data_get (output));
 }
@@ -215,7 +209,8 @@ xmms_diskwrite_close (xmms_output_t *output)
 }
 
 static void
-xmms_diskwrite_write (xmms_output_t *output, gchar *buffer, gint len)
+xmms_diskwrite_write (xmms_output_t *output, gpointer buffer, gint len,
+                      xmms_error_t *error)
 {
 	xmms_diskwrite_data_t *data;
 #if G_BYTE_ORDER == G_BIG_ENDIAN
@@ -231,7 +226,7 @@ xmms_diskwrite_write (xmms_output_t *output, gchar *buffer, gint len)
 	g_return_if_fail (data);
 	g_return_if_fail (data->fp);
 
-#if G_BYTE_ORDER == G_BIG_ENDIAN 
+#if G_BYTE_ORDER == G_BIG_ENDIAN
 	for (i = 0; i < (len / 2); i++) {
 		s[i] = GINT16_TO_LE (s[i]);
 	}
@@ -273,7 +268,7 @@ on_playlist_entry_changed (xmms_object_t *object,
                            const xmms_object_cmd_arg_t *arg,
                            xmms_diskwrite_data_t *data)
 {
-	guint id = arg->retval.uint32;
+	guint id = arg->retval->value.uint32;
 	gchar dest[XMMS_PATH_MAX];
 
 	/* assemble path */

@@ -2,8 +2,20 @@ from SCons.Environment import Environment
 import SCons
 import sys, os
 import shutil
+import gzip
 from marshal import load
 from stat import *
+import operator
+from popen2 import popen3
+
+global_libpaths = ["/lib", "/usr/lib"]
+
+default_output = (-1, "unknown")
+
+class ConfigError(Exception):
+	pass
+
+any = lambda x: reduce(operator.or_, x)
 
 def installFunc(dest, source, env):
 	"""Copy file, setting sane permissions"""
@@ -19,18 +31,75 @@ def installFunc(dest, source, env):
 		os.chmod(dest, mode)
 	return 0
 
+
+
+class Target:
+	def __init__(self, target, env):
+		self.dir = os.path.dirname(target)
+
+		self.globs = {}
+		self.globs['platform'] = env.platform
+		self.globs['ConfigError'] = ConfigError
+
+		x = file(target).read()
+		if x[-1] != '\n':
+			print "Missing linebreak in %s" % target
+			x += '\n'
+
+		c = compile(x, target, "exec")
+		eval(c, self.globs)
+
+		if not isinstance(self.globs.get("target"), str):
+			raise RuntimeError("Target file '%s' does not specify target, or target is not a string" % target)
+		if not isinstance(self.globs.get("source"), list):
+			raise RuntimeError("Target file '%s' does not specify 'source', or 'source' is not a list" % target)
+
+
+		self.source = [os.path.join(self.dir, s) for s in self.globs["source"]]
+		self.target = os.path.join(self.dir, self.globs["target"])
+
+	def config(self, env):
+		self.globs.get("config", lambda x: None)(env)
+
+class LibraryTarget(Target):
+	def add(self, env):
+		install = self.globs.get("install", True)
+		static = self.globs.get("static", True)
+		shared = self.globs.get("shared", True)
+		loadable = self.globs.get("loadable", False)
+		systemlibrary = self.globs.get("systemlibrary", False)
+
+		env.add_library(self.target, self.source, static, shared, systemlibrary, install, loadable)
+
+class ProgramTarget(Target):
+	def add(self, env):
+		env.add_program(self.target, self.source)
+
+class PluginTarget(Target):
+	def config(self, env):
+		env.pkgconfig("glib-2.0", fail=False, libs=False)
+		Target.config(self, env)
+		if isinstance(self.globs.get("output_priority"), int):
+			global default_output
+			t = (self.globs['output_priority'], self.globs['target'])
+			if t > default_output:
+				default_output = t
+		
+	def add(self, env):
+		env.add_plugin(self.target, self.source)
+
 class XMMSEnvironment(Environment):
 	targets=[]
 	def __init__(self, parent=None, options=None, **kw):
 		reconfigure = self.options_changed(options, ['INSTALLPATH'])
-		Environment.__init__(self, options=options)
+		Environment.__init__(self, options=options, ENV=os.environ)
 		apply(self.Replace, (), kw)
 		self.conf = SCons.SConf.SConf(self)
 
 		if os.path.isfile("config.cache") and self["CONFIG"] == 0 and not reconfigure:
 			try:
 				self.config_cache=load(open("config.cache", 'rb+'))
-			except IOError:
+			except:
 				print "Could not load config.cache!"
 				self.config_cache={}
 		else:
@@ -47,13 +116,15 @@ class XMMSEnvironment(Environment):
 			self.installdir = ""
 		self["INSTALL"] = installFunc
 
+		self.loadable = False
 		self.install_prefix = self["PREFIX"]
-		self["MANDIR"] = self["MANDIR"].replace("$PREFIX", self.install_prefix)
+		self.manpath = self["MANDIR"].replace("$PREFIX", self.install_prefix)
 		self.pluginpath = os.path.join(self.install_prefix, "lib/xmms2")
 		self.binpath = os.path.join(self.install_prefix, "bin")
 		self.librarypath = os.path.join(self.install_prefix, "lib")
 		self.sharepath = os.path.join(self.install_prefix, "share/xmms2")
 		self.includepath = os.path.join(self.install_prefix, "include/xmms2")
+		self.scriptpath = os.path.join(self.sharepath, "scripts")
 		self["SHLIBPREFIX"] = "lib"
 		self.shversion = "0"
 
@@ -61,11 +132,25 @@ class XMMSEnvironment(Environment):
 			self.platform = 'linux'
 		elif sys.platform.startswith("freebsd"):
 			self.platform = 'freebsd'
+		elif sys.platform.startswith("openbsd"):
+			self.platform = 'openbsd'
+		elif sys.platform.startswith("netbsd"):
+			self.platform = 'netbsd'
+		elif sys.platform.startswith("dragonfly"):
+			self.platform = 'dragonfly'
 		else:
 			self.platform = sys.platform
-			
+
+		def gzipper(target, source, env):
+			gzip.GzipFile(target[0].path, 'wb',9).write(file(source[0].path).read())
+		self['BUILDERS']['GZipper'] = SCons.Builder.Builder(action=SCons.Action.Action(gzipper))
+		
 		if self.platform == 'darwin':
 			self["SHLINKFLAGS"] = "$LINKFLAGS -multiply_defined suppress -flat_namespace -undefined suppress"
+
+		self.potential_targets = []
+		self.scan_dir("src")
+
 	
 	def Install(self, target, source):
 		target = os.path.normpath(self.installdir + target)
@@ -97,8 +182,6 @@ class XMMSEnvironment(Environment):
 		if self.config_cache.has_key(cmd):
 			return self.config_cache[cmd]
 
-		print "Running", cmd
-
 		try:
 			r = os.popen(cmd).read()
 		except:
@@ -113,42 +196,97 @@ class XMMSEnvironment(Environment):
 			cmd += " --cflags"
 		if libs:
 			cmd += " --libs" 
-		cmd += " " + module
-		return self.configcmd(cmd, fail)
+		cmd += " \"%s\"" % module
+		if not self.config_cache.has_key(cmd):
+			print "Checking for %s" % module,
+		self.configcmd(cmd, fail)
+		
 
 	def configcmd(self, cmd, fail=False):
 		if self.config_cache.has_key(cmd):
 			ret = self.config_cache[cmd]
 		else:
-			print "Running %s" % cmd
-			ret = os.popen(cmd).read()
+			r, w, e = popen3(cmd)
+			ret = r.read()
+
+			if cmd.startswith("pkg-config"):
+				if ret == '':
+					print " ... no"
+				else:
+					print " ... yes"
 			self.config_cache[cmd] = ret
 
 		if ret == '':
 			if fail:
 				print "Could not find needed group %s!!! Aborting!" % cmd
 				sys.exit(-1)
-			return False
+			raise ConfigError("Command '%s' failed" % cmd)
 		ret = ret.strip()
+
 		self.parse_config_string(ret)
 
-		return True
-
-	def checklibs(self, lib, func, fail=False):
-		if self.config_cache.has_key((lib,func)):
-			ret = self.config_cache[(lib,func)]
+	def checkheader(self, header, fail=False):
+        
+		if isinstance(header, list):
+			key = ("HEADER", tuple(header))
 		else:
-			ret = self.conf.CheckLib(lib, func, 0)
-			self.config_cache[(lib,func)] = ret
-			
-		if not ret:
-			if fail:
-				print "Could not find \'%s\'!!! Aborting!" % (func)
-				sys.exit(-1)
-			return False
+			key = ("HEADER", header)
 
-		self.parse_config_string("-l"+lib)
-		return True
+		if not self.config_cache.has_key(key):
+			self.config_cache[key] = self.conf.CheckCHeader(header)
+		if not self.config_cache[key]:
+			if fail:
+				print "Aborting!"
+				sys.exit(1)
+			raise ConfigError("Headerfile '%s' not found" % header)
+
+	def checkcppheader(self, header, fail=False):
+        
+		if isinstance(header, list):
+			key = ("HEADER", tuple(header))
+		else:
+			key = ("HEADER", header)
+
+		if not self.config_cache.has_key(key):
+			self.config_cache[key] = self.conf.CheckCXXHeader(header)
+		if not self.config_cache[key]:
+			if fail:
+				print "Aborting!"
+				sys.exit(1)
+			raise ConfigError("Headerfile '%s' not found" % header)
+
+
+	def checklib(self, lib, func, header=0, lang="c", fail=False):
+		key = (lib, func)
+
+		if not self.config_cache.has_key(key):
+			#libtool_flags = None
+
+			self.config_cache[key] = ""
+
+			#for d in global_libpaths+self["LIBPATH"]:
+			#	la = "%s/lib%s.la" % (d, lib)
+			#	if os.path.isfile(la):
+			#		print "found a libtoolfile", la
+			#		libtool_flags = self.parse_libtool(la)
+			#		self.parse_config_string(libtool_flags["dependency_libs"])
+			#		self.config_cache[key] = libtool_flags["dependency_libs"]+" "
+			#		break
+
+			if self.conf.CheckLib(lib, func, header=header, language=lang, autoadd=0):
+				self.config_cache[key] += "-l"+lib
+				self.parse_config_string("-l"+lib)
+				return
+			else:
+				self.config_cache[key] = None
+
+		if not self.config_cache[key]:
+			if fail:
+				print "Aborting!"
+				sys.exit(1)
+			raise ConfigError("Symbol '%s' in library '%s' not found" % (func, lib))
+
+		self.parse_config_string(self.config_cache[key])
 
 	def parse_config_string(self, flags):
 		"""We want our own ParseConfig, that supports some more
@@ -196,6 +334,14 @@ class XMMSEnvironment(Environment):
 			elif arg[:3] == 'yes' :
 				i = i + 3
 				pass
+			elif arg[-3:] == '.la':
+				la = self.parse_libtool(arg)
+				lib = la["dlname"]
+				if lib[:3] == 'lib':
+					lib = lib[3:]
+				lib = lib[:lib.index(".")]
+				self.parse_config_string(la["dependency_libs"])
+				self.parse_config_string("-l"+lib)
 
 			i = i + 1
 
@@ -210,10 +356,13 @@ class XMMSEnvironment(Environment):
 		self["SHLIBPREFIX"]="libxmms_"
 		if self.platform == 'darwin':
 			self["SHLINKFLAGS"] += " -bundle"
+			self["SHLIBSUFFIX"] += ".so"
 		self.SharedLibrary(target, source)
 		self.Install(self.pluginpath, os.path.join(self.dir, self.shlibname(target)))
 
-	def add_library(self, target, source, static=True, shared=True, system=False, install=True):
+	def add_library(self, target, source, static=True, shared=True, system=False, install=True, loadable=False):
+
+		self.loadable = loadable
 		self.libs.append(target)
 		if static:
 			self.Library(target, source)
@@ -235,11 +384,21 @@ class XMMSEnvironment(Environment):
 			if system:
 				if self.platform == 'linux' or self.platform == 'freebsd':
 					self["SHLINKFLAGS"] += " -Wl,-soname," + self.shlibname(target)
+
+			if loadable:
+				if self.platform == 'darwin':
+					self["SHLINKFLAGS"] = ' -bundle -undefined suppress -flat_namespace'
+					self["SHLIBSUFFIX"] = ".bundle"
+				self.Install(self.librarypath, target + self["SHLIBSUFFIX"])
+			else:
+				if self.platform == 'darwin':
+					self["SHLINKFLAGS"] += " -dynamiclib"
+				if install:
+					self.Install(self.librarypath, os.path.join(self.dir, self.shlibname(target)))
+					if self.platform == 'darwin':
+						self["SHLINKFLAGS"] += " -install_name %s/%s" % (self.librarypath, self.shlibname(target))
+			
 			self.SharedLibrary(target, source)
-			if self.platform == 'darwin':
-				self["SHLINKFLAGS"] += " -dynamiclib"
-			if install:
-				self.Install(self.librarypath, os.path.join(self.dir, self.shlibname(target)))
 
 
 	def add_program(self, target, source):
@@ -251,7 +410,14 @@ class XMMSEnvironment(Environment):
 		self.Install(self.sharepath, source)
 
 	def add_header(self, target, source):
-		self.Install(self.includepath+"/"+target, source)
+		self.Install(os.path.join(self.includepath,target), source)
+
+        def add_manpage(self, section, source):
+		self.GZipper(source + '.gz', source)
+		self.Install(os.path.join(self.manpath, "man"+str(section)), source+'.gz')
+
+	def add_script(self, target, source):
+		self.Install(os.path.join(self.scriptpath,target), source)
 
 	def options_changed(self, options, exclude=[]):
 		"""NOTE: This method does not catch changed defaults."""
@@ -277,4 +443,49 @@ class XMMSEnvironment(Environment):
 						return True
 
 		return False
+
+	def scan_dir(self, dir):
+		for d in os.listdir(dir):
+			if d in self['EXCLUDE']:
+				continue
+			if any([d.endswith(end) for end in ["~",".rej",".orig"]]):
+				continue
+			newdir = os.path.join(dir,d)
+			if os.path.isdir(newdir):
+				self.scan_dir(newdir)
+			elif d[0].isupper():
+				self.potential_targets.append((d, newdir))
+
+
+	def parse_libtool(self, libtoolfile):
+		""" 
+		This will open the libtool file and read the lines
+		that we need.
+		"""
+		f = file(libtoolfile)
+		line = f.readline()
+		ret = {}
+		while line:
+			if '=' in line:
+				s = line.split("=")
+				if len(s) == 2:
+					ret[s[0]] = s[1].replace("'", "").strip()
+			line = f.readline()
+
+		return ret
+
+	def handle_targets(self, targettype):
+		cls = eval(targettype+"Target")
+		targets = [cls(a[1], self) for a in self.potential_targets if a[0].startswith(targettype)]
+
+		for t in targets:
+			env = self.Copy()
+			env.dir = t.dir
+
+			try:
+				t.config(env)
+				t.add(env)
+			except ConfigError, m:
+				self.conf.logstream.write("xmmsscons: File %s reported error '%s' and was disabled.\n" % (t.target, m))
+				continue
 

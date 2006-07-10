@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -15,12 +15,12 @@
  */
 
 #include <stdlib.h>
-#include <strings.h>
 
 #include "xmmsc/xmmsc_util.h"
 #include "xmmsc/xmmsc_ipc_transport.h"
 #include "socket_unix.h"
 #include "socket_tcp.h"
+#include "url.h"
 
 void
 xmms_ipc_transport_destroy (xmms_ipc_transport_t *ipct)
@@ -44,7 +44,7 @@ xmms_ipc_transport_write (xmms_ipc_transport_t *ipct, char *buffer, int len)
 	return ipct->write_func (ipct, buffer, len);
 }
 
-int
+xmms_socket_t
 xmms_ipc_transport_fd_get (xmms_ipc_transport_t *ipct)
 {
 	x_return_val_if_fail (ipct, -1);
@@ -62,34 +62,4 @@ xmms_ipc_server_accept (xmms_ipc_transport_t *ipct)
 	return ipct->accept_func (ipct);
 }
 
-xmms_ipc_transport_t *
-xmms_ipc_client_init (const char *path)
-{
-	xmms_ipc_transport_t *transport = NULL;
 
-	x_return_val_if_fail (path, NULL);
-
-	if (strncasecmp (path, "unix://", 7) == 0) {
-		transport = xmms_ipc_usocket_client_init (path+7);
-	} else if (strncasecmp (path, "tcp://", 6) == 0) {
-		transport = xmms_ipc_tcp_client_init (path+6);
-	}
-
-	return transport;
-}
-
-xmms_ipc_transport_t *
-xmms_ipc_server_init (const char *path)
-{
-	xmms_ipc_transport_t *transport = NULL;
-
-	x_return_val_if_fail (path, NULL);
-
-	if (strncasecmp (path, "unix://", 7) == 0) {
-		transport = xmms_ipc_usocket_server_init (path+7);
-	} else if (strncasecmp (path, "tcp://", 6) == 0) {
-		transport = xmms_ipc_tcp_server_init (path+6);
-	}
-
-	return transport;
-}

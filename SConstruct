@@ -5,15 +5,19 @@ import sys
 import SCons
 import re
 import string
+import new
+import gittools
 from marshal import dump
 
-try:
-	head = " (git-commit: "+file(".git/HEAD").read().strip()+")"
-except:
-	head = ""
-	pass
 
-XMMS_VERSION = "0.1 DR1.1-WIP" + head
+commithash, changed = gittools.get_info()
+
+if changed:
+	changed = " + local changes"
+else:
+	changed = ""
+
+XMMS_VERSION = "0.2 DrEvil (git commit: %s%s)" % (commithash, changed)
 
 EnsureSConsVersion(0, 96)
 EnsurePythonVersion(2, 1)
@@ -23,17 +27,32 @@ def SimpleListOption(key, help, default=[]):
 	return(key, help, default, None, lambda val: string.split(val))
 
 
+if sys.platform == 'win32':
+	default_pyrex = 'pyrexc.py'
+	default_prefix = 'c:\\xmms2'
+	default_cxxflags = ['/Zi', '/TC']
+	default_cflags = ['/Zi', '/TC']
+	default_cpppath = ['z:\\xmms2\\winlibs\\include']
+else:
+	default_pyrex = 'pyrexc'
+	default_prefix = '/usr/local/'
+	default_cxxflags = ['-g', '-Wall', '-O0']
+	default_cflags = ['-g', '-Wall', '-O0']
+	if sys.platform == 'darwin':
+		default_cpppath = ['/sw/lib']
+	else:
+		default_cpppath = []
+
 opts = Options("options.cache")
-opts.Add('PYREX', 'PyREX compiler', 'pyrexc')
-opts.Add('CC', 'C compiler to use', 'gcc')
-opts.Add('CXX', 'C++ compiler to use', 'g++')
-opts.Add('LD', 'Linker to use', 'ld')
+opts.Add('CC', 'C compiler to use')
+opts.Add('CXX', 'C++ compiler to use')
+opts.Add('LD', 'Linker to use')
 opts.Add(SimpleListOption('LINKFLAGS', 'Linker flags', []))
-opts.Add(SimpleListOption('LIBPATH', 'Path to libs', ['/sw/lib']))
-opts.Add(SimpleListOption('CXXFLAGS', 'C++ compilerflags', ['-g', '-Wall', '-O0']))
-opts.Add(SimpleListOption('CCFLAGS', 'C compilerflags', ['-g', '-Wall', '-O0']))
-opts.Add(SimpleListOption('CPPPATH', 'path to include files', []))
-opts.Add('PREFIX', 'install prefix', '/usr/local')
+opts.Add(SimpleListOption('LIBPATH', 'Path to libs', []))
+opts.Add(SimpleListOption('CPPPATH', 'path to include files', default_cpppath))
+opts.Add(SimpleListOption('CXXFLAGS', 'C++ compilerflags', default_cxxflags))
+opts.Add(SimpleListOption('CCFLAGS', 'C compilerflags', default_cflags))
+opts.Add('PREFIX', 'install prefix', default_prefix)
 opts.Add('MANDIR', 'manual directory', '$PREFIX/man')
 opts.Add('RUBYARCHDIR', 'Path to install Ruby bindings')
 opts.Add('INSTALLDIR', 'install dir')
@@ -47,11 +66,7 @@ base_env = xmmsenv.XMMSEnvironment(options=opts)
 base_env["CONFIG"] = 0
 opts.Save("options.cache", base_env)
 
-
 base_env.Append(CPPPATH=["#src/include"])
-base_env.pkgconfig("sqlite3", fail=True, libs=False)
-base_env.pkgconfig("glib-2.0", fail=True, libs=False)
-base_env["LIBS"]=[]
 
 Help(opts.GenerateHelpText(base_env))
 
@@ -106,86 +121,33 @@ def subst_emitter(target, source, env):
             elif SCons.Util.is_String(v):
                 d[k]=env.subst(v)
         Depends(target, SCons.Node.Python.Value(d))
-        # Depends(target, source) # this doesn't help the install-sapphire-linux.sh problem
         return target, source
  
 subst_action = Action (subst_in_file, subst_in_file_string)
 base_env['BUILDERS']['SubstInFile'] = Builder(action=subst_action, emitter=subst_emitter)
 
-b = Builder(action = 'python src/xmms/generate-converter.py > src/xmms/converter.c')
-base_env.Depends('#src/xmms/converter.c', 'src/xmms/generate-converter.py')
-base_env.SourceCode('src/xmms/converter.c', b)
+python_executable = sys.executable
 
-subst_dict = {"%VERSION%":XMMS_VERSION, "%PLATFORM%":"XMMS_OS_" + base_env.platform.upper(), 
+base_env['BUILDERS']['Converter'] = Builder(action = python_executable + ' $SOURCE > $TARGET')
+base_env.Depends('#src/xmms/converter.c', 'src/xmms/generate-converter.py')
+base_env.Depends('#src/xmms/sample.c', 'src/xmms/converter.c')
+
+base_env.Converter("src/xmms/converter.c", "src/xmms/generate-converter.py")
+
+base_env.handle_targets("Library")
+base_env.handle_targets("Program")
+
+subst_dict = {"%VERSION%":XMMS_VERSION, "%PLATFORM%":"XMMS_OS_" + base_env.platform.upper().replace("-", ""), 
 	      "%PKGLIBDIR%":base_env["PREFIX"]+"/lib/xmms2",
+	      "%BINDIR%":base_env["PREFIX"]+"/bin",
 	      "%SHAREDDIR%":base_env.sharepath,
-	      "%PREFIX%":base_env.install_prefix}
+	      "%PREFIX%":base_env.install_prefix,
+	      "%DEFAULT_OUTPUT%":xmmsenv.default_output[1],
+}
 
 config = base_env.SubstInFile("src/include/xmms/xmms_defs.h", "src/include/xmms/xmms_defs.h.in", SUBST_DICT=subst_dict)
 
-class Target:
-	def __init__(self, target, type):
-		self.dir = os.path.dirname(target)
-		self.type = type
-		self.static = True
-		self.shared = True
-		self.install = True
-		self.systemlibrary = False
-		my_global = {}
-		f = file(target)
-		source = f.read()
-		c = compile(source, target, "exec")
-		eval(c, my_global)
-		if my_global["target"] and my_global["source"] and my_global["config"]:
-			self.source = [os.path.join(self.dir, s) for s in my_global["source"]]
-			self.target = os.path.join(self.dir, my_global["target"])
-			self.config = my_global["config"]
-			if my_global.has_key("install"):
-				self.install = my_global["install"]
-			if my_global.has_key("static"):
-				self.static = my_global["static"]
-			if my_global.has_key("shared"):
-				self.shared = my_global["shared"]
-			if my_global.has_key("systemlibrary"):
-				self.systemlibrary = my_global["systemlibrary"]
-		else:
-			raise RutimeError("Wrong file %s passed to Target!" % target)
 
-def scan_dir(dir, dict):
-	for d in os.listdir(dir):
-		if d in base_env['EXCLUDE']:
-			continue
-		newdir = dir+"/"+d
-		if os.path.isdir(newdir):
-			scan_dir(newdir, dict)
-		if os.path.isfile(newdir) and newdir[-1] != "~":
-			if d.startswith('Plugin'):
-				dict["plugin"].append(newdir)
-			if d.startswith('Library'):
-				dict["library"].append(newdir)
-			if d.startswith('Program'):
-				dict["program"].append(newdir)
-
-targets = {"plugin":[], "library":[], "program":[]}
-scan_dir("src", targets)
-
-for t in targets["plugin"]:
-	base_env.targets.append(Target(t, "plugin"))
-for t in targets["library"]:
-	base_env.targets.append(Target(t, "library"))
-for t in targets["program"]:
-	base_env.targets.append(Target(t, "program"))
-
-for t in base_env.targets:
-	env = base_env.Copy()
-	env.dir = t.dir
-	if t.config(env):
-		if t.type == "plugin":
-			env.add_plugin(t.target, t.source)
-		if t.type == "library":
-			env.add_library(t.target, t.source, t.static, t.shared, t.systemlibrary, t.install)
-		if t.type == "program":
-			env.add_program(t.target, t.source)
 
 try:
 	dump(base_env.config_cache, open("config.cache", "wb+"))
@@ -204,13 +166,22 @@ def scan_headers(name):
 scan_headers("xmmsc")
 scan_headers("xmms")
 scan_headers("xmmsclient")
+scan_headers("xmmsclient/xmmsclient++")
+
+### INSTALL MANUAL PAGES!
+
+base_env.add_manpage(1, 'doc/xmms2.1')
+base_env.add_manpage(8, 'doc/xmms2d.8')
+base_env.add_manpage(1, 'doc/xmms2-et.1')
 
 #### Generate pc files.
 
 pc_files = [{"name": "xmms2-plugin", "lib":""}, 
 	    {"name":"xmms2-client", "lib":"-lxmmsclient"},
 	    {"name":"xmms2-client-glib", "lib":"-lxmmsclient-glib"},
-	    {"name":"xmms2-client-ecore", "lib":"-lxmmsclient-ecore"}]
+	    {"name":"xmms2-client-ecore", "lib":"-lxmmsclient-ecore"},
+	    {"name":"xmms2-client-cpp", "lib":"-lxmmsclient -lxmmsclient++"},
+	    {"name":"xmms2-client-cpp-glib", "lib":"-lxmmsclient-glib -lxmmsclient++-glib"}]
 
 for p in pc_files:
 	d = subst_dict.copy()
@@ -225,9 +196,11 @@ print " Configuration printout"
 print "====================================="
 print "Enabled plugins:",
 foo = []
-map(lambda x: foo.append(x[x.rindex("/")+1:]), base_env.plugins)
+map(lambda x: foo.append(x[x.rindex(os.sep)+1:]), base_env.plugins)
 print ", ".join(foo)
+print "Default output:", xmmsenv.default_output[1]
 
-base_env.add_shared("dismantled-the_swarm_clip.ogg")
+base_env.add_script("startup.d", "src/clients/mdns/xmms2-mdns-launcher.sh")
+base_env.add_shared("mind.in.a.box-lament_snipplet.ogg")
 base_env.Alias('install', base_env.install_targets)
 

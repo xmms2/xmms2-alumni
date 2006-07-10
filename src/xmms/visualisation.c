@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -67,11 +67,13 @@ xmms_visualisation_init ()
 	vis = xmms_object_new (xmms_visualisation_t, xmms_visualisation_destroy);
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_VISUALISATION, XMMS_OBJECT (vis));
 	xmms_ipc_signal_register (XMMS_OBJECT (vis),
-				  XMMS_IPC_SIGNAL_VISUALISATION_DATA);
+	                          XMMS_IPC_SIGNAL_VISUALISATION_DATA);
 
 	/* prealloc list */
 	for (i = 0; i < FFT_LEN/2 + 1; i++) {
-		vis->list = g_list_prepend (vis->list, NULL);
+		xmms_object_cmd_value_t *data;
+		data = xmms_object_cmd_value_uint_new (INT_MAX);
+		vis->list = g_list_prepend (vis->list, data);
 	}
 
 	/* calculate Hann window used to reduce spectral leakage */
@@ -107,28 +109,33 @@ xmms_visualisation_new ()
 
 static void output_spectrum (xmms_visualisation_t *vis, guint32 pos)
 {
+	xmms_object_cmd_value_t *data;
 	GList *node = vis->list;
 	int i;
 
-	node->data = GUINT_TO_POINTER (xmms_sample_samples_to_ms (vis->format, pos));
-	node = g_list_next (node);
+	data = (xmms_object_cmd_value_t *)node->data;
+	data->value.uint32 = xmms_sample_samples_to_ms (vis->format, pos);
 
+	node = g_list_next (node);
 	for (i = 0; i < FFT_LEN / 2; i++) {
 		gfloat tmp = vis->spec[i];
+		data = (xmms_object_cmd_value_t *)node->data;
+		
 		if (tmp >= 1.0)
-			node->data = GUINT_TO_POINTER (INT_MAX);
+			data->value.uint32 = INT_MAX;
 		else if (tmp < 0.0)
-			node->data = GUINT_TO_POINTER (0);
+			data->value.uint32 = 0;
 		else
-			node->data = GUINT_TO_POINTER ((guint)(tmp * INT_MAX));
+			data->value.uint32 = (guint)(tmp * INT_MAX);
+
 		node = g_list_next (node);
 	}
 
 	xmms_object_emit_f (XMMS_OBJECT (vis),
-			    XMMS_IPC_SIGNAL_VISUALISATION_DATA,
-			    XMMS_OBJECT_CMD_ARG_UINT32LIST,
-			    vis->list);
-	
+	                    XMMS_IPC_SIGNAL_VISUALISATION_DATA,
+	                    XMMS_OBJECT_CMD_ARG_LIST,
+	                    vis->list);
+
 }
 
 /**

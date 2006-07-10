@@ -31,7 +31,7 @@ handle_file_add (xmonitor_t *mon, gchar *filename)
 	} else if (g_file_test (filename, G_FILE_TEST_IS_REGULAR)) {
 		gchar tmp[MON_FILENAME_MAX];
 		g_snprintf (tmp, MON_FILENAME_MAX, "file://%s", filename);
-		xmmsc_medialib_add_entry (mon->conn, tmp);
+		xmmsc_result_unref (xmmsc_medialib_add_entry (mon->conn, tmp));
 		DBG ("Adding %s to medialib!", tmp);
 	}
 }
@@ -41,19 +41,13 @@ handle_remove_from_mlib (xmmsc_result_t *res, void *userdata)
 {
 	xmonitor_t *mon = userdata;
 	xmmsc_result_t *res2;
-	gchar *entry;
 
 	for (; xmmsc_result_list_valid (res); xmmsc_result_list_next (res)) {
 		guint32 id;
-		if (!xmmsc_result_get_dict_entry (res, "id", &entry)) {
+		if (!xmmsc_result_get_dict_entry_uint32 (res, "id", &id)) {
 			ERR ("Failed to get entry id from hash!");
 			continue;
 		}
-
-		if (!entry)
-			continue;
-
-		id = strtol (entry, NULL, 10);
 
 		if (id == 0) {
 			DBG ("Entry not in db!");
@@ -172,6 +166,8 @@ process_dir (xmonitor_t *mon, gchar *dirpath)
 			DBG ("Now watching dir %s", path);
 			mon->dir_list = g_list_append (mon->dir_list, path);
 			process_dir (mon, path);
+		} else {
+			g_free (path);
 		}
 	}
 
@@ -233,23 +229,13 @@ static void
 handle_config_changed (xmmsc_result_t *res, void *data)
 {
 	xmonitor_t *mon = data;
-	gchar *key;
-	gchar *val;
+	gchar *val = NULL;
+	int s;
 
-	
-	if (!xmmsc_result_get_string (res, &key)) {
-		ERR ("Config changed has invalid result!");
-		return;
-	}
-
-	xmmsc_result_list_next (res);
-
-	if (!xmmsc_result_get_string (res, &val)) {
-		ERR ("Config changed has invalid result!");
-		return;
-	}
-
-	if (g_strcasecmp (key, "clients.mlibupdater.watch_dirs") == 0) {
+	s = xmmsc_result_get_dict_entry_str (res,
+	                                     "clients.mlibupdater.watch_dirs",
+	                                     &val);
+	if (s) {
 		do_watch_dir (mon, val);
 	}
 
@@ -260,7 +246,6 @@ handle_watch_dirs (xmmsc_result_t *res, void *data)
 {
 	xmonitor_t *mon = data;
 	gchar *dirs;
-	gchar **d;
 
 	if (!xmmsc_result_get_string (res, &dirs)) {
 		ERR ("Couldn't get configvalue from server!");
@@ -310,7 +295,7 @@ main (int argc, char **argv)
 	xmonitor_t *mon;
 	gint fd;
 
-	conn = xmmsc_init ("XMMS MLib Updater " VERSION);
+	conn = xmmsc_init ("xmms-medialib-updater");
 	path = getenv ("XMMS_PATH");
 	if (!xmmsc_connect (conn, path)) {
 		ERR ("Could not connect to xmms2d %s", xmmsc_get_last_error (conn));
@@ -318,7 +303,7 @@ main (int argc, char **argv)
 	}
 
 	ml = g_main_loop_new (NULL, FALSE);
-	xmmsc_setup_with_gmain (conn);
+	xmmsc_mainloop_gmain_init (conn);
 	xmmsc_disconnect_callback_set (conn, quit, ml);
 
 	mon = g_new0 (xmonitor_t, 1);

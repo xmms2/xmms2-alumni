@@ -1,3 +1,158 @@
+xmms2 (0.2+git20060707-5) etch; urgency=low
+
+  * Fix libxmms2client++-dev dependency.
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Mon, 10 Jul 2006 21:41:42 +0200
+
+xmms2 (0.2+git20060707-4) etch; urgency=low
+
+  * Make programs not depend on C++ libraries unnecessarily. 
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Sat,  8 Jul 2006 02:35:53 +0200
+
+xmms2 (0.2+git20060707-3) etch; urgency=low
+
+  * Build musepack plugin. 
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  7 Jul 2006 21:54:45 +0200
+
+xmms2 (0.2+git20060707-2) etch; urgency=low
+
+  * Do not require glib to have the same micro version as the one used for
+    building.
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  7 Jul 2006 17:13:21 +0200
+
+xmms2 (0.2+git20060707-1) etch; urgency=low
+
+  * Update copyright file. 
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  7 Jul 2006 13:40:52 +0200
+
+xmms2 (0.2+git20060707-0) etch; urgency=low
+
+  * New git snapshot: 0.2 DrEvil
+    (d3de67d1c01924ce642461b208a8a4f06c050f7f).
+  * -ecore packages disabled for now
+  * mdns package added
+  * C++ libraries added
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  7 Jul 2006 09:36:53 +0200
+
+xmms2 (0.2+git20060328-2) etch; urgency=low
+
+  * Make etch the default release.
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Wed, 29 Mar 2006 21:12:19 +0200
+
+xmms2 (0.2+git20060328-1) sarge; urgency=low
+
+  * Fixes for building on other archs then i386. 
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Wed, 29 Mar 2006 21:12:19 +0200
+
+xmms2 (0.2+git20060328-0) sarge; urgency=low
+
+  * New git snapshot: 0.2 DrDolittle
+    (cae0d4328c6405e36ff0c82b60b58c8daa8efe3e).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Tue, 28 Mar 2006 00:21:33 +0200
+
+xmms2 (0.2+git20060226-0) sarge; urgency=low
+
+  * New git snapshot: 0.2 DrCox (f4014b80ed47b3668743737e20907881c1ca2ef6).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Sun, 26 Feb 2006 11:05:33 +0100
+
+xmms2 (0.2+git20060113-0) sarge; urgency=low
+
+  * New git snapshot: 0.2 DrBombay (0bbf8e15b820db93ee287aad82db6044b0761f30).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri, 13 Jan 2006 16:07:12 +0100
+
+xmms2 (0.2+git20051227-0) sarge; urgency=low
+
+  * Fix: add libsidplay2-dev to the build-depends.
+  * Fix: remove /usr/share/xmms2/scripts/startup.d/xmms2-et-launcher.sh from
+    xmms2core.deb
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Tue, 27 Dec 2005 00:27:58 +0100
+
+xmms2 (0.2+git20051226-0) sarge; urgency=low
+
+  * Version 0.2 (Dr. Alban) (dfeb13c8dca6f2c15b945cea1919528f4a3d53d9).
+  * New package: xmms2-et
+  * faad and mpcdec support will only be available for Debian sid packages.
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Mon, 26 Dec 2005 22:20:13 +0100
+
+xmms2 (0.1DR2.2+git20050906-0) sarge; urgency=low
+
+  * New git snapshot (5209228518d544dd00f1eb8e2a4bfd186318f10b).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Tue,  6 Sep 2005 21:17:52 +0200
+
+xmms2 (0.1DR2.1+git20050819-0) sarge; urgency=low
+
+  * New git snapshot (46932d5c58af95dcdc97d9e7c35dab4ef3e30701).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri, 19 Aug 2005 11:53:07 +0200
+
+xmms2 (0.1DR2.0+git20050805-2) sarge; urgency=low
+
+  * New git snapshot (df4c0c5ef7a9a51b461519cccafae341e35154d9).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  5 Aug 2005 14:46:45 +0200
+
+xmms2 (0.1DR2.0+git20050805-1) sarge; urgency=low
+
+  * New git snapshot (df4c0c5ef7a9a51b461519cccafae341e35154d9).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  5 Aug 2005 12:56:09 +0200
+
+xmms2 (0.1DR2.0+git20050805-0) sarge; urgency=low
+
+  * New git snapshot (fe2a4acf9796443cae6d77f803ccb2625bebf85c).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri,  5 Aug 2005 10:07:05 +0200
+
+xmms2 (0.1DR1.1+git20050729-0) sarge; urgency=low
+
+  * New git snapshot (635db5e3c3f7d5ab0de1b89d3c4a0baf0592f7ce).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri, 29 Jul 2005 10:41:33 +0200
+
+xmms2 (0.1DR1.1+git20050722-0) sarge; urgency=low
+
+  * New git snapshot (38d8485ccce188e64debfc56577e7930cb6971a3).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri, 22 Jul 2005 12:50:51 +0200
+
+xmms2 (0.1DR1.1+git20050721-0) unstable; urgency=low
+
+  * New git snapshot (299662e34f47d511ad1093d783698d7808639cdf).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Thu, 21 Jul 2005 00:54:47 +0200
+
+xmms2 (0.1DR1.1+git20050720-1) unstable; urgency=low
+
+  * New git snapshot (299662e34f47d511ad1093d783698d7808639cdf).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Wed, 20 Jul 2005 23:00:43 +0200
+
+xmms2 (0.1DR1.1+git20050720-0) unstable; urgency=low
+
+  * New git snapshot (8678d03579abeb3dc11cd8ae91014e51c2ee26c9).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Wed, 20 Jul 2005 18:21:45 +0200
+
+xmms2 (0.1DR1.1+git20050719-0) unstable; urgency=low
+
+  * New git snapshot (c10e76d04a9ec882ad0d92d235b7b5890439ef52).
+  * Install new .h files.
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Tue, 19 Jul 2005 16:09:46 +0200
+
 xmms2 (0.1DR1.1+git20050617-0) unstable; urgency=low
 
   * New git snapshot (f79bad176381b65722f1ed7ba8fb94b7f6f9ab67).

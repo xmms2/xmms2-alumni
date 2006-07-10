@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003, 2004 Peter Alm, Tobias Rundström, Anders Gustafsson
+ *  Copyright (C) 2003-2006 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -18,7 +18,7 @@
 #include <xmmsclient/xmmsclient-ecore.h>
 
 #include <ruby.h>
-#include <stdbool.h>
+#include <xmmsc/xmmsc_stdbool.h>
 
 #include "rb_xmmsclient.h"
 
@@ -28,22 +28,34 @@ static VALUE c_add_to_ecore_mainloop (VALUE self)
 
 	Data_Get_Struct (self, RbXmmsClient, xmms);
 
-	xmmsc_setup_with_ecore (xmms->real);
+	xmms->ecore_handle = xmmsc_mainloop_ecore_init (xmms->real);
+
+	return self;
+}
+
+static VALUE c_remove_from_ecore_mainloop (VALUE self)
+{
+	RbXmmsClient *xmms = NULL;
+
+	Data_Get_Struct (self, RbXmmsClient, xmms);
+
+	xmmsc_mainloop_ecore_shutdown (xmms->real, xmms->ecore_handle);
 
 	return self;
 }
 
 void Init_xmmsclient_ecore (void)
 {
-	VALUE c;
-	ID id;
+	VALUE m, c;
 
 	rb_require ("xmmsclient");
 	rb_require ("ecore");
 
-	id = rb_intern ("XmmsClient");
-	c = rb_const_get (rb_const_get (rb_cModule, id), id);
+	m = rb_const_get (rb_cModule, rb_intern ("Xmms"));
+	c = rb_const_get (m, rb_intern ("Client"));
 
 	rb_define_method (c, "add_to_ecore_mainloop",
 	                  c_add_to_ecore_mainloop, 0);
+	rb_define_method (c, "remove_from_ecore_mainloop",
+	                  c_remove_from_ecore_mainloop, 0);
 }

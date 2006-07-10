@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003, 2004 Peter Alm, Tobias Rundström, Anders Gustafsson
+ *  Copyright (C) 2003-2006 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -24,11 +24,11 @@ static int
 on_fd_data (void *udata, Ecore_Fd_Handler *handler)
 {
 	xmmsc_connection_t *c = udata;
-	int ret;
+	int ret = 0;
 
 	if (ecore_main_fd_handler_active_get (handler, ECORE_FD_ERROR)) {
 		xmmsc_io_disconnect (c);
-		return 0;
+		return ret;
 	}
 
 	if (ecore_main_fd_handler_active_get (handler, ECORE_FD_READ))
@@ -40,7 +40,8 @@ on_fd_data (void *udata, Ecore_Fd_Handler *handler)
 	return ret;
 }
 
-void on_prepare (void *udata, Ecore_Fd_Handler *handler)
+static void
+on_prepare (void *udata, Ecore_Fd_Handler *handler)
 {
 	xmmsc_connection_t *c = udata;
 	int flags = ECORE_FD_READ | ECORE_FD_ERROR;
@@ -51,8 +52,8 @@ void on_prepare (void *udata, Ecore_Fd_Handler *handler)
 	ecore_main_fd_handler_active_set (handler, flags);
 }
 
-int
-xmmsc_setup_with_ecore (xmmsc_connection_t *c)
+void *
+xmmsc_mainloop_ecore_init (xmmsc_connection_t *c)
 {
 	Ecore_Fd_Handler *fdh;
 	int flags = ECORE_FD_READ | ECORE_FD_ERROR;
@@ -64,6 +65,11 @@ xmmsc_setup_with_ecore (xmmsc_connection_t *c)
 	                                 on_fd_data, c, NULL, NULL);
 	ecore_main_fd_handler_prepare_callback_set (fdh, on_prepare, c);
 
-	return TRUE;
+	return fdh;
 }
 
+void
+xmmsc_mainloop_ecore_shutdown (xmmsc_connection_t *c, void *udata)
+{
+	ecore_main_fd_handler_del (udata);
+}

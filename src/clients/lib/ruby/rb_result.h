@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003, 2004 Peter Alm, Tobias Rundström, Anders Gustafsson
+ *  Copyright (C) 2003-2006 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -18,9 +18,10 @@
 #define __RB_RESULT_H
 
 #include <xmmsclient/xmmsclient.h>
-#include <stdbool.h>
+#include <xmmsc/xmmsc_stdbool.h>
 
-VALUE TO_XMMS_CLIENT_RESULT (xmmsc_result_t *res,
-                             bool unref, bool unref_children);
+void Init_Result (VALUE mXmms);
+
+VALUE TO_XMMS_CLIENT_RESULT (VALUE xmms, xmmsc_result_t *res);
 
 #endif

@@ -1,33 +1,51 @@
 target = "xmms2d"
 source = ["main.c",
-	  "sample.c", 
-	  "config.c",
-	  "mediainfo.c",
-	  "sqlite.c",
-	  "decoder.c",
-	  "medialib.c", 
-	  "effect.c",
-	  "object.c",
-	  "transport.c",
-	  "error.c",
-	  "output.c",
-	  "unixsignal.c",
-	  "playlist.c",
-	  "visualisation.c",
-	  "ipc.c",
-	  "plsplugins.c",
-	  "log.c",
-	  "plugin.c",
-	  "magic.c",
-	  "ringbuf.c"]
+          "sample.c", 
+          "config.c",
+          "mediainfo.c",
+          "sqlite.c",
+          "medialib.c", 
+          "object.c",
+          "error.c",
+          "output.c",
+          "unixsignal.c",
+          "playlist.c",
+          "ipc.c",
+          "log.c",
+          "plugin.c",
+          "magic.c",
+          "ringbuf.c",
+          "xform.c",
+          "streamtype.c",
+          "converter_plugin.c",
+          "ringbuf_xform.c",
+          "outputplugin.c",
+		  "statfs.c"]
 
 def config(env):
-	env["LIBS"].append("xmmsipc")
-	env.Prepend(LIBPATH="src/lib/xmmsipc")
-	env["CPPPATH"].append("#src/includepriv")
-	env.pkgconfig("glib-2.0", fail=True)
+	pluginenv = env.Copy()
+	env.Prepend(LIBPATH=["src/lib/xmmsipc"])
+	env.Prepend(LIBPATH=["src/lib/xmmssocket"])
+	env.Append(LIBS=['xmmsipc'])
+	env.Append(LIBS=["xmmssocket"])
+	env.Append(CPPPATH=["#src/includepriv"])
+	env.pkgconfig("glib-2.0 >= 2.6.0", fail=True)
 	env.pkgconfig("gmodule-2.0", fail=True)
 	env.pkgconfig("gthread-2.0", fail=True)
 	env.pkgconfig("sqlite3", fail=True)
-	env.checklibs("m", "sin", fail=True)
-	return True
+
+	if env.platform != 'win32':
+		env.checklib("m", "sin", fail=True)
+
+	try:
+		env.checkheader("sys/vfs.h")
+		env.Prepend(CPPDEFINES="STATFS_LINUX")
+	except ConfigError:
+		try:
+			env.checkheader("sys/param.h")
+			env.Prepend(CPPDEFINES="STATFS_BSD")
+		except ConfigError:
+			pass
+
+	# we have an xmms2d - we might want plugins!
+	pluginenv.handle_targets("Plugin")

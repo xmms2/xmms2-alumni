@@ -1,24 +1,21 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
  */
 
-#include <sys/types.h>
-#include <sys/select.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
 #include <stdlib.h>
 
 #include "xmmsclient/xmmsclient.h"
@@ -26,21 +23,23 @@
 #include "xmmsc/xmmsc_ipc_transport.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
+#include "xmmsclientpriv/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient_ipc.h"
 #include "xmmsclientpriv/xmmsclient_util.h"
 #include "xmmsclientpriv/xmmsclient_queue.h"
-#include "xmmsclientpriv/xmmsclient_hash.h"
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsc_util.h"
+#include "xmmsc/xmmsc_stdint.h"
+#include "xmmsc/xmmsc_sockets.h"
 
 
 struct xmmsc_ipc_St {
 	xmms_ipc_transport_t *transport;
 	xmms_ipc_msg_t *read_msg;
+	x_list_t *results_list;
 	x_queue_t *out_msg;
 	char *error;
 	bool disconnect;
-	x_hash_t *results_table;
 	void *lockdata;
 	void (*lockfunc)(void *lock);
 	void (*unlockfunc)(void *lock);
@@ -68,14 +67,18 @@ xmmsc_ipc_io_in_callback (xmmsc_ipc_t *ipc)
 	while (!disco) {
 		if (!ipc->read_msg)
 			ipc->read_msg = xmms_ipc_msg_alloc ();
-		
+
 		if (xmms_ipc_msg_read_transport (ipc->read_msg, ipc->transport, &disco)) {
 			xmms_ipc_msg_t *msg = ipc->read_msg;
+
 			/* must unset read_msg here,
 			   because exec_msg can cause reentrancy */
 			ipc->read_msg = NULL;
+
 			xmmsc_ipc_exec_msg (ipc, msg);
+
 		} else {
+
 			break;
 		}
 	}
@@ -123,7 +126,7 @@ xmmsc_ipc_io_out_callback (xmmsc_ipc_t *ipc)
 	return !disco;
 }
 
-int
+xmms_socket_t
 xmmsc_ipc_fd_get (xmmsc_ipc_t *ipc)
 {
 	x_return_val_if_fail (ipc, -1);
@@ -158,7 +161,7 @@ xmmsc_ipc_init (void)
 	xmmsc_ipc_t *ipc;
 	ipc = x_new0 (xmmsc_ipc_t, 1);
 	ipc->disconnect = false;
-	ipc->results_table = x_hash_new (NULL, NULL);
+	ipc->results_list = NULL;
 	ipc->out_msg = x_queue_new ();
 
 	return ipc;
@@ -195,34 +198,55 @@ xmmsc_ipc_result_register (xmmsc_ipc_t *ipc, xmmsc_result_t *res)
 	x_return_if_fail (res);
 
 	xmmsc_ipc_lock (ipc);
-	x_hash_insert (ipc->results_table, XUINT_TO_POINTER (xmmsc_result_cid (res)), res);
+	ipc->results_list = x_list_prepend (ipc->results_list, res);
 	xmmsc_ipc_unlock (ipc);
 }
 
 xmmsc_result_t *
-xmmsc_ipc_result_lookup (xmmsc_ipc_t *ipc, unsigned int cid)
+xmmsc_ipc_result_lookup (xmmsc_ipc_t *ipc, uint32_t cookie)
 {
-	xmmsc_result_t *res;
+	xmmsc_result_t *res = NULL;
+	x_list_t *n;
+
 	x_return_val_if_fail (ipc, NULL);
 
 	xmmsc_ipc_lock (ipc);
-	res = x_hash_lookup (ipc->results_table, XUINT_TO_POINTER (cid));
+
+	for (n = ipc->results_list; n; n = x_list_next (n)) {
+		xmmsc_result_t *tmp = n->data;
+
+		if (cookie == xmmsc_result_cookie_get (tmp)) {
+			res = tmp;
+			break;
+		}
+	}
+
 	xmmsc_ipc_unlock (ipc);
+
 	return res;
 }
 
 void
 xmmsc_ipc_result_unregister (xmmsc_ipc_t *ipc, xmmsc_result_t *res)
 {
+	x_list_t *n;
+
 	x_return_if_fail (ipc);
 	x_return_if_fail (res);
 
 	xmmsc_ipc_lock (ipc);
-	x_hash_remove (ipc->results_table, XUINT_TO_POINTER (xmmsc_result_cid (res)));
+
+	for (n = ipc->results_list; n; n = x_list_next (n)) {
+		xmmsc_result_t *tmp = n->data;
+
+		if (xmmsc_result_cookie_get (res) == xmmsc_result_cookie_get (tmp)) {
+			ipc->results_list = x_list_remove (ipc->results_list, tmp);
+			break;
+		}
+	}
+
 	xmmsc_ipc_unlock (ipc);
 }
-
-
 
 void
 xmmsc_ipc_error_set (xmmsc_ipc_t *ipc, char *error)
@@ -237,7 +261,7 @@ xmmsc_ipc_wait_for_event (xmmsc_ipc_t *ipc, unsigned int timeout)
 	fd_set rfdset;
 	fd_set wfdset;
 	struct timeval tmout;
-	int fd;
+	xmms_socket_t fd;
 
 	x_return_if_fail (ipc);
 	x_return_if_fail (!ipc->disconnect);
@@ -251,27 +275,35 @@ xmmsc_ipc_wait_for_event (xmmsc_ipc_t *ipc, unsigned int timeout)
 	FD_SET (fd, &rfdset);
 
 	FD_ZERO (&wfdset);
-	if (xmmsc_ipc_io_out (ipc))
+	if (xmmsc_ipc_io_out (ipc)) {
 		FD_SET (fd, &wfdset);
+	}
 
-	if (select (fd + 1, &rfdset, &wfdset, NULL, &tmout) == -1) {
+	if (select(fd + 1, &rfdset, &wfdset, NULL, &tmout) == SOCKET_ERROR) {
 		return;
 	}
 
-	if (FD_ISSET(fd, &rfdset))
-		xmmsc_ipc_io_in_callback (ipc);
-	if (FD_ISSET(fd, &wfdset))
+	if (FD_ISSET(fd, &rfdset)) {
+		if (!xmmsc_ipc_io_in_callback (ipc)) {
+			return;
+		}
+	}
+	if (FD_ISSET(fd, &wfdset)) {
 		xmmsc_ipc_io_out_callback (ipc);
+	}
 }
 
 bool
-xmmsc_ipc_msg_write (xmmsc_ipc_t *ipc, xmms_ipc_msg_t *msg, uint32_t cid)
+xmmsc_ipc_msg_write (xmmsc_ipc_t *ipc, xmms_ipc_msg_t *msg, uint32_t cookie)
 {
 	x_return_val_if_fail (ipc, false);
-	xmms_ipc_msg_set_cid (msg, cid);
+
+	xmms_ipc_msg_set_cookie (msg, cookie);
 	x_queue_push_tail (ipc->out_msg, msg);
-	if (ipc->need_out_callback)
+
+	if (ipc->need_out_callback) {
 		ipc->need_out_callback (1, ipc->need_out_data);
+	}
 
 	return true;
 }
@@ -283,10 +315,19 @@ xmmsc_ipc_destroy (xmmsc_ipc_t *ipc)
 	if (!ipc)
 		return;
 
-	x_hash_destroy (ipc->results_table);
+	x_list_free (ipc->results_list);
 	if (ipc->transport) {
 		xmms_ipc_transport_destroy (ipc->transport);
 	}
+
+	if (ipc->out_msg) {
+		x_queue_free (ipc->out_msg);
+	}
+
+	if (ipc->read_msg) {
+		xmms_ipc_msg_destroy (ipc->read_msg);
+	}
+
 	if (ipc->error) {
 		free (ipc->error);
 	}
@@ -304,7 +345,6 @@ xmmsc_ipc_connect (xmmsc_ipc_t *ipc, char *path)
 		ipc->error = strdup ("Could not init client!");
 		return false;
 	}
-
 	return true;
 }
 
@@ -327,7 +367,7 @@ xmmsc_ipc_exec_msg (xmmsc_ipc_t *ipc, xmms_ipc_msg_t *msg)
 {
 	xmmsc_result_t *res;
 
-	res = xmmsc_ipc_result_lookup (ipc, xmms_ipc_msg_get_cid (msg));
+	res = xmmsc_ipc_result_lookup (ipc, xmms_ipc_msg_get_cookie (msg));
 
 	if (!res) {
 		xmms_ipc_msg_destroy (msg);

@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -22,30 +22,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <string.h>
 #include <ctype.h>
-#include <stdint.h>
 #include <limits.h>
 
-#include <pwd.h>
 #include <sys/types.h>
+#include <pwd.h>
 
-#include "xmmsclientpriv/xmmsclient_hash.h"
 #include "xmmsclientpriv/xmmsclient_list.h"
 
 #include "xmmsclient/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient.h"
 #include "xmmsc/xmmsc_idnumbers.h"
+#include "xmmsc/xmmsc_stdint.h"
+#include "xmmsc/xmmsc_stringport.h"
 
 #define XMMS_MAX_URI_LEN 1024
 
-#define _REGULARCHAR(a) ((a>=65 && a<=90) || (a>=97 && a<=122)) || (isdigit (a))
-
 static void xmmsc_deinit (xmmsc_connection_t *c);
-
-static uint32_t cmd_id;
 
 /*
  * Public methods
@@ -88,10 +83,15 @@ static uint32_t cmd_id;
  * @sa xmmsc_unref
  */
 
+/* 14:47 <irlanders> isalnum(c) || c == '_' || c == '-'
+ */
+
 xmmsc_connection_t *
-xmmsc_init (char *clientname)
+xmmsc_init (const char *clientname)
 {
 	xmmsc_connection_t *c;
+	int i = 0;
+	char j;
 
 	x_api_error_if (!clientname, "with NULL clientname", NULL);
 
@@ -99,9 +99,22 @@ xmmsc_init (char *clientname)
 		return NULL;
 	}
 
+	while (clientname[i]) {
+		j = clientname[i];
+		if (!isalnum(j) && j != '_' && j != '-') {
+			/* snyggt! */
+			free (c);
+			x_api_error_if (true, "clientname contains invalid chars, just alphanumeric chars are allowed!", NULL);
+		}
+		i++;
+	}
+
+	if (!(c->clientname = strdup (clientname))) {
+		free (c);
+		return NULL;
+	}
+
 	xmmsc_ref (c);
-	c->clientname = strdup (clientname);
-	cmd_id = 0;
 
 	return c;
 }
@@ -147,7 +160,7 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 	uint32_t i;
 	int ret;
 
-	char path[256];
+	char path[PATH_MAX];
 
 	x_api_error_if (!c, "with a NULL connection", false);
 
@@ -158,24 +171,26 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 		if (!pwd || !pwd->pw_name)
 			return false;
 
-		snprintf (path, 256, "unix:///tmp/xmms-ipc-%s", pwd->pw_name);
+		snprintf (path, sizeof(path), "unix:///tmp/xmms-ipc-%s", pwd->pw_name);
 	} else {
-		snprintf (path, 256, "%s", ipcpath);
+		snprintf (path, sizeof(path), "%s", ipcpath);
 	}
 
 	ipc = xmmsc_ipc_init ();
 	
 	if (!xmmsc_ipc_connect (ipc, path)) {
-		c->error = "xmms2d is not running.";
+		c->error = strdup ("xmms2d is not running.");
 		return false;
 	}
 
 	c->ipc = ipc;
-
 	result = xmmsc_send_hello (c);
 	xmmsc_result_wait (result);
 	ret = xmmsc_result_get_uint (result, &i);
 	xmmsc_result_unref (result);
+	if (!ret) {
+		c->error = strdup (xmmsc_ipc_error_get (ipc));
+	}
 
 	return ret;
 }
@@ -209,6 +224,7 @@ void
 xmmsc_unref (xmmsc_connection_t *c)
 {
 	x_api_error_if (!c, "with a NULL connection",);
+	x_api_error_if (c->ref < 1, "with a freed connection",);
 
 	c->ref--;
 	if (c->ref == 0) {
@@ -236,36 +252,83 @@ xmmsc_deinit (xmmsc_connection_t *c)
 {
 	xmmsc_ipc_destroy (c->ipc);
 
+	free (c->error);
 	free (c->clientname);
-	free(c);
+	free (c);
 }
 
 /**
  * Set locking functions for a connection. Allows simultanous usage of
  * a connection from several threads.
  *
- * @param conn connection
+ * @param c connection
  * @param lock the locking primitive passed to the lock and unlock functions
  * @param lockfunc function called when entering critical region, called with lock as argument.
  * @param unlockfunc funciotn called when leaving critical region.
  */
 void
-xmmsc_lock_set (xmmsc_connection_t *conn, void *lock, void (*lockfunc)(void *), void (*unlockfunc)(void *))
+xmmsc_lock_set (xmmsc_connection_t *c, void *lock, void (*lockfunc)(void *), void (*unlockfunc)(void *))
 {
-	xmmsc_ipc_lock_set (conn->ipc, lock, lockfunc, unlockfunc);
+	x_check_conn (c,);
+
+	xmmsc_ipc_lock_set (c->ipc, lock, lockfunc, unlockfunc);
 }
+
+/**
+ * Get a list of loaded plugins from the server
+ */
+xmmsc_result_t *
+xmmsc_plugin_list (xmmsc_connection_t *c, xmms_plugin_type_t type)
+{
+	xmmsc_result_t *res;
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (c, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_PLUGIN_LIST);
+	xmms_ipc_msg_put_uint32 (msg, type);
+
+	res = xmmsc_send_msg (c, msg);
+
+	return res;
+}
+
+/**
+ * Get a list of statistics from the server
+ */
+xmmsc_result_t *
+xmmsc_main_stats (xmmsc_connection_t *c)
+{
+	x_check_conn (c, NULL);
+
+	return xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_STATS);
+}
+
 
 /**
  * Tell the server to quit. This will terminate the server.
  * If you only want to disconnect, use #xmmsc_unref()
  */
-
 xmmsc_result_t *
 xmmsc_quit (xmmsc_connection_t *c)
 {
 	x_check_conn (c, NULL);
+
 	return xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_QUIT);
 }
+
+/**
+ * Request the quit broadcast.
+ * Will be called when the server is terminating.
+ */
+xmmsc_result_t *
+xmmsc_broadcast_quit (xmmsc_connection_t *c)
+{
+	x_check_conn (c, NULL);
+
+	return xmmsc_send_broadcast_msg (c, XMMS_IPC_SIGNAL_QUIT);
+}
+
 
 /**
  * This function will make a pretty string about the information in
@@ -291,11 +354,11 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res)
 		return 0;
 	}
 
-	memset (target, '\0', len);
+	memset (target, 0, len);
 
 	pos = fmt;
 	while (strlen (target) + 1 < len) {
-		char *next_key, *key, *result, *end;
+		char *next_key, *key, *result = NULL, *end;
 		int keylen;
 
 		next_key = strstr (pos, "${");
@@ -313,42 +376,57 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res)
 			break;
 		}
 
-		memset (key, '\0', keylen + 1);
+		memset (key, 0, keylen + 1);
 		strncpy (key, next_key + 2, keylen);
 
 		if (strcmp (key, "seconds") == 0) {
-			char *duration;
+			int duration;
 
-			xmmsc_result_get_dict_entry (res, "duration", &duration);
+			xmmsc_result_get_dict_entry_int32 (res, "duration", &duration);
 
 			if (!duration) {
 				strncat (target, "00", len - strlen (target) - 1);
 			} else {
 				char seconds[10];
-				int d;
-				d = atoi (duration);
-				snprintf (seconds, sizeof seconds, "%02d", (d/1000)%60);
+				/* rounding */
+				duration += 500;
+				snprintf (seconds, sizeof(seconds), "%02d", (duration/1000)%60);
 				strncat (target, seconds, len - strlen (target) - 1);
 			}
 		} else if (strcmp (key, "minutes") == 0) {
-			char *duration;
+			int duration;
 
-			xmmsc_result_get_dict_entry (res, "duration", &duration);
+			xmmsc_result_get_dict_entry_int32 (res, "duration", &duration);
 
 			if (!duration) {
 				strncat (target, "00", len - strlen (target) - 1);
 			} else {
 				char minutes[10];
-				int d;
-				d = atoi (duration);
-				snprintf (minutes, sizeof minutes, "%02d", d/60000);
+				/* rounding */
+				duration += 500;
+				snprintf (minutes, sizeof(minutes), "%02d", duration/60000);
 				strncat (target, minutes, len - strlen (target) - 1);
 			}
 		} else {
-			xmmsc_result_get_dict_entry (res, key, &result);
-			if (result) {
-				strncat (target, result, len - strlen (target) - 1);
+			char tmp[12];
+
+			xmmsc_result_value_type_t type = xmmsc_result_get_dict_entry_type (res, key);
+			if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
+				xmmsc_result_get_dict_entry_str (res, key, &result);
+			} else if (type == XMMSC_RESULT_VALUE_TYPE_UINT32) {
+				uint32_t ui;
+				xmmsc_result_get_dict_entry_uint32 (res, key, &ui);
+				snprintf (tmp, 12, "%u", ui);
+				result = tmp;
+			} else if (type == XMMSC_RESULT_VALUE_TYPE_INT32) {
+				int32_t i;
+				xmmsc_result_get_dict_entry_int32 (res, key, &i);
+				snprintf (tmp, 12, "%d", i);
+				result = tmp;
 			}
+				
+			if (result)
+				strncat (target, result, len - strlen (target) - 1);
 		}
 
 		free (key);
@@ -364,33 +442,6 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res)
 	return strlen (target);
 }
 
-/**
- * Disconnect from a broadcast. This will cause the server
- * to not send the broadcasts anymore.
- */
-void
-xmmsc_broadcast_disconnect (xmmsc_result_t *res)
-{
-	x_return_if_fail (res);
-
-	/** @todo tell the server that we're not interested in the signal
-	 *        any more.
-	 */
-	xmmsc_result_unref (res);
-}
-
-/**
- * Disconnect from a signal. This will cause the server
- * to stop sending the signals.
- */
-void
-xmmsc_signal_disconnect (xmmsc_result_t *res)
-{
-	x_return_if_fail (res);
-
-	xmmsc_result_unref (res);
-}
-
 /** @} */
 
 /**
@@ -398,9 +449,9 @@ xmmsc_signal_disconnect (xmmsc_result_t *res)
  */
 
 static uint32_t
-xmmsc_next_id (void)
+xmmsc_next_id (xmmsc_connection_t *c)
 {
-	return cmd_id++;
+	return c->cookie++;
 }
 
 xmmsc_result_t *
@@ -439,59 +490,41 @@ xmmsc_send_signal_msg (xmmsc_connection_t *c, uint32_t signalid)
 xmmsc_result_t *
 xmmsc_send_msg_no_arg (xmmsc_connection_t *c, int object, int method)
 {
-	uint32_t cid;
+	uint32_t cookie;
 	xmms_ipc_msg_t *msg;
 
 	msg = xmms_ipc_msg_new (object, method);
 
-	cid = xmmsc_next_id ();
-	xmmsc_ipc_msg_write (c->ipc, msg, cid);
+	cookie = xmmsc_next_id (c);
+	xmmsc_ipc_msg_write (c->ipc, msg, cookie);
 
-	return xmmsc_result_new (c, cid);
+	return xmmsc_result_new (c, XMMSC_RESULT_CLASS_DEFAULT, cookie);
 }
 
 xmmsc_result_t *
 xmmsc_send_msg (xmmsc_connection_t *c, xmms_ipc_msg_t *msg)
 {
-	uint32_t cid;
-	cid = xmmsc_next_id ();
+	uint32_t cookie;
+	xmmsc_result_type_t type;
 
-	xmmsc_ipc_msg_write (c->ipc, msg, cid);
+	cookie = xmmsc_next_id (c);
 
-	return xmmsc_result_new (c, cid);
-}
+	xmmsc_ipc_msg_write (c->ipc, msg, cookie);
 
-x_hash_t *
-xmmsc_deserialize_hashtable (xmms_ipc_msg_t *msg)
-{
-	unsigned int entries;
-	unsigned int i;
-	unsigned int len;
-	x_hash_t *h;
-	char *key, *val;
-
-	if (!xmms_ipc_msg_get_uint32 (msg, &entries))
-		return NULL;
-
-	h = x_hash_new_full (x_str_hash, x_str_equal, free, free);
-
-	for (i = 1; i <= entries; i++) {
-		if (!xmms_ipc_msg_get_string_alloc (msg, &key, &len))
-			goto err;
-		if (!xmms_ipc_msg_get_string_alloc (msg, &val, &len))
-			goto err;
-
-		x_hash_insert (h, key, val);
+	switch (xmms_ipc_msg_get_cmd (msg)) {
+		case XMMS_IPC_CMD_SIGNAL:
+			type = XMMSC_RESULT_CLASS_SIGNAL;
+			break;
+		case XMMS_IPC_CMD_BROADCAST:
+			type = XMMSC_RESULT_CLASS_BROADCAST;
+			break;
+		default:
+			type = XMMSC_RESULT_CLASS_DEFAULT;
+			break;
 	}
 
-	return h;
-
-err:
-	x_hash_destroy (h);
-	return NULL;
-
+	return xmmsc_result_new (c, type, cookie);
 }
-
 
 /**
  * @defgroup IOFunctions IOFunctions

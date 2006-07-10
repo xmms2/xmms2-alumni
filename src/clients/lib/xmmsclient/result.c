@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -16,28 +16,45 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <string.h>
 #include <ctype.h>
-#include <stdint.h>
 
-#include <pwd.h>
 #include <sys/types.h>
+#include <assert.h>
 
 #include "xmmsclient/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient_ipc.h"
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsc_errorcodes.h"
+#include "xmmsc/xmmsc_stdint.h"
 
 static void xmmsc_result_cleanup_data (xmmsc_result_t *res);
+static void free_dict_list (x_list_t *list);
+static x_list_t *xmmsc_deserialize_dict (xmms_ipc_msg_t *msg);
+static int source_match_pattern (char* source, char* pattern);
+
+typedef struct xmmsc_result_value_St {
+	union {
+		void *generic;
+		uint32_t uint32;
+		int32_t int32;
+		char *string;
+		x_list_t *dict;
+	} value;
+	xmmsc_result_value_type_t type;
+} xmmsc_result_value_t;
+
+static xmmsc_result_value_t *xmmsc_result_parse_value (xmms_ipc_msg_t *msg);
 
 struct xmmsc_result_St {
 	xmmsc_connection_t *c;
 
 	/** refcounting */
 	int ref;
+
+	xmmsc_result_type_t type;
 
 	/** notifiers */
 	x_list_t *func_list;
@@ -46,7 +63,9 @@ struct xmmsc_result_St {
 	int error;
 	char *error_str;
 
-	uint32_t cid;
+	int islist;
+
+	uint32_t cookie;
 	uint32_t restart_signal;
 
 	xmmsc_ipc_t *ipc;
@@ -60,18 +79,17 @@ struct xmmsc_result_St {
 		uint32_t uint;
 		int32_t inte;
 		char *string;
-		x_hash_t *hash;
+		x_list_t *dict;
 	} data;
 
 	x_list_t *list;
 	x_list_t *current;
+
+	x_list_t *source_pref;
+
+	/* things we want to free when the result is freed*/
+	x_list_t *extra_free;
 };
-
-#define is_list_type(t)	((t) == XMMS_OBJECT_CMD_ARG_UINT32LIST ||   \
-                         (t) == XMMS_OBJECT_CMD_ARG_INT32LIST ||    \
-                         (t) == XMMS_OBJECT_CMD_ARG_STRINGLIST || \
-                         (t) == XMMS_OBJECT_CMD_ARG_DICTLIST)     \
-
 
 /**
  * @defgroup Result Result
@@ -151,8 +169,51 @@ xmmsc_result_free (xmmsc_result_t *res)
 
 	x_list_free (res->func_list);
 	x_list_free (res->udata_list);
-	
+
+	while (res->source_pref) {
+		free (res->source_pref->data);
+		res->source_pref = x_list_delete_link (res->source_pref,
+		                                       res->source_pref);
+	}
+
+	while (res->extra_free) {
+		free (res->extra_free->data);
+		res->extra_free = x_list_delete_link (res->extra_free,
+		                                      res->extra_free);
+	}
+
 	free (res);
+}
+
+/**
+ * Get the class of the result (default, signal, broadcast).
+ * @returns The class of the result of type #xmmsc_result_type_t
+ */
+xmmsc_result_type_t
+xmmsc_result_get_class (xmmsc_result_t *res)
+{
+	x_return_val_if_fail (res, XMMSC_RESULT_CLASS_DEFAULT);
+
+	return res->type;
+}
+
+/**
+ * Disconnect a signal or a broadcast.
+ * @param res The result to disconnect, must be of class signal or broadcast.
+ */
+void
+xmmsc_result_disconnect (xmmsc_result_t *res)
+{
+	x_return_if_fail (res);
+
+	switch (res->type) {
+		case XMMSC_RESULT_CLASS_SIGNAL:
+		case XMMSC_RESULT_CLASS_BROADCAST:
+			xmmsc_result_unref (res);
+			break;
+		default:
+			x_api_error_if (1, "invalid result type",);
+	}
 }
 
 /**
@@ -197,6 +258,9 @@ xmmsc_result_restart (xmmsc_result_t *res)
 	x_return_null_if_fail (res);
 	x_return_null_if_fail (res->c);
 
+	x_api_error_if (res->type != XMMSC_RESULT_CLASS_SIGNAL,
+	                "result is not restartable", NULL);
+
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_SIGNAL);
 	xmms_ipc_msg_put_uint32 (msg, res->restart_signal);
 	
@@ -214,26 +278,35 @@ xmmsc_result_restart (xmmsc_result_t *res)
 	return newres;
 }
 
-/**
- * Get the type of the result.
- * @returns The data type in the result or -1 on error.
- */
-int
-xmmsc_result_get_type (xmmsc_result_t *res)
+static void
+xmmsc_result_value_free (void *v)
 {
-	if (!res) return -1;
-	if (!res->parsed) return -1;
-	return res->datatype;
+	xmmsc_result_value_t *val = v;
+
+	switch (val->type) {
+		case XMMS_OBJECT_CMD_ARG_STRING:
+			free (val->value.string);
+			break;
+		case XMMS_OBJECT_CMD_ARG_DICT:
+			free_dict_list (val->value.dict);
+			break;
+		default:
+			break;
+	}
+
+	free (val);
 }
 
 static void
 xmmsc_result_cleanup_data (xmmsc_result_t *res)
 {
-	x_list_t *l;
-
 	x_return_if_fail (res);
 	if (!res->parsed)
 		return;
+
+	if (res->islist) {
+		res->datatype = XMMS_OBJECT_CMD_ARG_LIST;
+	}
 
 	switch (res->datatype) {
 		case XMMS_OBJECT_CMD_ARG_UINT32 :
@@ -241,27 +314,19 @@ xmmsc_result_cleanup_data (xmmsc_result_t *res)
 			break;
 		case XMMS_OBJECT_CMD_ARG_STRING :
 			free (res->data.string);
+			res->data.string = NULL;
 			break;
-		case XMMS_OBJECT_CMD_ARG_UINT32LIST:
-			x_list_free (res->list);
-			break;
-		case XMMS_OBJECT_CMD_ARG_INT32LIST:
-			x_list_free (res->list);
-			break;
-		case XMMS_OBJECT_CMD_ARG_STRINGLIST:
-			for (l = res->list; l; l = x_list_next (l)) {
-				free (l->data);
+		case XMMS_OBJECT_CMD_ARG_LIST:
+		case XMMS_OBJECT_CMD_ARG_PROPDICT:
+			while (res->list) {
+				xmmsc_result_value_free (res->list->data);
+				res->list = x_list_delete_link (res->list, res->list);
 			}
-			x_list_free (res->list);
+
 			break;
 		case XMMS_OBJECT_CMD_ARG_DICT:
-			x_hash_destroy (res->data.hash);
-			break;
-		case XMMS_OBJECT_CMD_ARG_DICTLIST:
-			for (l = res->list; l; l = x_list_next (l)) {
-				x_hash_destroy (l->data);
-			}
-			x_list_free (res->list);
+			free_dict_list (res->data.dict);
+			res->data.dict = NULL;
 			break;
 	}
 }
@@ -285,15 +350,13 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 	switch (type) {
 
 		case XMMS_OBJECT_CMD_ARG_UINT32 :
-			{
-				if (!xmms_ipc_msg_get_uint32 (msg, &res->data.uint))
-					return false;
+			if (!xmms_ipc_msg_get_uint32 (msg, &res->data.uint)) {
+				return false;
 			}
 			break;
 		case XMMS_OBJECT_CMD_ARG_INT32 :
-			{
-				if (!xmms_ipc_msg_get_int32 (msg, &res->data.inte))
-					return false;
+			if (!xmms_ipc_msg_get_int32 (msg, &res->data.inte)) {
+				return false;
 			}
 			break;
 		case XMMS_OBJECT_CMD_ARG_STRING :
@@ -306,98 +369,47 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 			break;
 		case XMMS_OBJECT_CMD_ARG_DICT:
 			{
-				x_hash_t *hash;
+				x_list_t *dict;
 
-				hash = xmmsc_deserialize_hashtable (msg);
-				if (!hash)
+				dict = xmmsc_deserialize_dict (msg);
+				if (!dict)
 					return false;
 
-				res->data.hash = hash;
+				res->data.dict = dict;
 
 			}
 			break;
-		case XMMS_OBJECT_CMD_ARG_UINT32LIST :
+		case XMMS_OBJECT_CMD_ARG_LIST :
+		case XMMS_OBJECT_CMD_ARG_PROPDICT :
 			{
-				uint32_t tmp;
+				uint32_t len, i;
 
-				while (42) {
-					if (!xmms_ipc_msg_get_uint32 (msg, &tmp))
-						break;
-					list = x_list_prepend (list, XUINT_TO_POINTER (tmp));
+				if (!xmms_ipc_msg_get_uint32 (msg, &len))
+					return false;
+
+				for (i = 0; i < len; i ++) {
+					xmmsc_result_value_t *val;
+					val = xmmsc_result_parse_value (msg);
+					list = x_list_prepend (list, val);
 				}
 
 				if (list)
 					list = x_list_reverse (list);
 
 				res->current = res->list = list;
-				if (res->current)
-					res->data.generic = res->current->data;
-				else
-					res->data.generic = NULL;
-			}
-			break;
-		case XMMS_OBJECT_CMD_ARG_INT32LIST :
-			{
-				int32_t tmp;
 
-				while (42) {
-					if (!xmms_ipc_msg_get_int32 (msg, &tmp))
-						break;
-					list = x_list_prepend (list, XINT_TO_POINTER (tmp));
+				if (type == XMMS_OBJECT_CMD_ARG_LIST) {
+					res->islist = 1;
+
+					if (res->current) {
+						xmmsc_result_value_t *val = res->current->data;
+						res->data.generic = val->value.generic;
+						res->datatype = val->type;
+					} else {
+						res->data.generic = NULL;
+						res->datatype = XMMS_OBJECT_CMD_ARG_NONE;
+					}
 				}
-
-				if (list)
-					list = x_list_reverse (list);
-
-				res->current = res->list = list;
-				if (res->current)
-					res->data.generic = res->current->data;
-				else
-					res->data.generic = NULL;
-
-			}
-			break;
-		case XMMS_OBJECT_CMD_ARG_STRINGLIST :
-			{
-				char *tmp;
-				uint32_t len;
-
-				while (42) {
-					if (!xmms_ipc_msg_get_string_alloc (msg, &tmp, &len))
-						break;
-					list = x_list_prepend (list, tmp);
-				}
-
-				if (list)
-					list = x_list_reverse (list);
-
-				res->current = res->list = list;
-				if (res->current)
-					res->data.generic = res->current->data;
-				else
-					res->data.generic = NULL;
-			}
-			break;
-		case XMMS_OBJECT_CMD_ARG_DICTLIST :
-			{
-				x_hash_t *e;
-
-				while (42) {
-					e = xmmsc_deserialize_hashtable (msg);
-					if (e) 
-						list = x_list_prepend (list, e);
-					else
-						break;
-				}
-
-				if (list) 
-					list = x_list_reverse (list);
-
-				res->current = res->list = list;
-				if (res->current)
-					res->data.generic = res->current->data;
-				else
-					res->data.generic = NULL;
 			}
 			break;
 
@@ -415,15 +427,14 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 
 
 /**
- * return the command id of a resultset.
+ * return the cookie of a resultset.
  */
-int
-xmmsc_result_cid (xmmsc_result_t *res)
+uint32_t
+xmmsc_result_cookie_get (xmmsc_result_t *res)
 {
-	if (!res)
-		return 0;
+	x_return_val_if_fail (res, 0);
 
-	return res->cid;
+	return res->cookie;
 }
 
 /**
@@ -437,6 +448,7 @@ void
 xmmsc_result_unref (xmmsc_result_t *res)
 {
 	x_return_if_fail (res);
+	x_api_error_if (res->ref < 1, "with a freed result",);
 
 	res->ref--;
 	if (res->ref == 0) {
@@ -475,18 +487,38 @@ xmmsc_result_notifier_set (xmmsc_result_t *res, xmmsc_result_notifier_t func, vo
 void
 xmmsc_result_wait (xmmsc_result_t *res)
 {
-	const char *err;
+	const char *err = NULL;
 	x_return_if_fail (res);
 
-	while (!res->parsed && !(err =xmmsc_ipc_error_get (res->ipc))) {
+	while (!res->parsed && !(err = xmmsc_ipc_error_get (res->ipc))) {
 		xmmsc_ipc_wait_for_event (res->ipc, 5);
 	}
 
 	if (err) {
-		xmmsc_result_seterror (res, strdup (err));
+		xmmsc_result_seterror (res, err);
 	}
 }
-				
+
+/**
+ * Set source to used when fetching stuff from a DICT
+ */
+void
+xmmsc_result_source_preference_set (xmmsc_result_t *res, const char **preference)
+{
+	int i = 0;
+	x_return_if_fail (res);
+	x_return_if_fail (preference);
+
+	while (res->source_pref) {
+		free (res->source_pref->data);
+		res->source_pref = x_list_delete_link (res->source_pref,
+		                                       res->source_pref);
+	}
+
+	for (i = 0; preference[i]; i++) {
+		res->source_pref = x_list_append (res->source_pref, strdup (preference[i])); 
+	}
+}
 
 /**
  * @defgroup ResultValueRetrieval ResultValueRetrieval 
@@ -495,11 +527,16 @@ xmmsc_result_wait (xmmsc_result_t *res)
  * @{
  */
 
-void
-xmmsc_result_seterror (xmmsc_result_t *res, char *errstr)
+/**
+ * Get the type of the result.
+ * @returns The #xmms_object_cmd_arg_type_t data type in the result or -1 on error.
+ */
+int
+xmmsc_result_get_type (xmmsc_result_t *res)
 {
-	res->error_str = errstr;
-	res->error = 1;
+	if (!res) return -1;
+	if (!res->parsed) return -1;
+	return res->datatype;
 }
 
 /**
@@ -545,8 +582,9 @@ xmmsc_result_get_int (xmmsc_result_t *res, int *r)
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_INT32 && res->datatype != XMMS_OBJECT_CMD_ARG_INT32LIST)
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_INT32) {
 		return 0;
+	}
 
 	*r = res->data.inte;
 	
@@ -567,7 +605,7 @@ xmmsc_result_get_uint (xmmsc_result_t *res, unsigned int *r)
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_UINT32 && res->datatype != XMMS_OBJECT_CMD_ARG_UINT32LIST)
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_UINT32)
 		return 0;
 
 	*r = res->data.uint;
@@ -588,11 +626,135 @@ xmmsc_result_get_string (xmmsc_result_t *res, char **r)
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_STRING && res->datatype != XMMS_OBJECT_CMD_ARG_STRINGLIST)
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_STRING) {
 		return 0;
+	}
 
 	*r = res->data.string;
 
+	return 1;
+}
+
+static xmmsc_result_value_t *
+xmmsc_result_dict_lookup (xmmsc_result_t *res, const char *key)
+{
+	x_list_t *n;
+
+	if (res->datatype == XMMS_OBJECT_CMD_ARG_DICT) {
+		for (n = res->data.dict; n; n = x_list_next (n)) {
+			const char *k = n->data;
+			if (strcasecmp (k, key) == 0 && n->next) {
+				/* found right key, return value */
+				return (xmmsc_result_value_t*) n->next->data;
+			} else {
+				/* skip data part of this entry */
+				n = x_list_next (n);
+			}
+		}
+	} else if (res->datatype == XMMS_OBJECT_CMD_ARG_PROPDICT) {
+		x_list_t *s;
+
+		for (s = res->source_pref; s; s = x_list_next (s)) {
+			char *source = s->data;
+
+			for (n = res->list; n; n = x_list_next (n)) {
+				xmmsc_result_value_t *k = n->data;
+
+				if (source_match_pattern (k->value.string, source) && 
+					n->next && n->next->next) {
+
+					n = x_list_next (n);
+					k = n->data;
+
+					if (strcasecmp (k->value.string, key) == 0) {
+						return (xmmsc_result_value_t*) n->next->data;
+					} else {
+						n = x_list_next (n);
+					}
+
+				} else {
+					n = x_list_next (n);
+					n = x_list_next (n);
+				}
+			}
+		}
+	}
+
+
+	return NULL;
+}
+
+/**
+ * Retrieve integer associated for specified key in the resultset.
+ *
+ * If the key doesn't exist in the result the returned integer is
+ * undefined. 
+ *
+ * @param res a #xmmsc_result_t containing dict list.
+ * @param r the return int
+ * @return 1 upon success otherwise 0
+ *
+ */
+int
+xmmsc_result_get_dict_entry_int32 (xmmsc_result_t *res, const char *key, int32_t *r)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE) {
+		*r = -1;
+		return 0;
+	}
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+		res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
+		*r = -1;
+		return 0;
+	}
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_INT32) {
+		*r = val->value.int32;
+	} else {
+		*r = -1;
+		return 0;
+	}
+	
+	return 1;
+}
+
+/**
+ * Retrieve unsigned integer associated for specified key in the resultset.
+ *
+ * If the key doesn't exist in the result the returned integer is
+ * undefined. 
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param r the return uint
+ * @return 1 upon success otherwise 0
+ *
+ */
+int
+xmmsc_result_get_dict_entry_uint32 (xmmsc_result_t *res, const char *key, uint32_t *r)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE) {
+		*r = -1;
+		return 0;
+	}
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+		res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
+		*r = -1;
+		return 0;
+	}
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_UINT32) {
+		*r = val->value.uint32;
+	} else {
+		*r = -1;
+		return 0;
+	}
+	
 	return 1;
 }
 
@@ -609,20 +771,90 @@ xmmsc_result_get_string (xmmsc_result_t *res, char **r)
  *
  */
 int
-xmmsc_result_get_dict_entry (xmmsc_result_t *res, const char *key, char **r)
+xmmsc_result_get_dict_entry_str (xmmsc_result_t *res, const char *key, char **r)
 {
+	xmmsc_result_value_t *val;
 	if (!res || res->error != XMMS_ERROR_NONE) {
 		*r = NULL;
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT && res->datatype != XMMS_OBJECT_CMD_ARG_DICTLIST) {
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+		res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
 		*r = NULL;
 		return 0;
 	}
 
-	*r = x_hash_lookup (res->data.hash, key);
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_STRING) {
+		*r = val->value.string;
+	} else {
+		*r = NULL;
+		return 0;
+	}
 	
+	return 1;
+}
+
+/**
+ * Retrieve type associated for specified key in the resultset.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved
+ * @return type of #key
+ *
+ */
+xmmsc_result_value_type_t
+xmmsc_result_get_dict_entry_type (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE) {
+		return XMMSC_RESULT_VALUE_TYPE_NONE;
+	}
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+		res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
+		return XMMSC_RESULT_VALUE_TYPE_NONE;
+	}
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (!val) {
+		return XMMSC_RESULT_VALUE_TYPE_NONE;
+	}
+	
+	return val->type;
+}
+
+int
+xmmsc_result_propdict_foreach (xmmsc_result_t *res, 
+							   xmmsc_propdict_foreach_func func, 
+							   void *user_data)
+{
+	x_list_t *n;
+
+	if (!res || res->error != XMMS_ERROR_NONE) {
+		return 0;
+	}
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
+		x_print_err ("xmms_result_propdict_foreach", "on a normal dict!");
+		return 0;
+	}
+
+	for (n = res->list; n; n = x_list_next (n)) {
+		xmmsc_result_value_t *source = NULL;
+		xmmsc_result_value_t *key = NULL;
+		xmmsc_result_value_t *val = NULL;
+		if (n->next && n->next->next) {
+			source = n->data;
+			key = n->next->data;
+			val = n->next->next->data;
+		}
+		func ((const void *)key->value.string, val->type, (void *)val->value.string, source->value.string, user_data);
+		n = x_list_next (n); /* skip key part */
+		n = x_list_next (n); /* skip value part */
+	}
+
 	return 1;
 }
 
@@ -631,7 +863,7 @@ xmmsc_result_get_dict_entry (xmmsc_result_t *res, const char *key, char **r)
  *
  * Calls specified function for each key/value-pair in the dictionary.
  * 
- * void function (const void *key, const void *value, void *user_data);
+ * void function (const void *key, #xmmsc_result_value_type_t type, const void *value, void *user_data);
  *
  * @param res a #xmmsc_result_t containing a dict.
  * @param func function that is called for each key/value-pair
@@ -640,28 +872,48 @@ xmmsc_result_get_dict_entry (xmmsc_result_t *res, const char *key, char **r)
  *
  */
 int
-xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_foreach_func func, void *user_data)
+xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func, void *user_data)
+{
+	x_list_t *n;
+
+	if (!res || res->error != XMMS_ERROR_NONE) {
+		return 0;
+	}
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT) {
+		x_print_err ("xmms_result_dict_foreach", "on a source dict!");
+		return 0;
+	}
+
+	if (res->datatype == XMMS_OBJECT_CMD_ARG_DICT) {
+		for (n = res->data.dict; n; n = x_list_next (n)) {
+			xmmsc_result_value_t *val = NULL;
+			if (n->next) {
+				val = n->next->data;
+			}
+			func ((const void *)n->data, val->type, (void *)val->value.string, user_data);
+			n = x_list_next (n); /* skip value part */
+		}
+	}
+
+	return 1;
+}
+
+/**
+ * Check if the result stores a list.
+ *
+ * @param res a #xmmsc_result_t
+ * @return 1 if result stores a list, 0 otherwise.
+ */
+int
+xmmsc_result_is_list (xmmsc_result_t *res)
 {
 	if (!res || res->error != XMMS_ERROR_NONE) {
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT && res->datatype != XMMS_OBJECT_CMD_ARG_DICTLIST)
-		return 0;
-
-	x_hash_foreach (res->data.hash, func, user_data);
-	
-	return 1;
+	return res->islist;
 }
-
-/**
-	for (; xmmsc_result_list_valid (res); xmmsc_result_list_next (res)) {
-		if (!xmmsc_result_get_uint (res, &i))
-			print_error ("Broken result");
-
-
- */
-
 
 /**
  * Check if current listnode is inside list boundary.
@@ -679,8 +931,9 @@ xmmsc_result_list_valid (xmmsc_result_t *res)
 		return 0;
 	}
 
-	if (!is_list_type (res->datatype))
+	if (!res->islist) {
 		return 0;
+	}
 
 	return !!res->current;
 }
@@ -702,18 +955,24 @@ xmmsc_result_list_next (xmmsc_result_t *res)
 		return 0;
 	}
 
-	if (!is_list_type (res->datatype))
+	if (!res->islist) {
 		return 0;
+	}
 
-	if (!res->current)
+	if (!res->current) {
 		return 0;
+	}
 
 	res->current = res->current->next;
-
-	if (res->current)
-		res->data.generic = res->current->data;
-	else
+	
+	if (res->current) {
+		xmmsc_result_value_t *val = res->current->data;
+		res->data.generic = val->value.generic;
+		res->datatype = val->type;
+	} else {
 		res->data.generic = NULL;
+		res->datatype = XMMS_OBJECT_CMD_ARG_NONE;
+	}
 
 	return 1;
 }
@@ -731,25 +990,109 @@ xmmsc_result_list_first (xmmsc_result_t *res)
 		return 0;
 	}
 
-	if (!is_list_type (res->datatype))
-		return 0;
-
 	res->current = res->list;
 
-	if (res->current)
-		res->data.generic = res->current->data;
-	else
+	if (res->current) {
+		xmmsc_result_value_t *val = res->current->data;
+		res->data.generic = val->value.generic;
+		res->datatype = val->type;
+	} else {
 		res->data.generic = NULL;
+		res->datatype = XMMS_OBJECT_CMD_ARG_NONE;
+	}
 
 	return 1;
 }
 
+/**
+ * Decode an URL-encoded string.
+ *
+ * Some strings (currently only the url of media) has no known
+ * encoding, and must be encoded in an UTF-8 clean way. This is done
+ * similar to the url encoding web browsers do. This functions decodes
+ * a string encoded in that way. OBSERVE that the decoded string HAS
+ * NO KNOWN ENCODING and you cannot display it on screen in a 100%
+ * guaranteed correct way (a good heuristic is to try to validate the
+ * decoded string as UTF-8, and if it validates assume that it is an
+ * UTF-8 encoded string, and otherwise fall back to some other
+ * encoding).
+ *
+ * Do not use this function if you don't understand the
+ * implications. The best thing is not to try to display the url at
+ * all.
+ *
+ * Note that the fact that the string has NO KNOWN ENCODING and CAN
+ * NOT BE DISPLAYED does not stop you from open the file if it is a
+ * local file (if it starts with "file://").
+ *
+ * The string returned string will be owned by the result and
+ * freed when the result is freed.
+ *
+ * @param res the #xmmsc_result_t that the string comes from
+ * @param string the url encoded string
+ * @return decoded string, owned by the #xmmsc_result_t
+ *
+ */
+const char *
+xmmsc_result_decode_url (xmmsc_result_t *res, const char *string)
+{
+	int i = 0, j = 0;
+	char *url;
+
+	url = strdup (string);
+	if (!url) {
+		x_oom();
+		return NULL;
+	}
+
+	while (url[i]) {
+		unsigned char chr = url[i++];
+
+		if (chr == '+') {
+			chr = ' ';
+		} else if (chr == '%') {
+			char ts[3];
+			char *t;
+
+			ts[0] = url[i++];
+			if (!ts[0])
+				goto err;
+			ts[1] = url[i++];
+			if (!ts[1])
+				goto err;
+			ts[2] = '\0';
+
+			chr = strtoul (ts, &t, 16);
+
+			if (t != &ts[2])
+				goto err;
+		}
+		
+		url[j++] = chr;
+	}
+
+	url[j] = '\0';
+
+	res->extra_free = x_list_prepend (res->extra_free, url);
+	return url;
+
+ err:
+	free (url);
+	return NULL;
+}
 
 /** @} */
 
 /** @} */
 
 /** @internal */
+void
+xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr)
+{
+	res->error_str = strdup (errstr);
+	res->error = 1;
+}
+
 void
 xmmsc_result_restartable (xmmsc_result_t *res, uint32_t signalid)
 {
@@ -764,10 +1107,10 @@ xmmsc_result_restartable (xmmsc_result_t *res, uint32_t signalid)
 void
 xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 {
-	x_return_if_fail (res);
-	x_return_if_fail (msg);
 	x_list_t *n, *l;
 	int cmd;
+	x_return_if_fail (res);
+	x_return_if_fail (msg);
 
 	if (!xmmsc_result_parse_msg (res, msg)) {
 		xmms_ipc_msg_destroy (msg);
@@ -808,16 +1151,24 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
  */
 
 xmmsc_result_t *
-xmmsc_result_new (xmmsc_connection_t *c, uint32_t commandid)
+xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type,
+                  uint32_t cookie)
 {
 	xmmsc_result_t *res;
 
-	res = x_new0 (xmmsc_result_t, 1);
+	if (!(res = x_new0 (xmmsc_result_t, 1))) {
+		x_oom();
+		return NULL;
+	}
 
 	res->c = c;
 	xmmsc_ref (c);
 
-	res->cid = commandid;
+	res->type = type;
+	res->cookie = cookie;
+	res->source_pref = x_list_prepend (NULL, strdup("*"));
+	res->source_pref = x_list_prepend (res->source_pref, strdup("plugins/*"));
+	res->source_pref = x_list_prepend (res->source_pref, strdup("server"));
 
 	/* user must give this back */
 	xmmsc_result_ref (res);
@@ -831,3 +1182,129 @@ xmmsc_result_new (xmmsc_connection_t *c, uint32_t commandid)
 	return res;
 }
 
+static xmmsc_result_value_t *
+xmmsc_result_parse_value (xmms_ipc_msg_t *msg)
+{
+	xmmsc_result_value_t *val;
+	uint32_t len;
+
+	if (!(val = x_new0 (xmmsc_result_value_t, 1))) {
+		x_oom();
+		return NULL;
+	}
+
+	if (!xmms_ipc_msg_get_int32 (msg, (int32_t *)&val->type)) {
+		goto err;
+	}
+
+	switch (val->type) {
+		case XMMS_OBJECT_CMD_ARG_STRING:
+			if (!xmms_ipc_msg_get_string_alloc (msg, &val->value.string, &len)) {
+				goto err;
+			}
+			break;
+		case XMMS_OBJECT_CMD_ARG_UINT32:
+			if (!xmms_ipc_msg_get_uint32 (msg, &val->value.uint32)) {
+				goto err;
+			}
+			break;
+		case XMMS_OBJECT_CMD_ARG_INT32:
+			if (!xmms_ipc_msg_get_int32 (msg, &val->value.int32)) {
+				goto err;
+			}
+			break;
+		case XMMS_OBJECT_CMD_ARG_DICT:
+			val->value.dict = xmmsc_deserialize_dict (msg);
+			if (!val->value.dict) {
+				goto err;
+			}
+			break;
+		case XMMS_OBJECT_CMD_ARG_NONE:
+			break;
+		default:
+			goto err;
+			break;
+	}
+
+	return val;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+	free (val);
+	return NULL;
+
+}
+
+static x_list_t *
+xmmsc_deserialize_dict (xmms_ipc_msg_t *msg)
+{
+	unsigned int entries;
+	unsigned int i;
+	unsigned int len;
+	x_list_t *n = NULL;
+	char *key;
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &entries)) {
+		return NULL;
+	}
+
+	for (i = 1; i <= entries; i++) {
+		xmmsc_result_value_t *val;
+
+		if (!xmms_ipc_msg_get_string_alloc (msg, &key, &len)) {
+			goto err;
+		}
+
+		val = xmmsc_result_parse_value (msg);
+		if (!val) {
+			free (key);
+			goto err;
+		}
+
+		n = x_list_append (n, key);
+		n = x_list_append (n, val);
+	}
+
+	return n;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+
+	free_dict_list (n);
+
+	return NULL;
+}
+
+static void
+free_dict_list (x_list_t *list)
+{
+	while (list) {
+		free (list->data); /* key */
+		list = x_list_delete_link (list, list);
+
+		/* xmmsc_deserialize_dict guarantees that the list is
+		 * well-formed
+		 */
+		assert (list);
+
+		xmmsc_result_value_free (list->data); /* value */
+		list = x_list_delete_link (list, list);
+	}
+}
+
+static int
+source_match_pattern (char* source, char* pattern)
+{
+	int match = 0;
+	int lpos = strlen (pattern) - 1;
+
+	if (strcasecmp (pattern, source) == 0) {
+		match = 1;
+	}
+	else if(lpos >= 0 && pattern[lpos] == '*' &&
+	        (lpos == 0 || strncasecmp (source, pattern, lpos) == 0)) {
+		match = 1;
+	}
+
+	return match;
+}

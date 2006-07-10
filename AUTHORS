@@ -1,30 +1,178 @@
-XMMS2 Hall of Fame!
+##
+## This should be a somewhat complete list of people that have
+## contributed to the XMMS2 project. The format is copied from the
+## CREDITS-file in the Linux kernel source tree. The fields are: name
+## (N), email (E), web-address (W), PGP key ID and fingerprint (P),
+## description (D).
+##
+## This list is sorted alphabetically.
+##
 
-Core:
-Anders Gustafsson <andersg@xmms.org>
-Tobias Rundstr�m <tru@xmms.org>
+N: Peter Alm
+E: peter@xmms.org
+D: Initial design and code. XMMS1 :)
 
-Frequent contributors:
-Sham Chukoury <eleusis@eleusis.f2o.org>
-Michael Lindgren <lindgren@debian.as>
-Tilman Sauerbeck <tilman@code-monkey.de>
+N: Kristian Benoit
+E: softchill@blacky.sympatico.ca
+D: Various fixes.
 
-Contributors:
-Peter Alm <peter@xmms.org>
-Kristian Benoit <softchill@blacky.sympatico.ca>
-Alexander Botero-Lowry <drax@stampede.org>
-Olle H�lln�s <olle@xmms.org>
-Tuure Laurinolli <tuure@laurinolli.net>
-Chris Morgan <cmorgan@alum.wpi.edu>
-Thomas Nilsson <thomas@xmms.org>
-Christopher Rosell <chrippa@evangelion.se>
-Alexander Rigbo <alex@rigbo.se>
-Daniel Svensson <daniel@nittionio.nu>
-Jens Taprogge <jlt_xmms2@shamrock.dyndns.org>
+N: Jonas Berlin
+E: xkr47@outerspace.dyndns.org
+W: http://xkr47.outerspace.dyndns.org/
+D: curl_http updated to xforms, icymetaint plugin (extracted from curl)
 
-Special Thanks to:
-Dismantled / Gary Zon <core@dismantled.com>
-	Supplied us with a great "intro" clip:
-	Taken from the "Breed To Death" EP. Dismantled appears courtesy of
-	Metropolis Records in the US and Dependent Records in Europe.
+N: Magnus Bjernstad
+E: bjernstad@gmail.com
+D: PythonAPI fixes.
 
+N: Alexander Botero-Lowry
+E: drax@stampede.org
+D: *BSD support. Manpages. Various fixes.
+
+N: Sébastien Cevey
+E: seb@cine7.net
+W: http://sirius.cine7.net/
+P: 1024D/AEE9D6B9 B1C7 08AB D8B8 54C6 4002  CD67 92B4 3BB6 AEE9 D6B9
+D: Various fixes.
+
+N: Daniel Chokola
+E: dan@chokola.com
+D: Various fixes.
+
+N: Sham Chukoury
+E: eleusis@xmms.org
+W: http://eleusis.f2o.org/
+D: Truckloads of documentation. Various fixes.
+
+N: Dismantled / Gary Zon
+E: core@dismantled.com
+D: Supplied us with a great "intro" clip:
+D: Taken from the "Breed To Death" EP. Dismantled appears courtesy of
+D: Metropolis Records in the US and Dependent Records in Europe.
+
+N: Franz Endstrasser
+E: franz.endstrasser@gmail.com
+D: Java bindings
+
+N: G. Gallino
+E: ggallino@gmail.com
+D: Equaliser fixes
+
+N: Anders Gustafsson
+E: andersg@xmms.org
+P: 1024D/5D46D966 4186 4775 154B 9E4F 8CE7  A3F8 E165 5471 5D46 D966
+D: Stuff all over the place. Master bitch.
+
+N: Johannes Heimansberg
+E: wejpilot@gmail.com
+D: Fix remove command in cli.
+
+N: Olle Hällnäs
+E: olle@xmms.org
+D: Better seeking in cli.
+
+N: Daniel Kamiñski
+E: maniel.rulez@gmail.com
+D: mlib remove command in cli.
+
+N: Karsten Krispin
+E: karsten@krispin.de
+D: Multiple socket support
+
+N: Tuure Laurinolli
+E: tuure@laurinolli.net
+D: Windows portability.
+
+N: Jonne Lehtinen
+E: jonne.lehtinen@tut.fi
+D: C++ bindings
+
+N: Bernhard Leiner
+E: bleiner@gmail.com
+D: Sun output updates.
+
+N: Michael Lindgren
+E: lindgren@debian.as
+D: Curl. HTML pls plugin. Various fixes.
+
+N: Mind.In.A.Box / Stefan Poiss and Markus Hadwiger
+W: http://www.mindinabox.com/
+D: Supplied us with a great "intro" clip.
+D: Lament for Lost Dreams clip by mind.in.a.box
+D: Copyright (c) by Stefan Poiss and Markus Hadwiger
+
+N: Chris Morgan
+E: cmorgan@alum.wpi.edu
+D: Jack output plugin.
+
+N: Thomas Nilsson
+E: thomas@xmms.org
+D: Bugfixes. XMMS1 expertise.
+
+N: Vegard Nossum
+E: vegard@peltkore.net
+D: IPv6 support. Various fixes.
+
+N: Tobias Nygren
+E: tnn@nygren.pp.se
+D: HP-UX portability
+
+N: Heikki Orsila
+E: heikki.orsila@iki.fi
+D: Cleanups.
+
+N: Daniel Pearson
+E: daniel@nanoo.org
+D: Python XMMSSync-proxy. PythonAPI fixes.
+
+N: Alexander Rigbo
+E: alex@rigbo.se
+D: Various fixes. Sorting on integers.
+
+N: Christopher Rosell
+E: chrippa@evangelion.se
+D: FreeBSD support in cdae plugin.
+
+N: Tobias Rundström
+E: tru@xmms.org
+W: http://tobi.nu/
+P: 1024D/EA0C5340 E203 6001 264C 71CE DBFD  7A95 102A 11D0 EA0C 5340
+D: Stuff all over the map. Release manager.
+
+N: Tilman Sauerbeck
+E: tilman@code-monkey.de
+W: http://www.code-monkey.de/
+P: 1024D/CAD6DB0F 8606 96BC ABE4 FD1B 8A7A  959B DBBB 8B8A CAD6 DB0F
+D: Ruby bindings. Many other things all over the place.
+
+N: Georg Schild
+E: dangertools@gmail.com
+D: Java bindings
+
+N: Daniel Svensson
+E: daniel@nittionio.nu
+D: Musepack. CoreFoundation. Alsa. Gnomevfs. Samba. Sun. Various fixes.
+
+N: Jens Taprogge
+E: jlt_xmms2@shamrock.dyndns.org
+D: Debian packages. Various fixes.
+
+N: Rémi Vanicat
+E: remi.vanicat@gmail.com
+D: SQLite optimizations.
+
+N: Pauli Virtanen
+E: pauli.virtanen@iki.fi
+D: xmmsc_medialib_playlist_list in Python bindings
+
+N: Juho Vähä-Herttua
+E: juhovh@iki.fi
+D: Faad. Various fixes.
+
+N: Michael Walle
+E: michael@walle.cc
+D: playlists_list stuff
+
+N: Ma Xuan
+E: supermmx@163.com
+D: Various fixes.

@@ -1,13 +1,13 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003	Peter Alm, Tobias Rundström, Anders Gustafsson
- * 
+ *  Copyright (C) 2003-2006 XMMS2 Team
+ *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
- * 
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- *                   
+ *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -52,7 +52,7 @@ struct xmms_effect_St {
 	xmms_plugin_t *plugin;
 
 	/* configval for effect.foo.enabled */
-	xmms_config_value_t *cfg_enabled;
+	xmms_config_property_t *cfg_enabled;
 	gboolean enabled;
 };
 
@@ -160,12 +160,7 @@ xmms_effect_new (xmms_plugin_t *plugin)
 	xmms_object_ref (effect->plugin);
 
 	newfunc = xmms_plugin_method_get (plugin, XMMS_PLUGIN_METHOD_NEW);
-	if (!newfunc) {
-		xmms_object_unref (effect->plugin);
-		g_free (effect);
-
-		return NULL;
-	}
+	g_assert (newfunc);
 
 	newfunc (effect);
 
@@ -181,12 +176,15 @@ xmms_effect_new (xmms_plugin_t *plugin)
 
 	effect->destroy = xmms_plugin_method_get (plugin,
 	                                          XMMS_PLUGIN_METHOD_DESTROY);
+	g_assert (effect->destroy);
 
 	/* check whether this plugin is enabled. */
-	effect->cfg_enabled =
-		xmms_plugin_config_value_register (plugin, "enabled", "0",
-		                                   on_enabled_changed, effect);
-	effect->enabled = !!xmms_config_value_int_get (effect->cfg_enabled);
+	effect->cfg_enabled = xmms_plugin_config_lookup (plugin, "enabled");
+	g_assert (effect->cfg_enabled);
+
+	xmms_config_property_callback_set (effect->cfg_enabled,
+	                                   on_enabled_changed, effect);
+	effect->enabled = !!xmms_config_property_get_int (effect->cfg_enabled);
 
 	return effect;
 }
@@ -202,16 +200,36 @@ xmms_effect_free (xmms_effect_t *effect)
 	if (!effect)
 		return;
 
-	if (effect->destroy) {
-		effect->destroy (effect);
-	}
+	effect->destroy (effect);
 
 	xmms_object_unref (effect->plugin);
 
-	xmms_config_value_callback_remove (effect->cfg_enabled,
+	xmms_config_property_callback_remove (effect->cfg_enabled,
 	                                   on_enabled_changed);
 
 	g_free (effect);
+}
+
+gboolean
+xmms_effect_plugin_verify (xmms_plugin_t *plugin)
+{
+	g_return_val_if_fail (plugin, FALSE);
+
+	return xmms_plugin_has_methods (plugin,
+	                                XMMS_PLUGIN_METHOD_NEW,
+	                                XMMS_PLUGIN_METHOD_DESTROY,
+	                                XMMS_PLUGIN_METHOD_PROCESS,
+	                                NULL);
+}
+
+gboolean
+xmms_effect_plugin_register (xmms_plugin_t *plugin)
+{
+	g_return_val_if_fail (plugin, FALSE);
+
+	return !!xmms_plugin_config_property_register (plugin,
+	                                               "enabled", "0",
+	                                               NULL, NULL);
 }
 
 /** @} */
