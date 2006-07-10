@@ -70,7 +70,7 @@ Description: XMMS2 - clientlibrary
 
 Package: libxmms2client++-dev
 Architecture: any
-Depends: debconf (>= 0.2.78), libxmms2client, xmms2-common-dev
+Depends: debconf (>= 0.2.78), libxmms2client, xmms2-common-dev, libboost-signals-dev (>=1.32.0)
 Description: XMMS2 - clientlibrary devel files
  This package contains files for developing C++ XMMS2 clients.
 
