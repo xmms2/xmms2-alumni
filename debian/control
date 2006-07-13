@@ -46,7 +46,7 @@ Description: XMMS2 - phone home package
 Package: xmms2-mdns
 Architecture: any
 Depends: debconf (>= 0.2.78), xmms2-core (= ${Source-Version})
-Description: XMMS2 - phone home package
+Description: XMMS2 - zeroconf support
  This package contains a program making the xmms2 server known to clients
  talking the zerconf protocol.
 
