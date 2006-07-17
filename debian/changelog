@@ -1,3 +1,10 @@
+xmms2 (0.2+git20060717-0) etch; urgency=low
+
+  * New git snapshot: 0.2 DrFeelgood
+    (34e2a5f85adfd6de5044ab1a39a7f26bb17f53b6).
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Mon, 17 Jul 2006 20:25:18 +0200
+
 xmms2 (0.2+git20060707-5) etch; urgency=low
 
   * Fix libxmms2client++-dev dependency.
