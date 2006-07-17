@@ -47,6 +47,12 @@ xmms_xing_get_toc (xmms_xing_t *xing, gint index)
 	return xing->toc[index];
 }
 
+void
+xmms_xing_free (xmms_xing_t *xing)
+{
+	g_free (xing);
+}
+
 xmms_xing_t *
 xmms_xing_parse (struct mad_bitptr ptr)
 {
@@ -56,7 +62,8 @@ xmms_xing_parse (struct mad_bitptr ptr)
 
 	xing_magic = mad_bit_read (&ptr, 4*8);
 
-	if (xing_magic != 0x58696e67) { /* "Xing" */
+	/* Xing or Info */
+	if (xing_magic != 0x58696e67 && xing_magic != 0x496e666f) {
 		return NULL;
 	}
 
