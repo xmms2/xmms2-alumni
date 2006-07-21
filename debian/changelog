@@ -1,3 +1,10 @@
+xmms2 (0.2+git20060717-1) etch; urgency=low
+
+  * Move mind.in.a.box-lament_snipplet.ogg out of xmms2-core into a new
+    separate packege: xmms2-sample. 
+
+ -- Jens L. Taprogge <jens.taprogge@post.rwth-aachen.de>  Fri, 21 Jul 2006 23:44:11 +0200
+
 xmms2 (0.2+git20060717-0) etch; urgency=low
 
   * New git snapshot: 0.2 DrFeelgood
