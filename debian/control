@@ -30,11 +30,17 @@ Package: xmms2-core
 Architecture: any
 Conflicts: xmms2-client-gtk2, xmms2-decoder-sid
 Depends: debconf (>= 0.2.78), xmms2-output, ${shlibs:Depends}
-Recommends: xmms2-decoder-mad, xmms2-decoder-vorbis, xmms2-output-alsa, xmms2-et
+Recommends: xmms2-decoder-mad, xmms2-decoder-vorbis, xmms2-output-alsa, xmms2-et, xmms2-sample
 Suggests: xmms2-client
 Description: XMMS2 - core package
  This package just contains the daemon that loads plugins and allows clients to
  connect.
+
+Package: xmms2-sample
+Architecture: all
+Depends: debconf (>= 0.2.78), xmms2-decoder-vorbis
+Description: XMMS2 - sample file
+  This package provides a sample vorbis file distributed with the XMMS2 source code.
 
 Package: xmms2-et
 Architecture: any
