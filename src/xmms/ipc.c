@@ -110,10 +110,12 @@ static void xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_valu
 typedef gboolean (*xmms_ipc_client_callback_t) (GSource *, xmms_ipc_client_t *);
 typedef gboolean (*xmms_ipc_servers_callback_t) (GSource *, xmms_ipc_t *);
 
+
 static gboolean
 type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg, gint i)
 {
 	guint len;
+	guint size, k;
 
 	arg->values[i].type = type;
 	switch (type) {
@@ -129,6 +131,30 @@ type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_
 			break;
 		case XMMS_OBJECT_CMD_ARG_STRING :
 			if (!xmms_ipc_msg_get_string_alloc (msg, &arg->values[i].value.string, &len)) {
+				return FALSE;
+			}
+			break;
+		case XMMS_OBJECT_CMD_ARG_STRINGLIST :
+			if (!xmms_ipc_msg_get_uint32 (msg, &size)) {
+				return FALSE;
+			}
+			for (k = 0; k < size; k++) {
+				gchar *buf;
+				if (!xmms_ipc_msg_get_string_alloc (msg, &buf, &len) ||
+					!(arg->values[i].value.list = g_list_prepend (arg->values[i].value.list, buf))) {
+					GList * list = arg->values[i].value.list;
+					while (list) {g_free(list->data); list=g_list_remove(list, list); }
+					return FALSE;
+				}
+			}
+			if (!(arg->values[i].value.list = g_list_reverse (arg->values[i].value.list))) {
+				GList * list = arg->values[i].value.list;
+				while (list) {g_free(list->data); list=g_list_remove(list, list); }
+				return FALSE;
+			}
+			break;
+		case XMMS_OBJECT_CMD_ARG_COLL :
+			if (!xmms_ipc_msg_get_collection_alloc (msg, &arg->values[i].value.coll)) {
 				return FALSE;
 			}
 			break;
@@ -216,6 +242,9 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
 		case XMMS_OBJECT_CMD_ARG_DICT:
 			xmms_ipc_do_dict (msg, val->value.dict);
 			break;
+		case XMMS_OBJECT_CMD_ARG_COLL :
+			xmms_ipc_msg_put_collection (msg, val->value.coll);
+			break;
 		case XMMS_OBJECT_CMD_ARG_NONE:
 			break;
 		default:
@@ -302,6 +331,11 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {
 		if (cmd->args[i] == XMMS_OBJECT_CMD_ARG_STRING) {
 			g_free (arg.values[i].value.string);
+		} else if (cmd->args[i] == XMMS_OBJECT_CMD_ARG_STRINGLIST) {
+			GList * list = arg.values[i].value.list;
+			while (list) {g_free(list->data); list=g_list_delete_link(list, list); }
+		} else if (cmd->args[i] == XMMS_OBJECT_CMD_ARG_COLL) {
+			xmmsc_coll_unref (arg.values[i].value.coll);
 		} else if (cmd->args[i] == XMMS_OBJECT_CMD_ARG_BIN) {
 			g_string_free (arg.values[i].value.bin, TRUE);
 		}

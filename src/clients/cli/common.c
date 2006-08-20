@@ -96,7 +96,39 @@ print_entry (const void *key, xmmsc_result_value_type_t type,
 			 const void *value, const gchar *source, void *udata)
 {
 	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
-		print_info ("[%s] %s = %s", source, key, value);
+		/* Ok it's a string, if it's the URL property from the
+		 * server source we need to decode it since it's
+		 * encoded in the server
+		 */
+		if (strcmp (key, "url") == 0 && strcmp(source, "server") == 0) {
+			/* First decode the URL encoding */
+			const gchar *tmp = xmmsc_result_decode_url ((xmmsc_result_t *)udata, value);
+
+			/* Let's see if the result is valid utf-8. This must be done
+			 * since we don't know the charset of the binary string */
+			if (g_utf8_validate (tmp, -1, NULL)) {
+				/* If it's valid utf-8 we don't have any problem just
+				 * printing it to the screen
+				 */
+				print_info ("[%s] %s = %s", source, key, tmp);
+			} else {
+				/* Not valid utf-8 :-( We make a valid guess here that
+				 * the string when it was encoded with URL it was in the
+				 * same charset as we have on the terminal now.
+				 *
+				 * THIS MIGHT BE WRONG since different clients can have
+				 * different charsets and DIFFERENT computers most likely
+				 * have it.
+				 */
+				gchar *tmp2 = g_locale_to_utf8 (tmp, -1, NULL, NULL, NULL);
+				/* Lets add a disclaimer */
+				print_info ("[%s] %s = %s (charset guessed)", source, key, tmp2);
+				g_free (tmp2);
+			}
+		} else {
+			/* Normal strings is ALWAYS utf-8 no problem */
+			print_info ("[%s] %s = %s", source, key, value);
+		}
 	} else {
 		print_info ("[%s] %s = %d", source, key, XPOINTER_TO_INT (value));
 	}
@@ -110,8 +142,7 @@ find_terminal_width() {
 
 	if (!ioctl(STDIN_FILENO, TIOCGWINSZ, &ws)) {
 		columns = ws.ws_col;
-	} 
-	else {
+	} else {
 		colstr = getenv("COLUMNS");
 		if(colstr != NULL) {
 			columns = strtol(colstr, &endptr, 10);
@@ -142,8 +173,7 @@ print_padded_string (gint columns, gchar padchar, gboolean padright, const gchar
 
 	if (padright) {
 		print_info ("%s%s", buf, padstring);
-	}
-	else {
+	} else {
 		print_info ("%s%s", padstring, buf);
 	}
 
@@ -198,20 +228,20 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 		res = xmmsc_medialib_get_info (conn, mid);
 		xmmsc_result_wait (res);
 
-		if (xmmsc_result_get_dict_entry_str (res, "title", &title)) {
+		if (xmmsc_result_get_dict_entry_string (res, "title", &title)) {
 			gchar *artist, *album;
-			if (!xmmsc_result_get_dict_entry_str (res, "artist", &artist)) {
+			if (!xmmsc_result_get_dict_entry_string (res, "artist", &artist)) {
 				artist = "Unknown";
 			}
 
-			if (!xmmsc_result_get_dict_entry_str (res, "album", &album)) {
+			if (!xmmsc_result_get_dict_entry_string (res, "album", &album)) {
 				album = "Unknown";
 			}
 
 			print_info (format_rows, mid, artist, album, title);
 		} else {
 			gchar *url, *filename;
-			xmmsc_result_get_dict_entry_str (res, "url", &url);
+			xmmsc_result_get_dict_entry_string (res, "url", &url);
 			if (url) {
 				filename = g_path_get_basename (url);
 				if (filename) {
@@ -228,4 +258,81 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 
 	g_free (format_header);
 	g_free (format_rows);
+}
+
+xmmsc_coll_t *
+pattern_to_coll (gint num, gchar **pattern)
+{
+	gint i;
+	gchar **s;
+	xmmsc_coll_t *univ = NULL;
+	xmmsc_coll_t *coll = NULL;
+
+	univ = xmmsc_coll_universe ();
+
+	/* More than one condition, intersect them */
+	if (num > 1) {
+		coll = xmmsc_coll_new (XMMS_COLLECTION_TYPE_INTERSECTION);
+	}
+
+	for (i = 0; i < num; i++) {
+		xmmsc_coll_t *match = xmmsc_coll_new (XMMS_COLLECTION_TYPE_MATCH);
+
+		s = g_strsplit (pattern[i], "=", 0);
+		g_assert (s);
+
+		if (!s[0] || !s[1]) {
+			g_strfreev (s);
+			xmmsc_coll_unref (match);
+			if (coll) {
+				xmmsc_coll_unref (coll);
+			}
+
+			return NULL;
+		}
+
+		xmmsc_coll_add_operand (match, univ);
+		xmmsc_coll_attribute_set (match, "field", s[0]);
+		xmmsc_coll_attribute_set (match, "value", s[1]);
+		g_strfreev (s);
+
+		if (coll != NULL) {
+			xmmsc_coll_add_operand (coll, match);
+			xmmsc_coll_unref (match);
+		}
+		else {
+			coll = match;
+		}
+	}
+
+	xmmsc_coll_unref (univ);
+
+	return coll;
+}
+
+/** Extracts collection name and namespace from a string.
+ *
+ * Note that name and namespace must be freed afterwards.
+ */
+gboolean
+coll_read_collname (gchar *str, gchar **name, gchar **namespace)
+{
+	gchar **s;
+
+	s = g_strsplit (str, "/", 0);
+	g_assert (s);
+
+	if (!s[0]) {
+		g_strfreev (s);
+		return FALSE;
+	} else if (!s[1]) {
+		/* No namespace, assume default */
+		*name = s[0];
+		*namespace = g_strdup (CMD_COLL_DEFAULT_NAMESPACE);
+	} else {
+		*name = s[1];
+		*namespace = s[0];
+	}
+
+	return TRUE;
 }

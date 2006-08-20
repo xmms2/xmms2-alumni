@@ -23,6 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <termios.h>
+
+#define CMD_COLL_DEFAULT_NAMESPACE  "Collections"
 
 typedef struct {
 	char *name;
@@ -39,6 +42,7 @@ void print_entry (const void *key, xmmsc_result_value_type_t type,
                   const void *value, const gchar *source, void *udata);
 void format_pretty_list (xmmsc_connection_t *conn, GList *list);
 gint res_has_key (xmmsc_result_t *res, const gchar *key);
-
+xmmsc_coll_t *pattern_to_coll (gint num, gchar **pattern);
+gboolean coll_read_collname (gchar *str, gchar **name, gchar **namespace);
 
 #endif

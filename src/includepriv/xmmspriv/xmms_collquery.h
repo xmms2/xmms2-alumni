@@ -13,22 +13,33 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
  */
-#ifndef __CMD_PLAYBACK_H__
-#define __CMD_PLAYBACK_H__
 
-#include <xmmsclient/xmmsclient.h>
-#include <xmmsclient/xmmsclient-glib.h>
+#ifndef __XMMS_COLLQUERY_H__
+#define __XMMS_COLLQUERY_H__
 
 #include <glib.h>
 
-void cmd_play (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_stop (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_pause (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_next (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_prev (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_seek (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_jump (xmmsc_connection_t *conn, gint argc, gchar **argv);
 
+/*
+ * Public definitions
+ */
+
+#define XMMS_COLLQUERY_DEFAULT_BASE  "url"
+
+
+/*
+ * Private defintions
+ */
+
+#include "xmmsc/xmmsc_coll.h"
+#include "xmmspriv/xmms_collection.h"
+
+
+/*
+ * Public functions
+ */
+
+GString* xmms_collection_get_query (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, guint limit_start, guint limit_len, GList *order, GList *fetch, GList *group);
 
 
 #endif

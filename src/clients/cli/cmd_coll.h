@@ -13,22 +13,25 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
  */
-#ifndef __CMD_PLAYBACK_H__
-#define __CMD_PLAYBACK_H__
+#ifndef __CMD_COLL_H__
+#define __CMD_COLL_H__
 
 #include <xmmsclient/xmmsclient.h>
 #include <xmmsclient/xmmsclient-glib.h>
 
 #include <glib.h>
+#include <string.h>
 
-void cmd_play (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_stop (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_pause (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_next (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_prev (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_seek (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_jump (xmmsc_connection_t *conn, gint argc, gchar **argv);
+void cmd_coll (xmmsc_connection_t *conn, gint argc, gchar **argv);
 
+void cmd_coll_save (xmmsc_connection_t *conn, gint argc, gchar **argv);
+void cmd_coll_rename (xmmsc_connection_t *conn, gint argc, gchar **argv);
+void cmd_coll_list (xmmsc_connection_t *conn, gint argc, gchar **argv);
+void cmd_coll_query (xmmsc_connection_t *conn, gint argc, gchar **argv);
+void cmd_coll_find (xmmsc_connection_t *conn, gint argc, gchar **argv);
+void cmd_coll_get (xmmsc_connection_t *conn, gint argc, gchar **argv);
+void cmd_coll_remove (xmmsc_connection_t *conn, gint argc, gchar **argv);
+void cmd_coll_attr (xmmsc_connection_t *conn, gint argc, gchar **argv);
 
 
 #endif

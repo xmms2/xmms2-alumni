@@ -13,22 +13,34 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
  */
-#ifndef __CMD_PLAYBACK_H__
-#define __CMD_PLAYBACK_H__
 
-#include <xmmsclient/xmmsclient.h>
-#include <xmmsclient/xmmsclient-glib.h>
+#ifndef __XMMS_COLLSERIAL_H__
+#define __XMMS_COLLSERIAL_H__
 
 #include <glib.h>
 
-void cmd_play (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_stop (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_pause (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_next (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_prev (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_seek (xmmsc_connection_t *conn, gint argc, gchar **argv);
-void cmd_jump (xmmsc_connection_t *conn, gint argc, gchar **argv);
 
+/*
+ * Public definitions
+ */
+
+#define XMMS_COLLSERIAL_ATTR_ID  "_serialized_id"
+
+
+/*
+ * Private defintions
+ */
+
+#include "xmmsc/xmmsc_coll.h"
+#include "xmmspriv/xmms_collection.h"
+
+
+/*
+ * Public functions
+ */
+
+void xmms_collection_dag_restore (xmms_coll_dag_t *dag);
+void xmms_collection_dag_save (xmms_coll_dag_t *dag);
 
 
 #endif

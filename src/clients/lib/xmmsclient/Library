@@ -6,11 +6,12 @@ systemlibrary=True
 
 source=["ipc.c", 
 	"medialib.c", 
-	"other.c", 
+	"config.c", 
+	"collection.c", 
+	"stats.c", 
 	"playback.c", 
 	"playlist.c", 
 	"result.c", 
-	"xlist.c", 
 	"xqueue.c",
 	"xmmsclient.c",
 	"bindata.c"]
@@ -18,11 +19,15 @@ source=["ipc.c",
 def config(env):
 	env.Append(LIBS=["xmmsipc"])
 	env.Append(LIBS=["xmmssocket"])
+	env.Append(LIBS=["xmmstypes"])
 	if env.platform == 'win32':
 		env["SHLIBPREFIX"] = ""
 		env.Append(LIBS=["ws2_32"])
 		env.Append(LINKFLAGS=["/DEF:src/clients/lib/xmmsclient/xmmsclient.def"])
+	elif env.platform == 'sunos5':
+		env.checklib("socket", "socket", fail=True)
 	env.Append(CPPPATH=["#src/includepriv"])
 	env.Prepend(LIBPATH="src/lib/xmmsipc")
 	env.Prepend(LIBPATH="src/lib/xmmssocket")
+	env.Prepend(LIBPATH="src/lib/xmmstypes")
 	env.Append(CPPFLAGS=['-DUSERCONFDIR=\\"'+env.userconfpath+'\\"'])
