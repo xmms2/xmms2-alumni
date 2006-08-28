@@ -4,6 +4,7 @@ Python bindings for XMMS2.
 
 cdef extern from "stdlib.h":
 	void *malloc(int size)
+	void *free(void *ptr)
 
 cdef extern from "Python.h":
 	object PyUnicode_DecodeUTF8(char *unicode, int size, char *errors)
@@ -12,6 +13,7 @@ cdef extern from "Python.h":
 
 cdef extern from "string.h":
 	int strcmp(signed char *s1, signed char *s2)
+	int strdup(char *str)
 
 cdef extern from "xmmsc/xmmsc_idnumbers.h":
 	ctypedef enum xmms_object_cmd_arg_type_t:
@@ -239,18 +241,28 @@ cdef from_unicode(object o):
 	else:
 		return o
 
-# FIXME: This method won't return since it can't convert char ** to 
-#        Python Object. Coax into returning the ctype instead.
-cdef from_list(object o):
-	cdef char **prl 
-	prl = <char **>malloc(len(o)+1 * sizeof(char*))
-
-	for a in o:
-		i = o.index(a)
-		prl[i]=<char *>a
-		prl = prl + 1
-	prl[i+1] = NULL
-	return <char **>prl
+cdef class _ListConverter:
+	cdef char **lst
+	cdef int leng
+       
+	def __init__(self, inlist):
+		cdef int i
+		self.leng = len(inlist)
+		self.lst = <char **>malloc((self.leng + 1)* sizeof(char*))
+       
+		i = 0
+		while i < self.leng:
+			tmp = inlist[i]
+			self.lst[i] = strdup(tmp)
+			i = i + 1
+			self.lst[i] = NULL
+       
+	def __del__(self):
+		i = 0
+		while i < self.leng:
+			free(self.lst[i])
+			i = i + 1
+		free(self.lst) 
 
 cdef foreach_source_hash(signed char *key, xmmsc_result_value_type_t type, void *value, char *source, udata):
 	if type == XMMSC_RESULT_VALUE_TYPE_STRING:
@@ -1199,16 +1211,16 @@ cdef class XMMS:
 		"""
 		cdef XMMSResult ret
 		cdef char **prl  
-		prl = from_list(props)
+		prl = _ListConverter(props)
 	
 		ret = XMMSResult(self)
 		ret.callback = cb
 
 		if playist is not None:
 			pl = from_unicode(playlist)
-			ret.res = xmmsc_playlist_sort(self.conn, pl, prl)
+			ret.res = xmmsc_playlist_sort(self.conn, pl, prl.lst)
 		else:
-			ret.res = xmmsc_playlist_sort(self.conn, NULL, prl)
+			ret.res = xmmsc_playlist_sort(self.conn, NULL, prl.lst)
 			
 		ret.more_init()
 		
