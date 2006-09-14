@@ -182,15 +182,39 @@ source_match_pattern (gchar* source, gchar* pattern)
 	return match;
 }
 
+static gint
+find_source_index (xmms_medialib_t *mlib, gint srcid, const guchar *srcpref)
+{
+	gint index = -1;
+	gchar *source_name;
+	gchar **split;
+	gint i;
+
+	g_mutex_lock (mlib->source_lock);
+	source_name = g_hash_table_lookup (mlib->sources, (gpointer)srcid);
+	g_mutex_unlock (mlib->source_lock);
+	
+	split = g_strsplit ((gchar *)srcpref, ":", 0);
+
+	for (i = 0; split[i]; i++) {
+		if (source_match_pattern (source_name, split[i])) {
+			index = i;
+			break;
+		}
+	}
+
+	g_strfreev (split);
+
+	return index;
+}
+
 static void
 xmms_sqlite_source_pref (sqlite3_context *context, int args, sqlite3_value **val)
 {
 	gint source;
 	const guchar *pref;
-	gchar **split;
 	xmms_medialib_t *mlib;
-	gchar *source_name;
-	gint i;
+	gint index;
 
 	mlib = sqlite3_user_data (context);
 
@@ -206,22 +230,101 @@ xmms_sqlite_source_pref (sqlite3_context *context, int args, sqlite3_value **val
 	source = sqlite3_value_int (val[0]);
 	pref = sqlite3_value_text (val[1]);
 
-	g_mutex_lock (mlib->source_lock);
-	source_name = g_hash_table_lookup (mlib->sources, (gpointer)source);
-	g_mutex_unlock (mlib->source_lock);
-	
-	split = g_strsplit ((gchar *)pref, ":", 0);
+	index = find_source_index (mlib, source, pref);
+	sqlite3_result_int (context, index);
+}
 
-	for (i = 0; split[i]; i++) {
-		if (source_match_pattern (source_name, split[i])) {
-			sqlite3_result_int (context, i);
-			g_strfreev (split);
-			return;
-		}
+static void
+xmms_sqlite_source_group (sqlite3_context *context, int args, sqlite3_value **val)
+{
+	gint source;
+	const guchar *pref;
+	xmms_medialib_t *mlib;
+	gint index;
+
+	gint id;
+
+	mlib = sqlite3_user_data (context);
+
+	if (sqlite3_value_type(val[0]) != SQLITE_INTEGER) {
+		sqlite3_result_error (context, "First argument to xmms_source_pref should be a integer", -1);
+		return;
+	}
+	if (sqlite3_value_type(val[1]) != SQLITE3_TEXT) {
+		sqlite3_result_error (context, "Second argument to xmms_source_pref should be a string", -1);
+		return;
+	}
+	if (sqlite3_value_type(val[2]) != SQLITE_INTEGER) {
+		sqlite3_result_error (context, "Third argument to xmms_source_pref should be a integer", -1);
+		return;
 	}
 
-	g_strfreev (split);
-	sqlite3_result_int (context, -1);
+	source = sqlite3_value_int (val[0]);
+	pref = sqlite3_value_text (val[1]);
+	id = sqlite3_value_int (val[2]);
+
+	index = find_source_index (mlib, source, pref) + id * 100;
+	sqlite3_result_int (context, index);
+}
+
+static void
+xmms_sqlite_source_val_step (sqlite3_context *context, int args, sqlite3_value **val)
+{
+	gint source;
+	const guchar *pref;
+	xmms_medialib_t *mlib;
+	guint num_sources = 1;
+	gint index;
+	sqlite3_value** acc;
+	gint i;
+
+	mlib = sqlite3_user_data (context);
+
+	if (sqlite3_value_type(val[0]) != SQLITE_INTEGER) {
+		sqlite3_result_error (context, "First argument to xmms_source_val should be a integer", -1);
+		return;
+	}
+	if (sqlite3_value_type(val[2]) != SQLITE3_TEXT) {
+		sqlite3_result_error (context, "Third argument to xmms_source_val should be a string", -1);
+		return;
+	}
+
+	source = sqlite3_value_int (val[0]);
+	pref = sqlite3_value_text (val[2]);
+
+	for (i = 0; pref[i] != '\0'; i++) {
+		num_sources++;
+	}
+
+	index = find_source_index (mlib, source, pref);
+
+	acc = sqlite3_aggregate_context (context, num_sources * sizeof (sqlite3_value*));
+	acc[index] = val[1];
+	XMMS_DBG ("SOURCEVAL: STEP index=%d %d %d", index, (int)val[1], *(int*)val[1]);
+}
+
+static void
+xmms_sqlite_source_val_final (sqlite3_context *context)
+{
+	xmms_medialib_t *mlib;
+	guint num_sources;
+	sqlite3_value** acc;
+	gint i;
+
+	mlib = sqlite3_user_data (context);
+	num_sources = 3;  /* FIXME: Count ':' + 1 */
+
+	acc = sqlite3_aggregate_context (context, 0); /* FIXME: num_sources * sizeof (sqlite3_value*)); */
+	for (i = 0; i < num_sources; i++) {
+		if (acc[i] != NULL) {
+			XMMS_DBG ("SOURCEVAL FINAL: %d (%d) FOUND", i, (int)acc[i]);
+			sqlite3_result_value (context, acc[i]);
+			break;
+		}
+		XMMS_DBG ("SOURCEVAL FINAL: %d null", i);
+	}
+
+	sqlite3_result_null (context);
 }
 
 int
@@ -270,6 +373,11 @@ xmms_medialib_session_new (const char *file, int line)
 	session->source_pref = g_strdup ("server:plugin/*");
 	sqlite3_create_function (session->sql, "xmms_source_pref", 2, SQLITE_UTF8,
 	                         session->medialib, xmms_sqlite_source_pref, NULL, NULL);
+	sqlite3_create_function (session->sql, "xmms_source_group", 2, SQLITE_UTF8,
+	                         session->medialib, xmms_sqlite_source_group, NULL, NULL);
+	sqlite3_create_function (session->sql, "xmms_source_val", 3, SQLITE_UTF8,
+	                         session->medialib, NULL, xmms_sqlite_source_val_step,
+	                         xmms_sqlite_source_val_final);
 
 	if (create) {
 		xmms_medialib_entry_t entry;

@@ -162,6 +162,7 @@ static GString*
 xmms_collection_gen_query (coll_query_t *query)
 {
 	GString *qstring;
+	int i;
 
 	/* If no alias base yet (m0), select the default base property */
 	if (query->alias_base == NULL) {
@@ -181,17 +182,35 @@ xmms_collection_gen_query (coll_query_t *query)
 	}
 
 	/* Append grouping */
+/*
+	g_string_append (qstring, " GROUP BY m0.id");
+	for (i = 0; i < query->alias_count; i++) {
+		g_string_append_printf (qstring, ", m%d.key", i);
+
+	}
+*/
 	if (query->params->group != NULL) {
 		g_string_append (qstring, " GROUP BY ");
 		query_string_append_alias_list (query, qstring, query->params->group);
 	}
 
 	/* Append ordering */
+/*
+	g_string_append (qstring, " ORDER BY ");
+	for (i = 0; i < query->alias_count; i++) {
+		if (i > 0) {
+			g_string_append (qstring, ", ");
+		}
+		g_string_append_printf (qstring, "xmms_source_pref(m%d.source, \"server:plugin/file\")", i);
+	}
+*/
 	/* FIXME: Ordering is Teh Broken (source?) */
+
 	if (query->params->order != NULL) {
 		g_string_append (qstring, " ORDER BY ");
 		query_string_append_alias_list (query, qstring, query->params->order);
 	}
+
 
 	/* Append limit */
 	if (query->params->limit_len != 0) {
