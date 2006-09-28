@@ -269,8 +269,6 @@ xmms_collection_remove (xmms_coll_dag_t *dag, gchar *name, gchar *namespace, xmm
 	gboolean retval = FALSE;
 	guint i;
 
-	XMMS_DBG("COLLECTIONS: Entering xmms_collection_remove");
-
 	nsid = xmms_collection_get_namespace_id (namespace);
 	if (nsid == XMMS_COLLECTION_NSID_INVALID) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "invalid collection namespace");
@@ -314,8 +312,6 @@ xmms_collection_save (xmms_coll_dag_t *dag, gchar *name, gchar *namespace,
 	guint nsid;
 	gchar *alias;
 	gchar *newkey = NULL;
-
-	XMMS_DBG("COLLECTIONS: Entering xmms_collection_save");
 
 	nsid = xmms_collection_get_namespace_id (namespace);
 	if (nsid == XMMS_COLLECTION_NSID_INVALID) {
@@ -378,8 +374,6 @@ xmms_collection_save (xmms_coll_dag_t *dag, gchar *name, gchar *namespace,
 		XMMS_PLAYLIST_COLLECTION_CHANGED_MSG (dag->playlist, newkey);
 	}
 
-	XMMS_DBG("COLLECTIONS: xmms_collection_save, end");
-
 	return TRUE;
 }
 
@@ -399,8 +393,6 @@ xmms_collection_get (xmms_coll_dag_t *dag, gchar *name, gchar *namespace, xmms_e
 {
 	xmmsc_coll_t *coll = NULL;
 	guint nsid;
-
-	XMMS_DBG("COLLECTIONS: Entering xmms_collection_get");
 
 	nsid = xmms_collection_get_namespace_id (namespace);
 	if (nsid == XMMS_COLLECTION_NSID_INVALID) {
@@ -423,8 +415,6 @@ xmms_collection_get (xmms_coll_dag_t *dag, gchar *name, gchar *namespace, xmms_e
 	
 	g_mutex_unlock (dag->mutex);
 
-	XMMS_DBG("COLLECTIONS: xmms_collection_get, end");
-
 	return coll;
 }
 
@@ -433,6 +423,7 @@ xmms_collection_get (xmms_coll_dag_t *dag, gchar *name, gchar *namespace, xmms_e
  *
  * @param dag  The collection DAG.
  * @param namespace  The namespace to list collections from (can be ALL).
+ * @param err  If an error occurs, a message is stored in it.
  * @returns A newly allocated GList with the list of collection names.
  * Remember that it is only the LIST that is copied. Not the entries.
  * The entries are however referenced, and must be unreffed!
@@ -442,8 +433,6 @@ xmms_collection_list (xmms_coll_dag_t *dag, gchar *namespace, xmms_error_t *err)
 {
 	GList *r = NULL;
 	guint nsid;
-
-	XMMS_DBG("COLLECTIONS: Entering xmms_collection_list");
 
 	nsid = xmms_collection_get_namespace_id (namespace);
 	if (nsid == XMMS_COLLECTION_NSID_INVALID) {
@@ -458,8 +447,6 @@ xmms_collection_list (xmms_coll_dag_t *dag, gchar *namespace, xmms_error_t *err)
 
 	g_mutex_unlock (dag->mutex);
 
-	XMMS_DBG("COLLECTIONS: xmms_collection_list, end");
-
 	return r;
 }   
 
@@ -469,6 +456,7 @@ xmms_collection_list (xmms_coll_dag_t *dag, gchar *namespace, xmms_error_t *err)
  * @param dag  The collection DAG.
  * @param mid  The id of the media.
  * @param namespace  The namespace in which to look for collections.
+ * @param err  If an error occurs, a message is stored in it.
  * @returns A newly allocated GList with the names of the matching collections.
  */
 GList *
@@ -527,6 +515,8 @@ xmms_collection_find (xmms_coll_dag_t *dag, guint mid, gchar *namespace, xmms_er
  * @param from_name  The name of the collection to rename.
  * @param to_name  The new name of the collection.
  * @param namespace  The namespace to consider (cannot be ALL).
+ * @param err  If an error occurs, a message is stored in it.
+ * @return True if a collection was found and renamed.
  */
 gboolean xmms_collection_rename (xmms_coll_dag_t *dag, gchar *from_name,
                                  gchar *to_name, gchar *namespace,
@@ -597,6 +587,7 @@ gboolean xmms_collection_rename (xmms_coll_dag_t *dag, gchar *from_name,
  * @param lim_start  The beginning index of the LIMIT statement (0 to disable).
  * @param lim_len  The number of entries of the LIMIT statement (0 to disable).
  * @param order  The list of properties to order by (NULL to disable).
+ * @param err  If an error occurs, a message is stored in it.
  * @return A list of media ids.
  */
 GList *
@@ -634,6 +625,7 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
  * @param order  The list of properties to order by, prefix by '-' to invert (NULL to disable).
  * @param fetch  The list of properties to be retrieved (NULL to only retrieve id).
  * @param group  The list of properties to group by (NULL to disable).
+ * @param err  If an error occurs, a message is stored in it.
  * @return A list of property dicts for each entry.
  */
 GList *
@@ -667,8 +659,6 @@ xmms_collection_query_infos (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 	xmms_medialib_end (session);
 
 	g_string_free (query, TRUE);
-
-	XMMS_DBG ("COLLECTIONS: done");
 
 	return res;
 }
@@ -730,7 +720,7 @@ xmms_collection_get_pointer (xmms_coll_dag_t *dag, gchar *collname, guint nsid)
  * @return TRUE if attribute correctly read, FALSE otherwise
  */
 gboolean
-xmms_collection_get_int_attr (xmmsc_coll_t *coll, gchar *attrname, guint *val)
+xmms_collection_get_int_attr (xmmsc_coll_t *coll, gchar *attrname, gint *val)
 {
 	gboolean retval = FALSE;
 	gint buf;
@@ -869,10 +859,10 @@ xmms_collection_destroy (xmms_object_t *object)
  *
  * @param dag  The collection DAG.
  * @param coll  The collection to validate.
- * @param name  The name under which the collection will be saved (NULL
- *              if none).
- * @param namespace  The namespace in which the collection will be
- *                   saved (NULL if none).
+ * @param save_name  The name under which the collection will be saved (NULL
+ *                   if none).
+ * @param save_namespace  The namespace in which the collection will be
+ *                        saved (NULL if none).
  * @returns  True if the collection is valid, false otherwise.
  */
 static gboolean
@@ -904,9 +894,10 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
                                  gchar *save_name, gchar *save_namespace)
 {
 	guint num_operands = 0;
-	xmmsc_coll_t *op;
+	xmmsc_coll_t *op, *ref;
 	gchar *attr, *attr2;
 	gboolean valid = TRUE;
+	xmmsc_coll_type_t type;
 	xmms_collection_namespace_id_t nsid;
 
 	/* count operands */
@@ -922,11 +913,11 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 
 
 	/* analyse by type */
-	switch (xmmsc_coll_get_type (coll)) {
+	type = xmmsc_coll_get_type (coll);
+	switch (type) {
 	case XMMS_COLLECTION_TYPE_REFERENCE:
-		/* no operand */
-		if (num_operands > 0) {
-			XMMS_DBG("COLLECTIONS: validation, num_operands (ref)");
+		/* zero or one (bound in DAG) operand */
+		if (num_operands > 1) {
 			return FALSE;
 		}
 
@@ -935,32 +926,40 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 		xmmsc_coll_attribute_get (coll, "namespace", &attr2);
 		if (strcmp (attr, "All Media") != 0) {
 			if (attr == NULL || attr2 == NULL) {
-				XMMS_DBG("COLLECTIONS: validation, ref no attr");
 				return FALSE;
 			}
 
 			nsid = xmms_collection_get_namespace_id (attr2);
 			if (nsid == XMMS_COLLECTION_NSID_INVALID) {
-				XMMS_DBG("COLLECTIONS: validation, ref invalid ns");
 				return FALSE;
 			}
 
 			g_mutex_lock (dag->mutex);
-			op = xmms_collection_get_pointer (dag, attr, nsid);
-			if (op == NULL) {
-				XMMS_DBG("COLLECTIONS: validation, ref invalid coll");
+			ref = xmms_collection_get_pointer (dag, attr, nsid);
+			if (ref == NULL) {
 				g_mutex_unlock (dag->mutex);
 				return FALSE;
 			}
 
 			/* check if the referenced coll references this one (loop!) */
 			if (save_name && save_namespace &&
-			    xmms_collection_has_reference_to (dag, op, save_name, save_namespace)) {
-				XMMS_DBG("COLLECTIONS: validation, ref loop");
+			    xmms_collection_has_reference_to (dag, ref, save_name, save_namespace)) {
 				g_mutex_unlock (dag->mutex);
 				return FALSE;
 			}
 			g_mutex_unlock (dag->mutex);
+		}
+
+		/* ensure that the operand is consistent with the reference infos */
+		if (num_operands == 1) {
+			xmmsc_coll_operand_list_save (coll);
+			xmmsc_coll_operand_list_first (coll);
+			xmmsc_coll_operand_list_entry (coll, &op);
+			xmmsc_coll_operand_list_restore (coll);
+
+			if (op != ref) {
+				return FALSE;
+			}
 		}
 		break;
 
@@ -968,7 +967,6 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 	case XMMS_COLLECTION_TYPE_INTERSECTION:
 		/* need operand(s) */
 		if (num_operands == 0) {
-			XMMS_DBG("COLLECTIONS: validation, num_operands (set)");
 			return FALSE;
 		}
 		break;
@@ -976,7 +974,6 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 	case XMMS_COLLECTION_TYPE_COMPLEMENT:
 		/* one operand */
 		if (num_operands != 1) {
-			XMMS_DBG("COLLECTIONS: validation, num_operands (complement)");
 			return FALSE;
 		}
 		break;
@@ -984,14 +981,12 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 	case XMMS_COLLECTION_TYPE_HAS:
 		/* one operand */
 		if (num_operands != 1) {
-			XMMS_DBG("COLLECTIONS: validation, num_operands (filter)");
 			return FALSE;
 		}
 
 		/* "field" attribute */
 		/* with valid value */
 		if (!xmmsc_coll_attribute_get (coll, "field", &attr)) {
-			XMMS_DBG("COLLECTIONS: validation, field");
 			return FALSE;
 		}
 		break;
@@ -1002,14 +997,12 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 	case XMMS_COLLECTION_TYPE_GREATER:
 		/* one operand */
 		if (num_operands != 1) {
-			XMMS_DBG("COLLECTIONS: validation, num_operands (filter)");
 			return FALSE;
 		}
 
 		/* "field"/"value" attributes */
 		/* with valid values */
 		if (!xmmsc_coll_attribute_get (coll, "field", &attr)) {
-			XMMS_DBG("COLLECTIONS: validation, field");
 			return FALSE;
 		}
 		/* FIXME: valid fields?
@@ -1019,7 +1012,6 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 		*/
 
 		if (!xmmsc_coll_attribute_get (coll, "value", &attr)) {
-			XMMS_DBG("COLLECTIONS: validation, value");
 			return FALSE;
 		}
 		break;
@@ -1028,7 +1020,6 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 	case XMMS_COLLECTION_TYPE_QUEUE:
 		/* no operand */
 		if (num_operands > 0) {
-			XMMS_DBG("COLLECTIONS: validation, num_operands (idlist)");
 			return FALSE;
 		}
 		break;
@@ -1036,31 +1027,32 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 	case XMMS_COLLECTION_TYPE_PARTYSHUFFLE:
 		/* one operand */
 		if (num_operands != 1) {
-			XMMS_DBG("COLLECTIONS: validation, num_operands (party shuffle)");
 			return FALSE;
 		}
 		break;
 
 	/* invalid type */
 	default:
-		XMMS_DBG("COLLECTIONS: validation, invalid type");
 		return FALSE;
 		break;
 	}
 
 
 	/* recurse in operands */
-	xmmsc_coll_operand_list_save (coll);
+	if (num_operands > 0 && type != XMMS_COLLECTION_TYPE_REFERENCE) {
+		xmmsc_coll_operand_list_save (coll);
 
-	xmmsc_coll_operand_list_first (coll);
-	while (xmmsc_coll_operand_list_entry (coll, &op) && valid) {
-		if (!xmms_collection_validate_recurs (dag, op, save_name, save_namespace)) {
-			valid = FALSE;
+		xmmsc_coll_operand_list_first (coll);
+		while (xmmsc_coll_operand_list_entry (coll, &op) && valid) {
+			if (!xmms_collection_validate_recurs (dag, op, save_name,
+			                                      save_namespace)) {
+				valid = FALSE;
+			}
+			xmmsc_coll_operand_list_next (coll);
 		}
-		xmmsc_coll_operand_list_next (coll);
-	}
 
-	xmmsc_coll_operand_list_restore (coll);
+		xmmsc_coll_operand_list_restore (coll);
+	}
 
 	return valid;
 }

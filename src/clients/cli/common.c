@@ -24,7 +24,7 @@ res_has_key (xmmsc_result_t *res, const gchar *key)
 
 
 gchar *
-format_url (gchar *item)
+format_url (gchar *item, GFileTest test)
 {
 	gchar *url, rpath[PATH_MAX], *p;
 
@@ -36,7 +36,7 @@ format_url (gchar *item)
 			return NULL;
 		}
 
-		if (!g_file_test (rpath, G_FILE_TEST_IS_REGULAR)) {
+		if (!g_file_test (rpath, test)) {
 			return NULL;
 		}
 
@@ -260,56 +260,6 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 	g_free (format_rows);
 }
 
-xmmsc_coll_t *
-pattern_to_coll (gint num, gchar **pattern)
-{
-	gint i;
-	gchar **s;
-	xmmsc_coll_t *univ = NULL;
-	xmmsc_coll_t *coll = NULL;
-
-	univ = xmmsc_coll_universe ();
-
-	/* More than one condition, intersect them */
-	if (num > 1) {
-		coll = xmmsc_coll_new (XMMS_COLLECTION_TYPE_INTERSECTION);
-	}
-
-	for (i = 0; i < num; i++) {
-		xmmsc_coll_t *match = xmmsc_coll_new (XMMS_COLLECTION_TYPE_MATCH);
-
-		s = g_strsplit (pattern[i], "=", 0);
-		g_assert (s);
-
-		if (!s[0] || !s[1]) {
-			g_strfreev (s);
-			xmmsc_coll_unref (match);
-			if (coll) {
-				xmmsc_coll_unref (coll);
-			}
-
-			return NULL;
-		}
-
-		xmmsc_coll_add_operand (match, univ);
-		xmmsc_coll_attribute_set (match, "field", s[0]);
-		xmmsc_coll_attribute_set (match, "value", s[1]);
-		g_strfreev (s);
-
-		if (coll != NULL) {
-			xmmsc_coll_add_operand (coll, match);
-			xmmsc_coll_unref (match);
-		}
-		else {
-			coll = match;
-		}
-	}
-
-	xmmsc_coll_unref (univ);
-
-	return coll;
-}
-
 /** Extracts collection name and namespace from a string.
  *
  * Note that name and namespace must be freed afterwards.
@@ -335,4 +285,32 @@ coll_read_collname (gchar *str, gchar **name, gchar **namespace)
 	}
 
 	return TRUE;
+}
+
+/** Return an escaped version of the string, with \-protected chars. */
+char *
+string_escape (const char *s)
+{
+	int i, w;
+	int esc_chars;
+	char *res;
+
+	esc_chars = 0;
+	for (i = 0; s[i] != '\0'; i++) {
+		if (s[i] == '\\' || s[i] == ' ' || s[i] == '"' || s[i] == '\'') {
+			esc_chars++;
+		}
+	}
+
+	res = g_new0 (char, strlen (s) + esc_chars + 1);
+	for (i = 0, w = 0; s[i] != '\0'; i++, w++) {
+		if (s[i] == '\\' || s[i] == ' ' || s[i] == '"' || s[i] == '\'') {
+			res[w] = '\\';
+			w++;
+		}
+
+		res[w] = s[i];
+	}
+
+	return res;
 }

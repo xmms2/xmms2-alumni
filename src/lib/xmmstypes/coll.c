@@ -55,9 +55,9 @@ static int xmmsc_coll_idlist_resize (xmmsc_coll_t *coll, size_t newsize);
 
 
 /**
- * @defgroup Collection Collection
- * @ingroup XMMSClient
- * @brief This performs everything related to collections.
+ * @defgroup CollectionStructure CollectionStructure
+ * @ingroup Collections
+ * @brief The API to be used to work with collection structures.
  *
  * @{
  */
@@ -281,7 +281,10 @@ xmmsc_coll_idlist_insert (xmmsc_coll_t *coll, unsigned int id, unsigned int inde
 {
 	int i;
 	x_return_val_if_fail (coll, 0);
-	x_return_val_if_fail (index <= (coll->idlist_size - 1), 0);
+
+	if (index >= coll->idlist_size) {
+		return 0;
+	}
 
 	/* We need more memory, reallocate */
 	if (coll->idlist_size == coll->idlist_allocated) {
@@ -315,8 +318,10 @@ xmmsc_coll_idlist_move (xmmsc_coll_t *coll, unsigned int index, unsigned int new
 	uint32_t tmp;
 
 	x_return_val_if_fail (coll, 0);
-	x_return_val_if_fail (index <= (coll->idlist_size - 1), 0);
-	x_return_val_if_fail (newindex <= (coll->idlist_size - 1), 0);
+
+	if ((index >= coll->idlist_size) || (newindex >= coll->idlist_size)) {
+		return 0;
+	}
 
 	tmp = coll->idlist[index];
 	if (index < newindex) {
@@ -390,7 +395,10 @@ int
 xmmsc_coll_idlist_get_index (xmmsc_coll_t *coll, unsigned int index, uint32_t *val)
 {
 	x_return_val_if_fail (coll, 0);
-	x_return_val_if_fail (index < (coll->idlist_size - 1), 0);
+
+	if (index >= (coll->idlist_size - 1)) {
+		return 0;
+	}
 
 	*val = coll->idlist[index];
 
@@ -408,11 +416,27 @@ int
 xmmsc_coll_idlist_set_index (xmmsc_coll_t *coll, unsigned int index, uint32_t val)
 {
 	x_return_val_if_fail (coll, 0);
-	x_return_val_if_fail (index < (coll->idlist_size - 1), 0);
+
+	if (index >= (coll->idlist_size - 1)) {
+		return 0;
+	}
 
 	coll->idlist[index] = val;
 
 	return 1;
+}
+
+/**
+ * Get the size of the idlist.
+ * @param coll  The collection to update.
+ * @return  The size of the idlist.
+ */
+size_t
+xmmsc_coll_idlist_get_size (xmmsc_coll_t *coll)
+{
+	x_return_val_if_fail (coll, 0);
+
+	return coll->idlist_size;
 }
 
 
@@ -462,6 +486,20 @@ xmmsc_coll_operand_list_first (xmmsc_coll_t *coll)
 	coll->curr_op = coll->operands;
 
 	return 1;
+}
+
+/**
+ * Checks if the internal pointer points to a valid operand of the list.
+ *
+ * @param coll  The collection to consider.
+ * @return 1 if the current operand is valid, 0 otherwise.
+ */
+int
+xmmsc_coll_operand_list_valid (xmmsc_coll_t *coll)
+{
+	x_return_val_if_fail (coll, 0);
+
+	return (coll->curr_op != NULL);
 }
 
 /**

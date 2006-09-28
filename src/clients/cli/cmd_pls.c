@@ -37,7 +37,7 @@ add_item_to_playlist (xmmsc_connection_t *conn, gchar *playlist, gchar *item)
 	xmmsc_result_t *res;
 	gchar *url;
 
-	url = format_url (item);
+	url = format_url (item, G_FILE_TEST_IS_REGULAR);
 	if (!url) {
 		print_error ("Invalid url");
 	}
@@ -56,52 +56,9 @@ add_item_to_playlist (xmmsc_connection_t *conn, gchar *playlist, gchar *item)
 }
 
 
-static void
-add_directory_to_playlist (xmmsc_connection_t *conn, gchar *playlist,
-                           gchar *directory, gboolean recursive)
-{
-	GSList *entries = NULL;
-	const gchar *entry;
-	gchar *buf;
-	GDir *dir;
-
-	dir = g_dir_open (directory, 0, NULL);
-	if (!dir) {
-		print_error ("cannot open directory: %s", directory);
-	}
-
-	while ((entry = g_dir_read_name (dir))) {
-		entries = g_slist_prepend (entries, g_strdup (entry));
-	}
-	g_dir_close (dir);
-
-	/* g_dir_read_name() will return the entries in a undefined
-	 * order, so sort the list now.
-	 */
-	entries = g_slist_sort (entries, (GCompareFunc) strcmp);
-
-	while (entries) {
-		buf = g_build_path (G_DIR_SEPARATOR_S, directory, 
-		                    entries->data, NULL);
-
-		if (g_file_test (buf, G_FILE_TEST_IS_DIR)) {
-			if (recursive) {
-				add_directory_to_playlist (conn, playlist, buf, recursive);
-			}
-		} else {
-			add_item_to_playlist (conn, playlist, buf);
-		}
-
-		g_free (buf);
-		g_free (entries->data);
-		entries = g_slist_delete_link (entries, entries);
-	}
-}
-
 static gchar *
-get_playlist_type_string (xmmsc_coll_t *coll)
+get_playlist_type_string (xmmsc_coll_type_t type)
 {
-	xmmsc_coll_type_t type = xmmsc_coll_get_type (coll);
 	switch (type) {
 	case XMMS_COLLECTION_TYPE_IDLIST:        return "list";
 	case XMMS_COLLECTION_TYPE_QUEUE:         return "queue";
@@ -111,11 +68,22 @@ get_playlist_type_string (xmmsc_coll_t *coll)
 }
 
 static void
+coll_remove_operands (xmmsc_coll_t *coll)
+{
+	xmmsc_coll_t *curr;
+
+	xmmsc_coll_operand_list_first (coll);
+	while (xmmsc_coll_operand_list_entry (coll, &curr)) {
+		xmmsc_coll_remove_operand (coll, curr);
+		xmmsc_coll_operand_list_first (coll);
+	}
+}
+
+static void
 playlist_setup_pshuffle (xmmsc_connection_t *conn, xmmsc_coll_t *coll, gchar *ref)
 {
 	xmmsc_result_t *psres;
-	xmmsc_coll_t *pscoll;
-	xmmsc_coll_t *op;
+	xmmsc_coll_t *refcoll;
 	gchar *s_name, *s_namespace;
 
 	if (!coll_read_collname (ref, &s_name, &s_namespace)) {
@@ -128,15 +96,15 @@ playlist_setup_pshuffle (xmmsc_connection_t *conn, xmmsc_coll_t *coll, gchar *re
 	if (xmmsc_result_iserror (psres)) {
 		print_error ("%s", xmmsc_result_get_error (psres));
 	}
-	xmmsc_result_get_collection (psres, &pscoll);
 
-	/* Remove previous operands */
-	xmmsc_coll_operand_list_first (coll);
-	while (xmmsc_coll_operand_list_entry (coll, &op)) {
-		xmmsc_coll_remove_operand (coll, op);
-	}
+	refcoll = xmmsc_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
+	xmmsc_coll_attribute_set (refcoll, "reference", s_name);
+	xmmsc_coll_attribute_set (refcoll, "namespace", s_namespace);
 
-	xmmsc_coll_add_operand (coll, pscoll);
+	/* Remove previous operands, and new operand */
+	coll_remove_operands (coll);
+	xmmsc_coll_add_operand (coll, refcoll);
+	xmmsc_coll_unref (refcoll);
 }
 
 
@@ -218,7 +186,7 @@ cmd_addpls (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		xmmsc_result_t *res;
 		gchar *url;
 
-		url = format_url (argv[i]);
+		url = format_url (argv[i], G_FILE_TEST_IS_REGULAR);
 		if (!url) {
 			print_error ("Invalid url");
 		}
@@ -258,7 +226,7 @@ cmd_add (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	for (i = 2; argv[i]; i++) {
 		/* FIXME: Fulhack to check for optional playlist argument */
-		if (i == 2 && !g_file_test (argv[i], G_FILE_TEST_EXISTS)) {
+		if (i == 2 && argc > 3 && !g_file_test (argv[i], G_FILE_TEST_EXISTS)) {
 			playlist = argv[i];
 		}
 
@@ -278,9 +246,9 @@ cmd_addarg (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		print_error ("Need a filename and args to add");
 	}
 
-	url = format_url (argv[2]);
+	url = format_url (argv[2], G_FILE_TEST_IS_REGULAR);
 	if (!url) {
-		url = format_url (argv[3]);
+		url = format_url (argv[3], G_FILE_TEST_IS_REGULAR);
 		if (!url) {
 			print_error ("Invalid url");
 		} else {
@@ -321,12 +289,12 @@ cmd_insert (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	pos = strtol (argv[2], endptr, 10);
 	if (**endptr == '\0') {
-		url = format_url (argv[3]);  /* No playlist name */
+		url = format_url (argv[3], G_FILE_TEST_IS_REGULAR);  /* No playlist name */
 	}
 	else {
 		playlist = argv[2];  /* extract playlist name */
 		pos = strtol (argv[3], NULL, 10);
-		url = format_url (argv[4]);
+		url = format_url (argv[4], G_FILE_TEST_IS_REGULAR);
 	}
 
 	if (!url) {
@@ -385,23 +353,40 @@ void
 cmd_radd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *playlist = NULL;
+	xmmsc_result_t *res;
 	gint i;
 
 	if (argc < 3) {
-		print_error ("Need a directory to add");
+		print_error ("Missing argument(s)");
 	}
 
-	for (i = 2; argv[i]; i++) {
-		if (i == 2 && !g_file_test (argv[i], G_FILE_TEST_EXISTS)) {
+	for (i = 2; i < argc; i++) {
+		gchar *rfile;
+
+		if (i == 2 && argc > 3 && !g_file_test (argv[i], G_FILE_TEST_EXISTS)) {
 			playlist = argv[i];
-		} else if (!g_file_test (argv[i], G_FILE_TEST_IS_DIR)) {
-			print_info ("not a directory: %s", argv[i]);
-		} else {
-			add_directory_to_playlist (conn, playlist, argv[i], TRUE);
+			continue;
 		}
+
+		rfile = format_url (argv[i], G_FILE_TEST_IS_DIR);
+		if (!rfile) {
+			print_info ("Ignoring invalid path '%s'", argv[i]);
+			continue;
+		}
+
+		res = xmmsc_playlist_radd (conn, playlist, rfile);
+		g_free (rfile);
+
+		xmmsc_result_wait (res);
+
+		if (xmmsc_result_iserror (res)) {
+			print_info ("Cannot add path '%s': %s",
+			            argv[i], xmmsc_result_get_error (res));
+		}
+
+		xmmsc_result_unref (res);
 	}
 }
-
 
 void
 cmd_clear (xmmsc_connection_t *conn, gint argc, gchar **argv)
@@ -443,30 +428,48 @@ cmd_shuffle (xmmsc_connection_t *conn, gint argc, gchar **argv)
 }
 
 
+const gchar **
+copy_string_array (gchar **array, gint num)
+{
+	gint i;
+	const gchar **ret;
+
+	ret = g_new (const gchar*, num + 1);
+
+	for (i = 0; i < num; i++) {
+		ret[i] = array[i];
+	}
+	ret[i] = NULL;
+
+	return ret;
+}
+
 void
 cmd_sort (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *playlist;
-	const gchar *sortby;
+	const gchar **sortby;
 	xmmsc_result_t *res;
 	
 	if (argc < 3) {
 		print_error ("Sort needs a property to sort on, %d", argc);
 	} else if (argc == 3) {
 		playlist = NULL;
-		sortby = argv[2];
+		sortby = copy_string_array (&argv[2], argc - 2);
 	} else {
 		playlist = argv[2];
-		sortby = argv[3];
+		sortby = copy_string_array (&argv[3], argc - 3);
 	}
-	
-	res = xmmsc_playlist_sort (conn, playlist, &sortby);
+
+	res = xmmsc_playlist_sort (conn, playlist, sortby);
 	xmmsc_result_wait (res);
 
 	if (xmmsc_result_iserror (res)) {
 		print_error ("%s", xmmsc_result_get_error (res));
 	}
 	xmmsc_result_unref (res);
+
+	g_free (sortby);
 }
 
 
@@ -713,7 +716,7 @@ void
 cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *name;
-	xmmsc_coll_type_t type;
+	xmmsc_coll_type_t prevtype, newtype;
 	xmmsc_result_t *res;
 	xmmsc_coll_t *coll;
 	gint typelen;
@@ -733,11 +736,11 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	xmmsc_result_get_collection (res, &coll);
-
+	prevtype = xmmsc_coll_get_type (coll);
 
 	/* No type argument, simply display the current type */
 	if (argc < 5) {
-		print_info (get_playlist_type_string (coll));
+		print_info (get_playlist_type_string (prevtype));
 
 	/* Type argument, set the new type */
 	} else {
@@ -745,11 +748,17 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 		typelen = strlen (argv[4]);
 		if (g_ascii_strncasecmp (argv[4], "list", typelen) == 0) {
-			type = XMMS_COLLECTION_TYPE_IDLIST;
+			newtype = XMMS_COLLECTION_TYPE_IDLIST;
+			if (prevtype == XMMS_COLLECTION_TYPE_PARTYSHUFFLE) {
+				coll_remove_operands (coll);
+			}
 		} else if (g_ascii_strncasecmp (argv[4], "queue", typelen) == 0) {
-			type = XMMS_COLLECTION_TYPE_QUEUE;
+			newtype = XMMS_COLLECTION_TYPE_QUEUE;
+			if (prevtype == XMMS_COLLECTION_TYPE_PARTYSHUFFLE) {
+				coll_remove_operands (coll);
+			}
 		} else if (g_ascii_strncasecmp (argv[4], "pshuffle", typelen) == 0) {
-			type = XMMS_COLLECTION_TYPE_PARTYSHUFFLE;
+			newtype = XMMS_COLLECTION_TYPE_PARTYSHUFFLE;
 
 			/* Setup operand for party shuffle ! */
 			if (argc < 6) {
@@ -762,7 +771,7 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		}
 
 		/* Update type and save back */
-		xmmsc_coll_set_type (coll, type);
+		xmmsc_coll_set_type (coll, newtype);
 		saveres = xmmsc_coll_save (conn, coll, name, "Playlists");
 		xmmsc_result_wait (saveres);
 
@@ -832,7 +841,7 @@ cmd_playlist_import (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		print_error ("Supply a playlist name and url");
 	}
 
-	url = format_url (argv[4]);
+	url = format_url (argv[4], G_FILE_TEST_IS_REGULAR);
 	if (!url) {
 		print_error ("Invalid url");
 	}

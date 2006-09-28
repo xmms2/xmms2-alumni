@@ -278,6 +278,9 @@ cmd_coll_save (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	gchar *name, *namespace;
 	xmmsc_coll_t *coll = NULL;
 	xmmsc_result_t *res;
+	gchar *pattern;
+	gchar **args;
+	int i;
 
 	if (argc < 5) {
 		print_error ("usage: coll save [collname] [pattern]");
@@ -287,7 +290,22 @@ cmd_coll_save (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		print_error ("invalid collection name");
 	}
 
-	coll = pattern_to_coll (argc - 4, argv + 4);
+	args = g_new0 (char*, argc - 3);
+	for (i = 0; i < argc - 4; i++) {
+		args[i] = string_escape (argv[i + 4]);
+	}
+	args[i] = NULL;
+
+	pattern = g_strjoinv (" ", args);
+	if (!xmmsc_coll_parse (pattern, &coll)) {
+		print_error ("Unable to generate query");
+	}
+
+	for (i = 0; i < argc - 4; i++) {
+		g_free (args[i]);
+	}
+
+	g_free (pattern);
 
 	res = xmmsc_coll_save (conn, coll, name, namespace);
 	xmmsc_result_wait (res);
@@ -361,7 +379,7 @@ void
 cmd_coll_query (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *name, *namespace;
-	const gchar **order = NULL;
+	gchar **order = NULL;
 	xmmsc_coll_t *collref;
 	xmmsc_result_t *res;
 	GList *n = NULL;
@@ -385,7 +403,7 @@ cmd_coll_query (xmmsc_connection_t *conn, gint argc, gchar **argv)
  	xmmsc_coll_attribute_set (collref, "reference", name);
  	xmmsc_coll_attribute_set (collref, "namespace", namespace);
 
-	res = xmmsc_coll_query_ids (conn, collref, order, 0, 0);
+	res = xmmsc_coll_query_ids (conn, collref, (const gchar**)order, 0, 0);
 	xmmsc_result_wait (res);
 
 	if (xmmsc_result_iserror (res)) {

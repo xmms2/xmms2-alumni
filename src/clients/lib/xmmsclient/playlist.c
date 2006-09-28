@@ -175,6 +175,7 @@ xmmsc_playlist_list_entries (xmmsc_connection_t *c, const char *playlist)
  * Insert a medialib id at given position in playlist. 
  *
  * @param c The connection structure.
+ * @param playlist The playlist in which to insert the media.
  * @param pos A position in the playlist
  * @param id A medialib id.
  *
@@ -203,6 +204,7 @@ xmmsc_playlist_insert_id (xmmsc_connection_t *c, const char *playlist, int pos, 
  * Insert entry at given position in playlist.
  *
  * @param c The connection structure.
+ * @param playlist The playlist in which to insert the media.
  * @param pos A position in the playlist
  * @param url The URL to insert
  *
@@ -217,6 +219,7 @@ xmmsc_playlist_insert_url (xmmsc_connection_t *c, const char *playlist, int pos,
  * Insert entry at given position in playlist wit args.
  *
  * @param c The connection structure.
+ * @param playlist The playlist in which to insert the media.
  * @param pos A position in the playlist
  * @param url The URL to insert
  * @param numargs The number of arguments
@@ -225,13 +228,13 @@ xmmsc_playlist_insert_url (xmmsc_connection_t *c, const char *playlist, int pos,
 xmmsc_result_t *
 xmmsc_playlist_insert_args (xmmsc_connection_t *c, const char *playlist, int pos, const char *url, int numargs, const char **args)
 {
-	xmms_ipc_msg_t *msg;
+	xmmsc_result_t *res;
 	char *enc_url;
 
 	x_check_conn (c, NULL);
 	x_api_error_if (!url, "with a NULL url", NULL);
 
-	enc_url = xmmsc_medialib_encode_url (url, numargs, args);
+	enc_url = _xmmsc_medialib_encode_url (url, numargs, args);
 	if (!enc_url)
 		return NULL;
 
@@ -240,10 +243,35 @@ xmmsc_playlist_insert_args (xmmsc_connection_t *c, const char *playlist, int pos
 		playlist = "_active";
 	}
 	
+	res = xmmsc_playlist_insert_encoded (c, playlist, pos, enc_url);
+	free (enc_url);
+
+	return res;
+}
+
+/**
+ * Insert entry at given position in playlist.
+ * Same as #xmmsc_playlist_insert but takes an encoded
+ * url instead.
+ *
+ * @param c The connection structure.
+ * @param playlist The playlist in which to insert the media.
+ * @param pos A position in the playlist
+ * @param url The URL to insert
+ *
+ */
+xmmsc_result_t *
+xmmsc_playlist_insert_encoded (xmmsc_connection_t *c, const char *playlist, int pos, const char *url)
+{
+	xmms_ipc_msg_t *msg;
+
+	if (!_xmmsc_medialib_verify_url (url))
+		x_api_error ("with a non encoded url", NULL);
+
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_PLAYLIST, XMMS_IPC_CMD_INSERT_URL);
 	xmms_ipc_msg_put_string (msg, playlist);
 	xmms_ipc_msg_put_uint32 (msg, pos);
-	xmms_ipc_msg_put_string (msg, enc_url);
+	xmms_ipc_msg_put_string (msg, url);
 
 	return xmmsc_send_msg (c, msg);
 }
@@ -256,6 +284,7 @@ xmmsc_playlist_insert_args (xmmsc_connection_t *c, const char *playlist, int pos
  * @param playlist The playlist in which to insert the media.
  * @param pos A position in the playlist
  * @param coll The collection to find media in the medialib.
+ * @param order The list of properties by which to order the matching media.
  */
 xmmsc_result_t *
 xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist,
@@ -286,6 +315,7 @@ xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist,
  * Add a medialib id to the playlist. 
  *
  * @param c The connection structure.
+ * @param playlist The playlist in which to add the media.
  * @param id A medialib id.
  *
  */
@@ -314,6 +344,7 @@ xmmsc_playlist_add_id (xmmsc_connection_t *c, const char *playlist, unsigned int
  * the url to. ie: file://mp3/my_mp3s/first.mp3.
  *
  * @param c The connection structure.
+ * @param playlist The playlist in which to add the media.
  * @param url path.
  *
  */
@@ -324,24 +355,91 @@ xmmsc_playlist_add_url (xmmsc_connection_t *c, const char *playlist, const char 
 }
 
 /**
+ * Adds a directory recursivly to the playlist. The url should be absolute to the
+ * server-side. Note that you will have to include the protocol for
+ * the url to. ie: file://mp3/my_mp3s/first.mp3.
+ *
+ * @param c The connection structure.
+ * @param playlist The playlist in which to add the media.
+ * @param url path.
+ *
+ */
+xmmsc_result_t *
+xmmsc_playlist_radd (xmmsc_connection_t *c, const char *playlist, const char *url)
+{
+	xmmsc_result_t *res;
+	char *enc_url;
+
+	x_check_conn (c, NULL);
+	x_api_error_if (!url, "with a NULL url", NULL);
+
+	enc_url = _xmmsc_medialib_encode_url (url, 0, NULL);
+	if (!enc_url)
+		return NULL;
+
+	res = xmmsc_playlist_radd_encoded (c, playlist, enc_url);
+
+	free (enc_url);
+
+	return res;
+}
+
+/**
+ * Adds a directory recursivly to the playlist.
+ *
+ * The url should be absolute to the server-side and url encoded. Note
+ * that you will have to include the protocol for the url to. ie:
+ * file://mp3/my_mp3s/first.mp3. You probably want to use
+ * #xmmsc_playlist_radd unless you want to add a string that comes as
+ * a result from the daemon, such as from #xmms_xform_media_browse
+ *
+ * @param c The connection structure.
+ * @param playlist The playlist in which to add the media.
+ * @param url Encoded path.
+ *
+ */
+xmmsc_result_t *
+xmmsc_playlist_radd_encoded (xmmsc_connection_t *c, const char *playlist, const char *url)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (c, NULL);
+	x_api_error_if (!url, "with a NULL url", NULL);
+
+	if (!_xmmsc_medialib_verify_url (url))
+		x_api_error ("with a non encoded url", NULL);
+
+	/* default to the active playlist */
+	if (playlist == NULL) {
+		playlist = "_active";
+	}
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_PLAYLIST, XMMS_IPC_CMD_RADD);
+	xmms_ipc_msg_put_string (msg, playlist);
+	xmms_ipc_msg_put_string (msg, url);
+
+	return xmmsc_send_msg (c, msg);
+}
+
+/**
  * Add the url to the playlist with arguments.
  *
  * @param c The connection structure.
+ * @param playlist The playlist in which to add the media.
  * @param url path.
- * @param numargs The number of arguments
+ * @param nargs The number of arguments
  * @param args array of numargs strings used as arguments
  */
 xmmsc_result_t *
 xmmsc_playlist_add_args (xmmsc_connection_t *c, const char *playlist, const char *url, int nargs, const char **args)
 {
 	xmmsc_result_t *res;
-	xmms_ipc_msg_t *msg;
 	char *enc_url;
 
 	x_check_conn (c, NULL);
 	x_api_error_if (!url, "with a NULL url", NULL);
 
-	enc_url = xmmsc_medialib_encode_url (url, nargs, args);
+	enc_url = _xmmsc_medialib_encode_url (url, nargs, args);
 	if (!enc_url)
 		return NULL;
 
@@ -349,15 +447,38 @@ xmmsc_playlist_add_args (xmmsc_connection_t *c, const char *playlist, const char
 	if (playlist == NULL) {
 		playlist = "_active";
 	}
-	
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_PLAYLIST, XMMS_IPC_CMD_ADD_URL);
-	xmms_ipc_msg_put_string (msg, playlist);
-	xmms_ipc_msg_put_string (msg, enc_url);
-	res = xmmsc_send_msg (c, msg);
 
+	res = xmmsc_playlist_add_encoded (c, playlist, enc_url);	
 	free (enc_url);
 
 	return res;
+}
+
+
+/**
+ * Add the url to the playlist. The url should be absolute to the
+ * server-side AND encoded.
+ *
+ * @param c The connection structure.
+ * @param playlist The playlist in which to add the media.
+ * @param url path.
+ *
+ */
+xmmsc_result_t *
+xmmsc_playlist_add_encoded (xmmsc_connection_t *c, const char *playlist, const char *url)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (c, NULL);
+	x_api_error_if (!url, "with a NULL url", NULL);
+
+	if (!_xmmsc_medialib_verify_url (url))
+		x_api_error ("with a non encoded url", NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_PLAYLIST, XMMS_IPC_CMD_ADD_URL);
+	xmms_ipc_msg_put_string (msg, playlist);
+	xmms_ipc_msg_put_string (msg, url);
+	return xmmsc_send_msg (c, msg);
 }
 
 /**
@@ -367,6 +488,7 @@ xmmsc_playlist_add_args (xmmsc_connection_t *c, const char *playlist, const char
  * @param c The connection structure.
  * @param playlist The playlist in which to add the media.
  * @param coll The collection to find media in the medialib.
+ * @param order The list of properties by which to order the matching media.
  */
 xmmsc_result_t *
 xmmsc_playlist_add_collection (xmmsc_connection_t *c, const char *playlist,
@@ -418,6 +540,8 @@ xmmsc_playlist_move_entry (xmmsc_connection_t *c, const char *playlist,
 /**
  * Remove an entry from the playlist.
  *
+ * @param c The connection structure.
+ * @param playlist The playlist in which to add the media.
  * @param pos The position that should be removed from the playlist.
  *
  * @sa xmmsc_playlist_list

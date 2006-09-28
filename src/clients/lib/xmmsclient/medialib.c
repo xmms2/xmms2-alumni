@@ -54,7 +54,7 @@ do_methodcall (xmmsc_connection_t *conn, unsigned int id, const char *arg)
  * @param len Length of target
  * @param fmt A format string to use. You can insert items from the hash by
  * using specialformat "${field}".
- * @param table The x_hash_t that you got from xmmsc_result_get_mediainfo
+ * @param res The #xmmsc_result_t that contains the dict.
  * @returns The number of chars written to #target
  */
 
@@ -160,6 +160,22 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res)
 }
 
 /**
+ * Make a SQL query to the server medialib. The result will contain
+ * a list of dicts.
+ * \deprecated { This function is now deprecated, use the collection
+ * API instead! If it does not suffice, file a bug. }
+ * @param conn The #xmmsc_connection_t
+ * @param query The SQL query.
+ */
+xmmsc_result_t *
+xmmsc_medialib_select (xmmsc_connection_t *conn, const char *query)
+{
+	x_check_conn (conn, NULL);
+
+	return do_methodcall (conn, XMMS_IPC_CMD_SELECT, query);
+}
+
+/**
  * Search for a entry (URL) in the medialib db and return its ID number
  * @param conn The #xmmsc_connection_t
  * @param url The URL to search for
@@ -223,11 +239,11 @@ xmmsc_medialib_add_entry_args (xmmsc_connection_t *conn, const char *url, int nu
 
 	x_check_conn (conn, NULL);
 
-	enc_url = xmmsc_medialib_encode_url (url, numargs, args);
+	enc_url = _xmmsc_medialib_encode_url (url, numargs, args);
 	if (!enc_url)
 		return NULL;
 
-	res = do_methodcall (conn, XMMS_IPC_CMD_ADD_URL, enc_url);
+	res = xmmsc_medialib_add_entry_encoded (conn, enc_url);
 
 	free (enc_url);
 
@@ -235,10 +251,32 @@ xmmsc_medialib_add_entry_args (xmmsc_connection_t *conn, const char *url, int nu
 }
 
 /**
+ * Add a URL to the medialib. If you want to add mutiple files
+ * you should call #xmmsc_medialib_path_import
+ *
+ * same as #xmmsc_medialib_add_entry but expects a encoded URL
+ * instead
+ *
+ * @param conn The #xmmsc_connection_t
+ * @param url URL to add to the medialib.
+ */
+xmmsc_result_t *
+xmmsc_medialib_add_entry_encoded (xmmsc_connection_t *conn, const char *url)
+{
+	x_check_conn (conn, NULL);
+
+	if (!_xmmsc_medialib_verify_url (url))
+		x_api_error ("with a non encoded url", NULL);
+
+	return do_methodcall (conn, XMMS_IPC_CMD_ADD_URL, url);
+}
+
+/**
  * Import a all files recursivly from the directory passed
  * as argument.
  * @param conn #xmmsc_connection_t
- * @param path A directory to recursive search for mediafiles
+ * @param path A directory to recursive search for mediafiles, this must
+ * 		  include the protocol, i.e file://
  */
 xmmsc_result_t *
 xmmsc_medialib_path_import (xmmsc_connection_t *conn,
@@ -249,11 +287,11 @@ xmmsc_medialib_path_import (xmmsc_connection_t *conn,
 
 	x_check_conn (conn, NULL);
 
-	enc_path = xmmsc_medialib_encode_url (path, 0, NULL);
+	enc_path = _xmmsc_medialib_encode_url (path, 0, NULL);
 	if (!enc_path)
 		return NULL;
 
-	res = do_methodcall (conn, XMMS_IPC_CMD_PATH_IMPORT, enc_path);
+	res = xmmsc_medialib_path_import_encoded (conn, enc_path);
 
 	free (enc_path);
 
@@ -261,8 +299,36 @@ xmmsc_medialib_path_import (xmmsc_connection_t *conn,
 }
 
 /**
+ * Import a all files recursivly from the directory passed as argument
+ * which must already be url encoded. You probably want to use
+ * #xmmsc_medialib_path_import unless you want to add a string that
+ * comes as a result from the daemon, such as from
+ * #xmms_xform_media_browse
+ *
+ * @param conn #xmmsc_connection_t
+ * @param path A directory to recursive search for mediafiles, this must
+ * 		  include the protocol, i.e file://
+ */
+xmmsc_result_t *
+xmmsc_medialib_path_import_encoded (xmmsc_connection_t *conn,
+                                    const char *path)
+{
+	xmmsc_result_t *res;
+
+	x_check_conn (conn, NULL);
+	if (!_xmmsc_medialib_verify_url (path))
+		x_api_error ("with a non encoded url", NULL);
+
+	res = do_methodcall (conn, XMMS_IPC_CMD_PATH_IMPORT, path);
+
+	return res;
+}
+
+/**
  * Rehash the medialib, this will check data in the medialib
  * still is the same as the data in files.
+ *
+ * @param conn #xmmsc_connection_t
  * @param id The id to rehash. Set it to 0 if you want to rehash
  * the whole medialib.
  */
@@ -330,7 +396,7 @@ xmmsc_broadcast_medialib_entry_changed (xmmsc_connection_t *c)
 
 /**
  * Associate a int value with a medialib entry. Uses default
- * source which is client/<clientname>
+ * source which is client/&lt;clientname&gt;
  */
 xmmsc_result_t *
 xmmsc_medialib_entry_property_set_int (xmmsc_connection_t *c, uint32_t id,
@@ -379,7 +445,7 @@ xmmsc_medialib_entry_property_set_int_with_source (xmmsc_connection_t *c,
 
 /**
  * Associate a value with a medialib entry. Uses default
- * source which is client/<clientname>
+ * source which is client/&lt;clientname&gt;
  */
 xmmsc_result_t *
 xmmsc_medialib_entry_property_set_str (xmmsc_connection_t *c, uint32_t id,
@@ -428,7 +494,7 @@ xmmsc_medialib_entry_property_set_str_with_source (xmmsc_connection_t *c,
 
 /** 
  * Remove a custom field in the medialib associated with an entry.
- * Uses default source which is client/<clientname>
+ * Uses default source which is client/&lt;clientname&gt;
  */
 xmmsc_result_t *
 xmmsc_medialib_entry_property_remove (xmmsc_connection_t *c, uint32_t id,
@@ -484,8 +550,20 @@ xmmsc_medialib_entry_property_remove_with_source (xmmsc_connection_t *c,
                      ((a) == '_'))
 
 
+int
+_xmmsc_medialib_verify_url (const char *url)
+{
+	int i;
+
+	for (i = 0; url[i]; i++) {
+		if (!(GOODCHAR (url[i]) || url[i] == '+' || url[i] == '%' || url[i] == '?' || url[i] == '&'))
+			return 0;
+	}
+	return 1;
+}
+
 char *
-xmmsc_medialib_encode_url (const char *url, int narg, const char **args)
+_xmmsc_medialib_encode_url (const char *url, int narg, const char **args)
 {
 	static char hex[16] = "0123456789abcdef";
 	int i = 0, j = 0, extra = 0;

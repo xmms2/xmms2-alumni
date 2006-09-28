@@ -43,8 +43,8 @@ static void cmd_mlib_remove (xmmsc_connection_t *conn,
 cmds mlib_commands[] = {
 	{ "add", "[url] - Add 'url' to medialib", cmd_mlib_add },
 	{ "loadall", "Load everything from the mlib to the playlist", cmd_mlib_loadall },
-	{ "searchadd", "[artist=Dismantled] ... - Search for, and add songs to playlist", cmd_mlib_searchadd },
-	{ "search", "[artist=Dismantled] ... - Search for songs matching criteria", cmd_mlib_search },
+	{ "searchadd", "[artist:Dismantled] ... - Search for, and add songs to playlist", cmd_mlib_searchadd },
+	{ "search", "[artist:Dismantled] ... - Search for songs matching criteria", cmd_mlib_search },
 	{ "addpath", "[path] - Import metadata from all media files under 'path'", cmd_mlib_addpath },
 	{ "rehash", "Force the medialib to check whether its data is up to date", cmd_mlib_rehash },
 	{ "remove", "Remove an entry from medialib", cmd_mlib_remove },
@@ -206,7 +206,7 @@ cmd_mlib_add (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	for (i = 3; argv[i]; i++) {
 		gchar *url;
 		
-		url = format_url (argv[i]);
+		url = format_url (argv[i], G_FILE_TEST_IS_REGULAR);
 		if (url) {
 			res = xmmsc_medialib_add_entry (conn, url);
 			xmmsc_result_wait (res);
@@ -253,17 +253,32 @@ cmd_mlib_searchadd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
 	xmmsc_coll_t *query;
+	gchar *pattern;
+	gchar **args;
+	int i;
 	const gchar *order[] = { NULL };
 
 	if (argc < 4) {
 		print_error ("give a search pattern of the form "
-		             "[field1=val1 [field2=val2 ...]]");
+		             "[field1:val1 [field2:val2 ...]]");
 	}
 
-	query = pattern_to_coll (argc - 3, argv + 3);
-	if (query == NULL) {
+	args = g_new0 (char*, argc - 2);
+	for (i = 0; i < argc - 3; i++) {
+		args[i] = string_escape (argv[i + 3]);
+	}
+	args[i] = NULL;
+
+	pattern = g_strjoinv (" ", args);
+	if (!xmmsc_coll_parse (pattern, &query)) {
 		print_error ("Unable to generate query");
 	}
+
+	for (i = 0; i < argc - 3; i++) {
+		g_free (args[i]);
+	}
+
+	g_free (pattern);
 	
 	/* FIXME: Always add to active playlist: allow loading in other playlist! */
 	res = xmmsc_playlist_add_collection (conn, NULL, query, order);
@@ -276,23 +291,37 @@ cmd_mlib_searchadd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_unref (res);
 }
 
-
 static void
 cmd_mlib_search (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
 	GList *n = NULL;
 	xmmsc_coll_t *query;
+	gchar *pattern;
+	gchar **args;
+	int i;
 
 	if (argc < 4) {
 		print_error ("give a search pattern of the form "
-		             "[field1=val1 [field2=val2 ...]]");
+		             "[field1:val1 [field2:val2 ...]]");
 	}
 
-	query = pattern_to_coll (argc - 3, argv + 3);
-	if (!query) {
+	args = g_new0 (char*, argc - 2);
+	for (i = 0; i < argc - 3; i++) {
+		args[i] = string_escape (argv[i + 3]);
+	}
+	args[i] = NULL;
+
+	pattern = g_strjoinv (" ", args);
+	if (!xmmsc_coll_parse (pattern, &query)) {
 		print_error ("Unable to generate query");
 	}
+
+	for (i = 0; i < argc - 3; i++) {
+		g_free (args[i]);
+	}
+
+	g_free (pattern);
 
 	res = xmmsc_coll_query_ids (conn, query, NULL, 0, 0);
 	xmmsc_result_wait (res);
@@ -324,27 +353,33 @@ static void
 cmd_mlib_addpath (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	gchar rpath[PATH_MAX];
+	gint i;
 
 	if (argc < 4) {
-		print_error ("Supply a path to add!");
+		print_error ("Missing argument(s)");
 	}
 
-	if (!realpath (argv[3], rpath)) {
-		return;
-	}
+	for (i = 3; i < argc; i++) {
+		gchar *rfile;
 
-	if (!g_file_test (rpath, G_FILE_TEST_IS_DIR)) {
-		return;
-	}
+		rfile = format_url (argv[i], G_FILE_TEST_IS_DIR);
+		if (!rfile) {
+			print_info ("Ignoring invalid path '%s'", argv[i]);
+			continue;
+		}
 
-	res = xmmsc_medialib_path_import (conn, rpath);
-	xmmsc_result_wait (res);
+		res = xmmsc_medialib_path_import (conn, rfile);
+		g_free (rfile);
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+		xmmsc_result_wait (res);
+
+		if (xmmsc_result_iserror (res)) {
+			print_info ("Cannot add path '%s': %s",
+			            argv[i], xmmsc_result_get_error (res));
+		}
+
+		xmmsc_result_unref (res);
 	}
-	xmmsc_result_unref (res);
 }
 
 static void

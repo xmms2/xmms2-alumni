@@ -20,6 +20,10 @@
 #include "xmmsc/xmmsc_stdint.h"
 #include "xmmsc/xmmsc_idnumbers.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct xmmsc_coll_St xmmsc_coll_t;
 
 typedef void (*xmmsc_coll_attribute_foreach_func) (const char *key, const char *value, void *udata);
@@ -40,10 +44,12 @@ int xmmsc_coll_idlist_remove (xmmsc_coll_t *coll, unsigned int index);
 int xmmsc_coll_idlist_clear (xmmsc_coll_t *coll);
 int xmmsc_coll_idlist_get_index (xmmsc_coll_t *coll, unsigned int index, uint32_t *val);
 int xmmsc_coll_idlist_set_index (xmmsc_coll_t *coll, unsigned int index, uint32_t val);
+size_t xmmsc_coll_idlist_get_size (xmmsc_coll_t *coll);
 
 xmmsc_coll_type_t xmmsc_coll_get_type (xmmsc_coll_t *coll);
 uint32_t* xmmsc_coll_get_idlist (xmmsc_coll_t *coll);
 int xmmsc_coll_operand_list_first (xmmsc_coll_t *coll);
+int xmmsc_coll_operand_list_valid (xmmsc_coll_t *coll);
 int xmmsc_coll_operand_list_entry (xmmsc_coll_t *coll, xmmsc_coll_t **operand);
 int xmmsc_coll_operand_list_next (xmmsc_coll_t *coll);
 int xmmsc_coll_operand_list_save (xmmsc_coll_t *coll);
@@ -55,5 +61,9 @@ int xmmsc_coll_attribute_get (xmmsc_coll_t *coll, const char *key, char **value)
 void xmmsc_coll_attribute_foreach (xmmsc_coll_t *coll, xmmsc_coll_attribute_foreach_func func, void *user_data);
 
 xmmsc_coll_t* xmmsc_coll_universe ();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif 

@@ -26,6 +26,8 @@
 #include "xmms/xmms_log.h"
 #include "xmmspriv/xmms_sqlite.h"
 #include "xmmspriv/xmms_statfs.h"
+#include "xmmspriv/xmms_collection.h"
+#include "xmmsc/xmmsc_idnumbers.h"
 
 #include <sqlite3.h>
 #include <string.h>
@@ -54,6 +56,11 @@ const char fill_stats[] = "INSERT INTO sqlite_stat1 VALUES('Media', 'key_idx', '
                           "INSERT INTO sqlite_stat1 VALUES('PlaylistEntries', 'playlistentries_idx', '12784 12784 1');"
                           "INSERT INTO sqlite_stat1 VALUES('Playlist', 'playlist_idx', '2 1');"
                           "INSERT INTO sqlite_stat1 VALUES('Playlist', 'sqlite_autoindex_Playlist_1', '2 1');";
+
+const char fill_init_playlist_stm[] = "INSERT INTO CollectionOperators VALUES(1, %d);"
+                                      "INSERT INTO CollectionLabels VALUES(1, %d, 'Default');"
+                                      "INSERT INTO CollectionLabels VALUES(1, %d, '_active');"
+                                      "INSERT INTO CollectionIdlists VALUES(1, 1, 1);";
 
 const char create_idx_stm[] = "create unique index key_idx on Media (id,key,source);"
 						      "create index prop_idx on Media (key,value);"
@@ -150,6 +157,11 @@ upgrade_v29_to_v30 (sqlite3 *sql)
 	sqlite3_exec (sql, create_CollectionLabels_stm, NULL, NULL, NULL);
 	sqlite3_exec (sql, create_CollectionOperators_stm, NULL, NULL, NULL);
 	sqlite3_exec (sql, create_collidx_stm, NULL, NULL, NULL);
+
+	/* Create a default playlist */
+	xmms_sqlite_exec (sql, fill_init_playlist_stm, XMMS_COLLECTION_TYPE_IDLIST,
+	                                               XMMS_COLLECTION_NSID_PLAYLISTS,
+	                                               XMMS_COLLECTION_NSID_PLAYLISTS);
 
 	XMMS_DBG ("done");
 }
@@ -298,6 +310,12 @@ xmms_sqlite_open (gboolean *create)
 		sqlite3_exec (sql, create_idx_stm, NULL, NULL, NULL);
 		sqlite3_exec (sql, create_collidx_stm, NULL, NULL, NULL);
 		sqlite3_exec (sql, set_version_stm, NULL, NULL, NULL);
+		/**
+		 * Create a default playlist
+		 */
+		xmms_sqlite_exec (sql, fill_init_playlist_stm, XMMS_COLLECTION_TYPE_IDLIST,
+		                                               XMMS_COLLECTION_NSID_PLAYLISTS,
+		                                               XMMS_COLLECTION_NSID_PLAYLISTS);
 	}
 
 	sqlite3_create_collation (sql, "INTCOLL", SQLITE_UTF8, NULL, xmms_sqlite_integer_coll);
@@ -351,7 +369,7 @@ xmms_sqlite_exec (sqlite3 *sql, const char *query, ...)
 	ret = sqlite3_exec (sql, q, NULL, NULL, &err);
 	if (ret == SQLITE_BUSY) {
 		xmms_log_fatal ("BUSY EVENT!");
-		g_assert_not_reached();
+		g_assert_not_reached ();
 	}
 	if (ret != SQLITE_OK) {
 		xmms_log_error ("Error in query! \"%s\" (%d) - %s", q, ret, err);
@@ -388,6 +406,7 @@ xmms_sqlite_query_table (sqlite3 *sql, xmms_medialib_row_table_method_t method, 
 
 	if (ret == SQLITE_BUSY) {
 		xmms_log_fatal ("BUSY EVENT!");
+		g_assert_not_reached ();
 	}
 
 	if (ret != SQLITE_OK) {
@@ -424,6 +443,7 @@ xmms_sqlite_query_table (sqlite3 *sql, xmms_medialib_row_table_method_t method, 
 		xmms_log_error ("SQLite api misuse on query '%s'", q);
 	} else if (ret == SQLITE_BUSY) {
 		xmms_log_error ("SQLite busy on query '%s'", q);
+		g_assert_not_reached ();
 	}
 
 	sqlite3_free (q);
@@ -454,7 +474,7 @@ xmms_sqlite_query_array (sqlite3 *sql, xmms_medialib_row_array_method_t method, 
 
 	if (ret == SQLITE_BUSY) {
 		xmms_log_fatal ("BUSY EVENT!");
-		g_assert_not_reached();
+		g_assert_not_reached ();
 	}
 
 	if (ret != SQLITE_OK) {

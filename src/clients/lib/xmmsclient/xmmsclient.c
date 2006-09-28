@@ -140,7 +140,7 @@ xmmsc_send_hello (xmmsc_connection_t *c)
  * 
  * @param c The connection to the server. This must be initialized
  * with #xmmsc_init first.
- * @param ipcpath The IPC path, it's broken down like this: <protocol>://<path>[:<port>].
+ * @param ipcpath The IPC path, it's broken down like this: &lt;protocol&gt;://&lt;path&gt;[:&lt;port&gt;].
  * If ipcpath is %NULL it will default to "unix:///tmp/xmms-ipc-<username>"
  * - Protocol could be "tcp" or "unix"
  * - Path is either the UNIX socket, or the ipnumber of the server.
@@ -296,6 +296,39 @@ xmmsc_broadcast_quit (xmmsc_connection_t *c)
 	x_check_conn (c, NULL);
 
 	return xmmsc_send_broadcast_msg (c, XMMS_IPC_SIGNAL_QUIT);
+}
+
+/**
+ * Get the absolute path to the user config dir.
+ *
+ * @param buf A char buffer
+ * @param len The length of buf (PATH_MAX is a good choice)
+ * @return A pointer to buf, or NULL if an error occurred.
+ */
+const char *
+xmmsc_userconfdir_get (char *buf, int len)
+{
+	struct passwd *pw;
+	char *config_home;
+
+	if (!buf || len <= 0)
+		return NULL;
+
+	config_home = getenv ("XDG_CONFIG_HOME");
+
+	if (config_home && *config_home) {
+		snprintf (buf, len, "%s/xmms2", config_home);
+
+		return buf;
+	}
+
+	pw = getpwuid (getuid ());
+	if (!pw)
+		return NULL;
+
+	snprintf (buf, len, "%s/%s", pw->pw_dir, USERCONFDIR);
+
+	return buf;
 }
 
 
