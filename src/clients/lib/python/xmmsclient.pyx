@@ -13,7 +13,7 @@ cdef extern from "Python.h":
 
 cdef extern from "string.h":
 	int strcmp(signed char *s1, signed char *s2)
-	int strdup(char *str)
+	char *strdup(char *str)
 
 cdef extern from "xmmsc/xmmsc_idnumbers.h":
 	ctypedef enum xmms_object_cmd_arg_type_t:
@@ -245,7 +245,7 @@ cdef class _ListConverter:
 	cdef char **lst
 	cdef int leng
        
-	def __init__(self, inlist):
+	def __new__(self, inlist):
 		cdef int i
 		self.leng = len(inlist)
 		self.lst = <char **>malloc((self.leng + 1)* sizeof(char*))
@@ -1210,7 +1210,7 @@ cdef class XMMS:
 		@return: The result of the operation.
 		"""
 		cdef XMMSResult ret
-		cdef char **prl  
+		cdef _ListConverter prl  
 		prl = _ListConverter(props)
 	
 		ret = XMMSResult(self)
