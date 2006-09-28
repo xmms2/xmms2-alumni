@@ -117,7 +117,6 @@ type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_
 	guint len;
 	guint size, k;
 
-	arg->values[i].type = type;
 	switch (type) {
 		case XMMS_OBJECT_CMD_ARG_NONE:
 			break;
@@ -168,6 +167,7 @@ type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_
 			return FALSE;
 			break;
 	}
+	arg->values[i].type = type;
 	return TRUE;
 }
 

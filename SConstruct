@@ -17,10 +17,10 @@ if changed:
 else:
 	changed = ""
 
-XMMS_VERSION = "0.2 DrFeelgood+WIP+TEST3 (git commit: %s%s)" % (commithash, changed)
+XMMS_VERSION = "0.2 DrGonzo+WIP (git commit: %s%s)" % (commithash, changed)
 
 EnsureSConsVersion(0, 96)
-EnsurePythonVersion(2, 1)
+EnsurePythonVersion(2, 3)
 SConsignFile()
 
 def SimpleListOption(key, help, default=[]):
@@ -59,6 +59,7 @@ opts.Add('PKGCONFIGDIR', 'Where should we put our .pc files?', '$PREFIX/lib/pkgc
 opts.Add(BoolOption('SHOWCACHE', 'show what flags that lives inside cache', 0))
 opts.Add(SimpleListOption('EXCLUDE', 'exclude these modules', []))
 opts.Add(BoolOption('CONFIG', 'run configuration commands again', 0))
+opts.Add(BoolOption('STATIC', 'Link everything static', 0))
 
 # base CCPATH
 base_env = xmmsenv.XMMSEnvironment(options=opts)
