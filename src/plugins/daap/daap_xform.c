@@ -157,11 +157,9 @@ add_song_to_list (GList *url_list, cc_item_record_t *song, gchar* host, guint po
 {
 	GHashTable *h = NULL;
 	gchar *songurl;
-	gchar *sid = g_malloc (G_ASCII_DTOSTR_BUF_SIZE);
 
-	g_ascii_dtostr (sid, G_ASCII_DTOSTR_BUF_SIZE, song->dbid);
-	songurl = g_strdup_printf ("daap://%s:%d/%s.%s",
-	                           host, port, sid, song->song_format);
+	songurl = g_strdup_printf ("daap://%s:%d/%u.%s",
+	                           host, port, song->dbid, song->song_format);
 
 	h = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, NULL);
 
@@ -181,7 +179,6 @@ add_song_to_list (GList *url_list, cc_item_record_t *song, gchar* host, guint po
 	url_list = xmms_xform_browse_add_entry (url_list, songurl, FALSE, h);
 
 	g_hash_table_destroy (h);
-	g_free (sid);
 	g_free (songurl);
 
 	return url_list;
@@ -200,14 +197,12 @@ daap_get_urls_from_server (daap_mdns_server_t *server, GList *url_list, xmms_err
 	host = server->address;
 	port = server->port;
 
-	hash = g_malloc0 (strlen (host) + 5 + 1 + 1);
-	g_sprintf (hash, "%s:%u", host, port);
+	hash = g_strdup_printf ("%s:%u", host, port);
 
 	login_data = g_hash_table_lookup (login_sessions, hash);
 
 	if (!login_data) {
-		login_data = (xmms_daap_login_data_t *)
-		             g_malloc0 (sizeof (xmms_daap_login_data_t));
+		login_data = g_new0 (xmms_daap_login_data_t, 1);
 
 		login_data->session_id = daap_command_login (host, port, 0, err);
 		if (xmms_error_iserror (err)) {
@@ -272,38 +267,27 @@ xmms_daap_init (xmms_xform_t *xform)
 	gchar *command, *hash;
 	guint filesize;
 
-	if (!xform) {
-		return FALSE;
-	}
+	g_return_val_if_fail (xform, FALSE);
 
 	url = xmms_xform_indata_get_str (xform, XMMS_STREAM_TYPE_URL);
 
-	if (!url) {
+	g_return_val_if_fail (url, FALSE);
+
+	data = g_new0 (xmms_daap_data_t, 1);
+	g_return_val_if_fail (data, FALSE);
+
+	if (!get_data_from_url (url, &(data->host), &(data->port), &command)) {
 		return FALSE;
 	}
 
-	data = xmms_xform_private_data_get (xform);
-
-	if (!data) {
-		data = g_malloc0 (sizeof (xmms_daap_data_t));
-		if (!data) {
-			return FALSE;
-		}
-	}
-
-	data->url = g_strdup (url);
-	get_data_from_url (data->url, &(data->host), &(data->port), &command);
-
 	xmms_error_reset (&err);
 
-	hash = g_malloc0 (strlen (data->host) + 5 + 1 + 1);
-	g_sprintf (hash, "%s:%u", data->host, data->port);
+	hash = g_strdup_printf ("%s:%u", data->host, data->port);
 
 	login_data = g_hash_table_lookup (login_sessions, hash);
 	if (!login_data) {
 		XMMS_DBG ("creating login data for %s", hash);
-		login_data = (xmms_daap_login_data_t *)
-		             g_malloc0 (sizeof (xmms_daap_login_data_t));
+		login_data = g_new0 (xmms_daap_login_data_t, 1);
 
 		login_data->request_id = 1;
 		login_data->logged_in = TRUE;
@@ -369,7 +353,6 @@ xmms_daap_destroy (xmms_xform_t *xform)
 	g_io_channel_shutdown (data->channel, TRUE, NULL);
 	g_io_channel_unref (data->channel);
 
-	g_free (data->url);
 	g_free (data->host);
 	g_free (data);
 }
