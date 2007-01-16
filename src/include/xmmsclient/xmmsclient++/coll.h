@@ -28,6 +28,7 @@ namespace Xmms
 {
 
 	class Collection;
+	class CollResult;
 
 	Coll::Coll* extract_collection( xmmsc_result_t* );
 
@@ -148,6 +149,7 @@ namespace Xmms
 
 				friend class OperandIterator;
 				friend class ::Xmms::Collection;
+				friend class ::Xmms::CollResult;
 				friend class IdlistElement;
 				friend class Unary;
 
@@ -252,6 +254,7 @@ namespace Xmms
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 
 			protected:
 				Reference( xmmsc_coll_t* coll );
@@ -275,6 +278,7 @@ namespace Xmms
 		class Union : public Nary
 		{
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
@@ -289,6 +293,7 @@ namespace Xmms
 		class Intersection : public Nary
 		{
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
@@ -303,6 +308,7 @@ namespace Xmms
 		class Complement : public Unary
 		{
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
@@ -318,6 +324,7 @@ namespace Xmms
 		class Has : public Filter
 		{
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
@@ -334,6 +341,7 @@ namespace Xmms
 		class Smaller : public Filter
 		{
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
@@ -353,6 +361,7 @@ namespace Xmms
 		class Greater : public Filter
 		{
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
@@ -372,6 +381,7 @@ namespace Xmms
 		class Match : public Filter
 		{
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
@@ -392,6 +402,7 @@ namespace Xmms
 		class Contains : public Filter
 		{
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
@@ -413,6 +424,7 @@ namespace Xmms
 		{
 			friend class Element;
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
@@ -453,6 +465,7 @@ namespace Xmms
 		class Queue : public Idlist
 		{
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
@@ -470,6 +483,7 @@ namespace Xmms
 		class PartyShuffle : public Queue
 		{
 			friend class ::Xmms::Collection;
+			friend class ::Xmms::CollResult;
 			friend Coll* ::Xmms::extract_collection( xmmsc_result_t* );
 			//template<typename T> friend T* Xmms::extract_value( xmmsc_result_t* );
 
