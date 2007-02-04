@@ -746,7 +746,7 @@ void
 xmms_plugin_destroy (xmms_plugin_t *plugin)
 {
 	g_list_free (plugin->info_list);
-	XMMS_DBG("unloading %s", plugin->shortname);
+	XMMS_DBG ("unloading %s", plugin->shortname);
 	if (plugin->module)
 		g_module_close (plugin->module);
 	xmms_object_unref (plugin);
