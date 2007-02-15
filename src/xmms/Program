@@ -20,32 +20,46 @@ source = ["main.c",
           "converter_plugin.c",
           "ringbuf_xform.c",
           "outputplugin.c",
-		  "statfs.c"]
+		  "statfs.c",
+		  "strfunc.c",
+		  "bindata.c",
+		  "utils.c"]
 
 def config(env):
 	pluginenv = env.Copy()
-	env.Prepend(LIBPATH=["src/lib/xmmsipc"])
-	env.Prepend(LIBPATH=["src/lib/xmmssocket"])
-	env.Append(LIBS=['xmmsipc'])
-	env.Append(LIBS=["xmmssocket"])
-	env.Append(CPPPATH=["#src/includepriv"])
 	env.pkgconfig("glib-2.0 >= 2.6.0", fail=True)
 	env.pkgconfig("gmodule-2.0", fail=True)
 	env.pkgconfig("gthread-2.0", fail=True)
 	env.pkgconfig("sqlite3", fail=True)
+	env.Prepend(LIBPATH=["src/lib/xmmsutils"])
+	env.Prepend(LIBPATH=["src/lib/xmmsipc"])
+	env.Prepend(LIBPATH=["src/lib/xmmssocket"])
+	env.Append(LIBS=["xmmsutils"])
+	env.Append(LIBS=['xmmsipc'])
+	env.Append(LIBS=["xmmssocket"])
+	env.Append(CPPPATH=["#src/includepriv"])
 
 	if env.platform != 'win32':
 		env.checklib("m", "sin", fail=True)
+	if env.platform == 'sunos5':
+		env.checklib("socket", "socket", fail=True)
+		env.Append(CPPDEFINES=['_POSIX_PTHREAD_SEMANTICS'])
 
 	try:
 		env.checkheader("sys/vfs.h")
-		env.Prepend(CPPDEFINES="STATFS_LINUX")
+		if env.platform == 'sunos5':
+			env.Prepend(CPPDEFINES="STATFS_SOLARIS")
+		else:
+			env.Prepend(CPPDEFINES="STATFS_LINUX")
 	except ConfigError:
 		try:
 			env.checkheader("sys/param.h")
 			env.Prepend(CPPDEFINES="STATFS_BSD")
 		except ConfigError:
 			pass
+
+ 	if env.platform == 'darwin':
+ 		env.Append(LINKFLAGS=['-framework', 'CoreFoundation'])
 
 	# we have an xmms2d - we might want plugins!
 	pluginenv.handle_targets("Plugin")

@@ -17,21 +17,36 @@ class ConfigError(Exception):
 
 any = lambda x: reduce(operator.or_, x)
 
-def installFunc(dest, source, env):
+
+def find_static_lib(env, lib):
+	libname = "lib%s.a" % lib
+	for d in env["LIBPATH"] + env.GCC_DIRS:
+		if os.path.exists(d+"/"+libname):
+			return d+"/"+libname
+
+def our_install(dest, source, mode):
 	"""Copy file, setting sane permissions"""
 	
 	if os.path.islink(source):
 		os.symlink(os.readlink(source), dest)
 	else:
 		shutil.copy(source, dest)
-		st = os.stat(source)
-		mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
-		if st[ST_MODE] & S_IXUSR:
-			mode |= S_IXUSR | S_IXGRP | S_IXOTH
 		os.chmod(dest, mode)
 	return 0
 
+def installFunc(dest, source, env):
+	st = os.stat(source)
+	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+	if st[ST_MODE] & S_IXUSR:
+		mode |= S_IXUSR | S_IXGRP | S_IXOTH
+	return our_install(dest, source, mode)
 
+def installFuncExec(dest, source, env):
+	st = os.stat(source)
+	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+	# always
+	mode |= S_IXUSR | S_IXGRP | S_IXOTH
+	return our_install(dest, source, mode)
 
 class Target:
 	def __init__(self, target, env):
@@ -59,6 +74,8 @@ class Target:
 
 	def config(self, env):
 		self.globs.get("config", lambda x: None)(env)
+		self.source = [os.path.join(self.dir, s) for s in self.globs["source"]]
+		self.target = os.path.join(self.dir, self.globs["target"])
 
 class LibraryTarget(Target):
 	def add(self, env):
@@ -76,7 +93,7 @@ class ProgramTarget(Target):
 
 class PluginTarget(Target):
 	def config(self, env):
-		env.pkgconfig("glib-2.0", fail=False, libs=False)
+		env.pkgconfig("glib-2.0", fail=False, libs=True)
 		Target.config(self, env)
 		if isinstance(self.globs.get("output_priority"), int):
 			global default_output
@@ -118,12 +135,12 @@ class XMMSEnvironment(Environment):
 		self.loadable = False
 		self.install_prefix = self["PREFIX"]
 		self.manpath = self["MANDIR"].replace("$PREFIX", self.install_prefix)
-		self.pluginpath = os.path.join(self.install_prefix, "lib/xmms2")
-		self.binpath = os.path.join(self.install_prefix, "bin")
-		self.librarypath = os.path.join(self.install_prefix, "lib")
-		self.sharepath = os.path.join(self.install_prefix, "share/xmms2")
-		self.includepath = os.path.join(self.install_prefix, "include/xmms2")
-		self.scriptpath = os.path.join(self.sharepath, "scripts")
+		self.binpath = self["BINDIR"].replace("$PREFIX", self.install_prefix)
+		self.librarypath = self["LIBDIR"].replace("$PREFIX", self.install_prefix)
+		self.sharepath = self["SHAREDIR"].replace("$PREFIX", self.install_prefix)
+		self.includepath = self["INCLUDEDIR"].replace("$PREFIX", self.install_prefix)
+		self.scriptpath = self["SCRIPTDIR"].replace("$SHAREDIR", self.sharepath)
+		self.pluginpath = self["PLUGINDIR"].replace("$LIBDIR", self.librarypath)
 		self["SHLIBPREFIX"] = "lib"
 		self.shversion = "0"
 
@@ -140,6 +157,15 @@ class XMMSEnvironment(Environment):
 		else:
 			self.platform = sys.platform
 
+		# Where to place the xmms2 user config directory
+		if self.has_key("USERCONFDIR"):
+			self.userconfpath = self["USERCONFDIR"]
+		else:
+			if sys.platform == 'darwin':
+				self.userconfpath = 'Library/xmms2'
+			else:
+				self.userconfpath = '.config/xmms2'
+
 		def gzipper(target, source, env):
 			gzip.GzipFile(target[0].path, 'wb',9).write(file(source[0].path).read())
 		self['BUILDERS']['GZipper'] = SCons.Builder.Builder(action=SCons.Action.Action(gzipper))
@@ -147,15 +173,18 @@ class XMMSEnvironment(Environment):
 		if self.platform == 'darwin':
 			self["SHLINKFLAGS"] = "$LINKFLAGS -multiply_defined suppress -flat_namespace -undefined suppress"
 
+		if "gcc" in self["CC"]:
+			GCC_DIRS=os.popen("%s --print-search-dirs" % self["CC"]).read()
+			self.GCC_DIRS=GCC_DIRS[GCC_DIRS.find("libraries:")+len("libraries: ="):].strip().split(":")
+
 		self.potential_targets = []
 		self.scan_dir("src")
 
-	
 	def Install(self, target, source):
 		target = os.path.normpath(self.installdir + target)
 		SCons.Environment.Environment.Install(self, target, source)
 		self.install_targets.append(target)
-			
+
 	def tryaction(self, cmd):
 		if self.config_cache.has_key(cmd):
 			return self.config_cache[cmd]
@@ -239,6 +268,28 @@ class XMMSEnvironment(Environment):
 				sys.exit(1)
 			raise ConfigError("Headerfile '%s' not found" % header)
 
+	def checkcompiler(self):
+		if not self.config_cache.has_key("c"):
+			print "Checking for working C compiler...",
+			self.config_cache["c"] = self.conf.TryCompile("int main() {}",".c")
+			if self.config_cache["c"]:
+				print "yes"
+			else:
+				print "no"
+		if not self.config_cache["c"]:
+			raise ConfigError("couldn't compile C files")
+
+	def checkcpp(self):
+		if not self.config_cache.has_key("cpp"):
+			print "Checking for working C++ compiler...",
+			self.config_cache["cpp"] = self.conf.TryCompile("using namespace std; int main() {};",".cpp")
+			if self.config_cache["cpp"]:
+				print "yes"
+			else:
+				print "no"
+		if not self.config_cache["cpp"]:
+			raise ConfigError("couldn't compile CPP files")
+
 	def checkcppheader(self, header, fail=False):
         
 		if isinstance(header, list):
@@ -300,14 +351,25 @@ class XMMSEnvironment(Environment):
 
 			if switch == '-':
 				if opt == 'L':
-					self.Append( LIBPATH = [ arg[2:] ] )
+					if not self["STATIC"]:
+						self.Append( LIBPATH = [ arg[2:] ] )
 				elif opt == 'l':
-					self.Append( LIBS = [ arg[2:] ] )
+					if self["STATIC"]:
+						lib = find_static_lib(self, arg[2:])
+						if not lib:
+							self.Append( LIBS = [ "-l"+arg[2:] ] )
+						else:
+							self.Append( LIBS = [ self.File(lib) ])
+					else:
+						self.Append( LIBS = [ arg[2:] ] )
 				elif opt == 'I':
 					self.Append( CPPPATH = [ arg[2:] ] )
 				elif opt == 'D':
 					self.Append( CPPFLAGS = [ arg ] )
 				elif arg[1:] == 'pthread':
+					self.Append( LINKFLAGS = [ arg ] )
+					self.Append( CPPFLAGS = [ arg ] )
+				elif arg[1:] == 'threads':
 					self.Append( LINKFLAGS = [ arg ] )
 					self.Append( CPPFLAGS = [ arg ] )
 				elif arg[1:6] == 'rpath':
@@ -391,6 +453,7 @@ class XMMSEnvironment(Environment):
 			else:
 				if self.platform == 'darwin':
 					self["SHLINKFLAGS"] += " -dynamiclib"
+ 					self["SHLINKFLAGS"] += " -single_module"
 				if install:
 					self.Install(self.librarypath, os.path.join(self.dir, self.shlibname(target)))
 					if self.platform == 'darwin':
@@ -415,7 +478,10 @@ class XMMSEnvironment(Environment):
 		self.Install(os.path.join(self.manpath, "man"+str(section)), source+'.gz')
 
 	def add_script(self, target, source):
-		self.Install(os.path.join(self.scriptpath,target), source)
+		subst = {"%PRG_PATH%":self.binpath}
+		self.SubstInFile(source[:-3], source, SUBST_DICT=subst)
+		self["INSTALL"] = installFuncExec
+		self.Install(os.path.join(self.scriptpath,target), source[:-3])
 
 	def options_changed(self, options, exclude=[]):
 		"""NOTE: This method does not catch changed defaults."""

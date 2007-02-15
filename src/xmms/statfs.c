@@ -16,7 +16,7 @@
 
 
 /** @file
- *  "Portable" statfs 
+ *  "Portable" statfs
  *  Since this file is filled with ugly ifdefs
  *  and other things that we don't like in xmms2
  *  we leave it just with one function.
@@ -34,6 +34,8 @@
 #elif defined(STATFS_BSD)
 #include <sys/param.h>
 #include <sys/mount.h>
+#elif defined(STATFS_SOLARIS)
+#include <sys/statvfs.h>
 #endif
 
 #include "xmms/xmms_log.h"
@@ -56,17 +58,28 @@ xmms_statfs_is_remote (const gchar *path)
 		xmms_log_error ("Failed to run statfs, will not guess.");
 		return FALSE;
 	}
+#elif defined(STATFS_SOLARIS)
+	struct statvfs st;
+
+	if (statvfs (path, &st) == -1) {
+		xmms_log_error ("Failed to run statfs, will not guess.");
+		return FALSE;
+	}
 #endif
 
 #if defined(STATFS_LINUX)
 	if (st.f_type == 0xFF534D42 || /* cifs */
-		st.f_type == 0x6969 || /* nfs */
-		st.f_type == 0x517B) { /* smb */
+	    st.f_type == 0x6969 || /* nfs */
+	    st.f_type == 0x517B) { /* smb */
 		return TRUE;
 	}
 #elif defined(STATFS_BSD)
 	if ((g_strcasecmp (st.f_fstypename, "nfs") == 0) ||
-		(g_strcasecmp (st.f_fstypename, "smb") == 0)) {
+	    (g_strcasecmp (st.f_fstypename, "smb") == 0)) {
+		return TRUE;
+	}
+#elif defined(STATFS_SOLARIS)
+	if (g_strcasecmp (st.f_basetype, "nfs") == 0) {
 		return TRUE;
 	}
 #endif

@@ -49,7 +49,7 @@
 
 
 
-#define XMMS_XFORM_API_VERSION 1
+#define XMMS_XFORM_API_VERSION 3
 
 #include "xmms/xmms_error.h"
 #include "xmms/xmms_plugin.h"
@@ -139,6 +139,14 @@ typedef struct xmms_xform_methods_St {
 	 * 
 	 */
 	gint64 (*seek)(xmms_xform_t *, gint64, xmms_xform_seek_mode_t, xmms_error_t *);
+
+	/**
+	 * browse method.
+	 *
+	 * Called when a users wants to do some server side browsing.
+	 * This is called without init() beeing called.
+	 */
+	gboolean (*browse)(xmms_xform_t *, const gchar *, xmms_error_t *);
 } xmms_xform_methods_t;
 
 #define XMMS_XFORM_METHODS_INIT(m) memset (&m, 0, sizeof (xmms_xform_methods_t))
@@ -266,6 +274,7 @@ gint64 xmms_xform_seek (xmms_xform_t *xform, gint64 offset, xmms_xform_seek_mode
 gboolean xmms_xform_iseos (xmms_xform_t *xform);
 
 gboolean xmms_magic_add (const gchar *desc, const gchar *mime, ...);
+gboolean xmms_magic_extension_add (const gchar *mime, const gchar *ext);
 
 xmms_config_property_t *xmms_xform_plugin_config_property_register (
 	xmms_xform_plugin_t *xform_plugin,
@@ -283,6 +292,11 @@ xmms_config_property_t *xmms_xform_config_lookup (xmms_xform_t *xform,
  * @returns 
  */
 xmms_medialib_entry_t xmms_xform_entry_get (xmms_xform_t *xform);
+
+#define XMMS_XFORM_BROWSE_FLAG_DIR (1 << 0)
+
+void xmms_xform_browse_add_entry (xmms_xform_t *xform, const gchar *path, guint32 flags);
+void xmms_xform_browse_add_entry_property (xmms_xform_t *xform, const gchar *key, xmms_object_cmd_value_t *val);
 
 /**
  * @}

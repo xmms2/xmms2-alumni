@@ -26,6 +26,7 @@
 
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmspriv/xmms_config.h"
+#include "xmmspriv/xmms_utils.h"
 #include "xmms/xmms_ipc.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_defs.h"
@@ -60,7 +61,7 @@ XMMS_CMD_DEFINE (regvalue, xmms_config_property_client_register, xmms_config_t *
 /**
  * @defgroup Config Config
  * @brief Controls configuration for the server.
- * 
+ *
  * The configuration is saved to, and loaded from an XML file. It's split into
  * plugin, client and core parts. This documents the configuration for parts
  * inside the server. For plugin config see each server object's documentation.
@@ -85,7 +86,7 @@ struct xmms_config_St {
 	GQueue *states;
 	GQueue *sections;
 	gchar *value_name;
-	double version;
+	guint version;
 };
 
 /**
@@ -112,7 +113,7 @@ xmms_config_t *global_config;
 /**
  * Config file version
  */
-#define XMMS_CONFIG_VERSION 0.02
+#define XMMS_CONFIG_VERSION 2
 
 /**
  * @}
@@ -193,7 +194,7 @@ void
 xmms_config_property_set_data (xmms_config_property_t *prop, const gchar *data)
 {
 	GHashTable *dict;
-	gchar file[XMMS_PATH_MAX];
+	gchar *file;
 
 	g_return_if_fail (prop);
 	g_return_if_fail (data);
@@ -204,8 +205,9 @@ xmms_config_property_set_data (xmms_config_property_t *prop, const gchar *data)
 
 	g_free (prop->value);
 	prop->value = g_strdup (data);
-	xmms_object_emit (XMMS_OBJECT (prop), XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED,
-			  (gpointer) data);
+	xmms_object_emit (XMMS_OBJECT (prop),
+	                  XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED,
+	                  (gpointer) data);
 
 	dict = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
 	                              xmms_object_cmd_value_free);
@@ -222,10 +224,9 @@ xmms_config_property_set_data (xmms_config_property_t *prop, const gchar *data)
 	/* save the database to disk, so we don't lose any data
 	 * if the daemon crashes
 	 */
-	g_snprintf (file, sizeof (file), "%s/.xmms2/xmms2.conf",
-	            g_get_home_dir ());
-
+	file = XMMS_BUILD_PATH ("xmms2.conf");
 	xmms_config_save (file);
+	g_free (file);
 }
 
 /**
@@ -287,8 +288,8 @@ xmms_config_property_callback_set (xmms_config_property_t *prop,
 	if (!cb)
 		return;
 
-	xmms_object_connect (XMMS_OBJECT (prop), 
-	                     XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED, 
+	xmms_object_connect (XMMS_OBJECT (prop),
+	                     XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED,
 	                     (xmms_object_handler_t) cb, userdata);
 }
 
@@ -324,7 +325,7 @@ xmms_config_property_callback_remove (xmms_config_property_t *prop,
  * property.
  */
 xmms_config_property_t *
-xmms_config_property_register (const gchar *path, 
+xmms_config_property_register (const gchar *path,
                                const gchar *default_value,
                                xmms_object_handler_t cb,
                                gpointer userdata)
@@ -343,8 +344,9 @@ xmms_config_property_register (const gchar *path,
 		                     (gchar *) prop->name, prop);
 	}
 
-	if (cb) 
+	if (cb) {
 		xmms_config_property_callback_set (prop, cb, userdata);
+	}
 
 	g_mutex_unlock (global_config->mutex);
 
@@ -354,7 +356,7 @@ xmms_config_property_register (const gchar *path,
 /**
  * @}
  * @endif
- * 
+ *
  * @if internal
  * @addtogroup Config
  * @{
@@ -445,7 +447,11 @@ xmms_config_parse_start (GMarkupParseContext *ctx,
 			/* check config version here */
 			attr = lookup_attribute(attr_name, attr_data, "version");
 			if (attr) {
-				config->version = atof(attr);
+				if (strcmp (attr, "0.02") == 0) {
+					config->version = 2;
+				} else {
+					config->version = atoi (attr);
+				}
 			}
 			return;
 		default:
@@ -631,7 +637,7 @@ xmms_config_property_client_lookup (xmms_config_t *conf, gchar *key,
  * @param object The object to destroy
  */
 static void
-xmms_config_destroy (xmms_object_t *object) 
+xmms_config_destroy (xmms_object_t *object)
 {
 	xmms_config_t *config = (xmms_config_t *)object;
 
@@ -684,7 +690,7 @@ xmms_config_init (const gchar *filename)
 	config->properties = g_hash_table_new_full (g_str_hash, g_str_equal,
 	                                            g_free,
 	                                            (GDestroyNotify) __int_xmms_object_unref);
-	config->version = -1;
+	config->version = 0;
 	global_config = config;
 
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_CONFIG, XMMS_OBJECT (config));
@@ -760,14 +766,18 @@ xmms_config_init (const gchar *filename)
 		clear_config (config);
 	}
 
-	xmms_object_cmd_add (XMMS_OBJECT (config), XMMS_IPC_CMD_SETVALUE,
-						 XMMS_CMD_FUNC (setvalue));
-	xmms_object_cmd_add (XMMS_OBJECT (config), XMMS_IPC_CMD_GETVALUE,
-						 XMMS_CMD_FUNC (getvalue));
-	xmms_object_cmd_add (XMMS_OBJECT (config), XMMS_IPC_CMD_LISTVALUES,
-						 XMMS_CMD_FUNC (listvalues));
-	xmms_object_cmd_add (XMMS_OBJECT (config), XMMS_IPC_CMD_REGVALUE,
-						 XMMS_CMD_FUNC (regvalue));
+	xmms_object_cmd_add (XMMS_OBJECT (config),
+	                     XMMS_IPC_CMD_SETVALUE,
+	                     XMMS_CMD_FUNC (setvalue));
+	xmms_object_cmd_add (XMMS_OBJECT (config),
+	                     XMMS_IPC_CMD_GETVALUE,
+	                     XMMS_CMD_FUNC (getvalue));
+	xmms_object_cmd_add (XMMS_OBJECT (config),
+	                     XMMS_IPC_CMD_LISTVALUES,
+	                     XMMS_CMD_FUNC (listvalues));
+	xmms_object_cmd_add (XMMS_OBJECT (config),
+	                     XMMS_IPC_CMD_REGVALUE,
+	                     XMMS_CMD_FUNC (regvalue));
 }
 
 /**
@@ -869,7 +879,7 @@ dump_node (GNode *node, FILE *fp)
 		         indent, data[0], data[1]);
 	} else {
 		if (is_root) {
-			fprintf (fp, "<?xml version=\"1.0\"?>\n<%s version=\"%.2f\">\n",
+			fprintf (fp, "<?xml version=\"1.0\"?>\n<%s version=\"%i\">\n",
 			         (gchar *) node->data, XMMS_CONFIG_VERSION);
 		} else {
 			fprintf (fp, "%s<section name=\"%s\">\n",
@@ -930,7 +940,7 @@ xmms_config_save (const gchar *file)
 }
 
 /*
- * Value manipulation 
+ * Value manipulation
  */
 
 /**
@@ -973,9 +983,9 @@ xmms_config_property_new (const gchar *name)
  */
 static gchar *
 xmms_config_property_client_register (xmms_config_t *config,
-				   const gchar *name,
-				   const gchar *def_value,
-				   xmms_error_t *error)
+                                      const gchar *name,
+                                      const gchar *def_value,
+                                      xmms_error_t *error)
 {
 	gchar *tmp;
 	tmp = g_strdup_printf ("clients.%s", name);

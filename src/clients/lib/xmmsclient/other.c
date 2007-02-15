@@ -18,11 +18,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/types.h>
 
 #include "xmmsclient/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient_ipc.h"
 #include "xmmsc/xmmsc_idnumbers.h"
+#include "xmmsc/xmmsc_util.h"
 
 /**
  * @defgroup OtherControl OtherControl
@@ -144,6 +146,75 @@ xmmsc_signal_mediainfo_reader_unindexed (xmmsc_connection_t *c)
 	x_check_conn (c, NULL);
 
 	return xmmsc_send_signal_msg (c, XMMS_IPC_SIGNAL_MEDIAINFO_READER_UNINDEXED);
+}
+
+/**
+ * Browse available media in a path.
+ *
+ * Retrieves a list of paths available (directly) under the specified
+ * path.
+ *
+ */
+xmmsc_result_t *
+xmmsc_xform_media_browse (xmmsc_connection_t *c, const char *url)
+{
+	char *enc_url;
+	xmmsc_result_t *res;
+
+	x_check_conn (c, NULL);
+	x_api_error_if (!url, "with a NULL url", NULL);
+
+	enc_url = _xmmsc_medialib_encode_url (url, 0, NULL);
+	if (!enc_url)
+		return NULL;
+
+	res = xmmsc_xform_media_browse_encoded (c, enc_url);
+
+	free (enc_url);
+
+	return res;
+
+}
+
+/**
+ * Browse available media in a (already encoded) path.
+ *
+ * Retrieves a list of paths available (directly) under the specified
+ * path.
+ *
+ */
+xmmsc_result_t *
+xmmsc_xform_media_browse_encoded (xmmsc_connection_t *c, const char *url)
+{
+	xmms_ipc_msg_t *msg;
+	xmmsc_result_t *res;
+
+	x_check_conn (c, NULL);
+	x_api_error_if (!url, "with a NULL url", NULL);
+
+	if (!_xmmsc_medialib_verify_url (url))
+		x_api_error ("with a non encoded url", NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_XFORM, XMMS_IPC_CMD_BROWSE);
+	xmms_ipc_msg_put_string (msg, url);
+	res = xmmsc_send_msg (c, msg);
+
+	return res;
+
+}
+
+/**
+ * Get the absolute path to the user config dir.
+ * @sa xmms_userconfdir_get()
+ *
+ * @param buf A char buffer
+ * @param len The length of buf (PATH_MAX is a good choice)
+ * @return A pointer to buf, or NULL if an error occurred.
+ */
+const char *
+xmmsc_userconfdir_get (char *buf, int len)
+{
+	return xmms_userconfdir_get(buf, len);
 }
 
 /** @} */

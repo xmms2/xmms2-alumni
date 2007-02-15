@@ -27,6 +27,7 @@ src/plugins/faad/faad.c:
 
 src/plugins/mad/*:
         Licensed under GPL license.
+        Partially: Copyright (C) 2000-2004 Robert Leslie
 
 src/plugins/faad/mp4ff/drms*:
         Copyright (C) 2004 VideoLAN
@@ -49,6 +50,13 @@ src/plugins/equalizer/iir*
         Copyright (C) 2002-2006 Felipe Rivera <liebremx@users.sourceforge.net>
         Licensed under GPL license.
 
+src/plugins/vocoder/vocoder.c
+	Licensed under GPL license.
+
+src/plugins/vocoder/pvocoder*
+	Copyright (C) 2006 Juho Vähä-Herttua <juhovh@iki.fi>
+	Licensed under GPL license.
+
 src/plugins/ices/encode.*:
         Copyright (c) 2001 Michael Smith <msmith@labyrinth.net.au>
         Licensed under GPL license.
@@ -56,3 +64,7 @@ src/plugins/ices/encode.*:
 src/plugins/jack/jack.c:
         Copyright (C) 2004  Chris Morgan <cmorgan@alum.wpi.edu>
 
+src/plugins/daap/daap_md5.*:
+        Copyright (C) 2004,2005 Charles Schmidt <cschmidt2@emich.edu> and David Hammerton
+src/plugins/daap/*:
+        Licensed under GPL license.

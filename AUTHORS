@@ -26,7 +26,7 @@ E: bjernstad@gmail.com
 D: PythonAPI fixes.
 
 N: Alexander Botero-Lowry
-E: drax@stampede.org
+E: alex@foxybanana.com
 D: *BSD support. Manpages. Various fixes.
 
 N: Sébastien Cevey
@@ -54,6 +54,10 @@ N: Franz Endstrasser
 E: franz.endstrasser@gmail.com
 D: Java bindings
 
+N: Manuel Fuhr
+E: zod@knid.net
+D: lastfm
+
 N: G. Gallino
 E: ggallino@gmail.com
 D: Equaliser fixes
@@ -63,6 +67,10 @@ E: andersg@xmms.org
 P: 1024D/5D46D966 4186 4775 154B 9E4F 8CE7  A3F8 E165 5471 5D46 D966
 D: Stuff all over the place. Master bitch.
 
+N: Dries Harnie
+E: dries@harnie.be
+D: Status aware CLI
+
 N: Johannes Heimansberg
 E: wejpilot@gmail.com
 D: Fix remove command in cli.
@@ -70,6 +78,10 @@ D: Fix remove command in cli.
 N: Olle Hällnäs
 E: olle@xmms.org
 D: Better seeking in cli.
+
+N: Thomas Jollans
+E: thomas@jollans.com
+D: Python bindings improvements
 
 N: Daniel Kamiñski
 E: maniel.rulez@gmail.com
@@ -125,6 +137,10 @@ N: Daniel Pearson
 E: daniel@nanoo.org
 D: Python XMMSSync-proxy. PythonAPI fixes.
 
+N: Florian Ragwitz
+E: rafl@debian.org
+D: Official Debian packages. Bugfixes.
+
 N: Alexander Rigbo
 E: alex@rigbo.se
 D: Various fixes. Sorting on integers.
@@ -157,6 +173,14 @@ N: Jens Taprogge
 E: jlt_xmms2@shamrock.dyndns.org
 D: Debian packages. Various fixes.
 
+N: Cole Thompson
+E: cole.thompson@gmail.com
+D: DAAP xform.
+
+N: Bryan Taylor
+E: bryan.a.taylor@gmail.com
+D: Various fixes
+
 N: Rémi Vanicat
 E: remi.vanicat@gmail.com
 D: SQLite optimizations.
@@ -167,12 +191,14 @@ D: xmmsc_medialib_playlist_list in Python bindings
 
 N: Juho Vähä-Herttua
 E: juhovh@iki.fi
-D: Faad. Various fixes.
+W: http://juho.vaha-herttua.fi/
+P: 1024D/CB130DCE 1C70 BF1D AEF7 619C C0A6  60E7 563D FCA3 CB13 0DCE
+D: Faad, wma, equalizer, vocoder, ao. Various fixes.
 
 N: Michael Walle
 E: michael@walle.cc
 D: playlists_list stuff
 
 N: Ma Xuan
-E: supermmx@163.com
-D: Various fixes.
+E: supermmx@gmail.com
+D: mac plugin.

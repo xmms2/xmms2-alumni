@@ -140,6 +140,7 @@ handle_mediainfo (xmmsc_result_t *res, void *userdata)
 			}
 			break;
 		case XMMSC_RESULT_VALUE_TYPE_NONE:
+		case XMMSC_RESULT_VALUE_TYPE_BIN:
 			/* noop */
 			break;
 		}
@@ -204,7 +205,7 @@ get_systemname (void)
 {
 	struct utsname uts;
 
-	if (uname (&uts) == 0) {
+	if (uname (&uts) >= 0) {
 		system_name = g_strdup_printf ("%s %s %s",
 		                               uts.sysname,
 		                               uts.release,
