@@ -71,11 +71,15 @@ read_config ()
 	GHashTable *config;
 	int i = 0;
 
-	file = g_strdup_printf ("%s/.xmms2/clients/blue.conf", g_get_home_dir ());
+	gchar userconf[PATH_MAX];
+	xmmsc_userconfdir_get (userconf, PATH_MAX);
+
+	file = g_build_path (G_DIR_SEPARATOR_S, userconf, "clients",
+			     "blue.conf", NULL);
 
 	if (!g_file_test (file, G_FILE_TEST_EXISTS)) {
-		gchar *dir = g_strdup_printf ("%s/.xmms2/clients", g_get_home_dir ());
-		mkdir (dir, 0755);
+		gchar *dir = g_build_path (G_DIR_SEPARATOR_S, userconf, "clients", NULL);
+		g_mkdir_with_parents (dir, 0755);
 		g_free (dir);
 		fp = fopen (file, "w+");
 		if (!fp) {
@@ -361,7 +365,7 @@ main (int argc, char **argv)
 
 	config = read_config ();
 
-	connection = xmmsc_init ("XMMS2 Blue");
+	connection = xmmsc_init ("Blue");
 
 	if (!connection) {
 		print_error ("Could not init xmmsc_connection, this is a memory problem, fix your os!");
