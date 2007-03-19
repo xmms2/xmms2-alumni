@@ -145,26 +145,18 @@ gboolean xmms_ices_encoder_stream_change (encoder_state *s, int rate,
 
 /* Encode the given data into Ogg Vorbis. The data must be provided in
  * little-endian format. */
-void xmms_ices_encoder_input (encoder_state *s, signed char *buf, int bytes)
+void xmms_ices_encoder_input (encoder_state *s, float *buf, int bytes)
 {
 	float **buffer;
 	int i,j;
 	int channels = s->vi.channels;
-	int samples = bytes/(2*channels);
-
-	XMMS_DBG ("Channels: %d %d", s->channels, s->vi.channels);
+	int samples = bytes / (sizeof(float)*channels);
 
 	buffer = vorbis_analysis_buffer (&s->vd, samples);
 
-	for (i=0; i < samples; i++) {
-		for (j=0; j < channels; j++) {
-			/* Deep magic, provided by ices2, to cram a signed 16-bit
-			 * int into a float. The sound produced is nice so we'll
-			 * assume it knows what it's doing :-). */
-			buffer[j][i]=((buf[2*(i*channels + j) + 1]<<8) |
-			              (0x00ff&(int)buf[2*(i*channels + j)]))/32768.f;
-		}
-	}
+	for (i = 0; i < samples; i++)
+		for (j = 0; j < channels; j++)
+			buffer[j][i] = buf[i*channels + j];
 
 	vorbis_analysis_wrote (&s->vd, samples);
 	s->samples_in_current_page += samples;

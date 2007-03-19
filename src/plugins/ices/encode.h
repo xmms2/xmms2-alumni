@@ -16,7 +16,7 @@ encoder_state *xmms_ices_encoder_init(int min_br, int nom_br, int max_br);
 void xmms_ices_encoder_fini(encoder_state *s);
 gboolean xmms_ices_encoder_stream_change(encoder_state *s, int rate,
                                          int channels, vorbis_comment *vc);
-void xmms_ices_encoder_input(encoder_state *s, signed char *buf, int n_bytes);
+void xmms_ices_encoder_input(encoder_state *s, float *buf, int n_samples);
 void xmms_ices_encoder_finish(encoder_state *s);
 gboolean xmms_ices_encoder_output(encoder_state *s, ogg_page *og);
 

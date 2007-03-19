@@ -100,7 +100,7 @@ xmms_ices_new (xmms_output_t *output)
 	shout_set_url (data->shout, xmms_config_property_get_string (val));
 
 	xmms_output_private_data_set (output, data);
-	xmms_output_format_add (output, XMMS_SAMPLE_FORMAT_S16, 2, 44100);
+	xmms_output_format_add (output, XMMS_SAMPLE_FORMAT_FLOAT, 2, 44100);
 
 	return TRUE;
 }
