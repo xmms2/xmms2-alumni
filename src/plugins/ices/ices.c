@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2007 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -14,12 +14,8 @@
  *  Lesser General Public License for more details.
  */
 
-
-
-
 /**
- * @file
- * ICES2 based effect
+ * @file Output plugin to stream Ogg Vorbis to an Icecast2 server.
  */
 
 #include "xmms/xmms_outputplugin.h"

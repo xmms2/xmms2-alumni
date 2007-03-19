@@ -1,15 +1,27 @@
+/*  XMMS2 - X Music Multiplexer System
+ *  Copyright (C) 2003-2007 XMMS2 Team
+ *
+ *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ */
+
 /*
- * PCM data encoder for Icecast plugin.
- * Copyright (C) 2007 XMMS2 Team
+ * @file Ogg Vorbis encoding helper module for the ices streamer.
  */
 
 #ifdef HAVE_CONFIG_H
- #include <config.h>
+# include <config.h>
 #endif
 
-/* #include <stdio.h> */
-/* #include <stdlib.h> */
-/* #include <string.h> */
 #include <glib.h>
 
 #include <ogg/ogg.h>
@@ -150,7 +162,7 @@ void xmms_ices_encoder_input (encoder_state *s, float *buf, int bytes)
 	float **buffer;
 	int i,j;
 	int channels = s->vi.channels;
-	int samples = bytes / (sizeof(float)*channels);
+	int samples = bytes / (sizeof (float)*channels);
 
 	buffer = vorbis_analysis_buffer (&s->vd, samples);
 
