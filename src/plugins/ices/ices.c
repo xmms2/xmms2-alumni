@@ -33,7 +33,7 @@
 
 #include "encode.h"
 
-typedef struct xmms_ices_data_St {
+typedef struct xmms_ices_data_t {
 	shout_t *shout;
 	vorbis_comment vc;
 	encoder_state *encoder;
