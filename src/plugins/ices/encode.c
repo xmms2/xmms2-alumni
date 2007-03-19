@@ -30,6 +30,7 @@
 
 #include "encode.h"
 #include "xmms/xmms_log.h"
+#include "xmms/xmms_sample.h"
 
 #define MODULE "encode/"
 
@@ -155,14 +156,13 @@ gboolean xmms_ices_encoder_stream_change (encoder_state *s, int rate,
 	return xmms_ices_encoder_create (s, vc);
 }
 
-/* Encode the given data into Ogg Vorbis. The data must be provided in
- * little-endian format. */
-void xmms_ices_encoder_input (encoder_state *s, float *buf, int bytes)
+/* Encode the given data into Ogg Vorbis. */
+void xmms_ices_encoder_input (encoder_state *s, xmms_samplefloat_t *buf, int bytes)
 {
 	float **buffer;
 	int i,j;
 	int channels = s->vi.channels;
-	int samples = bytes / (sizeof (float)*channels);
+	int samples = bytes / (sizeof (xmms_samplefloat_t)*channels);
 
 	buffer = vorbis_analysis_buffer (&s->vd, samples);
 
