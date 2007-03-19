@@ -62,23 +62,23 @@ xmms_ices_encoder_create (encoder_state *s, vorbis_comment *vc)
 
 	if (s->encoder_inited) {
 		XMMS_DBG ("OOPS: xmms_ices_encoder_create called "
-				  "with s->encoder_inited == TRUE !");
+		          "with s->encoder_inited == TRUE !");
 	}
 
 	XMMS_DBG ("Creating encoder in ABR mode: min/avg/max bitrate %d/%d/%d",
-			  s->min_br, s->nom_br, s->max_br);
+	          s->min_br, s->nom_br, s->max_br);
 
 	/* Create the Vorbis encoder. */
 	vorbis_info_init (&s->vi);
 	if (vorbis_encode_init (&s->vi, s->channels, s->rate,
-							s->max_br, s->nom_br, s->min_br) < 0)
+	                        s->max_br, s->nom_br, s->min_br) < 0)
 		return FALSE;
 	vorbis_analysis_init (&s->vd, &s->vi);
 	vorbis_block_init (&s->vd, &s->vb);
 
 	/* Initialize the ogg stream and input the vorbis header
 	 * packets. */
-	ogg_stream_init(&s->os, s->serial++);
+	ogg_stream_init (&s->os, s->serial++);
 	vorbis_analysis_headerout (&s->vd, vc, &header[0], &header[1], &header[2]);
 	ogg_stream_packetin (&s->os, &header[0]);
 	ogg_stream_packetin (&s->os, &header[1]);
@@ -130,12 +130,12 @@ xmms_ices_encoder_init (int min_br, int nom_br, int max_br)
 
 void xmms_ices_encoder_fini (encoder_state *s) {
 	xmms_ices_encoder_free (s);
-	g_free(s);
+	g_free (s);
 }
 
 /* Start a new logical ogg stream. */
 gboolean xmms_ices_encoder_stream_change (encoder_state *s, int rate,
-										  int channels, vorbis_comment *vc)
+                                          int channels, vorbis_comment *vc)
 {
 	xmms_ices_encoder_free (s);
 	s->rate = rate;
@@ -143,7 +143,8 @@ gboolean xmms_ices_encoder_stream_change (encoder_state *s, int rate,
 	return xmms_ices_encoder_create (s, vc);
 }
 
-/* Encode the given data into Ogg Vorbis. The data must be provided in little-endian format. */
+/* Encode the given data into Ogg Vorbis. The data must be provided in
+ * little-endian format. */
 void xmms_ices_encoder_input (encoder_state *s, signed char *buf, int bytes)
 {
 	float **buffer;
@@ -161,7 +162,7 @@ void xmms_ices_encoder_input (encoder_state *s, signed char *buf, int bytes)
 			 * int into a float. The sound produced is nice so we'll
 			 * assume it knows what it's doing :-). */
 			buffer[j][i]=((buf[2*(i*channels + j) + 1]<<8) |
-						  (0x00ff&(int)buf[2*(i*channels + j)]))/32768.f;
+			              (0x00ff&(int)buf[2*(i*channels + j)]))/32768.f;
 		}
 	}
 
@@ -237,7 +238,7 @@ gboolean xmms_ices_encoder_output (encoder_state *s, ogg_page *og)
 	 * accurate regarding the number of samples still in the page
 	 * buffer, and return. */
 	s->samples_in_current_page -= (ogg_page_granulepos (og)
-								   - s->previous_granulepos);
+	                               - s->previous_granulepos);
 	s->previous_granulepos = ogg_page_granulepos (og);
 
 	return TRUE;

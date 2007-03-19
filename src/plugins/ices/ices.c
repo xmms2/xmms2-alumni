@@ -45,7 +45,7 @@ typedef struct xmms_ices_data_St {
 
 /* Helper function to retrieve the ices data from the xmms2 output struct. */
 static gboolean
-xmms_ices_get_output_data(xmms_output_t *output, xmms_ices_data_t **data)
+xmms_ices_get_output_data (xmms_output_t *output, xmms_ices_data_t **data)
 {
 	g_return_val_if_fail (output, FALSE);
 	*data = xmms_output_private_data_get (output);
@@ -112,14 +112,14 @@ xmms_ices_destroy (xmms_output_t *output)
 	g_return_if_fail (xmms_ices_get_output_data (output, &data));
 
 	if (data->encoder)
-		xmms_ices_encoder_fini(data->encoder);
+		xmms_ices_encoder_fini (data->encoder);
 
-	vorbis_comment_clear(&data->vc);
+	vorbis_comment_clear (&data->vc);
 
 	shout_close (data->shout);
 	shout_free (data->shout);
 
-	g_free(data);
+	g_free (data);
 
 	shout_shutdown ();
 }
@@ -152,12 +152,12 @@ xmms_ices_send_shout (xmms_ices_data_t *data, xmms_error_t *err)
 		if (shout_send (data->shout, og.header, og.header_len) < 0) {
 			if (err)
 				xmms_error_set (err, XMMS_ERROR_GENERIC,
-								"Disconnected or something.");
+				                "Disconnected or something.");
 			return;
 		} else if (shout_send (data->shout, og.body, og.body_len) < 0) {
 			if (err)
 				xmms_error_set (err, XMMS_ERROR_GENERIC,
-								"Error when sending data to icecast server");
+				                "Error when sending data to icecast server");
 			return;
 		}
 
@@ -256,7 +256,7 @@ xmms_ices_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 	rate = xmms_stream_type_get_int (format, XMMS_STREAM_TYPE_FMT_SAMPLERATE);
 	channels = xmms_stream_type_get_int (format, XMMS_STREAM_TYPE_FMT_CHANNELS);
 
-	xmms_ices_encoder_stream_change(data->encoder, rate, channels, &data->vc);
+	xmms_ices_encoder_stream_change (data->encoder, rate, channels, &data->vc);
 
 	return TRUE;
 }
@@ -320,8 +320,8 @@ xmms_ices_plugin_setup (xmms_output_plugin_t *plugin)
 
 	for (pptr = ices_properties; pptr->name != NULL; pptr++)
 		xmms_output_plugin_config_property_register (plugin, pptr->name,
-													 pptr->val,
-													 NULL, NULL);
+		                                             pptr->val,
+		                                             NULL, NULL);
 
 	return TRUE;
 }
