@@ -39,16 +39,6 @@ typedef struct xmms_ices_data_St {
 	encoder_state *encoder;
 } xmms_ices_data_t;
 
-/* Helper function to retrieve the ices data from the xmms2 output struct. */
-static gboolean
-xmms_ices_get_output_data (xmms_output_t *output, xmms_ices_data_t **data)
-{
-	g_return_val_if_fail (output, FALSE);
-	*data = xmms_output_private_data_get (output);
-	g_return_val_if_fail (data, FALSE);
-	return TRUE;
-}
-
 static gboolean
 xmms_ices_new (xmms_output_t *output)
 {
@@ -105,7 +95,9 @@ static void
 xmms_ices_destroy (xmms_output_t *output)
 {
 	xmms_ices_data_t *data;
-	g_return_if_fail (xmms_ices_get_output_data (output, &data));
+        g_return_if_fail (output);
+        data = xmms_output_private_data_get (output);
+        g_return_if_fail (data);
 
 	if (data->encoder)
 		xmms_ices_encoder_fini (data->encoder);
@@ -124,7 +116,9 @@ static gboolean
 xmms_ices_open (xmms_output_t *output)
 {
 	xmms_ices_data_t *data;
-	g_return_val_if_fail (xmms_ices_get_output_data (output, &data), FALSE);
+        g_return_val_if_fail (output, FALSE);
+        data = xmms_output_private_data_get (output);
+        g_return_val_if_fail (data, FALSE);
 
 	if (shout_open (data->shout) == SHOUTERR_SUCCESS) {
 		XMMS_DBG ("Connected to http://%s:%d/%s",
@@ -173,7 +167,9 @@ static void
 xmms_ices_close (xmms_output_t *output)
 {
 	xmms_ices_data_t *data;
-	g_return_if_fail (xmms_ices_get_output_data (output, &data));
+        g_return_if_fail (output);
+        data = xmms_output_private_data_get (output);
+        g_return_if_fail (data);
 
 	xmms_ices_flush_internal (data);
 
@@ -208,7 +204,9 @@ xmms_ices_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 		{NULL, NULL}
 	};
 
-	g_return_val_if_fail (xmms_ices_get_output_data (output, &data), FALSE);
+	g_return_val_if_fail (output, FALSE);
+	data = xmms_output_private_data_get (output);
+	g_return_val_if_fail (data, FALSE);
 
 	if (data->encoder)
 		xmms_ices_flush_internal (data);
@@ -262,8 +260,9 @@ xmms_ices_write (xmms_output_t *output, gpointer buffer,
                  gint len, xmms_error_t *err)
 {
 	xmms_ices_data_t *data;
-
-	g_return_if_fail (xmms_ices_get_output_data (output, &data));
+	g_return_if_fail (output);
+	data = xmms_output_private_data_get (output);
+	g_return_if_fail (data);
 
 	if (!data->encoder) {
 		xmms_error_set (err, XMMS_ERROR_GENERIC, "encoding is not initialized");
