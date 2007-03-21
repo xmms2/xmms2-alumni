@@ -90,12 +90,16 @@ static gboolean
 xmms_pulse_new (xmms_output_t *output)
 {
 	xmms_pulse_data_t *data;
+	gint i;
 
 	g_return_val_if_fail (output, FALSE);
 	data = g_new0 (xmms_pulse_data_t, 1);
 	g_return_val_if_fail (data, FALSE);
 
 	xmms_output_private_data_set (output, data);
+	for (i = 0; i < sizeof (formats); i++)
+		/* TODO: make channels/samplerate flexible. */
+		xmms_output_format_add (output, formats[i].xmms_fmt, 2, 44100);
 
 	return TRUE;
 }
