@@ -1,0 +1,4 @@
+from waftools.plugin import plugin
+
+configure, build = plugin('midi',needs_lib=False,
+                          source=['midi.c','midiread.c','mdutil.c','elements.c'])
