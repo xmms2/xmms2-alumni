@@ -30,12 +30,16 @@
 /*
  * Type definitions
  */
+
+enum alsa_state { PCM, SEQ };
+
 typedef struct xmms_alsa_data_St {
 	snd_pcm_t *pcm;
 	snd_mixer_t *mixer;
 	snd_mixer_elem_t *mixer_elem;
 	snd_pcm_hw_params_t *hwparams;
 	snd_pcm_uframes_t  buffer_size;
+	enum alsa_state state;
 } xmms_alsa_data_t;
 
 static struct {
@@ -188,6 +192,8 @@ xmms_alsa_new (xmms_output_t *output)
 		return FALSE;
 	}
 
+	data->state = PCM;
+
 	xmms_alsa_mixer_setup (output, data);
 
 	xmms_output_private_data_set (output, data);
@@ -287,6 +293,10 @@ xmms_alsa_probe_mode (xmms_output_t *output, snd_pcm_t *pcm,
 	}
 
 	xmms_output_format_add (output, xmms_fmt, channels, tmp);
+
+	xmms_output_stream_type_add(output,
+			XMMS_STREAM_TYPE_MIMETYPE, "audio/seq",
+			XMMS_STREAM_TYPE_END);
 }
 
 /**
@@ -398,6 +408,10 @@ xmms_alsa_set_hwparams (xmms_alsa_data_t *data,
 	guint requested_buffer_time = BUFFER_TIME;
 
 	g_return_val_if_fail (data, FALSE);
+
+	if(data->state == SEQ) {
+		return TRUE;
+	}
 
 	/* what alsa format does this format correspond to? */
 	fmt = xmms_stream_type_get_int (format, XMMS_STREAM_TYPE_FMT_FORMAT);
@@ -589,6 +603,13 @@ xmms_alsa_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 	g_return_val_if_fail (output, FALSE);
 	data = xmms_output_private_data_get (output);
 	g_return_val_if_fail (data, FALSE);
+
+	if(!strncmp(xmms_stream_type_get_str(format,XMMS_STREAM_TYPE_MIMETYPE),"audio/seq",9)) {
+		printf("COOLNESS\n");
+		data->state = SEQ;
+	}
+	else
+		data->state = PCM;
 
 	/* Get rid of old cow if any */
 	if (snd_pcm_state (data->pcm) == SND_PCM_STATE_RUNNING) {
