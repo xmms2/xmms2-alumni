@@ -17,7 +17,7 @@
 #include "xmms/xmms_outputplugin.h"
 #include "xmms/xmms_log.h"
 
-#include <pulse/simple.h>
+#include "backend.h"
 
 #include <glib.h>
 
@@ -25,18 +25,10 @@
  * Type definitions
  */
 typedef struct {
-  pa_simple *server;
-  pa_sample_spec format;
+  xmms_pulse *pulse;
 } xmms_pulse_data_t;
 
-static struct {
-	xmms_sample_format_t xmms_fmt;
-	pa_sample_format_t pulse_fmt;
-} formats[] = {
-	{XMMS_SAMPLE_FORMAT_U8, PA_SAMPLE_U8},
-	{XMMS_SAMPLE_FORMAT_S16, PA_SAMPLE_S16NE},
-	{XMMS_SAMPLE_FORMAT_FLOAT, PA_SAMPLE_FLOAT32NE},
-};
+#define XMMS_PULSE_DEFAULT_NAME "XMMS2"
 
 /*
  * Function prototypes
@@ -51,6 +43,7 @@ static gboolean xmms_pulse_new (xmms_output_t *output);
 static void xmms_pulse_destroy (xmms_output_t *output);
 static gboolean xmms_pulse_format_set (xmms_output_t *output,
                                       const xmms_stream_type_t *format);
+
 
 /*
  * Plugin header
@@ -81,10 +74,11 @@ xmms_pulse_plugin_setup (xmms_output_plugin_t *plugin)
 	xmms_output_plugin_config_property_register (plugin, "sink", "",
 	                                             NULL, NULL);
 	xmms_output_plugin_config_property_register (plugin, "name", "XMMS2",
-	                                             NULL,NULL);
+	                                             NULL, NULL);
 
 	return TRUE;
 }
+
 
 static gboolean
 xmms_pulse_new (xmms_output_t *output)
@@ -92,17 +86,21 @@ xmms_pulse_new (xmms_output_t *output)
 	xmms_pulse_data_t *data;
 	gint i;
 
+	XMMS_DBG ("Bleh");
+
 	g_return_val_if_fail (output, FALSE);
 	data = g_new0 (xmms_pulse_data_t, 1);
 	g_return_val_if_fail (data, FALSE);
 
 	xmms_output_private_data_set (output, data);
-	for (i = 0; i < sizeof (formats); i++)
+	for (i = 0; i < sizeof (xmms_pulse_formats); i++)
 		/* TODO: make channels/samplerate flexible. */
-		xmms_output_format_add (output, formats[i].xmms_fmt, 2, 44100);
+		xmms_output_format_add (output, xmms_pulse_formats[i].xmms_fmt,
+								2, 44100);
 
 	return TRUE;
 }
+
 
 static void
 xmms_pulse_destroy (xmms_output_t *output)
@@ -113,17 +111,41 @@ xmms_pulse_destroy (xmms_output_t *output)
 	data = xmms_output_private_data_get (output);
 	g_return_if_fail (data);
 
-	if (data->server)
-		pa_simple_free(data->server);
+	if (data->pulse)
+		xmms_pulse_backend_free (data->pulse);
 
-	g_free(data);
+	g_free (data);
 }
+
 
 static gboolean
 xmms_pulse_open (xmms_output_t *output)
 {
+	xmms_pulse_data_t *data;
+	const xmms_config_property_t *val;
+	const gchar *server, *name;
+
+	g_return_val_if_fail (output, FALSE);
+	data = xmms_output_private_data_get (output);
+	g_return_val_if_fail (data, FALSE);
+
+	val = xmms_output_config_lookup (output, "server");
+	server = xmms_config_property_get_string (val);
+	if (server && *server == '\0')
+		server = NULL;
+
+	val = xmms_output_config_lookup (output, "name");
+	name = xmms_config_property_get_string (val);
+	if (!name || *name == '\0')
+		name = XMMS_PULSE_DEFAULT_NAME;
+
+	data->pulse = xmms_pulse_backend_new (server, name, NULL);
+	if (!data->pulse)
+		return FALSE;
+
 	return TRUE;
 }
+
 
 static void
 xmms_pulse_close (xmms_output_t *output)
@@ -134,20 +156,18 @@ xmms_pulse_close (xmms_output_t *output)
 	data = xmms_output_private_data_get (output);
 	g_return_if_fail (data);
 
-	if (data->server) {
-		pa_simple_free(data->server);
-		data->server = NULL;
-	}
+	if (data->pulse)
+		xmms_pulse_backend_close_stream(data->pulse);
 }
+
 
 static gboolean
 xmms_pulse_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 {
 	xmms_pulse_data_t *data;
 	const xmms_config_property_t *val;
-	const gchar *server, *sink, *name;
+	const gchar *sink, *name;
 	xmms_sample_format_t xmms_format;
-	pa_sample_format_t pa_format = PA_SAMPLE_INVALID;
 	gint channels;
 	gint samplerate;
 	gint i;
@@ -156,38 +176,12 @@ xmms_pulse_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 	data = xmms_output_private_data_get (output);
 	g_return_val_if_fail (data, FALSE);
 
-	xmms_format = xmms_stream_type_get_int (format, XMMS_STREAM_TYPE_FMT_FORMAT);
-	channels = xmms_stream_type_get_int (format, XMMS_STREAM_TYPE_FMT_CHANNELS);
-	samplerate = xmms_stream_type_get_int (format, XMMS_STREAM_TYPE_FMT_SAMPLERATE);
-
-	for (i = 0; i < sizeof(formats); i++) {
-		if (formats[i].xmms_fmt == xmms_format) {
-			pa_format = formats[i].pulse_fmt;
-			break;
-		}
-	}
-	if (pa_format == PA_SAMPLE_INVALID)
-		return FALSE;
-
-	/* If format hasn't changed, do nothing. */
-	if (pa_format == data->format.format
-		&& channels == data->format.channels
-		&& samplerate == data->format.rate)
-		return TRUE;
-
-	if (data->server) {
-		pa_simple_drain(data->server, NULL);
-		pa_simple_free(data->server);
-	}
-
-	data->format.format = pa_format;
-	data->format.channels = channels;
-	data->format.rate = samplerate;
-
-	val = xmms_output_config_lookup (output, "server");
-	server = xmms_config_property_get_string (val);
-	if (server && *server == '\0')
-		server = NULL;
+	xmms_format = xmms_stream_type_get_int (
+		format, XMMS_STREAM_TYPE_FMT_FORMAT);
+	channels = xmms_stream_type_get_int (
+		format, XMMS_STREAM_TYPE_FMT_CHANNELS);
+	samplerate = xmms_stream_type_get_int (
+		format, XMMS_STREAM_TYPE_FMT_SAMPLERATE);
 
 	val = xmms_output_config_lookup (output, "sink");
 	sink = xmms_config_property_get_string (val);
@@ -196,12 +190,16 @@ xmms_pulse_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 
 	val = xmms_output_config_lookup (output, "name");
 	name = xmms_config_property_get_string (val);
+	if (!name || *name == '\0')
+		name = XMMS_PULSE_DEFAULT_NAME;
 
-	data->server = pa_simple_new(server, name, PA_STREAM_PLAYBACK, sink, name,
-								 &data->format, NULL, NULL, NULL);
+	if (!xmms_pulse_backend_set_stream (data->pulse, name, sink, xmms_format,
+                                            samplerate, channels, NULL))
+		return FALSE;
 
-	return data->server ? TRUE : FALSE;
+	return TRUE;
 }
+
 
 static void
 xmms_pulse_flush (xmms_output_t *output)
@@ -212,13 +210,14 @@ xmms_pulse_flush (xmms_output_t *output)
 	data = xmms_output_private_data_get (output);
 	g_return_if_fail (data);
 
-	if (data->server)
-		pa_simple_flush(data->server, NULL);
+	if (data->pulse)
+		xmms_pulse_backend_flush(data->pulse, NULL);
 }
+
 
 static void
 xmms_pulse_write (xmms_output_t *output, gpointer buffer, gint len,
-                 xmms_error_t *err)
+				  xmms_error_t *err)
 {
 	xmms_pulse_data_t *data;
 
@@ -227,5 +226,5 @@ xmms_pulse_write (xmms_output_t *output, gpointer buffer, gint len,
 	data = xmms_output_private_data_get (output);
 	g_return_if_fail (data);
 
-	pa_simple_write (data->server, buffer, len, NULL);
+	xmms_pulse_backend_write (data->pulse, buffer, len, NULL);
 }
