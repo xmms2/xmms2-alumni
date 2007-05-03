@@ -11,6 +11,7 @@ xmms_object_cmd_arg_type_t	XMMS_OBJECT_CMD_ARG_TYPE_T
 uint32_t					T_UV
 int32_t						T_IV
 perl_xmmsclient_collection_order_t	PERL_XMMSCLIENT_COLLECTION_ORDER_T
+perl_xmmsclient_playlist_t *	PERL_XMMSCLIENT_PLAYLIST_T
 
 OUTPUT
 
@@ -66,10 +67,7 @@ XMMS_OBJECT_CMD_ARG_TYPE_T
 XMMSC_COLL_TYPE_T
 	{
 		$arg = newSVpv ("", 0);
-		if ($var == XMMS_COLLECTION_TYPE_ERROR) {
-			sv_setpv ($arg, \"error\");
-		}
-		else if ($var == XMMS_COLLECTION_TYPE_REFERENCE) {
+		if ($var == XMMS_COLLECTION_TYPE_REFERENCE) {
 			sv_setpv ($arg, \"reference\");
 		}
 		else if ($var == XMMS_COLLECTION_TYPE_UNION) {
@@ -109,6 +107,9 @@ XMMSC_COLL_TYPE_T
 			croak (\"unknown XMMSC_COLL_TYPE_T\");
 		}
 	}
+
+PERL_XMMSCLIENT_PLAYLIST_T
+	$arg = perl_xmmsclient_new_sv_from_ptr ($var, \"Audio::XMMSClient::Playlist\");
 
 INPUT
 
@@ -151,14 +152,14 @@ XMMS_PLUGIN_TYPE_T
 PERL_XMMSCLIENT_COLLECTION_ORDER_T
 	$var = ($type)perl_xmmsclient_unpack_char_ptr_ptr ($arg);
 
+PERL_XMMSCLIENT_PLAYLIST_T
+	$var = ($type)perl_xmmsclient_get_ptr_from_sv ($arg, \"Audio::XMMSClient::Playlist\");
+
 XMMSC_COLL_TYPE_T
 	{
 		char *coll_type = SvPV_nolen ($arg);
 
-		if (strcmp (coll_type, \"error\") == 0) {
-			$var = XMMS_COLLECTION_TYPE_ERROR;
-		}
-		else if (strcmp (coll_type, \"reference\") == 0) {
+		if (strcmp (coll_type, \"reference\") == 0) {
 			$var = XMMS_COLLECTION_TYPE_REFERENCE;
 		}
 		else if (strcmp (coll_type, \"union\") == 0) {

@@ -52,11 +52,6 @@ DESTROY (coll)
 		xmmsc_coll_unref (coll);
 
 void
-xmmsc_coll_set_type (coll, type)
-		xmmsc_coll_t *coll
-		xmmsc_coll_type_t type
-
-void
 xmmsc_coll_set_idlist (coll, ...)
 		xmmsc_coll_t *coll
 	PREINIT:
@@ -213,6 +208,9 @@ xmmsc_coll_attribute_get (xmmsc_coll_t *coll, const char *key, OUTLIST char *val
 			XSRETURN_UNDEF;
 
 xmmsc_coll_t *
-xmmsc_coll_universe (class)
+xmmsc_coll_universe (class="optional")
 	C_ARGS:
 		/* void */
+
+BOOT:
+	PERL_UNUSED_VAR (items);

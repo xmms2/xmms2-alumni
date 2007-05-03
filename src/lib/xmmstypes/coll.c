@@ -159,22 +159,6 @@ xmmsc_coll_unref (xmmsc_coll_t *coll)
 
 
 /**
- * Change the type of the given collection.
- * Note that internal properties of the collections are not flushed
- * even if they are not relevant to the new type.
- *
- * @param coll the collection to modify.
- * @param type the new type for the collection.
- */
-void
-xmmsc_coll_set_type (xmmsc_coll_t *coll, xmmsc_coll_type_t type)
-{
-	x_return_if_fail (coll);
-
-	coll->type = type;
-}
-
-/**
  * Set the list of ids in the given collection.
  * The list must be 0-terminated.
  * Note that the idlist is only relevant for idlist collections.
@@ -657,13 +641,14 @@ xmmsc_coll_attribute_remove (xmmsc_coll_t *coll, const char *key)
 
 /**
  * Retrieve the value of the attribute of the given collection.
- * The return value indicated whether the attribute was found (or NULL
- * if not found).  The value is owned by the collection.
+ * The return value is 1 if the attribute was found and 0 otherwise.
+ * The value of the attribute is owned by the collection and must not
+ * be freed by the caller.
  *
  * @param coll The collection to retrieve the attribute from.
  * @param key  The name of the attribute.
  * @param value The value of the attribute if found (owned by the collection).
- * @return 1 upon success, 0 otherwise
+ * @return 1 if the attribute was found, 0 otherwise
  */
 int
 xmmsc_coll_attribute_get (xmmsc_coll_t *coll, const char *key, char **value)
@@ -673,7 +658,10 @@ xmmsc_coll_attribute_get (xmmsc_coll_t *coll, const char *key, char **value)
 		const char *k = n->data;
 		if (strcasecmp (k, key) == 0 && n->next) {
 			/* found right key, return value */
-			*value = (char*) n->next->data;
+			if (value) {
+				*value = (char*) n->next->data;
+			}
+
 			return 1;
 		} else {
 			/* skip data part of this entry */
@@ -681,7 +669,10 @@ xmmsc_coll_attribute_get (xmmsc_coll_t *coll, const char *key, char **value)
 		}
 	}
 
-	*value = NULL;
+	if (value) {
+		*value = NULL;
+	}
+
 	return 0;
 }
 

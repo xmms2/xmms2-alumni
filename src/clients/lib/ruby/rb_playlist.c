@@ -22,6 +22,7 @@
 #include "rb_playlist.h"
 #include "rb_xmmsclient.h"
 #include "rb_result.h"
+#include "rb_collection.h"
 
 #define DEF_CONST(mod, prefix, name) \
 	rb_define_const ((mod), #name, \
@@ -56,21 +57,17 @@
 #define PLAYLIST_METHOD_ADD_HANDLER_UINT(action, arg) \
 	PLAYLIST_METHOD_HANDLER_HEADER \
 \
-	Check_Type (arg, T_FIXNUM); \
-\
 	res = xmmsc_playlist_##action (xmms->real, pl->name, \
-	                               NUM2UINT (arg)); \
+	                               check_uint32 (arg)); \
 \
 	PLAYLIST_METHOD_HANDLER_FOOTER
 
 #define PLAYLIST_METHOD_ADD_HANDLER_UINT_UINT(action, arg1, arg2) \
 	PLAYLIST_METHOD_HANDLER_HEADER \
 \
-	Check_Type (arg1, T_FIXNUM); \
-	Check_Type (arg2, T_FIXNUM); \
-\
 	res = xmmsc_playlist_##action (xmms->real, pl->name, \
-	                               NUM2UINT (arg1), NUM2UINT (arg2)); \
+	                               check_uint32 (arg1), \
+	                               check_uint32 (arg2)); \
 \
 	PLAYLIST_METHOD_HANDLER_FOOTER
 
@@ -182,18 +179,31 @@ c_list_entries (VALUE self)
 static VALUE
 c_add_entry (VALUE self, VALUE arg)
 {
+	uint32_t id;
+
 	PLAYLIST_METHOD_HANDLER_HEADER
 
 	if (!NIL_P (rb_check_string_type (arg)))
 		res = xmmsc_playlist_add_url (xmms->real, pl->name,
 		                              StringValuePtr (arg));
-	else if (rb_obj_is_kind_of (arg, rb_cFixnum))
-		res = xmmsc_playlist_add_id (xmms->real, pl->name,
-		                             NUM2UINT (arg));
-	else
-		rb_raise (eClientError, "unsupported argument");
+	else {
+		id = check_uint32 (arg);
+		res = xmmsc_playlist_add_id (xmms->real, pl->name, id);
+	}
 
 	PLAYLIST_METHOD_HANDLER_FOOTER
+}
+
+/*
+ * call-seq:
+ *  pl.radd(path) -> result
+ *
+ * Recursively imports all media files under _path_ to the playlist.
+ */
+static VALUE
+c_radd (VALUE self, VALUE path)
+{
+	PLAYLIST_METHOD_ADD_HANDLER_STR (radd, path);
 }
 
 /*
@@ -206,18 +216,21 @@ c_add_entry (VALUE self, VALUE arg)
 static VALUE
 c_insert_entry (VALUE self, VALUE pos, VALUE arg)
 {
+	uint32_t id;
+	int32_t ipos;
+
 	PLAYLIST_METHOD_HANDLER_HEADER
 
-	Check_Type (pos, T_FIXNUM);
+	ipos = check_int32 (pos);
 
 	if (!NIL_P (rb_check_string_type (arg)))
 		res = xmmsc_playlist_insert_url (xmms->real, pl->name,
-		                                 NUM2UINT (pos), StringValuePtr (arg));
-	else if (rb_obj_is_kind_of (arg, rb_cFixnum))
+		                                 ipos, StringValuePtr (arg));
+	else {
+		id = check_uint32 (arg);
 		res = xmmsc_playlist_insert_id (xmms->real, pl->name,
-		                                NUM2UINT (pos), NUM2UINT (arg));
-	else
-		rb_raise (ePlaylistError, "unsupported argument");
+		                                ipos, id);
+	}
 
 	PLAYLIST_METHOD_HANDLER_FOOTER
 }
@@ -332,6 +345,35 @@ c_remove (VALUE self)
 	PLAYLIST_METHOD_ADD_HANDLER (remove);
 }
 
+/*
+ * call-seq:
+ *  pl.add_collection(coll [, order]) -> result
+ *
+ * Adds the collection _coll_ to the playlist.
+ */
+static VALUE
+c_add_collection (int argc, VALUE *argv, VALUE self)
+{
+	PLAYLIST_METHOD_HANDLER_HEADER
+
+	VALUE rbcoll, order = Qnil;
+	const char **corder = NULL;
+	xmmsc_coll_t *coll;
+
+	rb_scan_args (argc, argv, "11", &rbcoll, &order);
+
+	coll = FROM_XMMS_CLIENT_COLLECTION (rbcoll);
+
+	if (!NIL_P (order))
+		corder = parse_string_array (order);
+
+	res = xmmsc_playlist_add_collection (xmms->real, pl->name,
+	                                     coll, corder);
+
+	free (corder);
+	PLAYLIST_METHOD_HANDLER_FOOTER
+}
+
 VALUE
 Init_Playlist (VALUE mXmms)
 {
@@ -347,12 +389,14 @@ Init_Playlist (VALUE mXmms)
 	rb_define_method (c, "shuffle", c_shuffle, 0);
 	rb_define_method (c, "clear", c_clear, 0);
 	rb_define_method (c, "add_entry", c_add_entry, 1);
+	rb_define_method (c, "radd", c_radd, 1);
 	rb_define_method (c, "insert_entry", c_insert_entry, 2);
 	rb_define_method (c, "remove_entry", c_remove_entry, 1);
 	rb_define_method (c, "move_entry", c_move_entry, 2);
 	rb_define_method (c, "entries", c_list_entries, 0);
 	rb_define_method (c, "load", c_load, 0);
 	rb_define_method (c, "remove", c_remove, 0);
+	rb_define_method (c, "add_collection", c_add_collection, -1);
 
 	DEF_CONST (c, XMMS_PLAYLIST_CHANGED_, ADD);
 	DEF_CONST (c, XMMS_PLAYLIST_CHANGED_, INSERT);

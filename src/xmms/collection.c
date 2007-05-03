@@ -279,10 +279,17 @@ add_metadata_from_hash (gpointer key, gpointer value, gpointer user_data)
 	add_metadata_from_hash_user_data_t *ud = user_data;
 	xmms_object_cmd_value_t *b = value;
 
-	xmms_medialib_entry_property_set_str_source (ud->session, ud->entry,
-	                                             (const gchar *)key,
-	                                             b->value.string,
-	                                             ud->src);
+	if (b->type == XMMS_OBJECT_CMD_ARG_INT32) {
+		xmms_medialib_entry_property_set_int_source (ud->session, ud->entry,
+		                                             (const gchar *)key,
+		                                             b->value.int32,
+		                                             ud->src);
+	} else if (b->type == XMMS_OBJECT_CMD_ARG_STRING) {
+		xmms_medialib_entry_property_set_str_source (ud->session, ud->entry,
+		                                             (const gchar *)key,
+		                                             b->value.string,
+		                                             ud->src);
+	}
 }
 
 /** Create a idlist from a playlist file
@@ -398,7 +405,7 @@ xmms_collection_remove (xmms_coll_dag_t *dag, gchar *name, gchar *namespace, xmm
 	g_mutex_unlock (dag->mutex);
 
 	if (retval == FALSE) {
-		xmms_error_set (err, XMMS_ERROR_NOENT, "No such collection!");
+		xmms_error_set (err, XMMS_ERROR_NOENT, "Failed to remove this collection!");
 	}
 
 	return retval;
@@ -1054,12 +1061,22 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 				return FALSE;
 			}
 
-			/* check if the referenced coll references this one (loop!) */
-			if (save_name && save_namespace &&
-			    xmms_collection_has_reference_to (dag, ref, save_name, save_namespace)) {
-				g_mutex_unlock (dag->mutex);
-				return FALSE;
+			if (save_name && save_namespace) {
+				/* self-reference is of course forbidden */
+				if (strcmp (attr, save_name) == 0 &&
+				    strcmp (attr2, save_namespace) == 0) {
+
+					g_mutex_unlock (dag->mutex);
+					return FALSE;
+
+				/* check if the referenced coll references this one (loop!) */
+				} else if (xmms_collection_has_reference_to (dag, ref, save_name,
+				                                             save_namespace)) {
+					g_mutex_unlock (dag->mutex);
+					return FALSE;
+				}
 			}
+
 			g_mutex_unlock (dag->mutex);
 		} else {
 			/* "All Media" reference, so no referenced coll pointer */
@@ -1183,11 +1200,15 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 static gboolean
 xmms_collection_unreference (xmms_coll_dag_t *dag, gchar *name, guint nsid)
 {
-	xmmsc_coll_t *existing;
+	xmmsc_coll_t *existing, *active_pl;
 	gboolean retval = FALSE;
 
-	existing = g_hash_table_lookup (dag->collrefs[nsid], name);
-	if (existing != NULL) {
+	existing  = g_hash_table_lookup (dag->collrefs[nsid], name);
+	active_pl = g_hash_table_lookup (dag->collrefs[XMMS_COLLECTION_NSID_PLAYLISTS],
+	                                 XMMS_ACTIVE_PLAYLIST);
+
+	/* Unref if collection exists, and is not pointed at by _active playlist */
+	if (existing != NULL && existing != active_pl) {
 		gchar *matchkey;
 		char *nsname = xmms_collection_get_namespace_string (nsid);
 		coll_rebind_infos_t infos = { name, nsname, existing, NULL };

@@ -93,10 +93,10 @@ perl_xmmsclient_xmms_result_cast_value (xmmsc_result_value_type_t type, const vo
 			perl_value = newSVpv ((const char *)value, 0);
 			break;
 		case XMMSC_RESULT_VALUE_TYPE_INT32:
-			perl_value = newSViv ((int)value);
+			perl_value = newSViv ((IV)value);
 			break;
 		case XMMSC_RESULT_VALUE_TYPE_UINT32:
-			perl_value = newSVuv ((unsigned int)value);
+			perl_value = newSVuv ((UV)value);
 			break;
 		default:
 			perl_value = &PL_sv_undef;
@@ -308,3 +308,6 @@ DESTROY (res)
 		xmmsc_result_t *res
 	CODE:
 		xmmsc_result_unref (res);
+
+BOOT:
+	PERL_UNUSED_VAR (items);

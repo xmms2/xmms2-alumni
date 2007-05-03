@@ -509,14 +509,12 @@ namespace Xmms
 	{
 	}
 	PartyShuffle::PartyShuffle( unsigned int history )
-		: Queue( PARTYSHUFFLE )
+		: Queue( PARTYSHUFFLE, history )
 	{
-		setAttribute( "history", boost::lexical_cast<string>( history ) );
 	}
 	PartyShuffle::PartyShuffle( unsigned int history, unsigned int upcoming )
-		: Queue( PARTYSHUFFLE )
+		: Queue( PARTYSHUFFLE, history )
 	{
-		setAttribute( "history", boost::lexical_cast<string>( history ) );
 		setAttribute( "upcoming", boost::lexical_cast<string>( upcoming ) );
 	}
 	PartyShuffle::~PartyShuffle()
@@ -609,6 +607,41 @@ namespace Xmms
 	{
 		coll_.setIndex( index_, value );
 		return value;
+	}
+
+
+	void PartyShuffle::setOperand( Coll& operand )
+	{
+		removeOperand();
+		xmmsc_coll_add_operand( coll_, operand.getColl() );
+	}
+
+	void PartyShuffle::removeOperand()
+	{
+		try {
+			xmmsc_coll_remove_operand( coll_, (*getOperand()).getColl() );
+		}
+		/* don't throw an error if none */
+		catch (...) {}
+	}
+
+	CollPtr PartyShuffle::getOperand() const
+	{
+		xmmsc_coll_t *op;
+
+		// Find the operand
+		xmmsc_coll_operand_list_save( coll_ );
+		xmmsc_coll_operand_list_first( coll_ );
+		if( !xmmsc_coll_operand_list_entry( coll_, &op ) ) {
+			op = NULL;
+		}
+		xmmsc_coll_operand_list_restore( coll_ );
+
+		if( !op ) {
+			throw missing_operand_error( "No operand in this operator!" );
+		}
+
+		return CollResult::createColl( op );
 	}
 
 

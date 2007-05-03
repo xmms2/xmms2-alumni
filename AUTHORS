@@ -150,6 +150,10 @@ N: Daniel Pearson
 E: daniel@nanoo.org
 D: Python XMMSSync-proxy. PythonAPI fixes.
 
+N: Algardas Pelakauskas
+E: algardas@gmail.com
+D: Ruby radd binding
+
 N: Florian Ragwitz
 E: rafl@debian.org
 W: http://perldition.org/
@@ -179,6 +183,14 @@ D: Ruby bindings. Many other things all over the place.
 N: Georg Schild
 E: dangertools@gmail.com
 D: Java bindings
+
+N: Auke Schrijnen
+E: auke@schrijnen.nl
+D: Windows diskwrite and Win2k fixes
+
+N: Tim Schumacher
+E: tim@we-are-teh-b.org
+D: Windows CLI terminal width fix
 
 N: Ben Slote
 E: bslote@gmail.com
@@ -217,6 +229,10 @@ D: Faad, wma, equalizer, vocoder, ao. Various fixes.
 N: Michael Walle
 E: michael@walle.cc
 D: playlists_list stuff
+
+N: Rainer Wittmaack
+E: ningo@gmx.net
+D: sun audio fixes
 
 N: Ma Xuan
 E: supermmx@gmail.com

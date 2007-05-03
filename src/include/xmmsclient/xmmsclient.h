@@ -26,6 +26,12 @@
 extern "C" {
 #endif
 
+#if defined (__GNUC__) && __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ > 1)
+#define XMMS_DEPRECATED __attribute__((deprecated))
+#else
+#define XMMS_DEPRECATED
+#endif
+
 typedef struct xmmsc_connection_St xmmsc_connection_t;
 typedef struct xmmsc_result_St xmmsc_result_t;
 
@@ -39,6 +45,7 @@ typedef void (*xmmsc_user_data_free_func_t) (void *user_data);
 
 xmmsc_connection_t *xmmsc_init (const char *clientname);
 int xmmsc_connect (xmmsc_connection_t *, const char *);
+void xmmsc_ref (xmmsc_connection_t *c);
 void xmmsc_unref (xmmsc_connection_t *c);
 void xmmsc_lock_set (xmmsc_connection_t *conn, void *lock, void (*lockfunc)(void *), void (*unlockfunc)(void *));
 void xmmsc_disconnect_callback_set (xmmsc_connection_t *c, void (*callback) (void*), void *userdata);
@@ -163,7 +170,7 @@ xmmsc_result_t *xmmsc_signal_mediainfo_reader_unindexed (xmmsc_connection_t *c);
 
 /* commands */
 int xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res);
-xmmsc_result_t *xmmsc_medialib_select (xmmsc_connection_t *conn, const char *query);
+xmmsc_result_t *xmmsc_medialib_select (xmmsc_connection_t *conn, const char *query) XMMS_DEPRECATED;
 xmmsc_result_t *xmmsc_medialib_add_entry (xmmsc_connection_t *conn, const char *url);
 xmmsc_result_t *xmmsc_medialib_add_entry_args (xmmsc_connection_t *conn, const char *url, int numargs, const char **args);
 xmmsc_result_t *xmmsc_medialib_add_entry_encoded (xmmsc_connection_t *conn, const char *url);

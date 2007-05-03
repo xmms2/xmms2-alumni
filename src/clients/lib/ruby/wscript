@@ -5,7 +5,7 @@ import Common
 
 def build(bld):
     obj = bld.create_obj('cc', 'plugin')
-    obj.target = 'xmmsclient'
+    obj.target = 'xmmsclient_ext'
     obj.includes = '../../../include ../../../includepriv'
     obj.source = "rb_xmmsclient_main.c rb_xmmsclient.c rb_playlist.c rb_collection.c rb_result.c".split()
     obj.uselib_local = 'xmmsclient'
@@ -13,6 +13,7 @@ def build(bld):
     obj.install_in = "ARCHDIR_ruby"
     obj.env["plugin_PREFIX"] = ''
 
+    Common.install_files('LIBDIR_ruby', '.', 'xmmsclient.rb')
     Common.install_files('LIBDIR_ruby', 'xmmsclient', 'sync.rb')
     Common.install_files('LIBDIR_ruby', 'xmmsclient', 'async.rb')
 
@@ -21,7 +22,7 @@ def build(bld):
     obj.target = 'xmmsclient_glib'
     obj.includes = '../../../include ../../../includepriv'
     obj.source = ['rb_xmmsclient_glib.c']
-    obj.uselib_local = 'xmmsclient-glib'
+    obj.uselib_local = 'xmmsclient-glib xmmsclient'
     obj.uselib = 'ruby glib2'
     obj.install_in = "ARCHDIR_ruby"
     obj.env["plugin_PREFIX"] = ''
@@ -32,7 +33,7 @@ def build(bld):
         obj.target = 'xmmsclient_ecore'
         obj.includes = '../../../include ../../../includepriv'
         obj.source = ['rb_xmmsclient_ecore.c']
-        obj.uselib_local = 'xmmsclient-ecore'
+        obj.uselib_local = 'xmmsclient-ecore xmmsclient'
         obj.uselib = 'ruby ecore'
         obj.install_in = "ARCHDIR_ruby"
         obj.env["plugin_PREFIX"] = ''

@@ -57,17 +57,14 @@
 #define METHOD_ADD_HANDLER_UINT(name, arg1) \
 	METHOD_HANDLER_HEADER \
 \
-	Check_Type (arg1, T_FIXNUM); \
+	res = xmmsc_##name (xmms->real, check_uint32 (arg1)); \
 \
-	res = xmmsc_##name (xmms->real, NUM2UINT (arg1)); \
 	METHOD_HANDLER_FOOTER
 
 #define METHOD_ADD_HANDLER_INT(name, arg1) \
 	METHOD_HANDLER_HEADER \
 \
-	Check_Type (arg1, T_FIXNUM); \
-\
-	res = xmmsc_##name (xmms->real, NUM2INT (arg1)); \
+	res = xmmsc_##name (xmms->real, check_int32 (arg1)); \
 	METHOD_HANDLER_FOOTER
 
 #define METHOD_ADD_HANDLER_BIN(name, arg1) \
@@ -80,26 +77,9 @@
 	                    RSTRING (arg1)->len); \
 	METHOD_HANDLER_FOOTER
 
-/* Use for converting arrays of strings in ruby to c
- * Remember to free cary.
- * i must be defined as well as ary,rary,cary.
- */
-#define ARRAY_STRING_PARSE(ary, rary, cary) \
-	if (!NIL_P (rb_check_array_type (ary))) { \
-		rary = RARRAY (ary); \
-		cary = malloc (sizeof (char *) * (rary->len + 1)); \
-		for (i = 0; i < rary->len; i++) \
-			cary[i] = StringValuePtr (rary->ptr[i]); \
-		cary[i] = NULL; \
-	} else if (!NIL_P (rb_check_string_type (ary))) { \
-		cary = malloc (sizeof (char *) * 2); \
-		cary[0] = StringValuePtr (ary); \
-		cary[1] = NULL; \
-	} else \
-		rb_raise (eClientError, "unsupported argument");
-
 static VALUE cPlaylist;
 static VALUE eClientError, eDisconnectedError;
+static ID id_lt, id_gt;
 
 static void
 c_mark (RbXmmsClient *xmms)
@@ -276,7 +256,7 @@ c_io_fd (VALUE self)
 
 	CHECK_DELETED (xmms);
 
-	return INT2FIX (xmmsc_io_fd_get (xmms->real));
+	return INT2NUM (xmmsc_io_fd_get (xmms->real));
 }
 
 /*
@@ -306,7 +286,7 @@ on_io_need_out (int flag, void *data)
 
 	Data_Get_Struct (self, RbXmmsClient, xmms);
 
-	rb_funcall (xmms->io_need_out_cb, rb_intern ("call"), 1, INT2FIX (flag));
+	rb_funcall (xmms->io_need_out_cb, rb_intern ("call"), 1, INT2NUM (flag));
 }
 
 /*
@@ -814,54 +794,48 @@ c_medialib_get_info (VALUE self, VALUE id)
 static VALUE
 c_medialib_entry_property_set (int argc, VALUE *argv, VALUE self)
 {
-	VALUE id, key, value, src = Qnil;
+	VALUE tmp, key, value, src = Qnil;
 	RbXmmsClient *xmms = NULL;
 	xmmsc_result_t *res;
 	const char *ckey;
 	bool is_str = false;
+	uint32_t id;
+	int32_t ivalue;
 
 	Data_Get_Struct (self, RbXmmsClient, xmms);
 
 	CHECK_DELETED (xmms);
 
-	rb_scan_args (argc, argv, "31", &id, &key, &value, &src);
+	rb_scan_args (argc, argv, "31", &tmp, &key, &value, &src);
 
-	Check_Type (id, T_FIXNUM);
+	id = check_uint32 (tmp);
 	Check_Type (key, T_SYMBOL);
 
 	if (!NIL_P (rb_check_string_type (value)))
 		is_str = true;
-	else if (!rb_obj_is_kind_of (value, rb_cFixnum)) {
-		rb_raise (eClientError, "unsupported argument");
-		return Qnil;
-	}
+	else
+		ivalue = check_int32 (value);
 
 	ckey = rb_id2name (SYM2ID (key));
 
 	if (NIL_P (src) && is_str)
-		res = xmmsc_medialib_entry_property_set_str (xmms->real,
-		                                             FIX2INT (id),
+		res = xmmsc_medialib_entry_property_set_str (xmms->real, id,
 		                                             ckey,
 		                                             StringValuePtr (value));
 	else if (NIL_P (src))
-		res = xmmsc_medialib_entry_property_set_int (xmms->real,
-		                                             FIX2INT (id),
-		                                             ckey,
-		                                             FIX2INT (value));
+		res = xmmsc_medialib_entry_property_set_int (xmms->real, id,
+		                                             ckey, ivalue);
 	else if (is_str)
 		res = xmmsc_medialib_entry_property_set_str_with_source (
-			xmms->real,
-			FIX2INT (id),
+			xmms->real, id,
 			StringValuePtr (src),
 			ckey,
 			StringValuePtr (value));
 	else
 		res = xmmsc_medialib_entry_property_set_int_with_source (
-			xmms->real,
-			FIX2INT (id),
+			xmms->real, id,
 			StringValuePtr (src),
-			ckey,
-			FIX2INT (value));
+			ckey, ivalue);
 
 	return TO_XMMS_CLIENT_RESULT (self, res);
 }
@@ -879,34 +853,45 @@ c_medialib_entry_property_set (int argc, VALUE *argv, VALUE self)
 static VALUE
 c_medialib_entry_property_remove (int argc, VALUE *argv, VALUE self)
 {
-	VALUE id, key, src = Qnil;
+	VALUE tmp, key, src = Qnil;
 	RbXmmsClient *xmms = NULL;
 	xmmsc_result_t *res;
 	const char *ckey;
+	uint32_t id;
 
 	Data_Get_Struct (self, RbXmmsClient, xmms);
 
 	CHECK_DELETED (xmms);
 
-	rb_scan_args (argc, argv, "21", &id, &key, &src);
+	rb_scan_args (argc, argv, "21", &tmp, &key, &src);
 
-	Check_Type (id, T_FIXNUM);
+	id = check_uint32 (tmp);
 	Check_Type (key, T_SYMBOL);
 
 	ckey = rb_id2name (SYM2ID (key));
 
 	if (NIL_P (src))
-		res = xmmsc_medialib_entry_property_remove (xmms->real,
-		                                            FIX2INT (id),
+		res = xmmsc_medialib_entry_property_remove (xmms->real, id,
 		                                            ckey);
 	else
 		res = xmmsc_medialib_entry_property_remove_with_source (
-			xmms->real,
-			FIX2INT (id),
+			xmms->real, id,
 			StringValuePtr (src),
 			ckey);
 
 	return TO_XMMS_CLIENT_RESULT (self, res);
+}
+
+/*
+ * call-seq:
+ *  xc.medialib_entry_remove(id) -> result
+ *
+ * Removes the entry specified by _id_ from the medialib.
+ */
+static VALUE
+c_medialib_entry_remove (VALUE self, VALUE id)
+{
+	METHOD_ADD_HANDLER_UINT (medialib_remove_entry, id)
 }
 
 /*
@@ -1206,9 +1191,8 @@ c_coll_find (VALUE self, VALUE id, VALUE ns)
 {
 	METHOD_HANDLER_HEADER
 
-	Check_Type (id, T_FIXNUM);
-
-	res = xmmsc_coll_find (xmms->real, NUM2UINT (id), StringValuePtr (ns));
+	res = xmmsc_coll_find (xmms->real, check_uint32 (id),
+	                       StringValuePtr (ns));
 
 	METHOD_HANDLER_FOOTER
 }
@@ -1254,19 +1238,14 @@ c_coll_rename (int argc, VALUE *argv, VALUE self)
 static VALUE
 c_coll_query_ids (int argc, VALUE *argv, VALUE self)
 {
-	VALUE coll, order, start, len = Qnil;
-	struct RArray *rorder;
-	const char **corder;
-	int i;
+	VALUE coll, order = Qnil, start, len = Qnil;
+	const char **corder = NULL;
 	METHOD_HANDLER_HEADER
 
 	rb_scan_args (argc, argv, "13", &coll, &order, &start, &len);
 
-	if (!NIL_P (order)) {
-		ARRAY_STRING_PARSE (order, rorder, corder);
-	} else {
-		corder = NULL;
-	}
+	if (!NIL_P (order))
+		corder = parse_string_array (order);
 
 	res = xmmsc_coll_query_ids (xmms->real,
 	                            FROM_XMMS_CLIENT_COLLECTION (coll),
@@ -1290,26 +1269,20 @@ c_coll_query_ids (int argc, VALUE *argv, VALUE self)
 static VALUE
 c_coll_query_info (int argc, VALUE *argv, VALUE self)
 {
-	VALUE coll, order, start, len, fetch, group = Qnil;
-	struct RArray *rfetch, *rorder, *rgroup;
-	const char **cfetch, **corder, **cgroup;
-	int i;
+	VALUE coll, order = Qnil, start, len, fetch, group = Qnil;
+	const char **cfetch, **corder = NULL, **cgroup = NULL;
 	METHOD_HANDLER_HEADER
 
 	rb_scan_args (argc, argv, "24", &coll, &fetch, &order, &start, &len,
 	              &group);
 
-	ARRAY_STRING_PARSE (fetch, rfetch, cfetch)
-	if (!NIL_P (order)) {
-		ARRAY_STRING_PARSE (order, rorder, corder);
-	} else {
-		corder = NULL;
-	}
-	if (!NIL_P (group)) {
-		ARRAY_STRING_PARSE (group, rgroup, cgroup)
-	} else {
-		cgroup = NULL;
-	}
+	cfetch = parse_string_array (fetch);
+
+	if (!NIL_P (order))
+		corder = parse_string_array (order);
+
+	if (!NIL_P (group))
+		cgroup = parse_string_array (group);
 
 	res = xmmsc_coll_query_infos (xmms->real,
 	                            FROM_XMMS_CLIENT_COLLECTION (coll),
@@ -1349,6 +1322,71 @@ static VALUE
 c_broadcast_coll_changed (VALUE self)
 {
 	METHOD_ADD_HANDLER (broadcast_collection_changed)
+}
+
+VALUE
+check_uint32 (VALUE arg)
+{
+	VALUE uint32_max = UINT2NUM (4294967295UL);
+	VALUE uint32_min = INT2NUM (0);
+
+	if (!rb_obj_is_kind_of (arg, rb_cInteger))
+		rb_raise (rb_eTypeError,
+		          "wrong argument type %s (expected Integer)",
+		          rb_obj_classname (arg));
+
+	if (rb_funcall2 (arg, id_lt, 1, &uint32_min) ||
+	    rb_funcall2 (arg, id_gt, 1, &uint32_max))
+		rb_raise (rb_eTypeError,
+		          "wrong argument type (expected 32 bit unsigned int)");
+
+	return NUM2UINT (arg);
+}
+
+VALUE
+check_int32 (VALUE arg)
+{
+	VALUE int32_max = INT2NUM (2147483647);
+	VALUE int32_min = INT2NUM (-2147483647);
+
+	if (!rb_obj_is_kind_of (arg, rb_cInteger))
+		rb_raise (rb_eTypeError,
+		          "wrong argument type %s (expected Integer)",
+		          rb_obj_classname (arg));
+
+	if (rb_funcall2 (arg, id_lt, 1, &int32_min) ||
+	    rb_funcall2 (arg, id_gt, 1, &int32_max))
+		rb_raise (rb_eTypeError,
+		          "wrong argument type (expected 32 bit signed int)");
+
+	return NUM2INT (arg);
+}
+
+const char **
+parse_string_array (VALUE value)
+{
+	const char **ret;
+	int i;
+
+	if (!NIL_P (rb_check_array_type (value))) {
+		struct RArray *ary = RARRAY (value);
+
+		ret = malloc (sizeof (char *) * (ary->len + 1));
+
+		for (i = 0; i < ary->len; i++)
+			ret[i] = StringValuePtr (ary->ptr[i]);
+
+		ret[i] = NULL;
+	} else {
+		/* if it's not an array, it must be a string */
+		StringValue (value);
+
+		ret = malloc (sizeof (char *) * 2);
+		ret[0] = StringValuePtr (value);
+		ret[1] = NULL;
+	}
+
+	return ret;
 }
 
 void
@@ -1436,6 +1474,7 @@ Init_Client (VALUE mXmms)
 	                  c_medialib_entry_property_set, -1);
 	rb_define_method (c, "medialib_entry_property_remove",
 	                  c_medialib_entry_property_remove, -1);
+	rb_define_method (c, "medialib_entry_remove", c_medialib_entry_remove, 1);
 	rb_define_method (c, "medialib_path_import", c_medialib_path_import, 1);
 	rb_define_method (c, "medialib_rehash", c_medialib_rehash, 1);
 
@@ -1484,6 +1523,9 @@ Init_Client (VALUE mXmms)
 	                                      rb_eStandardError);
 	eDisconnectedError = rb_define_class_under (c, "DisconnectedError",
 	                                            eClientError);
+
+	id_lt = rb_intern ("<");
+	id_gt = rb_intern (">");
 
 	Init_Result (mXmms);
 	cPlaylist = Init_Playlist (mXmms);

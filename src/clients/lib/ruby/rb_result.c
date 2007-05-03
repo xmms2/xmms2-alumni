@@ -32,12 +32,6 @@ typedef struct {
 	VALUE propdict;
 } RbResult;
 
-enum {
-	EACH_PAIR,
-	EACH_KEY,
-	EACH_VALUE
-};
-
 static VALUE cResult, cPropDict, cBroadcastResult, cSignalResult,
              eResultError, eValueError;
 
@@ -212,7 +206,7 @@ int_get (RbResult *res)
 	if (!xmmsc_result_get_int (res->real, &id))
 		rb_raise (eValueError, "cannot retrieve value");
 
-	return INT2FIX (id);
+	return INT2NUM (id);
 }
 
 static VALUE

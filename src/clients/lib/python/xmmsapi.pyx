@@ -29,7 +29,6 @@ cdef extern from "xmmsc/xmmsc_idnumbers.h":
 		XMMS_OBJECT_CMD_ARG_COLL
 		XMMS_OBJECT_CMD_ARG_BIN
 	ctypedef enum xmmsc_coll_type_t:
-		XMMS_COLLECTION_TYPE_ERROR
 		XMMS_COLLECTION_TYPE_REFERENCE
 		XMMS_COLLECTION_TYPE_UNION
 		XMMS_COLLECTION_TYPE_INTERSECTION
@@ -188,8 +187,9 @@ cdef extern from "xmmsclient/xmmsclient.h":
 	xmmsc_result_t *xmmsc_playlist_radd(xmmsc_connection_t *c, char *, char *path)
 	xmmsc_result_t *xmmsc_playlist_radd_encoded(xmmsc_connection_t *c, char *, char *path)
 
-	xmmsc_result_t *xmmsc_playlist_load (xmmsc_connection_t *, char *playlist)
+	xmmsc_result_t *xmmsc_playlist_load(xmmsc_connection_t *, char *playlist)
 	xmmsc_result_t *xmmsc_playlist_move(xmmsc_connection_t *c, unsigned int id, signed int movement)
+	xmmsc_result_t *xmmsc_playlist_create(xmmsc_connection_t *c, char *playlist)
 
 	xmmsc_result_t *xmmsc_broadcast_playlist_changed(xmmsc_connection_t *c)
 	xmmsc_result_t *xmmsc_broadcast_playlist_current_pos(xmmsc_connection_t *c)
@@ -1516,7 +1516,7 @@ cdef class XMMS:
 		
 		return ret
 
-	def playlist_remove(self, playlist = None):
+	def playlist_remove(self, playlist = None, cb = None):
 		"""
 		Remove the playlist from the server
 		@rtype: L{XMMSResult}
@@ -1896,6 +1896,24 @@ cdef class XMMS:
 		
 		return ret
 
+	def playlist_create(self, playlist, cb = None):
+		"""
+		Create a new playlist.
+		@rtype: L{XMMSResult}
+		@return: The result of the operation.
+		"""
+		cdef XMMSResult ret
+
+		ret = XMMSResult(self)
+		ret.callback = cb
+
+		pl = from_unicode(playlist)
+		ret.res = xmmsc_playlist_create(self.conn, pl)
+
+		ret.more_init()
+
+		return ret
+
 	def playlist_current_pos(self, playlist = None, cb = None):
 		"""
 		Returns the current position in the playlist. This value will
@@ -2188,7 +2206,7 @@ cdef class XMMS:
 			else:
 				ret.res = xmmsc_medialib_entry_property_set_str_with_source(self.conn,id,s,k,v)
 		else:
-			if isinstance(value, str):
+			if isinstance(value, basestring):
 				ret.res = xmmsc_medialib_entry_property_set_str(self.conn,id,k,v)
 			else:
 				ret.res = xmmsc_medialib_entry_property_set_int(self.conn,id,k,v)
