@@ -16,7 +16,6 @@
 
 #include <glib.h>
 #include "elements.h"
-#include "except.h"
 
 #include "md.h"
 

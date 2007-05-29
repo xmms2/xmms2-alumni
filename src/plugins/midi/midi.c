@@ -28,6 +28,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include "midi.h"
+
 static gboolean xmms_midi_plugin_setup (xmms_xform_plugin_t *xform_plugin);
 static gint xmms_midi_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len, xmms_error_t *err);
 static gboolean xmms_midi_init (xmms_xform_t *decoder);
@@ -72,22 +74,18 @@ static gboolean xmms_midi_init (xmms_xform_t *xform)
 {
 	struct rootElement *root;
 	struct sequenceState *seq;
-	char buff[100000];
 	xmms_error_t error;
 	
 	g_return_val_if_fail(xform,FALSE);
 
-//	root = midi_read(xform);
-
-	xmms_xform_peek(xform,buff,10000,&error);
-
-	freopen("/home/thisnukes4u/test.mid","w",stdout);
-	printf("%s",buff);
+//	root = midi_read_head(xform);
+	
+//	root = midi_read_next(root);
 
 	g_return_val_if_fail(root,FALSE);
 
 //	seq = md_sequence_init(root);
-	xmms_xform_private_data_set(xform,seq);
+	xmms_xform_private_data_set(xform,root);
 
 	xmms_xform_outdata_type_add (xform,
                                      XMMS_STREAM_TYPE_MIMETYPE,
@@ -102,15 +100,21 @@ static gboolean xmms_midi_init (xmms_xform_t *xform)
  */
 static gint xmms_midi_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len, xmms_error_t *err)
 {
+	struct rootElement *root;
 	struct sequenceState *seq;
+	int buff;
+	xmms_error_t error;
 
 //	printf("Starting to read midi...\n");
-//
-//	g_return_val_if_fail(xform,-1);
-//
-//	seq = xmms_xform_private_data_get(xform);
-//
-//	g_return_val_if_fail(seq,-1);
+
+	g_return_val_if_fail(xform,-1);
+
+	xmms_xform_read(xform,&buff,4,&error);
+	printf("%x\n",buff);
+
+//	root = xmms_xform_private_data_get(xform);
+
+//	g_return_val_if_fail(root,-1);
 
 //	buf = md_sequence_next(seq);
 

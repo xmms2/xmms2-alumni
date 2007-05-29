@@ -54,4 +54,5 @@
 #define MIDI_HEAD_MAGIC 0x4d546864
 #define MIDI_TRACK_MAGIC  0x4d54726b
 
-struct rootElement *midi_read(xmms_xform_t *xform);
+struct rootElement *midi_read_head(xmms_xform_t *xform);
+struct rootElement *midi_read_next(struct rootElement *root);

@@ -460,8 +460,10 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT                  = src/xmms \
+			 src/clients \
                          src/include/xmms \
                          src/include/xmmsc \
+			 src/include/xmmsclient \
                          src/includepriv/xmmspriv \
                          src/lib
 
