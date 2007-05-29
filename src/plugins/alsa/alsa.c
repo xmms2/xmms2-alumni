@@ -42,7 +42,7 @@ typedef struct xmms_alsa_data_St {
 	enum alsa_state state;
 } xmms_alsa_data_t;
 
-static struct {
+static const struct {
 	xmms_sample_format_t xmms_fmt;
 	snd_pcm_format_t alsa_fmt;
 } formats[] = {
@@ -56,7 +56,7 @@ static struct {
 	{XMMS_SAMPLE_FORMAT_DOUBLE, SND_PCM_FORMAT_FLOAT64}
 };
 
-static int rates[] = {
+static const int rates[] = {
 	8000,
 	11025,
 	16000,
@@ -66,7 +66,7 @@ static int rates[] = {
 	96000
 };
 
-static struct {
+static const struct {
 	snd_mixer_selem_channel_id_t id;
 	gchar *name;
 } channel_map[] = {

@@ -71,11 +71,6 @@ N: G. Gallino
 E: ggallino@gmail.com
 D: Equaliser fixes
 
-N: Anders Gustafsson
-E: andersg@xmms.org
-P: 1024D/5D46D966 4186 4775 154B 9E4F 8CE7  A3F8 E165 5471 5D46 D966
-D: Stuff all over the place. Master bitch.
-
 N: Dries Harnie
 E: dries@harnie.be
 D: Status aware CLI
@@ -226,9 +221,18 @@ W: http://juho.vaha-herttua.fi/
 P: 1024D/CB130DCE 1C70 BF1D AEF7 619C C0A6  60E7 563D FCA3 CB13 0DCE
 D: Faad, wma, equalizer, vocoder, ao. Various fixes.
 
+N: Anders Waldenborg
+E: andersg@xmms.org
+P: 1024D/5D46D966 4186 4775 154B 9E4F 8CE7  A3F8 E165 5471 5D46 D966
+D: Stuff all over the place. Master bitch.
+
 N: Michael Walle
 E: michael@walle.cc
 D: playlists_list stuff
+
+N: Rainer Wittmaack
+E: ningo@gmx.net
+D: sun audio fixes
 
 N: Ma Xuan
 E: supermmx@gmail.com

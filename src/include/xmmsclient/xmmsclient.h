@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-#if defined (__GNUC__)
+#if defined (__GNUC__) && __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ > 1)
 #define XMMS_DEPRECATED __attribute__((deprecated))
 #else
 #define XMMS_DEPRECATED
@@ -154,7 +154,7 @@ xmmsc_result_t *xmmsc_broadcast_configval_changed (xmmsc_connection_t *c);
  */
 
 /* commands */
-xmmsc_result_t *xmmsc_plugin_list (xmmsc_connection_t *c, uint32_t type);
+xmmsc_result_t *xmmsc_plugin_list (xmmsc_connection_t *c, xmms_plugin_type_t type);
 xmmsc_result_t *xmmsc_main_stats (xmmsc_connection_t *c);
 
 /* broadcasts */
@@ -280,7 +280,7 @@ xmmsc_result_t *xmmsc_broadcast_collection_changed (xmmsc_connection_t *c);
 	xmmsc_result_notifier_set_full (res, callback, udata, free_func);\
 	xmmsc_result_unref (res);\
 }
-	
+
 /*
  * RESULTS
  */
@@ -330,6 +330,7 @@ int xmmsc_result_get_dict_entry_collection (xmmsc_result_t *conn, const char *ke
 int xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func, void *user_data);
 int xmmsc_result_propdict_foreach (xmmsc_result_t *res, xmmsc_propdict_foreach_func func, void *user_data);
 void xmmsc_result_source_preference_set (xmmsc_result_t *res, const char **preference);
+char ** xmmsc_result_source_preference_get (xmmsc_result_t *res);
 
 int xmmsc_result_is_list (xmmsc_result_t *res);
 int xmmsc_result_list_next (xmmsc_result_t *res);

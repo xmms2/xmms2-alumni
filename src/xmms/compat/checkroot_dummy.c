@@ -15,34 +15,15 @@
  */
 
 
+/** @file
+ * Dummy used when checking for root is not possible.
+ */
 
 
-#ifndef __XMMS_PLUGIN_H__
-#define __XMMS_PLUGIN_H__
+#include "xmmspriv/xmms_checkroot.h"
 
-#include <glib.h>
-#include <xmmsc/xmmsc_idnumbers.h>
-
-typedef struct xmms_plugin_desc_St {
-	xmms_plugin_type_t type;
-	gint api_version;
-	const gchar *shortname;
-	const gchar *name;
-	const gchar *version;
-	const gchar *description;
-	gboolean (*setup_func)(gpointer);
-} xmms_plugin_desc_t;
-
-#define XMMS_PLUGIN(type, api_ver, shname, name, ver, desc, setupfunc)	\
-	const xmms_plugin_desc_t XMMS_PLUGIN_DESC = {				\
-		type,							\
-		api_ver,						\
-		shname,							\
-		name,							\
-		ver,							\
-		desc,							\
-		setupfunc						\
-	};
-		
-
-#endif /* __XMMS_PLUGIN_H__ */
+gboolean
+xmms_checkroot ()
+{
+	return FALSE;
+}

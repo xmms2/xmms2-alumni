@@ -33,6 +33,8 @@
 #include "xmmspriv/xmms_playlist.h"
 #include "xmmspriv/xmms_collection.h"
 #include "xmmspriv/xmms_signal.h"
+#include "xmmspriv/xmms_symlink.h"
+#include "xmmspriv/xmms_checkroot.h"
 #include "xmmspriv/xmms_medialib.h"
 #include "xmmspriv/xmms_output.h"
 #include "xmmspriv/xmms_ipc.h"
@@ -48,10 +50,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <fcntl.h>
-
-#include <pthread.h>
 
 /*
  * Forward declarations of the methods in the main object
@@ -287,19 +286,6 @@ quit (xmms_object_t *object, xmms_error_t *error)
 	g_timeout_add (1, kill_server, object);
 }
 
-static gboolean
-symlink_file (gchar *source, gchar *dest)
-{
-	gint r;
-
-	g_return_val_if_fail (source, FALSE);
-	g_return_val_if_fail (dest, FALSE);
-
-	r = symlink (source, dest);
-
-	return r != -1;
-}
-
 static void
 install_scripts (const gchar *into_dir)
 {
@@ -326,7 +312,7 @@ install_scripts (const gchar *into_dir)
 	while ((f = g_dir_read_name (dir))) {
 		gchar *source = g_strdup_printf ("%s/%s", path, f);
 		gchar *dest = g_strdup_printf ("%s/%s", into_dir, f);
-		if (!symlink_file (source, dest)) {
+		if (!xmms_symlink_file (source, dest)) {
 			break;
 		}
 		g_free (source);
@@ -426,7 +412,7 @@ main (int argc, char **argv)
 		exit (EXIT_FAILURE);
 	}
 
-	if (getuid () == 0 || geteuid () == 0) {
+	if (xmms_checkroot ()) {
 		if (runasroot) {
 			g_print ("***************************************\n");
 			g_print ("Warning! You are running XMMS2D as root, this is a bad idea!\nBut I'll allow it since you asked nicely.\n");
