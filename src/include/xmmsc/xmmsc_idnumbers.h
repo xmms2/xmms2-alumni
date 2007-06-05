@@ -148,6 +148,10 @@ typedef enum {
 	XMMS_IPC_CMD_SIGNAL,
 	XMMS_IPC_CMD_BROADCAST,
 
+	/* Service client */
+	XMMS_IPC_CMD_SERVICE_REQUEST,
+	XMMS_IPC_CMD_SERVICE_RETURN,
+
 	/* xform object */
 	XMMS_IPC_CMD_BROWSE,
 
