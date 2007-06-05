@@ -56,7 +56,7 @@ struct xmms_ipc_St {
 
 
 /**
- * A IPC client representation.
+ * An IPC client representation.
  */
 typedef struct xmms_ipc_client_St {
 	GMainLoop *ml;
@@ -77,6 +77,23 @@ typedef struct xmms_ipc_client_St {
 	guint pendingsignals[XMMS_IPC_SIGNAL_END];
 	GList *broadcasts[XMMS_IPC_SIGNAL_END];
 } xmms_ipc_client_t;
+
+/**
+ * An IPC service client service representation
+ */
+typedef struct xmms_ipc_service_St {
+	gchar *name;
+	gchar *description;
+
+	xmms_ipc_client_t *sc;
+
+	xmms_object_cmd_arg_type_t ret_type;
+
+	/* Number of arguments */
+	guint num_args;
+	/* List of types of arguments */
+	GList *args;
+} xmms_ipc_service_t;
 
 static GMutex *ipc_servers_lock;
 static GList *ipc_servers = NULL;
