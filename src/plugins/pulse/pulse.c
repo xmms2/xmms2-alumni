@@ -17,9 +17,10 @@
 #include "xmms/xmms_outputplugin.h"
 #include "xmms/xmms_log.h"
 
-#include "backend.h"
 
 #include <glib.h>
+
+#include "backend.h"
 
 /*
  * Type definitions
