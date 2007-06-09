@@ -47,6 +47,7 @@
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_bindata.h"
 #include "xmmspriv/xmms_utils.h"
+#include "xmmspriv/xmms_service.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -478,6 +479,7 @@ main (int argc, char **argv)
 	playlist = xmms_playlist_init ();
 	xform_obj = xmms_xform_object_init ();
 	bindata_obj = xmms_bindata_init ();
+	xmms_service_init ();
 
 	mainobj = xmms_object_new (xmms_main_t, xmms_main_destroy);
 
