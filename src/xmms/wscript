@@ -31,7 +31,8 @@ source = """config.c
             strfunc.c
             bindata.c
             sample.genpy
-            utils.c""".split()
+            utils.c
+	    service.c""".split()
 
 def build(bld):
     if sys.platform == 'win32':
