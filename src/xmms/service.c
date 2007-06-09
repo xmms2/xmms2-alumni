@@ -18,23 +18,30 @@
 
 #include "xmms/xmms_log.h"
 #include "xmmspriv/xmms_ipc.h"
+#include "xmmspriv/xmms_service.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
 /**
-  * @defgroup Service Service
-  * @ingroup XMMSServer
-  * @brief Service client functions for XMMS2 Daemon
-  * @{
-  */
+ * @defgroup Service Service
+ * @ingroup XMMSServer
+ * @brief Service client functions for XMMS2 Daemon
+ * @{
+ */
 
 /**
- * A service representation
+ * A single service representation
  */
-typedef struct xmms_service_St {
+typedef struct xmms_service_entry_St {
 	gchar *name;
 	gchar *description;
 
-	xmms_ipc_client_t *sc;
+	/**
+	 * xmms_ipc_client_t structure which points to the service client.
+	 */
+	gpointer *sc;
+
+	/* Clients currently using this service */
+	GList *clients;
 
 	xmms_object_cmd_arg_type_t ret_type;
 
@@ -42,26 +49,72 @@ typedef struct xmms_service_St {
 	guint num_args;
 	/* List of types of arguments */
 	GList *args;
-} xmms_service_t;
+} xmms_service_entry_t;
 
-static GMutex *service_registry_lock;
-static GList *service_registry = NULL;
-
-static GMutex *service_pool_lock;
-static GHashTable *service_pool = NULL;
+static xmms_service_t *xmms_service;
 
 /**
  * Functions
  */
-void xmms_service_registry_shutdown();
+static void xmms_service_destroy (xmms_object_t *object);
+static void xmms_service_registry_destroy (gpointer key, gpointer value,
+										   gpointer userdata);
 
 /**
  * Initialize service client handling
+ *
+ * @returns The newly allocated service structure.
  */
-void
-xmms_service_init()
+xmms_service_t *
+xmms_service_init(void)
 {
+	xmms_service_t *ret;
 
+	ret = xmms_object_new (xmms_service_t, xmms_service_destroy);
+	ret->mutex = g_mutex_new ();
+	ret->registry = g_hash_table_new_full (g_str_hash, g_str_equal,
+										   g_free, g_free);
+
+	xmms_ipc_signal_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
+
+	xmms_service = ret;
+
+	return ret;
+}
+
+/**
+ * Free all the memory used by xmms_service_t
+ */
+static void
+xmms_service_destroy (xmms_object_t *object)
+{
+	xmms_service_t *service = (xmms_service_t *)object;
+
+	g_return_if_fail (service);
+
+	g_mutex_free (service->mutex);
+
+	g_hash_table_foreach (service->registry, xmms_service_registry_destroy,
+						  NULL);
+
+	g_hash_table_destroy (service->registry);
+
+	xmms_ipc_signal_unregister (XMMS_IPC_SIGNAL_SERVICE);
+}
+
+/**
+ * Free all the memory used by registry entry
+ */
+static void
+xmms_service_registry_destroy (gpointer key, gpointer value, gpointer userdata)
+{
+	xmms_service_entry_t *v = (xmms_service_entry_t *)value;
+
+	g_return_if_fail (v);
+
+	g_free (v->name);
+	g_free (v->description);
+	g_list_free (v->clients);
 }
 
 /** @} */
