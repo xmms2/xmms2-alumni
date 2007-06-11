@@ -89,9 +89,10 @@ static void xmms_ipc_client_destroy (xmms_ipc_client_t *client);
 
 static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
 static void xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val);
+static gboolean xmms_ipc_undo_dict (xmms_ipc_msg_t *msg, GHashTable **table);
 
 static gboolean
-type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg, gint i)
+type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *value)
 {
 	guint len;
 	guint size, k;
@@ -100,15 +101,15 @@ type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_
 		case XMMS_OBJECT_CMD_ARG_NONE:
 			break;
 		case XMMS_OBJECT_CMD_ARG_UINT32 :
-			if (!xmms_ipc_msg_get_uint32 (msg, &arg->values[i].value.uint32))
+			if (!xmms_ipc_msg_get_uint32 (msg, &value->value.uint32))
 				return FALSE;
 			break;
 		case XMMS_OBJECT_CMD_ARG_INT32 :
-			if (!xmms_ipc_msg_get_int32 (msg, &arg->values[i].value.int32))
+			if (!xmms_ipc_msg_get_int32 (msg, &value->value.int32))
 				return FALSE;
 			break;
 		case XMMS_OBJECT_CMD_ARG_STRING :
-			if (!xmms_ipc_msg_get_string_alloc (msg, &arg->values[i].value.string, &len)) {
+			if (!xmms_ipc_msg_get_string_alloc (msg, &value->value.string, &len)) {
 				return FALSE;
 			}
 			break;
@@ -119,16 +120,21 @@ type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_
 			for (k = 0; k < size; k++) {
 				gchar *buf;
 				if (!xmms_ipc_msg_get_string_alloc (msg, &buf, &len) ||
-				    !(arg->values[i].value.list = g_list_prepend (arg->values[i].value.list, buf))) {
-					GList * list = arg->values[i].value.list;
+				    !(value->value.list = g_list_prepend (value->value.list, buf))) {
+					GList * list = value->value.list;
 					while (list) { g_free (list->data); list = g_list_remove (list, list); }
 					return FALSE;
 				}
 			}
-			arg->values[i].value.list = g_list_reverse (arg->values[i].value.list);
+			value->value.list = g_list_reverse (value->value.list);
+			break;
+		case XMMS_OBJECT_CMD_ARG_DICT :
+			if (!xmms_ipc_undo_dict (msg, &value->value.dict)) {
+				return FALSE;
+			}
 			break;
 		case XMMS_OBJECT_CMD_ARG_COLL :
-			if (!xmms_ipc_msg_get_collection_alloc (msg, &arg->values[i].value.coll)) {
+			if (!xmms_ipc_msg_get_collection_alloc (msg, &value->value.coll)) {
 				return FALSE;
 			}
 			break;
@@ -138,7 +144,7 @@ type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_
 				if (!xmms_ipc_msg_get_bin_alloc (msg, (unsigned char **)&bin->str, (uint32_t *)&bin->len)) {
 					return FALSE;
 				}
-				arg->values[i].value.bin = bin;
+				value->value.bin = bin;
 			}
 			break;
 		default:
@@ -146,7 +152,7 @@ type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_
 			return FALSE;
 			break;
 	}
-	arg->values[i].type = type;
+	value->type = type;
 	return TRUE;
 }
 
@@ -175,6 +181,34 @@ hash_to_dict (gpointer key, gpointer value, gpointer udata)
 }
 
 static void
+dict_to_hash (xmms_ipc_msg_t *msg, GHashTable *table)
+{
+	gchar *k = NULL;
+	guint len;
+	xmms_object_cmd_value_t *v = g_new0 (xmms_object_cmd_value_t, 1);
+	gint32 t;
+
+	g_return_if_fail (table);
+
+	if (!xmms_ipc_msg_get_string_alloc (msg, &k, &len)) {
+		xmms_log_error ("No key for dict in message!");
+		return;
+	}
+
+	if (!xmms_ipc_msg_get_int32 (msg, &t)) {
+		xmms_log_error ("No type for value in message!");
+		return;
+	}
+
+	if (!type_and_msg_to_arg ((xmms_object_cmd_arg_type_t)t, msg, v)) {
+		xmms_log_error ("No value of type %d in dict!", t);
+		return;
+	}
+
+	g_hash_table_insert (table, k, v);
+}
+
+static void
 xmms_ipc_do_dict (xmms_ipc_msg_t *msg, GHashTable *table)
 {
 	gint i = 0;
@@ -183,6 +217,27 @@ xmms_ipc_do_dict (xmms_ipc_msg_t *msg, GHashTable *table)
 
 	xmms_ipc_msg_put_uint32 (msg, i);
 	g_hash_table_foreach (table, hash_to_dict, msg);
+}
+
+static gboolean
+xmms_ipc_undo_dict (xmms_ipc_msg_t *msg, GHashTable **table)
+{
+	gint i = 0;
+
+	*table = g_hash_table_new_full (g_str_hash, g_str_equal,
+									g_free, xmms_object_cmd_value_free);
+
+	g_return_if_fail (*table);
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &i)) {
+		xmms_log_error ("No dict length in message!");
+		return FALSE;
+	}
+
+	for (; i >= 0; i--)
+		dict_to_hash (msg, *table);
+
+	return TRUE;
 }
 
 static void
@@ -312,7 +367,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 	xmms_object_cmd_arg_init (&arg);
 
 	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {
-		if (!type_and_msg_to_arg (cmd->args[i], msg, &arg, i)) {
+		if (!type_and_msg_to_arg (cmd->args[i], msg, &arg.values[i])) {
 			xmms_log_error ("Error parsing args");
 			retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_ERROR);
 			xmms_ipc_msg_put_string (retmsg, "Corrupt msg");
