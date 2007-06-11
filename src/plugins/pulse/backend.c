@@ -334,14 +334,21 @@ gboolean xmms_pulse_backend_write(xmms_pulse *p, const char *data,
 		    goto unlock_and_fail;
         }
 
-        CHECK_SUCCESS_GOTO(p, rerror, buf_len != (size_t) -1, unlock_and_fail);
-
+	if (!(buf_len != (size_t) -1)) {
+		if (rerror)
+			*rerror = pa_context_errno((p)->context);
+		goto unlock_and_fail;
+	}
         if (buf_len > length)
             buf_len = length;
 
         ret = pa_stream_write(
 			p->stream, data, buf_len, NULL, 0, PA_SEEK_RELATIVE);
-        CHECK_SUCCESS_GOTO(p, rerror, ret >= 0, unlock_and_fail);
+	if (!(ret >= 0)) {
+		if (rerror)
+			*rerror = pa_context_errno((p)->context);
+		goto unlock_and_fail;
+	}
 
         data += buf_len;
         length -= buf_len;
@@ -365,7 +372,11 @@ gboolean xmms_pulse_backend_drain(xmms_pulse *p, int *rerror) {
 	    goto unlock_and_fail;
 
     o = pa_stream_drain(p->stream, drain_result_cb, p);
-    CHECK_SUCCESS_GOTO(p, rerror, o, unlock_and_fail);
+    if (!(o)) {
+	    if (rerror)
+		    *rerror = pa_context_errno((p)->context);
+	    goto unlock_and_fail;
+    }
 
     p->operation_success = 0;
     while (pa_operation_get_state(o) != PA_OPERATION_DONE) {
@@ -375,7 +386,11 @@ gboolean xmms_pulse_backend_drain(xmms_pulse *p, int *rerror) {
     }
 	pa_operation_unref(o);
 	o = NULL;
-    CHECK_SUCCESS_GOTO(p, rerror, p->operation_success, unlock_and_fail);
+    if (!(p->operation_success)) {
+	    if (rerror)
+		    *rerror = pa_context_errno((p)->context);
+	    goto unlock_and_fail;
+    }
 
     pa_threaded_mainloop_unlock(p->mainloop);
     return TRUE;
@@ -400,7 +415,11 @@ gboolean xmms_pulse_backend_flush(xmms_pulse *p, int *rerror) {
 	    goto unlock_and_fail;
 
     o = pa_stream_flush(p->stream, drain_result_cb, p);
-    CHECK_SUCCESS_GOTO(p, rerror, o, unlock_and_fail);
+    if (!(o)) {
+	    if (rerror)
+		    *rerror = pa_context_errno((p)->context);
+	    goto unlock_and_fail;
+    }
 
     p->operation_success = 0;
     while (pa_operation_get_state(o) != PA_OPERATION_DONE) {
@@ -411,6 +430,11 @@ gboolean xmms_pulse_backend_flush(xmms_pulse *p, int *rerror) {
 	pa_operation_unref(o);
 	o = NULL;
     CHECK_SUCCESS_GOTO(p, rerror, p->operation_success, unlock_and_fail);
+    if (!(p->operation_success)) {
+	    if (rerror)
+		    *rerror = pa_context_errno((p)->context);
+	    goto unlock_and_fail;
+    }
 
     pa_threaded_mainloop_unlock(p->mainloop);
     return 0;
