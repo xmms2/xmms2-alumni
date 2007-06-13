@@ -18,7 +18,7 @@
 #define __XMMS_SERVICE_H__
 
 #include <glib.h>
-#include <xmms/xmms_object.h>
+#include "xmmsc/xmmsc_ipc_msg.h"
 
 /**
  * Service structure
@@ -39,5 +39,6 @@ typedef struct xmms_service_St xmms_service_t;
  * Public functions
  */
 xmms_service_t *xmms_service_init (void);
+void xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, uint32_t cookie);
 
 #endif
