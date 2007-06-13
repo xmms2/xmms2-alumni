@@ -14,12 +14,9 @@
  *  Lesser General Public License for more details.
  */
 
-#include <glib.h>
-
 #include "xmms/xmms_log.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmspriv/xmms_service.h"
-#include "xmmsc/xmmsc_ipc_msg.h"
 
 /**
  * @defgroup Service Service
@@ -35,12 +32,24 @@ typedef struct xmms_service_entry_St {
 	gchar *name;
 	gchar *description;
 
-	/**
-	 * xmms_ipc_client_t structure which points to the service client.
-	 */
-	gpointer *sc;
+	guint major_version;
+	guint minor_version;
 
-	/* Clients currently using this service */
+	/* Service client cookie */
+	guint sc;
+
+	GMutex *mutex;
+	GHashTable *methods;
+} xmms_service_entry_t;
+
+/**
+ * A single method representation
+ */
+typedef struct xmms_service_method_St {
+	gchar *name;
+	gchar *description;
+
+	GMutex *mutex;
 	GList *clients;
 
 	xmms_object_cmd_arg_type_t ret_type;
@@ -49,7 +58,7 @@ typedef struct xmms_service_entry_St {
 	guint num_args;
 	/* List of types of arguments */
 	GList *args;
-} xmms_service_entry_t;
+} xmms_service_method_t;
 
 static xmms_service_t *xmms_service;
 
@@ -57,13 +66,15 @@ static xmms_service_t *xmms_service;
  * Functions
  */
 static void xmms_service_destroy (xmms_object_t *object);
-static void xmms_service_registry_destroy (gpointer key, gpointer value,
-										   gpointer userdata);
+static void xmms_service_registry_destroy (gpointer value);
+static void xmms_service_method_destroy (gpointer value);
+
+void xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid,
+						  uint32_t cookie);
+static void xmms_service_register (xmms_ipc_msg_t *msg, uint32_t cookie);
 
 /**
  * Initialize service client handling
- *
- * @returns The newly allocated service structure.
  */
 xmms_service_t *
 xmms_service_init(void)
@@ -72,8 +83,8 @@ xmms_service_init(void)
 
 	ret = xmms_object_new (xmms_service_t, xmms_service_destroy);
 	ret->mutex = g_mutex_new ();
-	ret->registry = g_hash_table_new_full (g_str_hash, g_str_equal,
-										   g_free, g_free);
+	ret->registry = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+										   xmms_service_registry_destroy);
 
 	xmms_ipc_signal_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
 
@@ -94,9 +105,6 @@ xmms_service_destroy (xmms_object_t *object)
 
 	g_mutex_free (service->mutex);
 
-	g_hash_table_foreach (service->registry, xmms_service_registry_destroy,
-						  NULL);
-
 	g_hash_table_destroy (service->registry);
 
 	xmms_ipc_signal_unregister (XMMS_IPC_SIGNAL_SERVICE);
@@ -106,7 +114,7 @@ xmms_service_destroy (xmms_object_t *object)
  * Free all the memory used by registry entry
  */
 static void
-xmms_service_registry_destroy (gpointer key, gpointer value, gpointer userdata)
+xmms_service_registry_destroy (gpointer value)
 {
 	xmms_service_entry_t *v = (xmms_service_entry_t *)value;
 
@@ -114,7 +122,69 @@ xmms_service_registry_destroy (gpointer key, gpointer value, gpointer userdata)
 
 	g_free (v->name);
 	g_free (v->description);
+
+	g_mutex_free (v->mutex);
+
+	g_hash_table_destroy (v->methods);
+}
+
+/**
+ * Free all memory used by method
+ */
+static void
+xmms_service_method_destroy (gpointer value)
+{
+	xmms_service_method_t *v = (xmms_service_method_t *)value;
+
+	g_return_if_fail (v);
+
+	g_free (v->name);
+	g_free (v->description);
+
+	g_mutex_free (v->mutex);
 	g_list_free (v->clients);
+
+	g_list_free (v->args);
+}
+
+/**
+ * Handle service related commands
+ *
+ * Based on the type parameter passed in, specific functions will be called to
+ * handle the command.
+ */
+void
+xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, uint32_t cookie)
+{
+	g_return_if_fail (msg);
+
+	if (cmdid <= XMMS_IPC_CMD_SERVICE_BEGIN ||
+		cmdid >= XMMS_IPC_CMD_SERVICE_END) {
+		xmms_log_error ("Invalid service command (%d)", cmdid);
+		return;
+	}
+
+	switch (cmdid) {
+	case XMMS_IPC_CMD_SERVICE_REGISTER:
+		break;
+	case XMMS_IPC_CMD_SERVICE_REQUEST:
+		break;
+	case XMMS_IPC_CMD_SERVICE_RETURN:
+		break;
+	case XMMS_IPC_CMD_SERVICE_SHUTDOWN:
+		break;
+	}
+}
+
+/**
+ * Register a new service
+ */
+static void
+xmms_service_register (xmms_ipc_msg_t *msg, uint32_t cookie)
+{
+	g_return_if_fail (msg);
+
+	XMMS_DBG ("Registering new service");
 }
 
 /** @} */
