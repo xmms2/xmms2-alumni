@@ -18,6 +18,7 @@
 
 #include "xmms/xmms_log.h"
 #include "xmmspriv/xmms_ipc.h"
+#include "xmmspriv/xmms_service.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
 
@@ -288,6 +289,18 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 
 		g_mutex_unlock (client->lock);
 		return;
+	} else if (objid == XMMS_IPC_OBJECT_SERVICE) {
+		uint32_t cookie;
+
+		cookie = xmms_ipc_msg_get_cookie (msg);
+
+		g_mutex_lock (client->lock);
+		client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
+			g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
+						   GUINT_TO_POINTER (cookie));
+		g_mutex_unlock (client->lock);
+
+		xmms_service_handle (msg, cmdid, cookie);
 	}
 
 	if (objid >= XMMS_IPC_OBJECT_END) {
