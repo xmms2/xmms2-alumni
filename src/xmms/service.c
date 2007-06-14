@@ -36,7 +36,7 @@ typedef struct xmms_service_entry_St {
 	guint minor_version;
 
 	/* Service client cookie */
-	guint sc;
+	gchar *sc;
 
 	GMutex *mutex;
 	GHashTable *methods;
@@ -69,17 +69,16 @@ static void xmms_service_destroy (xmms_object_t *object);
 static void xmms_service_registry_destroy (gpointer value);
 static void xmms_service_method_destroy (gpointer value);
 
-void xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, uint32_t cookie);
 static gboolean xmms_service_is_registered (gchar *name);
 static gboolean xmms_service_is_method_registered (xmms_service_entry_t *entry,
 												   gchar *name);
-static void xmms_service_register (xmms_ipc_msg_t *msg, uint32_t cookie);
+static void xmms_service_register (xmms_ipc_msg_t *msg, gchar *client);
 static void xmms_service_method_register (xmms_ipc_msg_t *msg,
 										  xmms_service_entry_t *entry);
 static xmms_service_entry_t *xmms_service_entry_new (gchar *name,
 													 gchar *description,
 													 guint major, guint minor,
-													 guint cookie);
+													 gchar *client);
 static xmms_service_method_t *xmms_service_method_new (gchar *name,
 													   gchar *description,
 													   gchar *ret_type,
@@ -94,12 +93,14 @@ xmms_service_init(void)
 {
 	xmms_service_t *ret;
 
+	XMMS_DBG ("Initializing service object.");
+
 	ret = xmms_object_new (xmms_service_t, xmms_service_destroy);
 	ret->mutex = g_mutex_new ();
 	ret->registry = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
 										   xmms_service_registry_destroy);
 
-	xmms_ipc_signal_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
+	xmms_ipc_broadcast_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
 
 	xmms_service = ret;
 
@@ -113,6 +114,8 @@ static void
 xmms_service_destroy (xmms_object_t *object)
 {
 	xmms_service_t *service = (xmms_service_t *)object;
+
+	XMMS_DBG ("Shutting service object down.");
 
 	g_return_if_fail (service);
 
@@ -167,8 +170,10 @@ xmms_service_method_destroy (gpointer value)
  * handle the command.
  */
 void
-xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, uint32_t cookie)
+xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gchar *client)
 {
+	XMMS_DBG ("Handling service command.");
+
 	g_return_if_fail (msg);
 
 	if (cmdid <= XMMS_IPC_CMD_SERVICE_BEGIN ||
@@ -179,7 +184,7 @@ xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, uint32_t cookie)
 
 	switch (cmdid) {
 	case XMMS_IPC_CMD_SERVICE_REGISTER:
-		xmms_service_register (msg, cookie);
+		xmms_service_register (msg, client);
 		break;
 	case XMMS_IPC_CMD_SERVICE_REQUEST:
 		break;
@@ -194,16 +199,17 @@ xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, uint32_t cookie)
  * Register a new service
  */
 static void
-xmms_service_register (xmms_ipc_msg_t *msg, uint32_t cookie)
+xmms_service_register (xmms_ipc_msg_t *msg, gchar *client)
 {
 	gchar *n;
 	guint l;
 	gchar *desc;
 	guint major, minor;
 
-	g_return_if_fail (msg);
-
 	XMMS_DBG ("Registering new service");
+
+	g_return_if_fail (msg);
+	g_return_if_fail (client);
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
 		xmms_log_error ("No service name in message!");
@@ -227,7 +233,7 @@ xmms_service_register (xmms_ipc_msg_t *msg, uint32_t cookie)
 		return;
 	}
 	xmms_service_entry_t *e;
-	e = xmms_service_entry_new (n, desc, major, minor, cookie);
+	e = xmms_service_entry_new (n, desc, major, minor, client);
 	g_mutex_lock (xmms_service->mutex);
 	g_hash_table_insert (xmms_service->registry, n, e);
 	g_mutex_unlock (xmms_service->mutex);
@@ -246,14 +252,16 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 	gchar *desc;
 	gchar *rt, *at;
 
-	g_return_if_fail (msg);
-
 	XMMS_DBG ("Registering new method");
 
-	if (!xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
-		xmms_log_error ("No method name in message!");
-		return;
-	}
+	g_return_if_fail (msg);
+
+	/**
+	 * It might be the case that service client is only registering a service,
+	 * not a method.  So we don't report an error.
+	 */
+	g_return_if_fail (xmms_ipc_msg_get_string_alloc (msg, &n, &l));
+
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &l)) {
 		xmms_log_error ("No method description in message!");
 		return;
@@ -277,6 +285,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 		switch (*c) {
 		case 'u':
 		case 'i':
+		case 'f':
 		case 's':
 		case 'l':
 		case 'c':
@@ -292,6 +301,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 		switch (*c) {
 		case 'u':
 		case 'i':
+		case 'f':
 		case 's':
 		case 'l':
 		case 'c':
@@ -343,7 +353,7 @@ xmms_service_is_method_registered (xmms_service_entry_t *entry, gchar *name)
 
 static xmms_service_entry_t *
 xmms_service_entry_new (gchar *name, gchar *description, guint major,
-						guint minor, guint cookie)
+						guint minor, gchar *client)
 {
 	xmms_service_entry_t *e;
 
@@ -358,7 +368,7 @@ xmms_service_entry_new (gchar *name, gchar *description, guint major,
 	e->description = description;
 	e->major_version = major;
 	e->minor_version = minor;
-	e->sc = cookie;
+	e->sc = client;
 	e->mutex = g_mutex_new ();
 	e->methods = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
 										xmms_service_method_destroy);
