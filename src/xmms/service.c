@@ -345,14 +345,48 @@ static xmms_service_entry_t *
 xmms_service_entry_new (gchar *name, gchar *description, guint major,
 						guint minor, guint cookie)
 {
+	xmms_service_entry_t *e;
 
+	e = g_new0 (xmms_service_entry_t, 1);
+
+	if (!e) {
+		xmms_log_error ("Service entry initialization failed!");
+		return NULL;
+	}
+
+	e->name = name;
+	e->description = description;
+	e->major_version = major;
+	e->minor_version = minor;
+	e->sc = cookie;
+	e->mutex = g_mutex_new ();
+	e->methods = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+										xmms_service_method_destroy);
+
+	return e;
 }
 
 static xmms_service_method_t *
 xmms_service_method_new (gchar *name, gchar *description, gchar *ret_type,
 						 guint num_args, gchar *args)
 {
+	xmms_service_method_t *m;
 
+	m = g_new0 (xmms_service_method_t, 1);
+
+	if (!m) {
+		xmms_log_error ("Service method initialization failed!");
+		return NULL;
+	}
+
+	m->name = name;
+	m->description = description;
+	m->mutex = g_mutex_new ();
+	m->ret_type = ret_type;
+	m->num_args = num_args;
+	m->args = args;
+
+	return m;
 }
 
 /** @} */
