@@ -300,7 +300,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 						   GUINT_TO_POINTER (cookie));
 		g_mutex_unlock (client->lock);
 
-		xmms_service_handle (msg, cmdid, cookie);
+		xmms_service_handle (msg, cmdid, client->transport->path);
 	}
 
 	if (objid >= XMMS_IPC_OBJECT_END) {
