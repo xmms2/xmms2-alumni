@@ -292,15 +292,16 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 		data = GUINT_TO_POINTER (cookie);
 		xmms_object_cmd_arg_init (&arg);
 
-		g_mutex_lock (client->lock);
-		client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
-			g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
-			               data);
-		g_mutex_unlock (client->lock);
-
 		if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER)
 			data = client->transport->path;
-		xmms_service_handle (msg, cmdid, data, &arg);
+		if (xmms_service_handle (msg, cmdid, data, &arg)) {
+			g_mutex_lock (client->lock);
+			client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
+				g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
+				               GUINT_TO_POINTER (cookie));
+			g_mutex_unlock (client->lock);
+		}
+
 		goto ret;
 	}
 

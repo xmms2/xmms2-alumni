@@ -73,8 +73,8 @@ static void xmms_service_method_destroy (gpointer value);
 static xmms_service_entry_t *xmms_service_is_registered (gchar *name);
 static xmms_service_method_t *
 xmms_service_is_method_registered (xmms_service_entry_t *entry, gchar *name);
-static void xmms_service_register (xmms_ipc_msg_t *msg, gchar *client,
-                                   xmms_error_t *err);
+static gboolean xmms_service_register (xmms_ipc_msg_t *msg, gchar *client,
+                                       xmms_error_t *err);
 static void xmms_service_method_register (xmms_ipc_msg_t *msg,
                                           xmms_service_entry_t *entry,
                                           xmms_error_t *err);
@@ -176,42 +176,52 @@ xmms_service_method_destroy (gpointer value)
  *
  * Based on the type parameter passed in, specific functions will be called to
  * handle the command.
+ *
+ * @param msg Message from (service) client.
+ * @param cmdid Command ID.
+ * @param data Service client's transport path if registering, otherwise it's message cookie.
+ * @param arg Command arguments.
+ * @returns True if the cookie needs to be added to broadcast list, false otherwise
  */
-void
+gboolean
 xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gpointer data,
 					 xmms_object_cmd_arg_t *arg)
 {
 	XMMS_DBG ("Handling service command.");
 
-	g_return_if_fail (msg);
+	g_return_val_if_fail (msg, FALSE);
 
 	if (cmdid <= XMMS_IPC_CMD_SERVICE_BEGIN ||
 		cmdid >= XMMS_IPC_CMD_SERVICE_END) {
 		xmms_error_set (&arg->error, XMMS_ERROR_INVAL,
+<<<<<<< HEAD:src/xmms/service.c
 		                "Invalid service command");
 		return;
+=======
+						"Invalid service command");
+		return FALSE;
+>>>>>>> OTHER: Only subscribe clients to SIGNAL_SERVICE when necessary.:src/xmms/service.c
 	}
 
 	switch (cmdid) {
 	case XMMS_IPC_CMD_SERVICE_REGISTER:
-		xmms_service_register (msg, (gchar *)data, &arg->error);
-		break;
+		return xmms_service_register (msg, (gchar *)data, &arg->error);
 	case XMMS_IPC_CMD_SERVICE_UNREGISTER:
 		xmms_service_unregister (msg, (gchar *)data, &arg->error);
-		break;
+		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_REQUEST:
-		break;
+		return TRUE;
 	case XMMS_IPC_CMD_SERVICE_RETURN:
-		break;
+		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_SHUTDOWN:
-		break;
+		return FALSE;
 	}
 }
 
 /**
  * Register a new service
  */
-static void
+static gboolean
 xmms_service_register (xmms_ipc_msg_t *msg, gchar *client, xmms_error_t *err)
 {
 	gchar *n;
@@ -219,27 +229,28 @@ xmms_service_register (xmms_ipc_msg_t *msg, gchar *client, xmms_error_t *err)
 	gchar *desc;
 	guint major, minor;
 	xmms_service_entry_t *e;
+	gboolean ret = FALSE;
 
 	XMMS_DBG ("Registering new service");
 
-	g_return_if_fail (msg);
-	g_return_if_fail (client);
+	g_return_val_if_fail (msg, ret);
+	g_return_val_if_fail (client, ret);
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No service name given");
-		return;
+		return ret;
 	}
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &l)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No service description given");
-		return;
+		return ret;
 	}
 	if (!xmms_ipc_msg_get_uint32 (msg, &major)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No major version given");
-		return;
+		return ret;
 	}
 	if (!xmms_ipc_msg_get_uint32 (msg, &minor)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No minor version given");
-		return;
+		return ret;
 	}
 
 	if (e = xmms_service_is_registered (n))
@@ -248,9 +259,11 @@ xmms_service_register (xmms_ipc_msg_t *msg, gchar *client, xmms_error_t *err)
 	g_mutex_lock (xmms_service->mutex);
 	g_hash_table_insert (xmms_service->registry, n, e);
 	g_mutex_unlock (xmms_service->mutex);
+	ret = TRUE;
 
 method:
 	xmms_service_method_register (msg, e, err);
+	return ret;
 }
 
 /**
@@ -407,7 +420,7 @@ xmms_service_is_registered (gchar *name)
 {
 	xmms_service_entry_t *ret;
 
-	g_return_val_if_fail (name, FALSE);
+	g_return_val_if_fail (name, NULL);
 
 	g_mutex_lock (xmms_service->mutex);
 	ret = g_hash_table_lookup (xmms_service->registry, name);
@@ -421,8 +434,8 @@ xmms_service_is_method_registered (xmms_service_entry_t *entry, gchar *name)
 {
 	xmms_service_method_t *ret;
 
-	g_return_val_if_fail (entry, FALSE);
-	g_return_val_if_fail (name, FALSE);
+	g_return_val_if_fail (entry, NULL);
+	g_return_val_if_fail (name, NULL);
 
 	g_mutex_lock (entry->mutex);
 	ret = g_hash_table_lookup (entry->methods, name);
