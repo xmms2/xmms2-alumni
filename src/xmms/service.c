@@ -71,27 +71,27 @@ static void xmms_service_registry_destroy (gpointer value);
 static void xmms_service_method_destroy (gpointer value);
 
 static xmms_service_entry_t *xmms_service_is_registered (gchar *name);
-static xmms_service_method_t *xmms_service_is_method_registered (xmms_service_entry_t *entry,
-												   gchar *name);
+static xmms_service_method_t *
+xmms_service_is_method_registered (xmms_service_entry_t *entry, gchar *name);
 static void xmms_service_register (xmms_ipc_msg_t *msg, gchar *client,
-								   xmms_error_t *err);
+                                   xmms_error_t *err);
 static void xmms_service_method_register (xmms_ipc_msg_t *msg,
-										  xmms_service_entry_t *entry,
-										  xmms_error_t *err);
+                                          xmms_service_entry_t *entry,
+                                          xmms_error_t *err);
 static void xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client,
-									 xmms_error_t *err);
+                                     xmms_error_t *err);
 static gboolean xmms_service_method_unregister (xmms_ipc_msg_t *msg,
-												xmms_service_entry_t *entry,
-												xmms_error_t *err);
+                                                xmms_service_entry_t *entry,
+                                                xmms_error_t *err);
 static xmms_service_entry_t *xmms_service_entry_new (gchar *name,
-													 gchar *description,
-													 guint major, guint minor,
-													 gchar *client);
+                                                     gchar *description,
+                                                     guint major, guint minor,
+                                                     gchar *client);
 static xmms_service_method_t *xmms_service_method_new (gchar *name,
-													   gchar *description,
-													   gchar *ret_type,
-													   guint num_args,
-													   gchar *args);
+                                                       gchar *description,
+                                                       gchar *ret_type,
+                                                       guint num_args,
+                                                       gchar *args);
 
 /**
  * Initialize service client handling
@@ -188,7 +188,7 @@ xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gpointer data,
 	if (cmdid <= XMMS_IPC_CMD_SERVICE_BEGIN ||
 		cmdid >= XMMS_IPC_CMD_SERVICE_END) {
 		xmms_error_set (&arg->error, XMMS_ERROR_INVAL,
-						"Invalid service command");
+		                "Invalid service command");
 		return;
 	}
 
@@ -338,7 +338,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
  */
 static void
 xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client,
-						 xmms_error_t *err)
+                         xmms_error_t *err)
 {
 	gchar *n;
 	guint l;
@@ -361,7 +361,7 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client,
 
 	if (client != e->sc) {
 		xmms_error_set (err, XMMS_ERROR_PERMISSION,
-						"Permission denied to unregister");
+		                "Permission denied to unregister");
 		return;
 	}
 
@@ -379,8 +379,9 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client,
  * Unregister an existing method
  */
 static gboolean
-xmms_service_method_unregister (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
-								xmms_error_t *err)
+xmms_service_method_unregister (xmms_ipc_msg_t *msg,
+                                xmms_service_entry_t *entry,
+                                xmms_error_t *err)
 {
 	gchar *n;
 	guint l;
@@ -451,14 +452,14 @@ xmms_service_entry_new (gchar *name, gchar *description, guint major,
 	e->sc = client;
 	e->mutex = g_mutex_new ();
 	e->methods = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-										xmms_service_method_destroy);
+	                                    xmms_service_method_destroy);
 
 	return e;
 }
 
 static xmms_service_method_t *
 xmms_service_method_new (gchar *name, gchar *description, gchar *ret_type,
-						 guint num_args, gchar *args)
+                         guint num_args, gchar *args)
 {
 	xmms_service_method_t *m;
 
