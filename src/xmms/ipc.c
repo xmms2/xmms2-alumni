@@ -295,7 +295,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 		g_mutex_lock (client->lock);
 		client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
 			g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
-						   data);
+			               data);
 		g_mutex_unlock (client->lock);
 
 		if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER)
