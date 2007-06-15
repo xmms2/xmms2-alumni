@@ -73,12 +73,16 @@ static void xmms_service_method_destroy (gpointer value);
 static xmms_service_entry_t *xmms_service_is_registered (gchar *name);
 static xmms_service_method_t *xmms_service_is_method_registered (xmms_service_entry_t *entry,
 												   gchar *name);
-static void xmms_service_register (xmms_ipc_msg_t *msg, gchar *client);
+static void xmms_service_register (xmms_ipc_msg_t *msg, gchar *client,
+								   xmms_error_t *err);
 static void xmms_service_method_register (xmms_ipc_msg_t *msg,
-										  xmms_service_entry_t *entry);
-static void xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client);
+										  xmms_service_entry_t *entry,
+										  xmms_error_t *err);
+static void xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client,
+									 xmms_error_t *err);
 static gboolean xmms_service_method_unregister (xmms_ipc_msg_t *msg,
-												xmms_service_entry_t *entry);
+												xmms_service_entry_t *entry,
+												xmms_error_t *err);
 static xmms_service_entry_t *xmms_service_entry_new (gchar *name,
 													 gchar *description,
 													 guint major, guint minor,
@@ -174,7 +178,8 @@ xmms_service_method_destroy (gpointer value)
  * handle the command.
  */
 void
-xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gpointer data)
+xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gpointer data,
+					 xmms_object_cmd_arg_t *arg)
 {
 	XMMS_DBG ("Handling service command.");
 
@@ -182,16 +187,17 @@ xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gpointer data)
 
 	if (cmdid <= XMMS_IPC_CMD_SERVICE_BEGIN ||
 		cmdid >= XMMS_IPC_CMD_SERVICE_END) {
-		xmms_log_error ("Invalid service command (%d)", cmdid);
+		xmms_error_set (&arg->error, XMMS_ERROR_INVAL,
+						"Invalid service command");
 		return;
 	}
 
 	switch (cmdid) {
 	case XMMS_IPC_CMD_SERVICE_REGISTER:
-		xmms_service_register (msg, (gchar *)data);
+		xmms_service_register (msg, (gchar *)data, &arg->error);
 		break;
 	case XMMS_IPC_CMD_SERVICE_UNREGISTER:
-		xmms_service_unregister (msg, (gchar *)data);
+		xmms_service_unregister (msg, (gchar *)data, &arg->error);
 		break;
 	case XMMS_IPC_CMD_SERVICE_REQUEST:
 		break;
@@ -206,7 +212,7 @@ xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gpointer data)
  * Register a new service
  */
 static void
-xmms_service_register (xmms_ipc_msg_t *msg, gchar *client)
+xmms_service_register (xmms_ipc_msg_t *msg, gchar *client, xmms_error_t *err)
 {
 	gchar *n;
 	guint l;
@@ -220,19 +226,19 @@ xmms_service_register (xmms_ipc_msg_t *msg, gchar *client)
 	g_return_if_fail (client);
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
-		xmms_log_error ("No service name in message!");
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No service name given");
 		return;
 	}
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &l)) {
-		xmms_log_error ("No service description in message!");
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No service description given");
 		return;
 	}
 	if (!xmms_ipc_msg_get_uint32 (msg, &major)) {
-		xmms_log_error ("No major version in message!");
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No major version given");
 		return;
 	}
 	if (!xmms_ipc_msg_get_uint32 (msg, &minor)) {
-		xmms_log_error ("No minor version in message!");
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No minor version given");
 		return;
 	}
 
@@ -244,14 +250,15 @@ xmms_service_register (xmms_ipc_msg_t *msg, gchar *client)
 	g_mutex_unlock (xmms_service->mutex);
 
 method:
-	xmms_service_method_register (msg, e);
+	xmms_service_method_register (msg, e, err);
 }
 
 /**
  * Register a new method
  */
 static void
-xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
+xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
+							  xmms_error_t *err)
 {
 	gchar *n;
 	guint l;
@@ -269,20 +276,20 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 		return;
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &l)) {
-		xmms_log_error ("No method description in message!");
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No method description given");
 		return;
 	}
 	if (!xmms_ipc_msg_get_string_alloc (msg, &rt, &l)) {
-		xmms_log_error ("No return types in message!");
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No return types given");
 		return;
 	}
 	if (!xmms_ipc_msg_get_string_alloc (msg, &at, &l)) {
-		xmms_log_error ("No argument types in message!");
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No argument types given");
 		return;
 	}
 
 	if (!(m = xmms_service_is_method_registered (entry, n))) {
-		xmms_log_error ("Method already registered!");
+		xmms_error_set (err, XMMS_ERROR_INVAL, "Method already registered");
 		return;
 	}
 
@@ -298,7 +305,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 		case 'b':
 			break;
 		default:
-			xmms_log_error ("Invalid return type (%c)!", *c);
+			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid return type");
 			return;
 		}
 	}
@@ -314,7 +321,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 		case 'b':
 			break;
 		default:
-			xmms_log_error ("Invalid argument type (%c)!", *c);
+			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid argument type");
 			return;
 		}
 	}
@@ -330,7 +337,8 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
  * Unregister an existing service
  */
 static void
-xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client)
+xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client,
+						 xmms_error_t *err)
 {
 	gchar *n;
 	guint l;
@@ -342,25 +350,25 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client)
 	g_return_if_fail (client);
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
-		xmms_log_error ("No service Name in message!");
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No service name given");
 		return;
 	}
 
 	if (!(e = xmms_service_is_registered (n))) {
-		xmms_log_error ("Requested service not registered!");
+		xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid service name");
 		return;
 	}
 
 	if (client != e->sc) {
-		xmms_log_error ("Permission denied for client (%s) to unregister (%s)!",
-						client, n);
+		xmms_error_set (err, XMMS_ERROR_PERMISSION,
+						"Permission denied to unregister");
 		return;
 	}
 
-	if (!xmms_service_method_unregister (msg, e)) {
+	if (!xmms_service_method_unregister (msg, e, err)) {
 		g_mutex_lock (xmms_service->mutex);
 		if (!g_hash_table_remove (xmms_service->registry, n))
-			xmms_log_error ("No service named (%s)!", n);
+			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid service name");
 		g_mutex_lock (xmms_service->mutex);
 	}
 
@@ -371,7 +379,8 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client)
  * Unregister an existing method
  */
 static gboolean
-xmms_service_method_unregister (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
+xmms_service_method_unregister (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
+								xmms_error_t *err)
 {
 	gchar *n;
 	guint l;
@@ -382,7 +391,7 @@ xmms_service_method_unregister (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry
 	if (xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
 		g_mutex_lock (entry->mutex);
 		if (!g_hash_table_remove (entry->methods, n)) {
-			xmms_log_error ("No method named (%s)!", n);
+			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid method name!");
 			ret = TRUE;
 		} else
 			ret = --(entry->count) == 0 ? FALSE : TRUE;
