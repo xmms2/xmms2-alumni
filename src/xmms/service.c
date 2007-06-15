@@ -194,13 +194,8 @@ xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gpointer data,
 	if (cmdid <= XMMS_IPC_CMD_SERVICE_BEGIN ||
 		cmdid >= XMMS_IPC_CMD_SERVICE_END) {
 		xmms_error_set (&arg->error, XMMS_ERROR_INVAL,
-<<<<<<< HEAD:src/xmms/service.c
 		                "Invalid service command");
-		return;
-=======
-						"Invalid service command");
 		return FALSE;
->>>>>>> OTHER: Only subscribe clients to SIGNAL_SERVICE when necessary.:src/xmms/service.c
 	}
 
 	switch (cmdid) {
