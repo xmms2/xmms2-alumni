@@ -286,16 +286,21 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 		return;
 	} else if (objid == XMMS_IPC_OBJECT_SERVICE) {
 		uint32_t cookie;
+		gpointer data;
 
 		cookie = xmms_ipc_msg_get_cookie (msg);
+		data = GUINT_TO_POINTER (cookie);
 
 		g_mutex_lock (client->lock);
 		client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
 			g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
-						   GUINT_TO_POINTER (cookie));
+						   data);
 		g_mutex_unlock (client->lock);
 
-		xmms_service_handle (msg, cmdid, client->transport->path);
+		if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER)
+			data = client->transport->path;
+		xmms_service_handle (msg, cmdid, data);
+		return;
 	}
 
 	if (objid >= XMMS_IPC_OBJECT_END) {
