@@ -77,8 +77,8 @@ static void xmms_service_register (xmms_ipc_msg_t *msg, gchar *client);
 static void xmms_service_method_register (xmms_ipc_msg_t *msg,
 										  xmms_service_entry_t *entry);
 static void xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client);
-static void xmms_service_method_unregister (xmms_ipc_msg_t *msg,
-											xmms_service_entry_t *entry);
+static gboolean xmms_service_method_unregister (xmms_ipc_msg_t *msg,
+												xmms_service_entry_t *entry);
 static xmms_service_entry_t *xmms_service_entry_new (gchar *name,
 													 gchar *description,
 													 guint major, guint minor,
@@ -212,6 +212,7 @@ xmms_service_register (xmms_ipc_msg_t *msg, gchar *client)
 	guint l;
 	gchar *desc;
 	guint major, minor;
+	xmms_service_entry_t *e;
 
 	XMMS_DBG ("Registering new service");
 
@@ -235,7 +236,6 @@ xmms_service_register (xmms_ipc_msg_t *msg, gchar *client)
 		return;
 	}
 
-	xmms_service_entry_t *e;
 	if (e = xmms_service_is_registered (n))
 		goto method;
 	e = xmms_service_entry_new (n, desc, major, minor, client);
@@ -257,16 +257,16 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 	guint l;
 	gchar *desc;
 	gchar *rt, *at;
+	xmms_service_method_t *m;
 
 	XMMS_DBG ("Registering new method");
-
-	g_return_if_fail (msg);
 
 	/**
 	 * It might be the case that service client is only registering a service,
 	 * not a method.  So we don't report an error.
 	 */
-	g_return_if_fail (xmms_ipc_msg_get_string_alloc (msg, &n, &l));
+	if (xmms_ipc_msg_get_string_alloc (msg, &n, &l))
+		return;
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &l)) {
 		xmms_log_error ("No method description in message!");
@@ -281,7 +281,6 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 		return;
 	}
 
-	xmms_service_method_t *m;
 	if (!(m = xmms_service_is_method_registered (entry, n))) {
 		xmms_log_error ("Method already registered!");
 		return;
@@ -333,16 +332,64 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 static void
 xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client)
 {
+	gchar *n;
+	guint l;
+	xmms_service_entry_t *e;
 
+	XMMS_DBG ("Unregistering service");
+
+	g_return_if_fail (msg);
+	g_return_if_fail (client);
+
+	if (!xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
+		xmms_log_error ("No service Name in message!");
+		return;
+	}
+
+	if (!(e = xmms_service_is_registered (n))) {
+		xmms_log_error ("Requested service not registered!");
+		return;
+	}
+
+	if (client != e->sc) {
+		xmms_log_error ("Permission denied for client (%s) to unregister (%s)!",
+						client, n);
+		return;
+	}
+
+	if (!xmms_service_method_unregister (msg, e)) {
+		g_mutex_lock (xmms_service->mutex);
+		if (!g_hash_table_remove (xmms_service->registry, n))
+			xmms_log_error ("No service named (%s)!", n);
+		g_mutex_lock (xmms_service->mutex);
+	}
+
+	return;
 }
 
 /**
  * Unregister an existing method
  */
-static void
+static gboolean
 xmms_service_method_unregister (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 {
+	gchar *n;
+	guint l;
+	gboolean ret = FALSE;
 
+	XMMS_DBG ("Unregistering method");
+
+	if (xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
+		g_mutex_lock (entry->mutex);
+		if (!g_hash_table_remove (entry->methods, n)) {
+			xmms_log_error ("No method named (%s)!", n);
+			ret = TRUE;
+		} else
+			ret = --(entry->count) == 0 ? FALSE : TRUE;
+		g_mutex_unlock (entry->mutex);
+	}
+
+	return ret;
 }
 
 static xmms_service_entry_t *
