@@ -290,6 +290,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 
 		cookie = xmms_ipc_msg_get_cookie (msg);
 		data = GUINT_TO_POINTER (cookie);
+		xmms_object_cmd_arg_init (&arg);
 
 		g_mutex_lock (client->lock);
 		client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
@@ -299,8 +300,8 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 
 		if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER)
 			data = client->transport->path;
-		xmms_service_handle (msg, cmdid, data);
-		return;
+		xmms_service_handle (msg, cmdid, data, &arg);
+		goto ret;
 	}
 
 	if (objid >= XMMS_IPC_OBJECT_END) {
@@ -340,6 +341,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 	}
 
 	xmms_object_cmd_call (object, cmdid, &arg);
+ret:
 	if (xmms_error_isok (&arg.error)) {
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
 		xmms_ipc_handle_cmd_value (retmsg, arg.retval);
