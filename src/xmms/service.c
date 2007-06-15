@@ -39,6 +39,7 @@ typedef struct xmms_service_entry_St {
 	gchar *sc;
 
 	GMutex *mutex;
+	guint count;
 	GHashTable *methods;
 } xmms_service_entry_t;
 
@@ -69,12 +70,15 @@ static void xmms_service_destroy (xmms_object_t *object);
 static void xmms_service_registry_destroy (gpointer value);
 static void xmms_service_method_destroy (gpointer value);
 
-static gboolean xmms_service_is_registered (gchar *name);
-static gboolean xmms_service_is_method_registered (xmms_service_entry_t *entry,
+static xmms_service_entry_t *xmms_service_is_registered (gchar *name);
+static xmms_service_method_t *xmms_service_is_method_registered (xmms_service_entry_t *entry,
 												   gchar *name);
 static void xmms_service_register (xmms_ipc_msg_t *msg, gchar *client);
 static void xmms_service_method_register (xmms_ipc_msg_t *msg,
 										  xmms_service_entry_t *entry);
+static void xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client);
+static void xmms_service_method_unregister (xmms_ipc_msg_t *msg,
+											xmms_service_entry_t *entry);
 static xmms_service_entry_t *xmms_service_entry_new (gchar *name,
 													 gchar *description,
 													 guint major, guint minor,
@@ -170,7 +174,7 @@ xmms_service_method_destroy (gpointer value)
  * handle the command.
  */
 void
-xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gchar *client)
+xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gpointer data)
 {
 	XMMS_DBG ("Handling service command.");
 
@@ -184,7 +188,10 @@ xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gchar *client)
 
 	switch (cmdid) {
 	case XMMS_IPC_CMD_SERVICE_REGISTER:
-		xmms_service_register (msg, client);
+		xmms_service_register (msg, (gchar *)data);
+		break;
+	case XMMS_IPC_CMD_SERVICE_UNREGISTER:
+		xmms_service_unregister (msg, (gchar *)data);
 		break;
 	case XMMS_IPC_CMD_SERVICE_REQUEST:
 		break;
@@ -228,16 +235,15 @@ xmms_service_register (xmms_ipc_msg_t *msg, gchar *client)
 		return;
 	}
 
-	if (!xmms_service_is_registered (n)) {
-		xmms_log_error ("Service already registered!");
-		return;
-	}
 	xmms_service_entry_t *e;
+	if (e = xmms_service_is_registered (n))
+		goto method;
 	e = xmms_service_entry_new (n, desc, major, minor, client);
 	g_mutex_lock (xmms_service->mutex);
 	g_hash_table_insert (xmms_service->registry, n, e);
 	g_mutex_unlock (xmms_service->mutex);
 
+method:
 	xmms_service_method_register (msg, e);
 }
 
@@ -275,7 +281,8 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 		return;
 	}
 
-	if (!xmms_service_is_method_registered (entry, n)) {
+	xmms_service_method_t *m;
+	if (!(m = xmms_service_is_method_registered (entry, n))) {
 		xmms_log_error ("Method already registered!");
 		return;
 	}
@@ -313,39 +320,55 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
 		}
 	}
 
-	xmms_service_method_t *m;
 	m = xmms_service_method_new (n, desc, rt, l, at);
 	g_mutex_lock (entry->mutex);
+	entry->count++;
 	g_hash_table_insert (entry->methods, n, m);
 	g_mutex_unlock (entry->mutex);
 }
 
-static gboolean
+/**
+ * Unregister an existing service
+ */
+static void
+xmms_service_unregister (xmms_ipc_msg_t *msg, gchar *client)
+{
+
+}
+
+/**
+ * Unregister an existing method
+ */
+static void
+xmms_service_method_unregister (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry)
+{
+
+}
+
+static xmms_service_entry_t *
 xmms_service_is_registered (gchar *name)
 {
-	gboolean ret = TRUE;
+	xmms_service_entry_t *ret;
 
 	g_return_val_if_fail (name, FALSE);
 
 	g_mutex_lock (xmms_service->mutex);
-	if (!g_hash_table_lookup (xmms_service->registry, name))
-		ret = FALSE;
+	ret = g_hash_table_lookup (xmms_service->registry, name);
 	g_mutex_unlock (xmms_service->mutex);
 
 	return ret;
 }
 
-static gboolean
+static xmms_service_method_t *
 xmms_service_is_method_registered (xmms_service_entry_t *entry, gchar *name)
 {
-	gboolean ret = TRUE;
+	xmms_service_method_t *ret;
 
 	g_return_val_if_fail (entry, FALSE);
 	g_return_val_if_fail (name, FALSE);
 
 	g_mutex_lock (entry->mutex);
-	if (!g_hash_table_lookup (entry->methods, name))
-		ret = FALSE;
+	ret = g_hash_table_lookup (entry->methods, name);
 	g_mutex_unlock (entry->mutex);
 
 	return ret;
@@ -368,6 +391,7 @@ xmms_service_entry_new (gchar *name, gchar *description, guint major,
 	e->description = description;
 	e->major_version = major;
 	e->minor_version = minor;
+	e->count = 0;
 	e->sc = client;
 	e->mutex = g_mutex_new ();
 	e->methods = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
