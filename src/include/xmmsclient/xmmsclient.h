@@ -340,6 +340,43 @@ xmmsc_result_value_type_t xmmsc_result_get_type (xmmsc_result_t *res);
 
 const char *xmmsc_result_decode_url (xmmsc_result_t *res, const char *string);
 
+/*
+ * Service Client
+ */
+
+typedef struct xmmsc_service_St xmmsc_service_t;
+
+struct xmmsc_service_St {
+	char *name;
+	char *description;
+	uint32_t major_version;
+	uint32_t minor_version;
+};
+
+typedef struct xmmsc_service_method_St xmmsc_service_method_t;
+
+struct xmmsc_service_method_St {
+	char *name;
+	char *description;
+	char *ret_type;
+	char *arg_type;
+	xmmsc_result_notifier_t func;
+};
+
+xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn,
+                                        xmmsc_service_t *service,
+                                        xmmsc_service_method_t *method,
+                                        void *user_data);
+xmmsc_result_t *
+xmmsc_service_register_full (xmmsc_connection_t *conn,
+                             xmmsc_service_t *service,
+                             xmmsc_service_method_t *method,
+                             void *user_data,
+                             xmmsc_user_data_free_func_t free_func);
+xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn,
+                                          char *service,
+                                          char *method);
+
 #ifdef __cplusplus
 }
 #endif
