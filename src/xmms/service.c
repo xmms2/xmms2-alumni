@@ -271,7 +271,7 @@ method:
  */
 static void
 xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
-							  xmms_error_t *err)
+                              xmms_error_t *err)
 {
 	gchar *n;
 	guint l;
@@ -447,7 +447,7 @@ xmms_service_is_method_registered (xmms_service_entry_t *entry, gchar *name)
 
 static xmms_service_entry_t *
 xmms_service_entry_new (gchar *name, gchar *description, guint major,
-						guint minor, guint client)
+                        guint minor, guint client)
 {
 	xmms_service_entry_t *e;
 
