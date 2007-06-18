@@ -14,6 +14,7 @@
  *  Lesser General Public License for more details.
  */
 
+#include <stdlib.h>
 #include "xmms/xmms_log.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmspriv/xmms_service.h"
@@ -83,6 +84,7 @@ static void xmms_service_unregister (xmms_ipc_msg_t *msg, guint client,
 static gboolean xmms_service_method_unregister (xmms_ipc_msg_t *msg,
                                                 xmms_service_entry_t *entry,
                                                 xmms_error_t *err);
+
 static xmms_service_entry_t *xmms_service_entry_new (gchar *name,
                                                      gchar *description,
                                                      guint major, guint minor,
@@ -92,6 +94,8 @@ static xmms_service_method_t *xmms_service_method_new (gchar *name,
                                                        gchar *ret_type,
                                                        guint num_args,
                                                        gchar *args);
+static gboolean xmms_service_matchsc (gpointer key, gpointer value,
+                                      gpointer data);
 
 /**
  * Initialize service client handling
@@ -101,16 +105,16 @@ xmms_service_init(void)
 {
 	xmms_service_t *ret;
 
-	XMMS_DBG ("Initializing service object.");
-
 	ret = xmms_object_new (xmms_service_t, xmms_service_destroy);
 	ret->mutex = g_mutex_new ();
-	ret->registry = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+	ret->registry = g_hash_table_new_full (g_str_hash, g_str_equal, free,
 										   xmms_service_registry_destroy);
 
 	xmms_ipc_broadcast_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
 
 	xmms_service = ret;
+
+	XMMS_DBG ("Service object initialized.");
 
 	return ret;
 }
@@ -123,8 +127,6 @@ xmms_service_destroy (xmms_object_t *object)
 {
 	xmms_service_t *service = (xmms_service_t *)object;
 
-	XMMS_DBG ("Shutting service object down.");
-
 	g_return_if_fail (service);
 
 	g_mutex_free (service->mutex);
@@ -132,6 +134,8 @@ xmms_service_destroy (xmms_object_t *object)
 	g_hash_table_destroy (service->registry);
 
 	xmms_ipc_signal_unregister (XMMS_IPC_SIGNAL_SERVICE);
+
+	XMMS_DBG ("Service object shutdown.");
 }
 
 /**
@@ -144,8 +148,7 @@ xmms_service_registry_destroy (gpointer value)
 
 	g_return_if_fail (v);
 
-	g_free (v->name);
-	g_free (v->description);
+	free (v->description);
 
 	g_mutex_free (v->mutex);
 
@@ -162,13 +165,13 @@ xmms_service_method_destroy (gpointer value)
 
 	g_return_if_fail (v);
 
-	g_free (v->name);
-	g_free (v->description);
+	free (v->description);
 
 	g_mutex_free (v->mutex);
 	g_list_free (v->clients);
 
-	g_free (v->args);
+	free (v->ret_type);
+	free (v->args);
 }
 
 /**
@@ -191,8 +194,6 @@ xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gpointer data,
 
 	XMMS_DBG ("Handling service command.");
 
-	g_return_val_if_fail (msg, FALSE);
-
 	if (cmdid <= XMMS_IPC_CMD_SERVICE_BEGIN ||
 		cmdid >= XMMS_IPC_CMD_SERVICE_END) {
 		xmms_error_set (&arg->error, XMMS_ERROR_INVAL,
@@ -200,14 +201,18 @@ xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, gpointer data,
 		return FALSE;
 	}
 
-	arg->retval = xmms_object_cmd_value_none_new ();
 	id = GPOINTER_TO_UINT (data);
 
 	switch (cmdid) {
 	case XMMS_IPC_CMD_SERVICE_REGISTER:
+		arg->retval = xmms_object_cmd_value_none_new ();
 		return xmms_service_register (msg, id, &arg->error);
 	case XMMS_IPC_CMD_SERVICE_UNREGISTER:
-		xmms_service_unregister (msg, id, &arg->error);
+		if (arg) {
+			arg->retval = xmms_object_cmd_value_none_new ();
+			xmms_service_unregister (msg, id, &arg->error);
+		} else
+			xmms_service_unregister (msg, id, NULL);
 		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_REQUEST:
 		return TRUE;
@@ -253,7 +258,6 @@ xmms_service_register (xmms_ipc_msg_t *msg, guint client, xmms_error_t *err)
 	if (e = xmms_service_is_registered (n))
 		goto method;
 
-	XMMS_DBG ("Registering new service");
 	e = xmms_service_entry_new (n, desc, major, minor, client);
 	g_mutex_lock (xmms_service->mutex);
 	g_hash_table_insert (xmms_service->registry, n, e);
@@ -278,8 +282,6 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	gchar *desc;
 	gchar *rt, *at;
 	xmms_service_method_t *m;
-
-	XMMS_DBG ("Registering new method");
 
 	/**
 	 * It might be the case that service client is only registering a service,
@@ -359,9 +361,21 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, guint client,
 	guint l;
 	xmms_service_entry_t *e;
 
-	XMMS_DBG ("Unregistering service");
-
-	g_return_if_fail (msg);
+	if (!msg) {
+		guint ret;
+		g_mutex_lock (xmms_service->mutex);
+		ret = g_hash_table_foreach_remove (xmms_service->registry,
+		                                   xmms_service_matchsc,
+		                                   GUINT_TO_POINTER (client));
+		g_mutex_unlock (xmms_service->mutex);
+		if (ret > 1)
+			xmms_log_error ("Removed more than 1 registry entry, "
+			                "registry corrupted?");
+		else if (ret == 1)
+			XMMS_DBG ("Service client (%d) just vaporized! "
+			          "Removed from registry.", client);
+		return;
+	}
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No service name given");
@@ -383,8 +397,10 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, guint client,
 		g_mutex_lock (xmms_service->mutex);
 		if (!g_hash_table_remove (xmms_service->registry, n))
 			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid service name");
-		g_mutex_lock (xmms_service->mutex);
+		g_mutex_unlock (xmms_service->mutex);
 	}
+
+	XMMS_DBG ("Service unregistered.");
 
 	return;
 }
@@ -401,8 +417,6 @@ xmms_service_method_unregister (xmms_ipc_msg_t *msg,
 	guint l;
 	gboolean ret = FALSE;
 
-	XMMS_DBG ("Unregistering method");
-
 	if (xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
 		g_mutex_lock (entry->mutex);
 		if (!g_hash_table_remove (entry->methods, n)) {
@@ -411,6 +425,8 @@ xmms_service_method_unregister (xmms_ipc_msg_t *msg,
 		} else
 			ret = --(entry->count) == 0 ? FALSE : TRUE;
 		g_mutex_unlock (entry->mutex);
+
+		XMMS_DBG ("Method unregistered.");
 	}
 
 	return ret;
@@ -465,7 +481,7 @@ xmms_service_entry_new (gchar *name, gchar *description, guint major,
 	e->count = 0;
 	e->sc = client;
 	e->mutex = g_mutex_new ();
-	e->methods = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+	e->methods = g_hash_table_new_full (g_str_hash, g_str_equal, free,
 	                                    xmms_service_method_destroy);
 
 	return e;
@@ -492,6 +508,19 @@ xmms_service_method_new (gchar *name, gchar *description, gchar *ret_type,
 	m->args = args;
 
 	return m;
+}
+
+/**
+ * Return true if the service is provided by the given service client data.
+ */
+static gboolean
+xmms_service_matchsc (gpointer key, gpointer value, gpointer data)
+{
+	gchar *k = key;
+	xmms_service_entry_t *v = value;
+	guint sc = GPOINTER_TO_UINT (data);
+
+	return (v->sc == sc);
 }
 
 /** @} */
