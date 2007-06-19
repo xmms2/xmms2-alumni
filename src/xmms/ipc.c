@@ -166,22 +166,15 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 		g_mutex_unlock (client->lock);
 		return;
 	} else if (objid == XMMS_IPC_OBJECT_SERVICE) {
-		uint32_t cookie;
-		gpointer data;
-
-		cookie = xmms_ipc_msg_get_cookie (msg);
-		data = GUINT_TO_POINTER (client->transport->fd);
 		xmms_object_cmd_arg_init (&arg);
 
-		if (cmdid == XMMS_IPC_CMD_SERVICE_REQUEST ||
-		    cmdid == XMMS_IPC_CMD_SERVICE_RETURN)
-			data = GUINT_TO_POINTER (cookie);
-		if (xmms_service_handle (msg, cmdid, data, &arg)) {
+		if (xmms_service_handle (msg, cmdid, client->transport->fd, &arg)) {
 			g_mutex_lock (client->lock);
 			client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
 				g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
-				               GUINT_TO_POINTER (cookie));
+				               GUINT_TO_POINTER (xmms_ipc_msg_get_cookie (msg)));
 			g_mutex_unlock (client->lock);
+			return;
 		}
 
 		goto ret;
@@ -289,7 +282,7 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 		XMMS_DBG ("disconnect was true!");
 		g_main_loop_quit (client->ml);
 		xmms_service_handle (NULL, XMMS_IPC_CMD_SERVICE_UNREGISTER,
-		                     GUINT_TO_POINTER (client->transport->fd), NULL);
+		                     client->transport->fd, NULL);
 		return FALSE;
 	}
 
