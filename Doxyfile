@@ -465,7 +465,8 @@ INPUT                  = src/xmms \
                          src/include/xmmsc \
 			 src/include/xmmsclient \
                          src/includepriv/xmmspriv \
-                         src/lib
+                         src/lib \
+			 src/clients
 
 # If the value of the INPUT tag contains directories, you can use the 
 # FILE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp 

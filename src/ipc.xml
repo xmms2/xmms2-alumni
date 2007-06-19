@@ -8,7 +8,14 @@
 		<prop name="PAUSE" />
 	</enum>
 
-	<object name="playback">
+	<enum name="output_cmds">
+		<prop name="START" />
+		<prop name="STOP" />
+		<prop name="PAUSE" />
+		<prop name="STATUS" />
+	</enum>
+
+	<object name="playback" type="client">
 		<prop name="status">
 			<readable />
 			<type>
@@ -32,6 +39,41 @@
 			</retval>
 		</method>
 		
+	</object>
+
+	<object name="output" type="server">
+		<method name="start">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+		<method name="stop">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+		<method name="pause">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+		<method name="status">
+			<retval>
+				<type>
+					<int />
+				</type>
+			</retval>
+		</method>
+
 	</object>
 
 </ipc>
