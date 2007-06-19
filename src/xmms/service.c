@@ -279,7 +279,8 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	gchar *n;
 	guint l;
 	gchar *desc;
-	gchar *rt, *at;
+	gchar *rt = NULL;
+	gchar *at = NULL;
 	xmms_service_method_t *m;
 
 	/**
@@ -293,14 +294,11 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No method description given");
 		return FALSE;
 	}
-	if (!xmms_ipc_msg_get_string_alloc (msg, &rt, &l)) {
-		xmms_error_set (err, XMMS_ERROR_NOENT, "No return types given");
-		return FALSE;
-	}
-	if (!xmms_ipc_msg_get_string_alloc (msg, &at, &l)) {
-		xmms_error_set (err, XMMS_ERROR_NOENT, "No argument types given");
-		return FALSE;
-	}
+	/**
+	 * Methods can have no arguments nor return values.
+	 */
+	xmms_ipc_msg_get_string_alloc (msg, &rt, &l);
+	xmms_ipc_msg_get_string_alloc (msg, &at, &l);
 
 	if (m = xmms_service_is_method_registered (entry, n)) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "Method already registered");
@@ -308,7 +306,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	}
 
 	gchar *c;
-	for (c = rt; *c; c++) {
+	for (c = rt; rt && *c; c++) {
 		switch (*c) {
 		case 'u':
 		case 'i':
@@ -324,7 +322,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 		}
 	}
 	l = 0;
-	for (c = at; *c; c++, l++) {
+	for (c = at; at && *c; c++, l++) {
 		switch (*c) {
 		case 'u':
 		case 'i':
