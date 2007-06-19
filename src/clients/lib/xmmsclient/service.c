@@ -143,4 +143,81 @@ xmmsc_service_unregister (xmmsc_connection_t *conn,
 	return res;
 }
 
+/**
+ * List available service ids.
+ *
+ * The list can be used to further query for service details.
+ *
+ * @param conn The connection to the server.
+ */
+xmmsc_result_t *
+xmmsc_service_list_service_ids (xmmsc_connection_t *conn)
+{
+	x_check_conn (conn, NULL);
+
+	return xmmsc_send_msg_no_arg (conn, XMMS_IPC_OBJECT_SERVICE,
+	                              XMMS_IPC_CMD_SERVICE_LIST);
+}
+
+/**
+ * List a service's details.
+ *
+ * @param conn The connection to the server.
+ * @param service The id of the service.
+ */
+xmmsc_result_t *
+xmmsc_service_list_service (xmmsc_connection_t *conn, char *service)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (conn, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE, XMMS_IPC_CMD_SERVICE_LIST);
+	xmms_ipc_msg_put_string (msg, service);
+
+	return xmmsc_send_msg (conn, msg);
+}
+
+/**
+ * List available method ids of a given service.
+ *
+ * @param conn The connection to the server.
+ * @param service The id of the service.
+ */
+xmmsc_result_t *
+xmmsc_service_list_method_ids (xmmsc_connection_t *conn, char *service)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (conn, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_CMD_SERVICE_LIST_METHOD);
+	xmms_ipc_msg_put_string (msg, service);
+
+	return xmmsc_send_msg (conn, msg);
+}
+
+/**
+ * List a method's details.
+ *
+ * @param conn The connection to the server.
+ * @param service The id of the service.
+ * @param method The id of the method.
+ */
+xmmsc_result_t *
+xmmsc_service_list_method (xmmsc_connection_t *conn, char *service, char *method)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (conn, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_CMD_SERVICE_LIST_METHOD);
+	xmms_ipc_msg_put_string (msg, service);
+	xmms_ipc_msg_put_string (msg, method);
+
+	return xmmsc_send_msg (conn, msg);
+}
+
 /* @} */
