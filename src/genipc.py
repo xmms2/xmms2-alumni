@@ -7,5 +7,5 @@ xmlfile = open("ipc.xml", "r")
 doc = FromXmlStream(file)
 
 #open up the output ipc.c file
-ipcfile = open("src/ipc.c", "w")
+ipcfile = open("src/ipc.c", "w+")
 
