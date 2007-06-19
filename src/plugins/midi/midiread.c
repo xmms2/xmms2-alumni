@@ -22,6 +22,10 @@
 #include "elements.h"
 
 #include <stdio.h>
+<<<<<<< HEAD:src/plugins/midi/midiread.c
+=======
+#include <stdlib.h>
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 #include "midi.h"
 
 /*
@@ -49,6 +53,10 @@ static void handle_status(struct midistate *msp, struct trackElement *track,
 static struct metaElement *handle_meta(struct midistate *msp, int type, 
         unsigned char *data);
 static int read_int(struct midistate *msp, int n);
+<<<<<<< HEAD:src/plugins/midi/midiread.c
+=======
+static int peek_int(struct midistate *msp, int n);
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 static unsigned char *read_data(struct midistate *msp, int length);
 static gint32 read_var(struct midistate *msp);
 static void put_back(struct midistate *msp, char c);
@@ -64,11 +72,23 @@ static void skip_chunk(struct midistate *msp);
  *    fp        - Input file pointer
  */
 struct rootElement *
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 midi_read(xmms_xform_t *xform)
+=======
+midi_read_head(xmms_xform_t *xform)
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 {
 	struct midistate mState;
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 	struct midistate *msp;
+=======
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 	struct rootElement *root;
+<<<<<<< HEAD:src/plugins/midi/midiread.c
+=======
+	struct midistate *msp;
+
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 	struct element *el;
 	int  i;
 
@@ -80,6 +100,10 @@ midi_read(xmms_xform_t *xform)
 
 	root = read_head(msp);
 	md_add(MD_CONTAINER(root), NULL); /* Leave room for the tempo map */
+<<<<<<< HEAD:src/plugins/midi/midiread.c
+=======
+
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 	for (i = 0; i < root->tracks; i++) {
 		el = MD_ELEMENT(read_track(msp));
 
@@ -102,7 +126,42 @@ midi_read(xmms_xform_t *xform)
 
 	return root;
 }
+<<<<<<< HEAD:src/plugins/midi/midiread.c
+=======
+#if 0
+struct rootElement *
+midi_read_next(struct rootElement *root)
+{
+	struct element *el = NULL;
+	int i;
+	
+	for(i = 0; i < root->tracks; i++) {
+		el = MD_ELEMENT(read_track(msp));
 
+		/* If format 1 then the first track is really the tempo map */
+		if (root->format == 1
+				&& i == 0
+				&& MD_CONTAINER(el)->elements->len == 0) {
+			/* It will be added after the loop */
+			md_free(el);
+			continue;
+		}
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
+
+<<<<<<< HEAD:src/plugins/midi/midiread.c
+=======
+		md_add(MD_CONTAINER(root), el);
+	}
+
+	g_ptr_array_index(MD_CONTAINER(root)->elements, 0) = msp->tempo_map;
+	msp->tempo_map = NULL;
+
+	g_ptr_array_free(msp->notes, 1);
+
+	return root;
+}
+#endif
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 
 /*
  * Read the header information from a midi file
@@ -121,9 +180,15 @@ read_head(struct midistate *msp)
 	root = md_root_new();
 
 	/* The first word just identifies the file as a midi file */
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 //	magic = read_int(msp, 4);
 //	if (magic != MIDI_HEAD_MAGIC)
 //		return NULL;
+=======
+	magic = read_int(msp, 4);
+	if (magic != MIDI_HEAD_MAGIC)
+		return NULL;
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 
 	/* The header chunk should be 6 bytes, (perhaps longer in the future) */
 	length = read_int(msp, 4);
@@ -138,7 +203,11 @@ read_head(struct midistate *msp)
 	while (length > 6) {
 		length--;
 //		(void) getc(msp->fp);
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 	
+=======
+
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 		xmms_xform_read(msp->xform,&c,1,&error);
 
 	}
@@ -181,9 +250,17 @@ read_track(struct midistate *msp)
 		delta_time = read_var(msp);
 		msp->current_time += delta_time;
 
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 		status = read_int(msp, 1);
+=======
+		//status = read_int(msp, 1);
+		status = peek_int(msp,1);
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 		if ((status & 0x80) == 0) {
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 			
+=======
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 			/*
 			 * This is not a status byte and so running status is being
 			 * used.  Re-use the previous status and push back this byte.
@@ -191,7 +268,11 @@ read_track(struct midistate *msp)
 			put_back(msp, status);
 			status = laststatus;
 		} else {
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 			laststatus = status;
+=======
+			laststatus = read_int(msp,1);
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 		}
 
 		handle_status(msp, track, status);
@@ -426,10 +507,17 @@ read_int(struct midistate *msp, int n)
 
 	val = 0;
 
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 	xmms_xform_read(msp->xform,&val,n,&error);
 //	for (i = 0; i < n; i++) {
 //		val <<= 8;
+=======
+//	xmms_xform_read(msp->xform,&val,n,&error);
+	for (i = 0; i < n; i++) {
+		val <<= 8;
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 //		c = getc(msp->fp);
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 //		xmms_xform_read(msp->xform,&c,1,&error);
 //		msp->chunk_count++;
 //		if (c == -1)
@@ -437,6 +525,42 @@ read_int(struct midistate *msp, int n)
 //
 //		val |= c;
 //	}
+=======
+		xmms_xform_read(msp->xform,&c,1,&error);
+		msp->chunk_count++;
+		if (c == -1)
+			return 0;		
+
+		val |= c;
+	}
+
+	printf("read %x\n",val);
+
+	return val;
+}
+
+static int 
+peek_int(struct midistate *msp, int n)
+{
+	int  val;
+	int  c;
+	int  i;
+	xmms_error_t error;
+
+	val = 0;
+
+//	xmms_xform_read(msp->xform,&val,n,&error);
+	for (i = 0; i < n; i++) {
+		val <<= 8;
+//		c = getc(msp->fp);
+		xmms_xform_peek(msp->xform,&c,1,&error);
+		msp->chunk_count++;
+		if (c == -1)
+			return 0;		
+
+		val |= c;
+	}
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 
 	return val;
 }
@@ -461,6 +585,7 @@ read_data(struct midistate *msp, int length)
 	}
 
 //	if (fread(data, length, 1, msp->fp) == 1) {
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 	if (xmms_xform_read(msp->xform,data,length,&error) != 0) {
 		msp->chunk_count += length;
 		data[length] = '\0';
@@ -469,6 +594,20 @@ read_data(struct midistate *msp, int length)
 		/*NOTREACHED*/
 	}
 	return NULL;
+=======
+//	if (xmms_xform_read(msp->xform,data,length,&error) != 0) {
+
+	xmms_xform_read(msp->xform,data,length,&error);
+
+	msp->chunk_count += length;
+	data[length] = '\0';
+
+	return data;
+//	} else {
+//		/*NOTREACHED*/
+//	}
+//	return NULL;
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 }
 
 /*
@@ -482,8 +621,16 @@ read_data(struct midistate *msp, int length)
 static gint32 
 read_var(struct midistate *msp)
 {
+<<<<<<< HEAD:src/plugins/midi/midiread.c
+=======
+
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 	int  val;
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 	int  c;
+=======
+	int  c=0;
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 	xmms_error_t error;
 
 	val = 0;
@@ -491,8 +638,13 @@ read_var(struct midistate *msp)
 //		c = getc(msp->fp);
 		xmms_xform_read(msp->xform,&c,1,&error);	
 		msp->chunk_count++;
+<<<<<<< HEAD:src/plugins/midi/midiread.c
 		if (c == -1)
 			return 0;	
+=======
+//		if (c == -1)
+//			return 0;	
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 		val <<= 7;
 		val |= (c & 0x7f);
 	} while ((c & 0x80) == 0x80);
@@ -510,6 +662,10 @@ read_var(struct midistate *msp)
 static void 
 put_back(struct midistate *msp, char c)
 {
+<<<<<<< HEAD:src/plugins/midi/midiread.c
+=======
+	printf("omfg error\n");
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midiread.c
 	//ungetc(c, msp->fp);
 	msp->chunk_count--;
 }

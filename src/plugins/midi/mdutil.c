@@ -16,7 +16,10 @@
 
 #include <glib.h>
 #include "elements.h"
+<<<<<<< HEAD:src/plugins/midi/mdutil.c
 #include "except.h"
+=======
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/mdutil.c
 
 #include "md.h"
 

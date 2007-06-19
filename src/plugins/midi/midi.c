@@ -28,6 +28,11 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+<<<<<<< HEAD:src/plugins/midi/midi.c
+=======
+#include "midi.h"
+
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midi.c
 static gboolean xmms_midi_plugin_setup (xmms_xform_plugin_t *xform_plugin);
 static gint xmms_midi_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len, xmms_error_t *err);
 static gboolean xmms_midi_init (xmms_xform_t *decoder);
@@ -72,22 +77,35 @@ static gboolean xmms_midi_init (xmms_xform_t *xform)
 {
 	struct rootElement *root;
 	struct sequenceState *seq;
+<<<<<<< HEAD:src/plugins/midi/midi.c
 	char buff[100000];
+=======
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midi.c
 	xmms_error_t error;
 	
 	g_return_val_if_fail(xform,FALSE);
 
+<<<<<<< HEAD:src/plugins/midi/midi.c
 //	root = midi_read(xform);
 
 	xmms_xform_peek(xform,buff,10000,&error);
 
 	freopen("/home/thisnukes4u/test.mid","w",stdout);
 	printf("%s",buff);
+=======
+//	root = midi_read_head(xform);
+	
+//	root = midi_read_next(root);
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midi.c
 
 	g_return_val_if_fail(root,FALSE);
 
 //	seq = md_sequence_init(root);
+<<<<<<< HEAD:src/plugins/midi/midi.c
 	xmms_xform_private_data_set(xform,seq);
+=======
+	xmms_xform_private_data_set(xform,root);
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midi.c
 
 	xmms_xform_outdata_type_add (xform,
                                      XMMS_STREAM_TYPE_MIMETYPE,
@@ -102,15 +120,36 @@ static gboolean xmms_midi_init (xmms_xform_t *xform)
  */
 static gint xmms_midi_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len, xmms_error_t *err)
 {
+<<<<<<< HEAD:src/plugins/midi/midi.c
+=======
+	struct rootElement *root;
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midi.c
 	struct sequenceState *seq;
+<<<<<<< HEAD:src/plugins/midi/midi.c
+=======
+	int buff;
+	xmms_error_t error;
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midi.c
 
 //	printf("Starting to read midi...\n");
+<<<<<<< HEAD:src/plugins/midi/midi.c
 //
 //	g_return_val_if_fail(xform,-1);
 //
 //	seq = xmms_xform_private_data_get(xform);
 //
 //	g_return_val_if_fail(seq,-1);
+=======
+
+	g_return_val_if_fail(xform,-1);
+
+	xmms_xform_read(xform,&buff,4,&error);
+	printf("%x\n",buff);
+
+//	root = xmms_xform_private_data_get(xform);
+
+//	g_return_val_if_fail(root,-1);
+>>>>>>> dfe6712a3c63766a1a91bd3c8eca1155d0637d23:src/plugins/midi/midi.c
 
 //	buf = md_sequence_next(seq);
 
