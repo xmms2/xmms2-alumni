@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ipc version="0.1">
+
+	<enum name="playback_status">
+		<prop name="STOP" />
+		<prop name="START" />
+		<prop name="PAUSE" />
+	</enum>
+
+	<enum name="output_cmd">
+		<prop name="START" />
+		<prop name="STOP" />
+		<prop name="PAUSE" />
+		<prop name="STATUS" />
+	</enum>
+
+	<object name="playback" type="client">
+		<prop name="status">
+			<readable />
+			<type>
+				<enum name="playback_status" />
+			</type>
+		</prop>
+
+		<method name="stop">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+		
+		<method name="start">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+		
+	</object>
+
+	<object name="output" type="server">
+		<method name="start">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+		<method name="stop">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+		<method name="pause">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+		<method name="status">
+			<retval>
+				<type>
+					<int />
+				</type>
+			</retval>
+		</method>
+
+	</object>
+
+</ipc>
+
