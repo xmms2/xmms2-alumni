@@ -8,7 +8,7 @@
 		<prop name="PAUSE" />
 	</enum>
 
-	<enum name="output_cmds">
+	<enum name="output_cmd">
 		<prop name="START" />
 		<prop name="STOP" />
 		<prop name="PAUSE" />
