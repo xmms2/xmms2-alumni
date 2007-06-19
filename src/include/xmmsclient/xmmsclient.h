@@ -349,7 +349,6 @@ const char *xmmsc_result_decode_url (xmmsc_result_t *res, const char *string);
  */
 
 typedef struct xmmsc_service_St xmmsc_service_t;
-
 struct xmmsc_service_St {
 	char *name;
 	char *description;
@@ -358,7 +357,6 @@ struct xmmsc_service_St {
 };
 
 typedef struct xmmsc_service_method_St xmmsc_service_method_t;
-
 struct xmmsc_service_method_St {
 	char *name;
 	char *description;
