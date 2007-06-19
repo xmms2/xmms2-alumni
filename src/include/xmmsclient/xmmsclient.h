@@ -312,7 +312,6 @@ xmmsv_t *xmmsc_result_get_value (xmmsc_result_t *res);
  */
 
 typedef struct xmmsc_service_St xmmsc_service_t;
-
 struct xmmsc_service_St {
 	char *name;
 	char *description;
@@ -321,7 +320,6 @@ struct xmmsc_service_St {
 };
 
 typedef struct xmmsc_service_method_St xmmsc_service_method_t;
-
 struct xmmsc_service_method_St {
 	char *name;
 	char *description;
