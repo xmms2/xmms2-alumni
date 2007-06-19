@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ipc version="0.1">
+
+	<enum name="playback_status">
+		<prop name="STOP" />
+		<prop name="START" />
+		<prop name="PAUSE" />
+	</enum>
+
+	<object name="playback">
+		<prop name="status">
+			<readable />
+			<type>
+				<enum name="playback_status" />
+			</type>
+		</prop>
+
+		<method name="stop">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+		
+		<method name="start">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+		
+	</object>
+
+</ipc>
+
