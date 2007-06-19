@@ -379,6 +379,15 @@ xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn,
                                           char *service,
                                           char *method);
 
+xmmsc_result_t *xmmsc_service_list_service_ids (xmmsc_connection_t *conn);
+
+xmmsc_result_t *xmmsc_service_list_service (xmmsc_connection_t *conn,
+                                            char *service);
+xmmsc_result_t *xmmsc_service_list_method_ids (xmmsc_connection_t *conn,
+                                               char *service);
+xmmsc_result_t *xmmsc_service_list_method (xmmsc_connection_t *conn,
+                                           char *service, char *method);
+
 #ifdef __cplusplus
 }
 #endif
