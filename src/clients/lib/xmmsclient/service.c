@@ -103,8 +103,7 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
 		return res;
 
 	if (method) {
-		xmmsc_result_unref (res);
-		res = xmmsc_send_broadcast_msg (conn, XMMS_IPC_SIGNAL_SERVICE);
+		xmmsc_result_restartable (res, XMMS_IPC_SIGNAL_SERVICE);
 		xmmsc_result_notifier_set_full (res, method->func, user_data, free_func);
 	}
 
