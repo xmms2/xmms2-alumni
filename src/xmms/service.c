@@ -546,9 +546,9 @@ xmms_service_list (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 		val = xmms_object_cmd_value_str_new (e->description);
 		g_hash_table_insert (dict, "description", val);
 		val = xmms_object_cmd_value_uint_new (e->major_version);
-		g_hash_table_insert (dict, "major version", val);
+		g_hash_table_insert (dict, "major_version", val);
 		val = xmms_object_cmd_value_uint_new (e->minor_version);
-		g_hash_table_insert (dict, "minor version", val);
+		g_hash_table_insert (dict, "minor_version", val);
 		val = xmms_object_cmd_value_uint_new (e->count);
 		g_hash_table_insert (dict, "count", val);
 		g_mutex_unlock (xmms_service->mutex);
@@ -574,7 +574,60 @@ xmms_service_list (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 static void
 xmms_service_list_method (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 {
+	gchar *n;
+	guint l;
+	xmms_service_entry_t *e;
+	xmms_service_method_t *m;
 
+	g_return_if_fail (msg);
+
+	if (!xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
+		xmms_error_set (&arg->error, XMMS_ERROR_NOENT, "No service id given");
+		return;
+	}
+
+	if (!(e = xmms_service_is_registered (n))) {
+		xmms_error_set (&arg->error, XMMS_ERROR_INVAL, "Invalid service id");
+		return;
+	}
+
+	if (xmms_ipc_msg_get_string_alloc (msg, &n, &l)) {
+		if (!(m = xmms_service_is_method_registered (e, n))) {
+			xmms_error_set (&arg->error, XMMS_ERROR_INVAL, "Invalid method id");
+			return;
+		}
+
+		GHashTable *dict = g_hash_table_new_full (g_str_hash,
+		                                          g_str_equal,
+		                                          NULL,
+		                                          xmms_object_cmd_value_free);
+		xmms_object_cmd_value_t *val;
+
+		g_mutex_lock (e->mutex);
+		val = xmms_object_cmd_value_str_new (m->name);
+		g_hash_table_insert (dict, "name", val);
+		val = xmms_object_cmd_value_str_new (m->description);
+		g_hash_table_insert (dict, "description", val);
+		val = xmms_object_cmd_value_str_new (m->ret_type);
+		g_hash_table_insert (dict, "ret_type", val);
+		val = xmms_object_cmd_value_uint_new (m->num_args);
+		g_hash_table_insert (dict, "num_args", val);
+		val = xmms_object_cmd_value_str_new (m->args);
+		g_hash_table_insert (dict, "args", val);
+		g_mutex_unlock (e->mutex);
+
+		arg->retval = xmms_object_cmd_value_dict_new (dict);
+	} else {
+		GList *list = NULL;
+
+		g_mutex_lock (e->mutex);
+		g_hash_table_foreach (e->methods, xmms_service_foreach, &list);
+		g_mutex_unlock (e->mutex);
+
+		arg->retval = xmms_object_cmd_value_list_new (list);
+	}
+
+	return;
 }
 
 /**
