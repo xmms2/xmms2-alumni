@@ -97,7 +97,7 @@ def do_objects(objects):
 			    c_map[retval[0].childNodes[1].childNodes[1].nodeName])
 
 		    #figure out how to write the arguments
-                    argstring = "xmmsc_connection_t *c"
+                    argstring = "xmms_%s_t *obj" % node.getAttribute("name")
 
                     args = method.getElementsByTagName("arg")
                     if args.length > 0:
@@ -106,6 +106,8 @@ def do_objects(objects):
                             type = type[0].childNodes[1].nodeName
                             name = arg.getAttribute("name")
                             argstring = argstring + ", " + c_map[type] + " " + name
+
+                    argstring = argstring + ", xmms_error_t *err"
 
 		    #actually output the rest of the line
                     hfile.write("(*xmms_%s_%s) (%s);\n" % \
