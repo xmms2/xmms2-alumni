@@ -15,6 +15,88 @@
 		<prop name="STATUS" />
 	</enum>
 
+	<enum name="playlist_cmd">
+		<prop name="ADD_ID" />
+		<prop name="CURRENT_POS" />
+		<prop name="LIST_ENTRIES" />
+		<prop name="CLEAR" />
+	</enum>
+
+	<object name="playlist" type="client">
+		<prop name="pos">
+			<readable />
+			<writeable />
+			<type> 
+				<int /> 
+			</type>
+		</prop>
+		
+		<!--
+		<method name="list">
+			<retval>
+				<type>
+					<list>
+						<string />
+					</list>
+				</type>
+			</retval>
+		</method>
+		-->
+
+		<method name="create">
+			<arg name="name">
+				<type>
+					<string />
+				</type>
+			</arg>
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+		<method name="load">
+			<arg name="name">
+				<type>
+					<string />
+				</type>
+			</arg>
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+		<method name="add_id">
+			<arg name="id">
+				<type>
+					<uint />
+				</type>
+			</arg>
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+		<method name="clear">
+			<arg name="playlist">
+				<type>
+					<string />
+				</type>
+			</arg>
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+	</object>
+
 	<object name="playback" type="client">
 		<prop name="status">
 			<readable />

@@ -7,28 +7,33 @@ import xml.dom.minidom
 c_map = {}
 c_map["none"] = "void"
 c_map["int"] = "gint"
+c_map["uint"] = "guint"
 c_map["string"] = "char *"
 c_map["enum"] = "guint"
 
 objects = ()
 
 def do_enums(enums):
-	for node in enums:
-		#if its a child of the main(ipc) tag
-		if node.parentNode == nodes[0]:
-			sys.stdout.write("%s..." % node.getAttribute("name"))
+    for node in enums:
+        #if its a child of the main(ipc) tag
+        if node.parentNode == nodes[0]:
+            sys.stdout.write("%s..." % node.getAttribute("name"))
 
-			xmmsclientfile.write("/* %s enum */\n" % \
-					node.getAttribute("name"));
-			xmmsclientfile.write("typedef enum {\n")
+            xmmsclientfile.write("/* %s enum */\n" % \
+                    node.getAttribute("name"));
+            xmmsclientfile.write("typedef enum {\n")
 
-			props = node.getElementsByTagName("prop")
-			for prop in props:
-				xmmsclientfile.write("\tXMMSC_%s_%s,\n" % \
-						(node.getAttribute("name").upper(),prop.getAttribute("name")))
-			xmmsclientfile.write("} xmmsc_%s_t; \n\n" % \
-					node.getAttribute("name"))
-			print "done"
+            props = node.getElementsByTagName("prop")
+            for prop in props:
+                xmmsclientfile.write("\tXMMSC_%s_%s,\n" % \
+                                     (node.getAttribute("name").upper(),
+                                     prop.getAttribute("name")))
+
+	    xmmsclientfile.write("\tXMMSC_%s_END" % \
+		    node.getAttribute("name").upper())
+            xmmsclientfile.write("\n} xmmsc_%s_t; \n\n" % \
+                    node.getAttribute("name"))
+            print "done"
 
 def do_objects(objects):
     for node in objects:
@@ -37,7 +42,7 @@ def do_objects(objects):
             sys.stdout.write("%s..." % node.getAttribute("name"))
 
             if node.getAttribute("type") == "client":
-                xmmsclientfile.write("\n/* %s object */\n" % \
+                xmmsclientfile.write("\n/* %s object properties and methods */\n" % \
                         node.getAttribute("name"))
 
                 #enums (properties/variables)
@@ -53,10 +58,29 @@ def do_objects(objects):
                     xmmsclientfile.write("\tXMMSC_%s_PROPERTY_%s,\n" % \
                                          (node.getAttribute("name").upper(),
                                          prop.getAttribute("name").upper()))
+
+		xmmsclientfile.write("\tXMMSC_%s_PROPERTY_END\n" % \
+			node.getAttribute("name").upper())
                 xmmsclientfile.write("} xmmsc_%s_properties_t;\n\n" % \
                         node.getAttribute("name"))
 
-                #method declarations
+		#enums (methods)
+		xmmsclientfile.write("typedef enum {\n");
+
+		methods = node.getElementsByTagName("method")
+		for method in methods:
+		    type = node.getElementsByTagName("type")
+		    xmmsclientfile.write("\tXMMSC_%s_METHOD_%s,\n" % \
+					 (node.getAttribute("name").upper(),
+					 method.getAttribute("name").upper()))
+
+		xmmsclientfile.write("\tXMMSC_%s_METHOD_END\n" % \
+			node.getAttribute("name").upper())
+		xmmsclientfile.write("} xmmsc_%s_methods_t;\n\n" % \
+			node.getAttribute("name"))
+
+
+                #higher-level method declarations
                 methods = node.getElementsByTagName("method")
                 for method in methods:
                     retval = method.getElementsByTagName("retval")
