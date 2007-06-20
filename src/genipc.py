@@ -31,57 +31,90 @@ def do_enums(enums):
 			print "done"
 
 def do_objects(objects):
-	for node in objects:
-		#if its a child of the main(ipc) tag
-		if node.parentNode == nodes[0]:
-			sys.stdout.write("%s..." % node.getAttribute("name"))
+    for node in objects:
+        #if its a child of the main(ipc) tag
+        if node.parentNode == nodes[0]:
+            sys.stdout.write("%s..." % node.getAttribute("name"))
 
-			if node.getAttribute("type") == "client":
-				xmmsclientfile.write("\n/* %s object */\n" % \
-						node.getAttribute("name"))
+            if node.getAttribute("type") == "client":
+                xmmsclientfile.write("\n/* %s object */\n" % \
+                        node.getAttribute("name"))
 
-				#enums (properties/variables)
-				xmmsclientfile.write("typedef enum {\n")
+                #enums (properties/variables)
+                xmmsclientfile.write("typedef enum {\n")
 
-				props = node.getElementsByTagName("prop")
-				for prop in props:
-					type = node.getElementsByTagName("type")
-#					xmmsclientfile.write("\t%s %s;\n" % \
-#							(c_map[type[0].childNodes[1].nodeName],prop.getAttribute("name")))
+                props = node.getElementsByTagName("prop")
+                for prop in props:
+                    type = node.getElementsByTagName("type")
+#                   xmmsclientfile.write("\t%s %s;\n" % \
+#                                        (c_map[type[0].childNodes[1].nodeName],
+#                                        prop.getAttribute("name")))
 
-					xmmsclientfile.write("\tXMMSC_%s_PROPERTY_%s,\n" % \
-							(node.getAttribute("name").upper(),prop.getAttribute("name").upper()))
-				xmmsclientfile.write("} xmmsc_%s_properties_t;\n\n" % \
-						node.getAttribute("name"))
+                    xmmsclientfile.write("\tXMMSC_%s_PROPERTY_%s,\n" % \
+                                         (node.getAttribute("name").upper(),
+                                         prop.getAttribute("name").upper()))
+                xmmsclientfile.write("} xmmsc_%s_properties_t;\n\n" % \
+                        node.getAttribute("name"))
 
-				#method declarations
-				methods = node.getElementsByTagName("method")
-				for method in methods:
-					retval = method.getElementsByTagName("retval")
-					xmmsclientfile.write("%s " % \
-						(c_map[retval[0].childNodes[1].childNodes[1].nodeName]))
+                #method declarations
+                methods = node.getElementsByTagName("method")
+                for method in methods:
+                    retval = method.getElementsByTagName("retval")
+                    xmmsclientfile.write("%s " % \
+                        (c_map[retval[0].childNodes[1].childNodes[1].nodeName]))
 
-					#figure out how to write the arguments
-					argstring = "xmmsc_connection_t *c"
+                    #figure out how to write the arguments
+                    argstring = "xmmsc_connection_t *c"
 
-					args = method.getElementsByTagName("arg")
-					if args.length > 0:
-						for arg in args:
-							type = arg.getElementsByTagName("type")
-							type = type[0].childNodes[1].nodeName
-							name = arg.getAttribute("name")
-							argstring = argstring + ", " + c_map[type] + " " + name
+                    args = method.getElementsByTagName("arg")
+                    if args.length > 0:
+                        for arg in args:
+                            type = arg.getElementsByTagName("type")
+                            type = type[0].childNodes[1].nodeName
+                            name = arg.getAttribute("name")
+                            argstring = argstring + ", " + c_map[type] + " " + name
 
-					argstring = argstring + ", xmmsc_error_t *err"
+                    argstring = argstring + ", xmmsc_error_t *err"
 
-					#actually output the rest of the line
-					xmmsclientfile.write("xmmsc_%s_%s (%s);\n" % \
-						(node.getAttribute("name"),method.getAttribute("name"),argstring))
+                    #actually output the rest of the line
+                    xmmsclientfile.write("xmmsc_%s_%s (%s);\n" % \
+                                         (node.getAttribute("name"),method.getAttribute("name"),
+                                        argstring))
 
-			else:
-				print "asdf"
+            else:
+                #Open up the output header file
+		hfile = open("genipc_out/xmms_%s_cmds.h" % \
+			node.getAttribute("name"),"w+");
 
-			print "done"
+		hfile.write("/* %s structure */\n" % node.getAttribute("name"))
+		hfile.write("typedef struct {\n")
+
+		#made function ptrs for the methods
+		methods = node.getElementsByTagName("method")
+		for method in methods:
+		    retval = method.getElementsByTagName("retval")
+		    hfile.write("\t%s " % \
+			    c_map[retval[0].childNodes[1].childNodes[1].nodeName])
+
+		    #figure out how to write the arguments
+                    argstring = "xmmsc_connection_t *c"
+
+                    args = method.getElementsByTagName("arg")
+                    if args.length > 0:
+                        for arg in args:
+                            type = arg.getElementsByTagName("type")
+                            type = type[0].childNodes[1].nodeName
+                            name = arg.getAttribute("name")
+                            argstring = argstring + ", " + c_map[type] + " " + name
+
+		    #actually output the rest of the line
+                    hfile.write("(*xmms_%s_%s) (%s);\n" % \
+                                         (node.getAttribute("name"),method.getAttribute("name"),
+                                        argstring))
+		hfile.write("} xmms_%s_cmds_t;\n" % node.getAttribute("name"))
+
+
+            print "done"
 
 if __name__ == "__main__":
 
@@ -89,8 +122,8 @@ if __name__ == "__main__":
     doc = xml.dom.minidom.parse("ipc.xml")
 
     #open up the output ipc.c file
-    ipcfile = open("genipc_out/ipc.c", "w")
-    xmmsclientfile = open("genipc_out/xmmsclient.h", "w");
+    ipcfile = open("genipc_out/ipc.c", "w+")
+    xmmsclientfile = open("genipc_out/xmmsclient.h", "w+");
 
     nodes = doc.getElementsByTagName("ipc")
     if nodes[0].nodeName == "ipc":
