@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import sys
 import string
-from xml.dom.ext.reader.Sax2 import FromXmlStream
+import xml.dom.minidom
 
 #dictionary mapping of types in the xml to C types
 c_map = {}
@@ -90,8 +90,7 @@ def do_objects(objects):
 if __name__ == "__main__":
 
     #load the xml file
-    xmlfile = open("ipc.xml", "r")
-    doc = FromXmlStream(xmlfile)
+    doc = xml.dom.minidom.parse("ipc.xml")
 
     #open up the output ipc.c file
     ipcfile = open("genipc_out/ipc.c", "w")
