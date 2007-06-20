@@ -25,7 +25,8 @@ def do_enums(enums):
             props = node.getElementsByTagName("prop")
             for prop in props:
                 xmmsclientfile.write("\tXMMSC_%s_%s,\n" % \
-                        (node.getAttribute("name").upper(),prop.getAttribute("name")))
+                                     (node.getAttribute("name").upper(),
+                                     prop.getAttribute("name")))
             xmmsclientfile.write("} xmmsc_%s_t; \n\n" % \
                     node.getAttribute("name"))
             print "done"
@@ -47,10 +48,12 @@ def do_objects(objects):
                 for prop in props:
                     type = node.getElementsByTagName("type")
 #                   xmmsclientfile.write("\t%s %s;\n" % \
-#                           (c_map[type[0].childNodes[1].nodeName],prop.getAttribute("name")))
+#                                        (c_map[type[0].childNodes[1].nodeName],
+#                                        prop.getAttribute("name")))
 
                     xmmsclientfile.write("\tXMMSC_%s_PROPERTY_%s,\n" % \
-                            (node.getAttribute("name").upper(),prop.getAttribute("name").upper()))
+                                         (node.getAttribute("name").upper(),
+                                         prop.getAttribute("name").upper()))
                 xmmsclientfile.write("} xmmsc_%s_properties_t;\n\n" % \
                         node.getAttribute("name"))
 
@@ -76,7 +79,8 @@ def do_objects(objects):
 
                     #actually output the rest of the line
                     xmmsclientfile.write("xmmsc_%s_%s (%s);\n" % \
-                        (node.getAttribute("name"),method.getAttribute("name"),argstring))
+                                         (node.getAttribute("name"),method.getAttribute("name"),
+                                         argstring))
 
             else:
                 print "asdf"
