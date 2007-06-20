@@ -52,7 +52,7 @@ typedef struct xmms_service_method_St {
 	gchar *description;
 
 	GMutex *mutex;
-	GList *clients;
+	GHashTable *clients;
 
 	guint cookie;
 
@@ -64,6 +64,14 @@ typedef struct xmms_service_method_St {
 } xmms_service_method_t;
 
 static xmms_service_t *xmms_service;
+
+/**
+ * @internal
+ */
+typedef struct xmms_service_client_St {
+	xmms_socket_t fd;
+	guint cookie;
+} xmms_service_client_t;
 
 /**
  * Functions
@@ -102,6 +110,7 @@ xmms_service_is_method_registered (xmms_service_entry_t *entry, gchar *name);
 static gboolean xmms_service_matchsc (gpointer key, gpointer value,
                                       gpointer data);
 static void xmms_service_foreach (gpointer key, gpointer value, gpointer data);
+static inline gpointer xmms_service_next_id (void);
 
 /**
  * Initialize service client handling
@@ -141,8 +150,6 @@ gboolean
 xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, xmms_socket_t client,
                      xmms_object_cmd_arg_t *arg)
 {
-	XMMS_DBG ("Handling service command.");
-
 	if (cmdid <= XMMS_IPC_CMD_SERVICE_BEGIN ||
 		cmdid >= XMMS_IPC_CMD_SERVICE_END) {
 		xmms_error_set (&arg->error, XMMS_ERROR_INVAL,
@@ -218,6 +225,8 @@ xmms_service_method_new (gchar *name, gchar *description, guint cookie,
 	m->name = name;
 	m->description = description;
 	m->mutex = g_mutex_new ();
+	m->clients = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+	                                    NULL, g_free);
 	m->cookie = cookie;
 	m->ret_type = ret_type;
 	m->num_args = num_args;
@@ -275,7 +284,7 @@ xmms_service_method_destroy (gpointer value)
 	free (v->description);
 
 	g_mutex_free (v->mutex);
-	g_list_free (v->clients);
+	g_hash_table_destroy (v->clients);
 
 	free (v->ret_type);
 	free (v->args);
@@ -652,6 +661,17 @@ xmms_service_foreach (gpointer key, gpointer value, gpointer data)
 	GList **l = data;
 
 	*l = g_list_prepend (*l, xmms_object_cmd_value_str_new (key));
+}
+
+/**
+ * Increase the universal service call counter
+ */
+static inline gpointer
+xmms_service_next_id (void)
+{
+	static guint counter = 0;
+
+	return GUINT_TO_POINTER (counter++);
 }
 
 /** @} */
