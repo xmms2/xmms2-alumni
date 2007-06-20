@@ -41,7 +41,8 @@ def do_objects(objects):
         if node.parentNode == nodes[0]:
             sys.stdout.write("%s..." % node.getAttribute("name"))
 
-            if node.getAttribute("type") == "client":
+            if node.getAttribute("type") == "client" or \
+	    node.getAttribute("type") == "both":
                 xmmsclientfile.write("\n/* %s object properties and methods */\n" % \
                         node.getAttribute("name"))
 
@@ -105,15 +106,70 @@ def do_objects(objects):
                                          (node.getAttribute("name"),method.getAttribute("name"),
                                         argstring))
 
-            else:
+	    if node.getAttribute("type") == "server" or \
+	    node.getAttribute("type") == "both":
                 #Open up the output header file
 		hfile = open("genipc_out/xmms_%s_cmds.h" % \
 			node.getAttribute("name"),"w+");
 
-		hfile.write("/* %s structure */\n" % node.getAttribute("name"))
+		hfile.write("/* %s commands structure */\n" % node.getAttribute("name"))
 		hfile.write("typedef struct {\n")
 
-		#made function ptrs for the methods
+		#make function ptrs for getting/setting properties
+		props = node.getElementsByTagName("prop")
+		for prop in props:
+		    readable = prop.getElementsByTagName("readable")
+		    if readable.length > 0:
+			#output getter
+			rettype = prop.getElementsByTagName("type")
+			rettype = rettype[0].childNodes[1].nodeName
+
+			hfile.write("\t%s " % c_map[rettype])
+
+			#figure out how to write the arguments
+			argstring = "xmms_%s_t *obj" % node.getAttribute("name")
+
+			args = prop.getElementsByTagName("arg")
+			if args.length > 0:
+			    for arg in args:
+				type = arg.getElementsByTagName("type")
+				type = type[0].childNodes[1].nodeName
+				name = arg.getAttribute("name")
+				argstring = argstring + ", " + c_map[type] + " " + name
+
+			argstring = argstring + ", xmms_error_t *err"
+
+			hfile.write("(*%s_get_%s) (%s);\n" % \
+			    (node.getAttribute("name"),
+				prop.getAttribute("name"),argstring))
+
+			#output setter
+			selftype = prop.getElementsByTagName("type")
+			selftype = selftype[0].childNodes[1].nodeName
+
+			hfile.write("\tvoid ")
+
+			#figure out how to write the arguments
+			argstring = "xmms_%s_t *obj" % node.getAttribute("name")
+
+			args = prop.getElementsByTagName("arg")
+			if args.length > 0:
+			    for arg in args:
+				type = arg.getElementsByTagName("type")
+				type = type[0].childNodes[1].nodeName
+				name = arg.getAttribute("name")
+				argstring = argstring + ", " + c_map[type] + " " + name
+
+			argstring = argstring + ", %s %s" % \
+				(c_map[selftype],prop.getAttribute("name"))
+			argstring = argstring + ", xmms_error_t *err"
+
+			hfile.write("(*%s_set_%s) (%s);\n" % \
+			    (node.getAttribute("name"),
+				prop.getAttribute("name"),argstring))
+
+
+		#make function ptrs for the methods
 		methods = node.getElementsByTagName("method")
 		for method in methods:
 		    retval = method.getElementsByTagName("retval")
@@ -134,11 +190,11 @@ def do_objects(objects):
                     argstring = argstring + ", xmms_error_t *err"
 
 		    #actually output the rest of the line
-                    hfile.write("(*xmms_%s_%s) (%s);\n" % \
+                    hfile.write("(*%s_%s) (%s);\n" % \
                                          (node.getAttribute("name"),method.getAttribute("name"),
                                         argstring))
 		hfile.write("} xmms_%s_cmds_t;\n" % node.getAttribute("name"))
-
+		hfile.close()
 
             print "done"
 
