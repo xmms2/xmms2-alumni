@@ -30,7 +30,7 @@
 				</type>
 			</retval>
 		</method>
-		
+
 		<method name="start">
 			<retval>
 				<type>
@@ -38,7 +38,7 @@
 				</type>
 			</retval>
 		</method>
-		
+
 	</object>
 
 	<object name="output" type="server">
