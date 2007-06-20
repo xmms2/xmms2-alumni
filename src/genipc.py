@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import sys
 import string
-from xml.dom.ext.reader.Sax2 import FromXmlStream
+import xml.dom.minidom
 
 #dictionary mapping of types in the xml to C types
 c_map = {}
@@ -73,11 +73,11 @@ def do_objects(objects):
 							argstring = argstring + ", " + c_map[type] + " " + name
 
 					argstring = argstring + ", xmmsc_error_t *err"
-					
+
 					#actually output the rest of the line
 					xmmsclientfile.write("xmmsc_%s_%s (%s);\n" % \
 						(node.getAttribute("name"),method.getAttribute("name"),argstring))
-				
+
 			else:
 				print "asdf"
 
@@ -85,28 +85,27 @@ def do_objects(objects):
 
 if __name__ == "__main__":
 
-	#load the xml file
-	xmlfile = open("ipc.xml", "r")
-	doc = FromXmlStream(xmlfile)
+    #load the xml file
+    doc = xml.dom.minidom.parse("ipc.xml")
 
-	#open up the output ipc.c file
-	ipcfile = open("genipc_out/ipc.c", "w")
-	xmmsclientfile = open("genipc_out/xmmsclient.h", "w");
+    #open up the output ipc.c file
+    ipcfile = open("genipc_out/ipc.c", "w")
+    xmmsclientfile = open("genipc_out/xmmsclient.h", "w");
 
-	nodes = doc.getElementsByTagName("ipc")
-	if nodes[0].nodeName == "ipc":
-		print "Parsing XMMS2 IPC XML Description file version %s..." % \
-		nodes[0].getAttribute("version")
-	else:
-		print "Error, XML files not IPC Description file."
+    nodes = doc.getElementsByTagName("ipc")
+    if nodes[0].nodeName == "ipc":
+        print "Parsing XMMS2 IPC XML Description file version %s..." % \
+        nodes[0].getAttribute("version")
+    else:
+        print "Error, XML files not IPC Description file."
 
-	#parse all the enumerations
-	print "Parsing enumerations"
-	enum_list = nodes[0].getElementsByTagName("enum")
-	do_enums(enum_list)
+    #parse all the enumerations
+    print "Parsing enumerations"
+    enum_list = nodes[0].getElementsByTagName("enum")
+    do_enums(enum_list)
 
-	#parse all objects
-	print "Parsing objects"
-	object_list = nodes[0].getElementsByTagName("object")
-	do_objects(object_list)
+    #parse all objects
+    print "Parsing objects"
+    object_list = nodes[0].getElementsByTagName("object")
+    do_objects(object_list)
 
