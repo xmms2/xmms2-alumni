@@ -6,10 +6,10 @@ import xml.dom.minidom
 #dictionary mapping of types in the xml to C types
 c_map = {}
 c_map["none"] = "void"
-c_map["int"] = "gint"
-c_map["uint"] = "guint"
+c_map["int"] = "int"
+c_map["uint"] = "unsigned int"
 c_map["string"] = "char *"
-c_map["enum"] = "guint"
+c_map["enum"] = "int"
 
 objects = ()
 
