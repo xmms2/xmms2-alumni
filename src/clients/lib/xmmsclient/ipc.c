@@ -1,0 +1,1 @@
+#include "xmmsclient/xmmsclient.h"
