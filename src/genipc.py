@@ -188,7 +188,7 @@ if __name__ == "__main__":
     ipcfile = open("genipc_out/ipc.c", "w+")
     xmmsclientfile = open("genipc_out/xmmsclient.h", "w+");
 
-    xmmsclientfile.write("#include \"xmmsclient_conn.h\n\n\"")
+    xmmsclientfile.write("#include \"xmmsclient_conn.h\"\n\n")
 
     nodes = doc.getElementsByTagName("ipc")
     if nodes[0].nodeName == "ipc":
