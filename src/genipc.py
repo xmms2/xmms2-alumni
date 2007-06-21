@@ -13,6 +13,18 @@ c_map["enum"] = "guint"
 
 objects = ()
 
+def get_args(node):
+    args = node.getElementsByTagName("arg")
+    argstring = ""
+    if args.length > 0:
+	for arg in args:
+	    type = arg.getElementsByTagName("type")
+	    type = type[0].childNodes[1].nodeName
+	    name = arg.getAttribute("name")
+	    argstring = argstring + ", " + c_map[type] + " " + name
+
+    return argstring
+
 def do_enums(enums):
     for node in enums:
         #if its a child of the main(ipc) tag
@@ -90,15 +102,7 @@ def do_objects(objects):
 
                     #figure out how to write the arguments
                     argstring = "xmmsc_connection_t *c"
-
-                    args = method.getElementsByTagName("arg")
-                    if args.length > 0:
-                        for arg in args:
-                            type = arg.getElementsByTagName("type")
-                            type = type[0].childNodes[1].nodeName
-                            name = arg.getAttribute("name")
-                            argstring = argstring + ", " + c_map[type] + " " + name
-
+		    argstring = argstring + get_args(method) 
                     argstring = argstring + ", xmmsc_error_t *err"
 
                     #actually output the rest of the line
@@ -128,15 +132,7 @@ def do_objects(objects):
 
 			#figure out how to write the arguments
 			argstring = "xmms_%s_t *obj" % node.getAttribute("name")
-
-			args = prop.getElementsByTagName("arg")
-			if args.length > 0:
-			    for arg in args:
-				type = arg.getElementsByTagName("type")
-				type = type[0].childNodes[1].nodeName
-				name = arg.getAttribute("name")
-				argstring = argstring + ", " + c_map[type] + " " + name
-
+			argstring = argstring + get_args(prop)	
 			argstring = argstring + ", xmms_error_t *err"
 
 			hfile.write("(*%s_get_%s) (%s);\n" % \
@@ -151,15 +147,8 @@ def do_objects(objects):
 
 			#figure out how to write the arguments
 			argstring = "xmms_%s_t *obj" % node.getAttribute("name")
-
-			args = prop.getElementsByTagName("arg")
-			if args.length > 0:
-			    for arg in args:
-				type = arg.getElementsByTagName("type")
-				type = type[0].childNodes[1].nodeName
-				name = arg.getAttribute("name")
-				argstring = argstring + ", " + c_map[type] + " " + name
-
+			argstring = argstring + get_args(prop)
+			
 			argstring = argstring + ", %s %s" % \
 				(c_map[selftype],prop.getAttribute("name"))
 			argstring = argstring + ", xmms_error_t *err"
@@ -178,15 +167,7 @@ def do_objects(objects):
 
 		    #figure out how to write the arguments
                     argstring = "xmms_%s_t *obj" % node.getAttribute("name")
-
-                    args = method.getElementsByTagName("arg")
-                    if args.length > 0:
-                        for arg in args:
-                            type = arg.getElementsByTagName("type")
-                            type = type[0].childNodes[1].nodeName
-                            name = arg.getAttribute("name")
-                            argstring = argstring + ", " + c_map[type] + " " + name
-
+		    argstring = argstring + get_args(method)
                     argstring = argstring + ", xmms_error_t *err"
 
 		    #actually output the rest of the line
