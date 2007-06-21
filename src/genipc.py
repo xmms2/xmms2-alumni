@@ -148,7 +148,7 @@ def do_objects(objects):
 			#figure out how to write the arguments
 			argstring = "xmms_%s_t *obj" % node.getAttribute("name")
 			argstring = argstring + get_args(prop)
-			
+
 			argstring = argstring + ", %s %s" % \
 				(c_map[selftype],prop.getAttribute("name"))
 			argstring = argstring + ", xmms_error_t *err"

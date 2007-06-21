@@ -26,11 +26,11 @@
 		<prop name="pos">
 			<readable />
 			<writeable />
-			<type> 
-				<int /> 
+			<type>
+				<int />
 			</type>
 		</prop>
-		
+
 		<!--
 		<method name="list">
 			<retval>
