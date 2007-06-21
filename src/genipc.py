@@ -188,6 +188,9 @@ if __name__ == "__main__":
     ipcfile = open("genipc_out/ipc.c", "w+")
     xmmsclientfile = open("genipc_out/xmmsclient.h", "w+");
 
+    #header guard and include file
+    xmmsclientfile.write("#ifndef __GEN_XMMSCLIENT_H__\n#define \
+__GEN_XMMSCLIENT_H__\n\n")
     xmmsclientfile.write("#include \"xmmsclient_conn.h\"\n\n")
 
     nodes = doc.getElementsByTagName("ipc")
@@ -207,3 +210,4 @@ if __name__ == "__main__":
     object_list = nodes[0].getElementsByTagName("object")
     do_objects(object_list)
 
+    xmmsclientfile.write("#endif\n")
