@@ -102,7 +102,7 @@ def do_objects(objects):
 
                     #figure out how to write the arguments
                     argstring = "xmmsc_connection_t *c"
-		    argstring = argstring + get_args(method) 
+		    argstring = argstring + get_args(method)
                     argstring = argstring + ", xmmsc_error_t *err"
 
                     #actually output the rest of the line
@@ -132,7 +132,7 @@ def do_objects(objects):
 
 			#figure out how to write the arguments
 			argstring = "xmms_%s_t *obj" % node.getAttribute("name")
-			argstring = argstring + get_args(prop)	
+			argstring = argstring + get_args(prop)
 			argstring = argstring + ", xmms_error_t *err"
 
 			hfile.write("(*%s_get_%s) (%s);\n" % \
