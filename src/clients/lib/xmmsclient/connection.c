@@ -1,0 +1,93 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <sys/types.h>
+#include <string.h>
+#include <ctype.h>
+#include <limits.h>
+
+#include <sys/types.h>
+
+#include "xmmspriv/xmms_list.h"
+
+#include "xmmsclient/xmmsclient.h"
+#include "xmmsc/xmmsc_ipc_msg.h"
+#include "xmmsc/xmmsc_ipc_transport.h"
+#include "xmmsc/xmmsc_idnumbers.h"
+#include "xmmsc/xmmsc_stdint.h"
+#include "xmmsc/xmmsc_stringport.h"
+#include "xmmsc/xmmsc_util.h"
+
+unsigned int
+xmmsc_next_id (xmmsc_connection_t *c)
+{
+	return c->id++;
+}
+
+xmmsc_connection_t *
+xmmsc_init (const char *clientname)
+{
+        xmmsc_connection_t *c;
+        int i = 0;
+        char j;
+
+        x_api_error_if (!clientname, "with NULL clientname", NULL);
+
+        if (!(c = x_new0 (xmmsc_connection_t, 1))) {
+                return NULL;
+        }
+
+        while (clientname[i]) {
+                j = clientname[i];
+                if (!isalnum (j) && j != '_' && j != '-') {
+                        /* snyggt! */
+                        free (c);
+                        x_api_error_if (true, "clientname contains invalid chars, just alphanumeric chars are allowed!", NULL);
+                }
+                i++;
+        }
+
+        if (!(c->clientname = strdup (clientname))) {
+                free (c);
+                return NULL;
+        }
+
+        return c;
+}
+
+int
+xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
+{
+        xmms_msg_t *msg;
+        uint32_t i;
+        int ret;
+
+        char path[PATH_MAX];
+
+        x_api_error_if (!c, "with a NULL connection", false);
+
+        if (!ipcpath) {
+                if (!xmms_default_ipcpath_get (path, PATH_MAX)) {
+                        return false;
+                }
+        } else {
+                snprintf (path, sizeof (path), "%s", ipcpath);
+        }
+
+	c->trans = xmms_ipc_client_init (path);
+	if (!c->trans) {
+                c->error = strdup ("xmms2d is not running.");
+		return false;
+	}
+/* Make this a request */
+//	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_HELLO);
+//	xmms_ipc_msg_set_cookie (msg, xmmsc_next_id (c);
+//	xmms_ipc_msg_put_int32 (msg, 1);
+//	xmms_ipc_msg_put_string (msg, c->clientname);
+
+//	xmmsc_ipc_msg_write (c,msg);
+
+        return ret;
+}
+
+
