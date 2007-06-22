@@ -5,8 +5,8 @@ def build(bld):
     obj.target = 'xmmsclient'
     obj.includes = '../../../include ../../../includepriv'
     obj.source = """
-                ipc.c
 		connection.c
+                ipc.c
 		request.c
 		""".split()
     obj.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes'
