@@ -8,6 +8,7 @@
 
 #include <sys/types.h>
 
+#include "xmmsclientpriv/xmmsclient_queue.h"
 #include "xmmspriv/xmms_list.h"
 
 #include "xmmsclient/xmmsclient.h"
@@ -18,11 +19,30 @@
 #include "xmmsc/xmmsc_stringport.h"
 #include "xmmsc/xmmsc_util.h"
 
+struct xmmsc_connection_t_ {
+	char *clientname;
+	char *error;
+	xmms_ipc_transport_t *trans;
+	unsigned int id;
+	x_list_t *req_list;
+};
+
 unsigned int
 xmmsc_next_id (xmmsc_connection_t *c)
 {
 	return c->id++;
 }
+
+void
+xmmsc_hello_callback (void *data)
+{
+	unsigned int *val = (unsigned int *)data;
+
+	if (!(*val)) {
+		/* ERROR OUT */
+	}
+}
+
 
 xmmsc_connection_t *
 xmmsc_init (const char *clientname)
@@ -37,7 +57,7 @@ xmmsc_init (const char *clientname)
                 return NULL;
         }
 
-	c->id = 0;
+	c->id = 10;
 
         while (clientname[i]) {
                 j = clientname[i];
@@ -55,6 +75,12 @@ xmmsc_init (const char *clientname)
         }
 
         return c;
+}
+
+xmms_ipc_transport_t *
+xmmsc_connection_get_transport (xmmsc_connection_t *c)
+{
+	return c->trans;
 }
 
 int
@@ -84,12 +110,13 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 	}
 /* Make this a request */
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_HELLO);
-	xmms_ipc_msg_set_cookie (msg, xmmsc_next_id (c));
+//	xmms_ipc_msg_set_cookie (msg, xmmsc_next_id (c));
 	xmms_ipc_msg_put_int32 (msg, 1);
 	xmms_ipc_msg_put_string (msg, c->clientname);
 
 	req = xmmsc_request_new (c, msg);
-
+	req->interval = XMMSC_REQUEST_INTERVAL_NOW;
+	xmmsc_request_set_callback (req, xmmsc_hello_callback);
 	xmmsc_request_send (req);
 
 //	xmmsc_ipc_msg_write (c,msg);
