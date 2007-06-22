@@ -6,6 +6,8 @@ def build(bld):
     obj.includes = '../../../include ../../../includepriv'
     obj.source = """
                 ipc.c
+		connection.c
+		request.c
 		""".split()
     obj.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes'
     obj.uselib = 'socket'

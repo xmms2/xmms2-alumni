@@ -12,5 +12,6 @@ xmmsc_ipc_msg_write(xmmsc_connection_t *c, xmms_ipc_msg_t *msg)
 			return false; //Should disconnect properly
 	}
 
+	return true;
 }
 
