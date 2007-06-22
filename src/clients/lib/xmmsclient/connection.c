@@ -37,6 +37,8 @@ xmmsc_init (const char *clientname)
                 return NULL;
         }
 
+	c->id = 0;
+
         while (clientname[i]) {
                 j = clientname[i];
                 if (!isalnum (j) && j != '_' && j != '-') {
@@ -58,8 +60,9 @@ xmmsc_init (const char *clientname)
 int
 xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 {
-        xmms_msg_t *msg;
-        uint32_t i;
+        xmms_ipc_msg_t *msg;
+        xmmsc_request_t *req;
+	uint32_t i;
         int ret;
 
         char path[PATH_MAX];
@@ -80,14 +83,17 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 		return false;
 	}
 /* Make this a request */
-//	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_HELLO);
-//	xmms_ipc_msg_set_cookie (msg, xmmsc_next_id (c);
-//	xmms_ipc_msg_put_int32 (msg, 1);
-//	xmms_ipc_msg_put_string (msg, c->clientname);
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_HELLO);
+	xmms_ipc_msg_set_cookie (msg, xmmsc_next_id (c));
+	xmms_ipc_msg_put_int32 (msg, 1);
+	xmms_ipc_msg_put_string (msg, c->clientname);
+
+	req = xmmsc_request_new (c, msg);
+
+	xmmsc_request_send (req);
 
 //	xmmsc_ipc_msg_write (c,msg);
 
         return ret;
 }
-
 
