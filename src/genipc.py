@@ -11,7 +11,14 @@ c_map["uint"] = "unsigned int"
 c_map["string"] = "char *"
 c_map["enum"] = "int"
 
+global_idnum = -1
+
 objects = ()
+
+def get_nextid():
+    global global_idnum
+    global_idnum +=1
+    return global_idnum
 
 def get_args(node):
     args = node.getElementsByTagName("arg")
@@ -37,9 +44,9 @@ def do_enums(enums):
 
             props = node.getElementsByTagName("prop")
             for prop in props:
-                xmmsclientfile.write("\tXMMSC_%s_%s,\n" % \
+                xmmsclientfile.write("\tXMMSC_%s_%s = %d,\n" % \
                                      (node.getAttribute("name").upper(),
-                                     prop.getAttribute("name")))
+                                     prop.getAttribute("name"),get_nextid()))
 
 	    xmmsclientfile.write("\tXMMSC_%s_END" % \
 		    node.getAttribute("name").upper())
@@ -68,9 +75,9 @@ def do_objects(objects):
 #                                        (c_map[type[0].childNodes[1].nodeName],
 #                                        prop.getAttribute("name")))
 
-                    xmmsclientfile.write("\tXMMSC_%s_PROPERTY_%s,\n" % \
+                    xmmsclientfile.write("\tXMMSC_%s_PROPERTY_%s = %d,\n" % \
                                          (node.getAttribute("name").upper(),
-                                         prop.getAttribute("name").upper()))
+                                         prop.getAttribute("name").upper(),get_nextid()))
 
 		xmmsclientfile.write("\tXMMSC_%s_PROPERTY_END\n" % \
 			node.getAttribute("name").upper())
@@ -83,9 +90,10 @@ def do_objects(objects):
 		methods = node.getElementsByTagName("method")
 		for method in methods:
 		    type = node.getElementsByTagName("type")
-		    xmmsclientfile.write("\tXMMSC_%s_METHOD_%s,\n" % \
+		    xmmsclientfile.write("\tXMMSC_%s_METHOD_%s = %d,\n" % \
 					 (node.getAttribute("name").upper(),
-					 method.getAttribute("name").upper()))
+					 method.getAttribute("name").upper(),
+					 get_nextid()))
 
 		xmmsclientfile.write("\tXMMSC_%s_METHOD_END\n" % \
 			node.getAttribute("name").upper())
