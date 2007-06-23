@@ -57,7 +57,7 @@ xmmsc_init (const char *clientname)
                 return NULL;
         }
 
-	c->id = 10;
+	c->id = 0;
 
         while (clientname[i]) {
                 j = clientname[i];
