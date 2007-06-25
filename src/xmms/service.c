@@ -118,14 +118,17 @@ xmms_service_is_method_registered (xmms_service_entry_t *entry,
                                    const gchar *name);
 static gboolean xmms_service_matchsc (gpointer key, gpointer value,
                                       gpointer data);
-static void xmms_service_foreach (gpointer key, gpointer value, gpointer data);
+static void xmms_service_insert_key (gpointer key, gpointer value,
+                                     gpointer data);
+static void xmms_service_insert_arg (gpointer key, gpointer value,
+                                     gpointer data);
 static inline gpointer xmms_service_next_id (void);
 static xmms_service_entry_t *xmms_service_get (xmms_ipc_msg_t *msg, gchar **name,
                                                xmms_error_t *err);
 static xmms_service_method_t *
 xmms_service_get_method (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
                          gchar **name, xmms_error_t *err);
-static GHashTable *xmms_service_parse_signature (xmms_ipc_msg_t *msg,
+static GHashTable *xmms_service_parse_arg_types (xmms_ipc_msg_t *msg,
                                                  xmms_error_t *err);
 
 /**
@@ -343,16 +346,14 @@ xmms_service_register (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t *
 	if (entry = xmms_service_is_registered (name)) {
 		free (name);
 		free (desc);
-		goto method;
+	} else {
+		entry = xmms_service_entry_new (name, desc, major, minor, client);
+		g_mutex_lock (xmms_service->mutex);
+		g_hash_table_insert (xmms_service->registry, name, entry);
+		g_mutex_unlock (xmms_service->mutex);
+		XMMS_DBG ("New service registered");
 	}
 
-	entry = xmms_service_entry_new (name, desc, major, minor, client);
-	g_mutex_lock (xmms_service->mutex);
-	g_hash_table_insert (xmms_service->registry, name, entry);
-	g_mutex_unlock (xmms_service->mutex);
-	XMMS_DBG ("New service registered");
-
-method:
 	return xmms_service_method_register (msg, entry, err);
 
 err:
@@ -390,7 +391,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	 * Methods can have no arguments nor return values.
 	 */
 	xmms_ipc_msg_get_string_alloc (msg, &rt, &len);
-	args = xmms_service_parse_signature (msg, err);
+	args = xmms_service_parse_arg_types (msg, err);
 
 	if (method = xmms_service_is_method_registered (entry, name)) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "Method already registered");
@@ -523,7 +524,7 @@ xmms_service_list (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 		                                          xmms_object_cmd_value_free);
 		xmms_object_cmd_value_t *val;
 
-		g_mutex_lock (xmms_service->mutex);
+		g_mutex_lock (entry->mutex);
 		val = xmms_object_cmd_value_str_new (entry->name);
 		g_hash_table_insert (dict, "name", val);
 		val = xmms_object_cmd_value_str_new (entry->description);
@@ -534,21 +535,22 @@ xmms_service_list (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 		g_hash_table_insert (dict, "minor_version", val);
 		val = xmms_object_cmd_value_uint_new (entry->count);
 		g_hash_table_insert (dict, "count", val);
-		g_mutex_unlock (xmms_service->mutex);
+		g_mutex_unlock (entry->mutex);
 
 		arg->retval = xmms_object_cmd_value_dict_new (dict);
 	} else {
+		xmms_error_reset (&arg->error);
+
 		GList *list = NULL;
 
 		g_mutex_lock (xmms_service->mutex);
 		g_hash_table_foreach (xmms_service->registry,
-		                      xmms_service_foreach, &list);
+		                      xmms_service_insert_key, &list);
 		g_mutex_unlock (xmms_service->mutex);
 
 		arg->retval = xmms_object_cmd_value_list_new (list);
 	}
 
-err:
 	free (name);
 	return;
 }
@@ -560,8 +562,10 @@ static void
 xmms_service_list_method (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 {
 	gchar *name = NULL;
+	GList *list = NULL;
 	xmms_service_entry_t *entry;
 	xmms_service_method_t *method;
+	guint i;
 
 	g_return_if_fail (msg);
 
@@ -571,36 +575,40 @@ xmms_service_list_method (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 	free (name);
 
 	if (method = xmms_service_get_method (msg, entry, &name, &arg->error)) {
+		if (xmms_ipc_msg_get_uint32 (msg, &i) && i == TRUE) {
+			g_mutex_lock (method->mutex);
+			g_hash_table_foreach (method->args, xmms_service_insert_arg, &list);
+			g_mutex_unlock (method->mutex);
+		} else {
+			GHashTable *dict = g_hash_table_new_full (g_str_hash,
+													  g_str_equal,
+													  NULL,
+													  xmms_object_cmd_value_free);
+			xmms_object_cmd_value_t *val;
 
-		GHashTable *dict = g_hash_table_new_full (g_str_hash,
-		                                          g_str_equal,
-		                                          NULL,
-		                                          xmms_object_cmd_value_free);
-		xmms_object_cmd_value_t *val;
+			g_mutex_lock (method->mutex);
+			val = xmms_object_cmd_value_str_new (method->name);
+			g_hash_table_insert (dict, "name", val);
+			val = xmms_object_cmd_value_str_new (method->description);
+			g_hash_table_insert (dict, "description", val);
+			val = xmms_object_cmd_value_str_new (method->ret_type);
+			g_hash_table_insert (dict, "ret_type", val);
+			val = xmms_object_cmd_value_uint_new (method->num_args);
+			g_hash_table_insert (dict, "num_args", val);
+			g_mutex_unlock (method->mutex);
 
-		g_mutex_lock (entry->mutex);
-		val = xmms_object_cmd_value_str_new (method->name);
-		g_hash_table_insert (dict, "name", val);
-		val = xmms_object_cmd_value_str_new (method->description);
-		g_hash_table_insert (dict, "description", val);
-		val = xmms_object_cmd_value_str_new (method->ret_type);
-		g_hash_table_insert (dict, "ret_type", val);
-		val = xmms_object_cmd_value_uint_new (method->num_args);
-		g_hash_table_insert (dict, "num_args", val);
-		val = xmms_object_cmd_value_dict_new (method->args);
-		g_hash_table_insert (dict, "args", val);
-		g_mutex_unlock (entry->mutex);
-
-		arg->retval = xmms_object_cmd_value_dict_new (dict);
+			arg->retval = xmms_object_cmd_value_dict_new (dict);
+			goto err;
+		}
 	} else {
-		GList *list = NULL;
+		xmms_error_reset (&arg->error);
 
 		g_mutex_lock (entry->mutex);
-		g_hash_table_foreach (entry->methods, xmms_service_foreach, &list);
+		g_hash_table_foreach (entry->methods, xmms_service_insert_key, &list);
 		g_mutex_unlock (entry->mutex);
-
-		arg->retval = xmms_object_cmd_value_list_new (list);
 	}
+
+	arg->retval = xmms_object_cmd_value_list_new (list);
 
 err:
 	free (name);
@@ -631,7 +639,8 @@ xmms_service_is_registered (const gchar *name)
 {
 	xmms_service_entry_t *ret;
 
-	g_return_val_if_fail (name, NULL);
+	if (!name)
+		return NULL;
 
 	g_mutex_lock (xmms_service->mutex);
 	ret = g_hash_table_lookup (xmms_service->registry, name);
@@ -647,7 +656,8 @@ xmms_service_is_method_registered (xmms_service_entry_t *entry,
 	xmms_service_method_t *ret;
 
 	g_return_val_if_fail (entry, NULL);
-	g_return_val_if_fail (name, NULL);
+	if (!name)
+		return NULL;
 
 	g_mutex_lock (entry->mutex);
 	ret = g_hash_table_lookup (entry->methods, name);
@@ -673,11 +683,31 @@ xmms_service_matchsc (gpointer key, gpointer value, gpointer data)
  * Insert keys into a list
  */
 static void
-xmms_service_foreach (gpointer key, gpointer value, gpointer data)
+xmms_service_insert_key (gpointer key, gpointer value, gpointer data)
 {
 	GList **l = data;
 
 	*l = g_list_prepend (*l, xmms_object_cmd_value_str_new (key));
+}
+
+/**
+ * Insert xmms_service_argument_t elements into a dict and then put it into a
+ * list
+ */
+static void
+xmms_service_insert_arg (gpointer key, gpointer value, gpointer data)
+{
+	GList **l = data;
+	xmms_service_argument_t *val = (xmms_service_argument_t *)value;
+	GHashTable *t = g_hash_table_new_full (g_str_hash, g_str_equal,
+	                                       NULL, xmms_object_cmd_value_free);
+
+	g_hash_table_insert (t, "name", xmms_object_cmd_value_str_new (val->name));
+	g_hash_table_insert (t, "type", xmms_object_cmd_value_uint_new (val->type));
+	g_hash_table_insert (t, "optional",
+	                     xmms_object_cmd_value_uint_new (val->optional));
+
+	*l = g_list_prepend (*l, xmms_object_cmd_value_dict_new (t));
 }
 
 /**
@@ -706,16 +736,14 @@ xmms_service_get (xmms_ipc_msg_t *msg, gchar **name, xmms_error_t *err)
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, name, &len)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No service id given");
-		goto err;
+		free (*name);
 	}
 
 	if (!(entry = xmms_service_is_registered (*name))) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid service id");
-		goto err;
+		free (*name);
 	}
 
-err:
-	free (*name);
 	return entry;
 }
 
@@ -735,16 +763,14 @@ xmms_service_get_method (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, name, &len)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No method id given");
-		goto err;
+		free (*name);
 	}
 
 	if (!(method = xmms_service_is_method_registered (entry, *name))) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid method id");
-		goto err;
+		free (*name);
 	}
 
-err:
-	free (*name);
 	return method;
 }
 
@@ -752,7 +778,7 @@ err:
  * Parse method signature
  */
 static GHashTable *
-xmms_service_parse_signature (xmms_ipc_msg_t *msg, xmms_error_t *err)
+xmms_service_parse_arg_types (xmms_ipc_msg_t *msg, xmms_error_t *err)
 {
 	xmms_service_argument_t *arg = NULL;
 	guint len;
@@ -761,8 +787,7 @@ xmms_service_parse_signature (xmms_ipc_msg_t *msg, xmms_error_t *err)
 
 	g_return_val_if_fail (msg, NULL);
 
-	arg = g_new0 (xmms_service_argument_t, 1);
-	table = g_hash_table_new_full (g_str_hash, g_str_equal, free, NULL);
+	table = g_hash_table_new_full (g_str_hash, g_str_equal, free, g_free);
 
 	if (!xmms_ipc_msg_get_uint32 (msg, &num)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No number of arguments given");
@@ -770,6 +795,8 @@ xmms_service_parse_signature (xmms_ipc_msg_t *msg, xmms_error_t *err)
 	}
 
 	for (; num > 0; num--) {
+		arg = g_new0 (xmms_service_argument_t, 1);
+
 		if (!xmms_ipc_msg_get_string_alloc (msg, &arg->name, &len)) {
 			xmms_error_set (err, XMMS_ERROR_NOENT, "No argument name given");
 			goto err;
