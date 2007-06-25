@@ -94,10 +94,13 @@ xmms_pulse_new (xmms_output_t *output)
 	g_return_val_if_fail (data, FALSE);
 
 	xmms_output_private_data_set (output, data);
+	xmms_output_format_add (output, XMMS_SAMPLE_FORMAT_S16, 2, 44100);
+#if 0
 	for (i = 0; i < sizeof (xmms_pulse_formats); i++)
 		/* TODO: make channels/samplerate flexible. */
 		xmms_output_format_add (output, xmms_pulse_formats[i].xmms_fmt,
 								2, 44100);
+#endif
 
 	return TRUE;
 }
