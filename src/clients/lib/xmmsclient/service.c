@@ -79,6 +79,8 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
 {
 	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
+	xmmsc_service_argument_t *arg = NULL;
+	uint32_t count;
 
 	x_check_conn (conn, NULL);
 	x_api_error_if (!service, "with a NULL service", NULL);
@@ -94,7 +96,14 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
 		xmms_ipc_msg_put_string (msg, method->name);
 		xmms_ipc_msg_put_string (msg, method->description);
 		xmms_ipc_msg_put_string (msg, method->ret_type);
-		xmms_ipc_msg_put_string (msg, method->arg_type);
+
+		xmms_ipc_msg_put_uint32 (msg, method->num);
+		for (count = 0; count < method->num; count++) {
+			arg = method->args + count;
+			xmms_ipc_msg_put_string (msg, arg->name);
+			xmms_ipc_msg_put_uint32 (msg, arg->type);
+			xmms_ipc_msg_put_uint32 (msg, arg->optional);
+		}
 	}
 
 	res = xmmsc_send_msg (conn, msg);
@@ -199,7 +208,7 @@ xmmsc_service_list_method_ids (xmmsc_connection_t *conn, char *service)
 }
 
 /**
- * List a method's details.
+ * List a method's details not including method's arguments.
  *
  * @param conn The connection to the server.
  * @param service The id of the service.
@@ -216,8 +225,69 @@ xmmsc_service_list_method (xmmsc_connection_t *conn, char *service, char *method
 	                        XMMS_IPC_CMD_SERVICE_LIST_METHOD);
 	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method);
+	xmms_ipc_msg_put_uint32 (msg, 0);
 
 	return xmmsc_send_msg (conn, msg);
+}
+
+/**
+ * List a method's arguments.
+ *
+ * @param conn The connection to the server.
+ * @param service The id of the service.
+ * @param method The id of the method.
+ */
+xmmsc_result_t *
+xmmsc_service_list_method_args (xmmsc_connection_t *conn, char *service,
+                                char *method)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (conn, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_CMD_SERVICE_LIST_METHOD);
+	xmms_ipc_msg_put_string (msg, service);
+	xmms_ipc_msg_put_string (msg, method);
+	xmms_ipc_msg_put_uint32 (msg, 1);
+
+	return xmmsc_send_msg (conn, msg);
+}
+
+/**
+ * Parse a method's argument types.
+ *
+ * @param res The #xmmsc_result_t returned by #xmmsc_service_list_method_args.
+ * @param num The total number of arguments this method has.
+ * @return The list of #xmmsc_service_argument_t. Caller is responsible for freeing the list. Elements are owned by result.
+ */
+xmmsc_service_argument_t *
+xmmsc_service_parse_arg_types (xmmsc_result_t *res, uint32_t num)
+{
+	xmmsc_service_argument_t *ret = NULL;
+
+	if (xmmsc_result_iserror (res) || !xmmsc_result_list_valid (res) || num <= 0)
+		return ret;
+
+	ret = x_new0 (xmmsc_service_argument_t, num);
+
+	while (xmmsc_result_list_valid (res) && num-- > 0) {
+		if (!xmmsc_result_get_dict_entry_string (res, "name", &ret[num].name))
+			goto err;
+		if (!xmmsc_result_get_dict_entry_uint (res, "type", &ret[num].type))
+			goto err;
+		if (!xmmsc_result_get_dict_entry_uint (res, "optional",
+		                                       &ret[num].optional))
+			goto err;
+
+		xmmsc_result_list_next (res);
+	}
+
+	return ret;
+
+err:
+	free (ret);
+	return NULL;
 }
 
 /* @} */
