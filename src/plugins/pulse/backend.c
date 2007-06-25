@@ -245,16 +245,15 @@ gboolean xmms_pulse_backend_set_stream(xmms_pulse *p, const char *stream_name,
 	pa_channel_map_init_auto(&p->channel_map, channels, PA_CHANNEL_MAP_DEFAULT);
 
 	/* Create and set up the new stream. */
-	if (!(p->stream = pa_stream_new(
-		      p->context, stream_name, &p->sample_spec, &p->channel_map))) {
+	p->stream = pa_stream_new(p->context, stream_name, &p->sample_spec, &p->channel_map);
+	if (!p->stream) {
 		error = pa_context_errno(p->context);
 		goto unlock_and_fail;
 	}
 
 	pa_stream_set_state_callback(p->stream, stream_state_cb, p);
 	pa_stream_set_write_callback(p->stream, stream_request_cb, p);
-	pa_stream_set_latency_update_callback(
-		p->stream, stream_latency_update_cb, p);
+	pa_stream_set_latency_update_callback(p->stream, stream_latency_update_cb, p);
 
 	ret = pa_stream_connect_playback(
 		p->stream, sink, NULL,
@@ -284,6 +283,7 @@ gboolean xmms_pulse_backend_set_stream(xmms_pulse *p, const char *stream_name,
 		*rerror = error;
 	if (p->stream)
 		pa_stream_unref(p->stream);
+	p->stream = NULL;
 	return FALSE;
 }
 
@@ -329,7 +329,7 @@ gboolean xmms_pulse_backend_write(xmms_pulse *p, const char *data,
 				goto unlock_and_fail;
 		}
 
-		if (!(buf_len != (size_t) -1)) {
+		if (buf_len == (size_t)-1) {
 			if (rerror)
 				*rerror = pa_context_errno((p)->context);
 			goto unlock_and_fail;
@@ -337,9 +337,8 @@ gboolean xmms_pulse_backend_write(xmms_pulse *p, const char *data,
 		if (buf_len > length)
 			buf_len = length;
 
-		ret = pa_stream_write(
-			p->stream, data, buf_len, NULL, 0, PA_SEEK_RELATIVE);
-		if (!(ret >= 0)) {
+		ret = pa_stream_write(p->stream, data, buf_len, NULL, 0, PA_SEEK_RELATIVE);
+		if (ret < 0) {
 			if (rerror)
 				*rerror = pa_context_errno((p)->context);
 			goto unlock_and_fail;
@@ -367,7 +366,7 @@ gboolean xmms_pulse_backend_drain(xmms_pulse *p, int *rerror) {
 		goto unlock_and_fail;
 
 	o = pa_stream_drain(p->stream, drain_result_cb, p);
-	if (!(o)) {
+	if (!o) {
 		if (rerror)
 			*rerror = pa_context_errno((p)->context);
 		goto unlock_and_fail;
@@ -381,7 +380,7 @@ gboolean xmms_pulse_backend_drain(xmms_pulse *p, int *rerror) {
 	}
 	pa_operation_unref(o);
 	o = NULL;
-	if (!(p->operation_success)) {
+	if (!p->operation_success) {
 		if (rerror)
 			*rerror = pa_context_errno((p)->context);
 		goto unlock_and_fail;
@@ -402,15 +401,14 @@ gboolean xmms_pulse_backend_drain(xmms_pulse *p, int *rerror) {
 
 
 gboolean xmms_pulse_backend_flush(xmms_pulse *p, int *rerror) {
-	pa_operation *o = NULL;
-	assert(p);
+	pa_operation *o;
 
 	pa_threaded_mainloop_lock(p->mainloop);
 	if (!check_pulse_health(p, rerror))
 		goto unlock_and_fail;
 
 	o = pa_stream_flush(p->stream, drain_result_cb, p);
-	if (!(o)) {
+	if (!o) {
 		if (rerror)
 			*rerror = pa_context_errno((p)->context);
 		goto unlock_and_fail;
@@ -424,7 +422,7 @@ gboolean xmms_pulse_backend_flush(xmms_pulse *p, int *rerror) {
 	}
 	pa_operation_unref(o);
 	o = NULL;
-	if (!(p->operation_success)) {
+	if (!p->operation_success) {
 		if (rerror)
 			*rerror = pa_context_errno((p)->context);
 		goto unlock_and_fail;
@@ -446,7 +444,7 @@ gboolean xmms_pulse_backend_flush(xmms_pulse *p, int *rerror) {
 
 int xmms_pulse_backend_get_latency(xmms_pulse *p, int *rerror) {
 	pa_usec_t t;
-	int negative;
+	int negative, r;
 	assert(p);
 
 	pa_threaded_mainloop_lock(p->mainloop);
@@ -458,9 +456,10 @@ int xmms_pulse_backend_get_latency(xmms_pulse *p, int *rerror) {
 		if (pa_stream_get_latency(p->stream, &t, &negative) >= 0)
 			break;
 
-		if (!(pa_context_errno(p->context) == PA_ERR_NODATA)) {
+		r = pa_context_errno(p->context);
+		if (r != PA_ERR_NODATA) {
 			if (rerror)
-				*rerror = pa_context_errno((p)->context);
+				*rerror = r;
 			goto unlock_and_fail;
 		}
 		/* Wait until latency data is available again */
