@@ -347,6 +347,21 @@ const char *xmmsc_result_decode_url (xmmsc_result_t *res, const char *string);
 /*
  * Service Client
  */
+typedef enum {
+	XMMSC_SERVICE_ARG_TYPE_NONE = XMMS_OBJECT_CMD_ARG_NONE,
+	XMMSC_SERVICE_ARG_TYPE_UINT32 = XMMS_OBJECT_CMD_ARG_UINT32,
+	XMMSC_SERVICE_ARG_TYPE_INT32 = XMMS_OBJECT_CMD_ARG_INT32,
+	XMMSC_SERVICE_ARG_TYPE_STRING = XMMS_OBJECT_CMD_ARG_STRING,
+	XMMSC_SERVICE_ARG_TYPE_COLL = XMMS_OBJECT_CMD_ARG_COLL,
+	XMMSC_SERVICE_ARG_TYPE_BIN = XMMS_OBJECT_CMD_ARG_BIN
+} xmmsc_service_arg_type_t;
+
+typedef struct xmmsc_service_argument_St xmmsc_service_argument_t;
+struct xmmsc_service_argument_St {
+	char *name;
+	xmmsc_service_arg_type_t type;
+	uint32_t optional;
+};
 
 typedef struct xmmsc_service_St xmmsc_service_t;
 struct xmmsc_service_St {
@@ -361,7 +376,8 @@ struct xmmsc_service_method_St {
 	char *name;
 	char *description;
 	char *ret_type;
-	char *arg_type;
+	uint32_t num;
+	xmmsc_service_argument_t *args;
 	xmmsc_result_notifier_t func;
 };
 
@@ -378,7 +394,6 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
 xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn,
                                           char *service,
                                           char *method);
-
 xmmsc_result_t *xmmsc_service_list_service_ids (xmmsc_connection_t *conn);
 
 xmmsc_result_t *xmmsc_service_list_service (xmmsc_connection_t *conn,
@@ -387,6 +402,11 @@ xmmsc_result_t *xmmsc_service_list_method_ids (xmmsc_connection_t *conn,
                                                char *service);
 xmmsc_result_t *xmmsc_service_list_method (xmmsc_connection_t *conn,
                                            char *service, char *method);
+xmmsc_result_t *xmmsc_service_list_method_args (xmmsc_connection_t *conn,
+                                                char *service, char *method);
+
+xmmsc_service_argument_t *xmmsc_service_parse_arg_types (xmmsc_result_t *res,
+                                                         uint32_t num);
 
 #ifdef __cplusplus
 }
