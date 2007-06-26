@@ -373,8 +373,9 @@ typedef struct xmmsc_service_method_St xmmsc_service_method_t;
 struct xmmsc_service_method_St {
 	char *name;
 	char *description;
-	char *ret_type;
-	uint32_t num;
+	uint32_t num_rets;
+	xmmsc_service_argument_t *rets;
+	uint32_t num_args;
 	xmmsc_service_argument_t *args;
 	xmmsc_result_notifier_t func;
 };
