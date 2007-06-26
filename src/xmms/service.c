@@ -56,7 +56,8 @@ typedef struct xmms_service_method_St {
 
 	guint cookie;
 
-	gchar *ret_type;
+	guint num_rets;
+	GHashTable *rets;
 	/* Number of arguments */
 	guint num_args;
 	GHashTable *args;
@@ -88,7 +89,8 @@ static xmms_service_entry_t *xmms_service_entry_new (gchar *name,
 static xmms_service_method_t *xmms_service_method_new (gchar *name,
                                                        gchar *description,
                                                        guint cookie,
-                                                       gchar *ret_type,
+                                                       guint num_rets,
+                                                       GHashTable *rets,
                                                        guint num_args,
                                                        GHashTable *args);
 static void xmms_service_destroy (xmms_object_t *object);
@@ -233,7 +235,8 @@ xmms_service_entry_new (gchar *name, gchar *description, guint major,
 
 static xmms_service_method_t *
 xmms_service_method_new (gchar *name, gchar *description, guint cookie,
-                         gchar *ret_type, guint num_args, GHashTable *args)
+                         guint num_rets, GHashTable *rets,
+                         guint num_args, GHashTable *args)
 {
 	xmms_service_method_t *method;
 
@@ -250,7 +253,8 @@ xmms_service_method_new (gchar *name, gchar *description, guint cookie,
 	method->clients = g_hash_table_new_full (g_direct_hash, g_direct_equal,
 	                                         NULL, g_free);
 	method->cookie = cookie;
-	method->ret_type = ret_type;
+	method->num_rets = num_rets;
+	method->rets = rets;
 	method->num_args = num_args;
 	method->args = args;
 
@@ -308,7 +312,7 @@ xmms_service_method_destroy (gpointer value)
 	g_mutex_free (val->mutex);
 	g_hash_table_destroy (val->clients);
 
-	free (val->ret_type);
+	g_hash_table_destroy (val->rets);
 	g_hash_table_destroy (val->args);
 }
 
@@ -372,7 +376,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	gchar *name = NULL;
 	guint len;
 	gchar *desc = NULL;
-	gchar *rt = NULL;
+	GHashTable *rets = NULL;
 	GHashTable *args = NULL;
 	xmms_service_method_t *method;
 
@@ -387,35 +391,23 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No method description given");
 		goto err;
 	}
-	/**
-	 * Methods can have no arguments nor return values.
-	 */
-	xmms_ipc_msg_get_string_alloc (msg, &rt, &len);
-	args = xmms_service_parse_arg_types (msg, err);
+	if (!(rets = xmms_service_parse_arg_types (msg, err))) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No method return types given");
+		goto err;
+	}
+	if (!(args = xmms_service_parse_arg_types (msg, err))) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No method argument types given");
+		goto err;
+	}
 
 	if (method = xmms_service_is_method_registered (entry, name)) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "Method already registered");
 		goto err;
 	}
 
-	gchar *c;
-	for (c = rt; rt && *c; c++) {
-		switch (*c) {
-		case 'u':
-		case 'i':
-		case 's':
-		case 'l':
-		case 'c':
-		case 'b':
-			break;
-		default:
-			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid return type");
-			goto err;
-		}
-	}
-
 	method = xmms_service_method_new (name, desc, xmms_ipc_msg_get_cookie (msg),
-	                                  rt, g_hash_table_size (args), args);
+	                                  g_hash_table_size (rets), rets,
+	                                  g_hash_table_size (args), args);
 	g_mutex_lock (entry->mutex);
 	entry->count++;
 	g_hash_table_insert (entry->methods, name, method);
@@ -428,7 +420,6 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 err:
 	free (name);
 	free (desc);
-	free (rt);
 	return FALSE;
 }
 
@@ -591,8 +582,8 @@ xmms_service_list_method (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 			g_hash_table_insert (dict, "name", val);
 			val = xmms_object_cmd_value_str_new (method->description);
 			g_hash_table_insert (dict, "description", val);
-			val = xmms_object_cmd_value_str_new (method->ret_type);
-			g_hash_table_insert (dict, "ret_type", val);
+			val = xmms_object_cmd_value_uint_new (method->num_rets);
+			g_hash_table_insert (dict, "num_rets", val);
 			val = xmms_object_cmd_value_uint_new (method->num_args);
 			g_hash_table_insert (dict, "num_args", val);
 			g_mutex_unlock (method->mutex);
@@ -799,15 +790,18 @@ xmms_service_parse_arg_types (xmms_ipc_msg_t *msg, xmms_error_t *err)
 
 		if (!xmms_ipc_msg_get_string_alloc (msg, &arg->name, &len)) {
 			xmms_error_set (err, XMMS_ERROR_NOENT, "No argument name given");
+			free (arg->name);
 			goto err;
 		}
 		if (!xmms_ipc_msg_get_uint32 (msg, &arg->type)) {
 			xmms_error_set (err, XMMS_ERROR_NOENT, "No argument type given");
+			free (arg->name);
 			goto err;
 		}
 		if (!xmms_ipc_msg_get_uint32 (msg, &arg->optional)) {
 			xmms_error_set (err, XMMS_ERROR_NOENT,
 			                "Optional field missing for argument");
+			free (arg->name);
 			goto err;
 		}
 
@@ -817,7 +811,6 @@ xmms_service_parse_arg_types (xmms_ipc_msg_t *msg, xmms_error_t *err)
 	return table;
 
 err:
-	free (arg->name);
 	g_free (arg);
 	return NULL;
 }
