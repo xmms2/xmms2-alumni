@@ -2,6 +2,7 @@
 import sys
 import string
 import xml.dom.minidom
+import sets
 
 #dictionary mapping of types in the xml to C types
 c_map = {}
@@ -13,7 +14,7 @@ c_map["enum"] = "int"
 
 global_idnum = -1
 
-objects = ()
+objectlist = set()
 
 def get_nextid():
     global global_idnum
@@ -64,6 +65,8 @@ def do_objects(objects):
 	    node.getAttribute("type") == "both":
                 xmmsclientfile.write("\n/* %s object properties and methods */\n" % \
                         node.getAttribute("name"))
+
+		objectlist.add(node.getAttribute("name"))
 
                 #enums (properties/variables)
                 xmmsclientfile.write("typedef enum {\n")
@@ -123,6 +126,8 @@ def do_objects(objects):
                 #Open up the output header file
 		hfile = open("genipc_out/xmms_%s_cmds.h" % \
 			node.getAttribute("name"),"w+");
+
+		objectlist.add(node.getAttribute("name"))
 
 		hfile.write("/* %s commands structure */\n" % node.getAttribute("name"))
 		hfile.write("typedef struct {\n")
@@ -186,6 +191,17 @@ def do_objects(objects):
 		hfile.close()
 
             print "done"
+
+    #TODO we also need to output this somewhere the server can see it
+    #output enum of all objects
+    xmmsclientfile.write("\n/* Enum of all valid objects */\n")
+    xmmsclientfile.write("typedef enum {\n")
+
+    for object in objectlist:
+	xmmsclientfile.write("\tXMMSC_IPC_OBJECT_%s,\n" % object.upper())
+
+    xmmsclientfile.write("\tXMMSC_IPC_OBJECT_END\n} xmmsc_ipc_object_t;\n")
+
 
 if __name__ == "__main__":
 
