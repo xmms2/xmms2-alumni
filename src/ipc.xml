@@ -25,13 +25,17 @@
 	<object name="main" type="both">
 		<method name="hello">
 			<retval>
-				<uint />
+				<type>
+					<uint />
+				</type>
 			</retval>
 		</method>
 
 		<method name="quit">
 			<retval>
-				<none />
+				<type>
+					<none />
+				</type>
 			</retval>
 		</method>
 	</object>
