@@ -95,10 +95,17 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
 	if (method) {
 		xmms_ipc_msg_put_string (msg, method->name);
 		xmms_ipc_msg_put_string (msg, method->description);
-		xmms_ipc_msg_put_string (msg, method->ret_type);
 
-		xmms_ipc_msg_put_uint32 (msg, method->num);
-		for (count = 0; count < method->num; count++) {
+		xmms_ipc_msg_put_uint32 (msg, method->num_rets);
+		for (count = 0; count < method->num_rets; count++) {
+			arg = method->rets + count;
+			xmms_ipc_msg_put_string (msg, arg->name);
+			xmms_ipc_msg_put_uint32 (msg, arg->type);
+			xmms_ipc_msg_put_uint32 (msg, arg->optional);
+		}
+
+		xmms_ipc_msg_put_uint32 (msg, method->num_args);
+		for (count = 0; count < method->num_args; count++) {
 			arg = method->args + count;
 			xmms_ipc_msg_put_string (msg, arg->name);
 			xmms_ipc_msg_put_uint32 (msg, arg->type);
