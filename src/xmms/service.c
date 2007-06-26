@@ -15,6 +15,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include "xmms/xmms_log.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmspriv/xmms_service.h"
@@ -124,7 +125,7 @@ static void xmms_service_insert_key (gpointer key, gpointer value,
                                      gpointer data);
 static void xmms_service_insert_arg (gpointer key, gpointer value,
                                      gpointer data);
-static inline gpointer xmms_service_next_id (void);
+static inline guint xmms_service_next_id (void);
 static xmms_service_entry_t *xmms_service_get (xmms_ipc_msg_t *msg, gchar **name,
                                                xmms_error_t *err);
 static xmms_service_method_t *
@@ -132,6 +133,8 @@ xmms_service_get_method (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
                          gchar **name, xmms_error_t *err);
 static GHashTable *xmms_service_parse_arg_types (xmms_ipc_msg_t *msg,
                                                  xmms_error_t *err);
+static GHashTable *xmms_service_parse_args (xmms_ipc_msg_t *msg,
+                                            GHashTable *args, xmms_error_t *err);
 
 /**
  * Initialize service client handling
@@ -608,12 +611,63 @@ err:
 
 /**
  * Pass service method call to service client.
+ *
+ * Argument name "sc_id" is reserved, don't use it.
  */
 static gboolean
 xmms_service_request (xmms_ipc_msg_t *msg, xmms_socket_t client,
                       xmms_error_t *err)
 {
+	gchar *name = NULL;
+	guint len;
+	xmms_service_entry_t *entry;
+	xmms_service_method_t *method;
+	GHashTable *table = NULL;
+	guint next;
+	xmms_service_client_t *cli = NULL;
+	xmms_object_cmd_arg_t arg;
 
+	g_return_val_if_fail (msg, FALSE);
+
+	if (!(entry = xmms_service_get (msg, &name, err)))
+		return FALSE;
+
+	free (name);
+
+	if (!(method = xmms_service_get_method (msg, entry, &name, err)))
+		return FALSE;
+
+	g_mutex_lock (method->mutex);
+	table = xmms_service_parse_args (msg, method->args, err);
+	g_mutex_unlock (method->mutex);
+	next = xmms_service_next_id ();
+	g_hash_table_insert (table, strdup ("sc_id"),
+	                     xmms_object_cmd_value_uint_new (next));
+
+	cli = g_new0 (xmms_service_client_t, 1);
+	cli->fd = client;
+	cli->cookie = xmms_ipc_msg_get_cookie (msg);
+	g_mutex_lock (method->mutex);
+	g_hash_table_insert (method->clients, GUINT_TO_POINTER (next), cli);
+	g_mutex_unlock (method->mutex);
+
+	xmms_object_cmd_arg_init (&arg);
+	arg.retval = xmms_object_cmd_value_dict_new (table);
+	arg.values[0].type = XMMS_OBJECT_CMD_ARG_UINT32;
+	arg.values[0].value.uint32 = cli->fd;
+	arg.values[1].type = XMMS_OBJECT_CMD_ARG_UINT32;
+	arg.values[1].value.uint32 = cli->cookie;
+	xmms_object_emit (XMMS_OBJECT (xmms_service),
+	                  XMMS_IPC_SIGNAL_SERVICE,
+	                  &arg);
+
+	xmms_object_cmd_value_free (arg.retval);
+
+	return TRUE;
+
+err:
+	free (name);
+	return FALSE;
 }
 
 /**
@@ -704,12 +758,12 @@ xmms_service_insert_arg (gpointer key, gpointer value, gpointer data)
 /**
  * Increase the universal service call counter
  */
-static inline gpointer
+static inline guint
 xmms_service_next_id (void)
 {
 	static guint counter = 0;
 
-	return GUINT_TO_POINTER (counter++);
+	return counter++;
 }
 
 /**
@@ -812,6 +866,130 @@ xmms_service_parse_arg_types (xmms_ipc_msg_t *msg, xmms_error_t *err)
 
 err:
 	g_free (arg);
+	return NULL;
+}
+
+/**
+ * Parse arguments
+ */
+static GHashTable *
+xmms_service_parse_args (xmms_ipc_msg_t *msg, GHashTable *args,
+                         xmms_error_t *err)
+{
+	gchar *name = NULL;
+	guint len, none;
+	xmms_service_argument_t *arg = NULL;
+	guint i;
+	xmms_object_cmd_value_t *val = NULL;
+	GHashTable *table = NULL;
+
+	g_return_val_if_fail (msg, NULL);
+
+	table = g_hash_table_new_full (g_str_hash, g_str_equal, free,
+	                               xmms_object_cmd_value_free);
+
+	for (i = g_hash_table_size (args); i > 0; i--) {
+		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
+			xmms_error_set (err, XMMS_ERROR_NOENT, "No argument name given");
+			goto err;
+		}
+		if (!(arg = g_hash_table_lookup (args, name))) {
+			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid argument");
+			goto err;
+		}
+		if (xmms_ipc_msg_get_uint32 (msg, &none) && none) {
+			if (!arg->optional) {
+				xmms_error_set (err, XMMS_ERROR_INVAL,
+				                "Required argument not given");
+				goto err;
+			}
+
+			continue;
+		}
+		switch (arg->type) {
+		case XMMS_OBJECT_CMD_ARG_UINT32:
+		{
+			guint tmp;
+			if (!xmms_ipc_msg_get_uint32 (msg, &tmp))
+				goto inval;
+			val = xmms_object_cmd_value_uint_new (tmp);
+		}
+		break;
+		case XMMS_OBJECT_CMD_ARG_INT32:
+		{
+			gint tmp;
+			if (!xmms_ipc_msg_get_int32 (msg, &tmp))
+				goto inval;
+			val = xmms_object_cmd_value_int_new (tmp);
+		}
+		break;
+		case XMMS_OBJECT_CMD_ARG_STRING:
+		{
+			gchar *tmp = NULL;
+			if (!xmms_ipc_msg_get_string_alloc (msg, &tmp, &len)) {
+				free (tmp);
+				goto inval;
+			}
+			val = xmms_object_cmd_value_str_new (tmp);
+		}
+		break;
+		case XMMS_OBJECT_CMD_ARG_STRINGLIST:
+		{
+			GList *tmp = NULL;
+			guint size, k;
+			if (!xmms_ipc_msg_get_uint32 (msg, &size))
+				goto inval;
+			for (k = 0; k < size; k++) {
+				gchar *buf;
+				if (!xmms_ipc_msg_get_string_alloc (msg, &buf, &len) ||
+					!(tmp = g_list_prepend (tmp, buf))) {
+					free (buf);
+					while (tmp) {
+						g_free (tmp->data);
+						tmp = g_list_delete_link (tmp, tmp);
+					}
+					goto inval;
+				}
+			}
+			tmp = g_list_reverse (tmp);
+			val = xmms_object_cmd_value_list_new (tmp);
+		}
+		break;
+		case XMMS_OBJECT_CMD_ARG_COLL:
+		{
+			xmmsc_coll_t *tmp = NULL;
+			if (!xmms_ipc_msg_get_collection_alloc (msg, &tmp)) {
+				xmmsc_coll_unref (tmp);
+				goto inval;
+			}
+			val = xmms_object_cmd_value_coll_new (tmp);
+		}
+		break;
+		case XMMS_OBJECT_CMD_ARG_BIN:
+		{
+			GString *tmp = g_string_new (NULL);
+			if (!xmms_ipc_msg_get_bin_alloc (msg, (unsigned char **)&tmp->str,
+			                                 (uint32_t *)&tmp->len)) {
+				g_string_free (tmp, TRUE);
+				goto inval;
+			}
+			val = xmms_object_cmd_value_bin_new (tmp);
+		}
+		break;
+		default:
+		inval:
+			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid argument");
+			goto err;
+		}
+
+		g_hash_table_insert (table, name, val);
+	}
+
+	return table;
+
+err:
+	free (name);
+	g_hash_table_destroy (table);
 	return NULL;
 }
 
