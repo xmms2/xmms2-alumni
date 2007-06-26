@@ -22,6 +22,20 @@
 		<prop name="CLEAR" />
 	</enum>
 
+	<object name="main" type="both">
+		<method name="hello">
+			<retval>
+				<uint />
+			</retval>
+		</method>
+
+		<method name="quit">
+			<retval>
+				<none />
+			</retval>
+		</method>
+	</object>
+
 	<object name="playlist" type="both">
 		<prop name="pos">
 			<readable />
