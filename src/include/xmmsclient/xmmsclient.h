@@ -405,8 +405,7 @@ xmmsc_result_t *xmmsc_service_list_method_args (xmmsc_connection_t *conn,
 
 xmmsc_service_t *xmmsc_service_parse_service (xmmsc_result_t *res);
 xmmsc_service_method_t *xmmsc_service_parse_method (xmmsc_result_t *res);
-xmmsc_service_argument_t *xmmsc_service_parse_arg_types (xmmsc_result_t *res,
-                                                         uint32_t num);
+xmmsc_service_argument_t *xmmsc_service_parse_arg_types (xmmsc_result_t *res);
 void xmmsc_service_free_service (xmmsc_service_t *service);
 void xmmsc_service_free_method (xmmsc_service_method_t *method);
 void xmmsc_service_free_args (xmmsc_service_argument_t *args, uint32_t num);
