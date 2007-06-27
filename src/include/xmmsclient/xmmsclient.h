@@ -375,9 +375,22 @@ xmmsc_result_t *xmmsc_service_method_args_list (xmmsc_connection_t *conn,
 xmmsc_service_t *xmmsc_service_parse_service (xmmsc_result_t *res);
 xmmsc_service_method_t *xmmsc_service_parse_method (xmmsc_result_t *res);
 xmmsc_service_argument_t *xmmsc_service_parse_arg_types (xmmsc_result_t *res);
-void xmmsc_service_free_service (xmmsc_service_t *service);
-void xmmsc_service_free_method (xmmsc_service_method_t *method);
-void xmmsc_service_free_args (xmmsc_service_argument_t *args, uint32_t num);
+xmmsc_service_t *xmmsc_service_new (const char *name, const char *description,
+                                    uint32_t major, uint32_t minor);
+xmmsc_service_method_t *
+xmmsc_service_method_new (const char *name, const char *description,
+                          uint32_t num_rets,
+                          xmmsc_service_argument_t *rets,
+                          uint32_t num_args,
+                          xmmsc_service_argument_t *args,
+                          xmmsc_result_notifier_t func);
+void xmmsc_service_free (xmmsc_service_t *service);
+void xmmsc_service_method_free (xmmsc_service_method_t *method);
+void xmmsc_service_args_free (xmmsc_service_argument_t *args, uint32_t num);
+int xmmsc_service_attribute_get (xmmsc_service_t *service, const char *key,
+                                 void *value);
+int xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
+                                        const char *key, void *value);
 
 #ifdef __cplusplus
 }
