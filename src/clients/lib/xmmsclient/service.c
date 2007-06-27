@@ -282,28 +282,34 @@ xmmsc_service_parse_service (xmmsc_result_t *res)
 
 	ret = x_new0 (xmmsc_service_t, 1);
 
-	if (!xmmsc_result_get_dict_entry_string (res, "name", &name))
-		goto err;
-	if (!xmmsc_result_get_dict_entry_string (res, "description", &desc))
-		goto err;
+	if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
+		free (ret);
+		return NULL;
+	}
+	if (!xmmsc_result_get_dict_entry_string (res, "description", &desc)) {
+		free (ret);
+		return NULL;
+	}
 	if (!xmmsc_result_get_dict_entry_uint (res, "major_version",
-	                                       &ret->major_version))
-		goto err;
+	                                       &ret->major_version)) {
+		free (ret);
+		return NULL;
+	}
 	if (!xmmsc_result_get_dict_entry_uint (res, "minor_version",
-										   &ret->minor_version))
-		goto err;
-	if (!xmmsc_result_get_dict_entry_uint (res, "count", &ret->count))
-		goto err;
+										   &ret->minor_version)) {
+		free (ret);
+		return NULL;
+	}
+	if (!xmmsc_result_get_dict_entry_uint (res, "count", &ret->count)) {
+		free (ret);
+		return NULL;
+	}
 	ret->name = x_new0 (char, strlen (name) + 1);
 	strcpy (ret->name, name);
 	ret->description = x_new0 (char, strlen (desc) + 1);
 	strcpy (ret->description, desc);
 
 	return ret;
-
-err:
-	free (ret);
-	return NULL;
 }
 
 /**
@@ -327,24 +333,28 @@ xmmsc_service_parse_method (xmmsc_result_t *res)
 
 	ret = x_new0 (xmmsc_service_method_t, 1);
 
-	if (!xmmsc_result_get_dict_entry_string (res, "name", &name))
-		goto err;
-	if (!xmmsc_result_get_dict_entry_string (res, "description", &desc))
-		goto err;
-	if (!xmmsc_result_get_dict_entry_uint (res, "num_rets", &ret->num_rets))
-		goto err;
-	if (!xmmsc_result_get_dict_entry_uint (res, "num_args", &ret->num_args))
-		goto err;
+	if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
+		free (ret);
+		return NULL;
+	}
+	if (!xmmsc_result_get_dict_entry_string (res, "description", &desc)) {
+		free (ret);
+		return NULL;
+	}
+	if (!xmmsc_result_get_dict_entry_uint (res, "num_rets", &ret->num_rets)) {
+		free (ret);
+		return NULL;
+	}
+	if (!xmmsc_result_get_dict_entry_uint (res, "num_args", &ret->num_args)) {
+		free (ret);
+		return NULL;
+	}
 	ret->name = x_new0 (char, strlen (name) + 1);
 	strcpy (ret->name, name);
 	ret->description = x_new0 (char, strlen (desc) + 1);
 	strcpy (ret->description, desc);
 
 	return ret;
-
-err:
-	free (ret);
-	return NULL;
 }
 
 /**
@@ -354,42 +364,48 @@ err:
  * call the helper function #xmmsc_service_free_args.
  * 
  * @param res The #xmmsc_result_t returned by #xmmsc_service_list_method_args.
- * @param num The total number of arguments this method has.
  * @return The list of #xmmsc_service_argument_t or NULL if failed.
  */
 xmmsc_service_argument_t *
-xmmsc_service_parse_arg_types (xmmsc_result_t *res, uint32_t num)
+xmmsc_service_parse_arg_types (xmmsc_result_t *res)
 {
 	char *name = NULL;
-	uint32_t i = num;
+	uint32_t i = 0;
 	xmmsc_service_argument_t *ret = NULL;
 
-	if (xmmsc_result_iserror (res) || !xmmsc_result_list_valid (res) || num <= 0)
+	if (xmmsc_result_iserror (res) || !xmmsc_result_list_valid (res))
 		return ret;
 
 	ret = x_new0 (xmmsc_service_argument_t, num);
 
-	while (xmmsc_result_list_valid (res) && i-- > 0) {
-		if (!xmmsc_result_get_dict_entry_string (res, "name", &name))
-			goto err;
-		if (!xmmsc_result_get_dict_entry_uint (res, "type", &ret[i].type))
-			goto err;
+	while (xmmsc_result_list_valid (res)) {
+		if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
+			while (i-- > 0)
+				free (ret[i].name);
+			free (ret);
+			return NULL;
+		}
+		if (!xmmsc_result_get_dict_entry_uint (res, "type", &ret[i].type)) {
+			while (i-- > 0)
+				free (ret[i].name);
+			free (ret);
+			return NULL;
+		}
 		if (!xmmsc_result_get_dict_entry_uint (res, "optional",
-		                                       &ret[i].optional))
-			goto err;
+		                                       &ret[i].optional)) {
+			while (i-- > 0)
+				free (ret[i].name);
+			free (ret);
+			return NULL;
+		}
 		ret[i].name = x_new0 (char, strlen (name) + 1);
 		strcpy (ret[i].name, name);
 
+		i++;
 		xmmsc_result_list_next (res);
 	}
 
 	return ret;
-
-err:
-	while (++i < num)
-		free (ret[i].name);
-	free (ret);
-	return NULL;
 }
 
 /**
