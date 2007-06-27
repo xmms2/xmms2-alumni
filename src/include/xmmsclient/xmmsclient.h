@@ -305,6 +305,16 @@ struct xmmsc_service_argument_St {
 	char *name;
 	xmmsc_service_arg_type_t type;
 	uint32_t optional;
+	uint32_t none;
+	union {
+		uint32_t uint32;
+		int32_t int32;
+		char *string;
+		char **strings;
+		xmmsc_coll_t *coll;
+		unsigned char *bin;
+	} value;
+	uint32_t len;
 };
 
 typedef struct xmmsc_service_St xmmsc_service_t;
@@ -352,7 +362,10 @@ xmmsc_result_t *xmmsc_service_method_list (xmmsc_connection_t *conn,
 xmmsc_result_t *xmmsc_service_method_args_list (xmmsc_connection_t *conn,
                                                 const char *service,
                                                 const char *method);
-
+xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
+                                       const xmmsc_service_t *service,
+                                       const xmmsc_service_method_t *method,
+                                       const xmmsc_service_argument_t *args);
 xmmsc_service_t *xmmsc_service_new (const char *name, const char *description,
                                     uint32_t major, uint32_t minor);
 xmmsc_service_method_t *
