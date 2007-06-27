@@ -32,7 +32,6 @@
  * please refer to the wiki for more infos on this.
  */
 
-
 /**
  * @defgroup ServiceManagement ServiceManagement
  * @ingroup Service
@@ -263,156 +262,6 @@ xmmsc_service_method_args_list (xmmsc_connection_t *conn, const char *service,
 }
 
 /**
- * Parse a service's information.
- *
- * Caller is responsible for freeing the list and all the elements, or simply
- * call the helper function #xmmsc_service_free.
- * 
- * @param res The #xmmsc_result_t returned by #xmmsc_service_list.
- * @return The #xmmsc_service_t structure or NULL if failed.
- */
-xmmsc_service_t *
-xmmsc_service_parse_service (xmmsc_result_t *res)
-{
-	char *name = NULL;
-	char *desc = NULL;
-	xmmsc_service_t *ret = NULL;
-
-	if (xmmsc_result_iserror (res))
-		return ret;
-
-	ret = x_new0 (xmmsc_service_t, 1);
-
-	if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
-		free (ret);
-		return NULL;
-	}
-	if (!xmmsc_result_get_dict_entry_string (res, "description", &desc)) {
-		free (ret);
-		return NULL;
-	}
-	if (!xmmsc_result_get_dict_entry_uint (res, "major_version",
-	                                       &ret->major_version)) {
-		free (ret);
-		return NULL;
-	}
-	if (!xmmsc_result_get_dict_entry_uint (res, "minor_version",
-										   &ret->minor_version)) {
-		free (ret);
-		return NULL;
-	}
-	if (!xmmsc_result_get_dict_entry_uint (res, "count", &ret->count)) {
-		free (ret);
-		return NULL;
-	}
-	ret->name = x_new0 (char, strlen (name) + 1);
-	strcpy (ret->name, name);
-	ret->description = x_new0 (char, strlen (desc) + 1);
-	strcpy (ret->description, desc);
-
-	return ret;
-}
-
-/**
- * Parse a method's information.
- *
- * Caller is responsible for freeing the list and all the elements, or simply
- * call the helper function #xmmsc_service_method_free.
- * 
- * @param res The #xmmsc_result_t returned by #xmmsc_service_method_list.
- * @return The #xmmsc_service_method_t structure or NULL if failed.
- */
-xmmsc_service_method_t *
-xmmsc_service_parse_method (xmmsc_result_t *res)
-{
-	char *name = NULL;
-	char *desc = NULL;
-	xmmsc_service_method_t *ret = NULL;
-
-	if (xmmsc_result_iserror (res))
-		return ret;
-
-	ret = x_new0 (xmmsc_service_method_t, 1);
-
-	if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
-		free (ret);
-		return NULL;
-	}
-	if (!xmmsc_result_get_dict_entry_string (res, "description", &desc)) {
-		free (ret);
-		return NULL;
-	}
-	if (!xmmsc_result_get_dict_entry_uint (res, "num_rets", &ret->num_rets)) {
-		free (ret);
-		return NULL;
-	}
-	if (!xmmsc_result_get_dict_entry_uint (res, "num_args", &ret->num_args)) {
-		free (ret);
-		return NULL;
-	}
-	ret->name = x_new0 (char, strlen (name) + 1);
-	strcpy (ret->name, name);
-	ret->description = x_new0 (char, strlen (desc) + 1);
-	strcpy (ret->description, desc);
-
-	return ret;
-}
-
-/**
- * Parse a method's argument types.
- *
- * Caller is responsible for freeing the list and all the elements, or simply
- * call the helper function #xmmsc_service_args_free.
- * 
- * @param res The #xmmsc_result_t returned by #xmmsc_service_method_args_list.
- * @return The list of #xmmsc_service_argument_t or NULL if failed.
- */
-xmmsc_service_argument_t *
-xmmsc_service_parse_arg_types (xmmsc_result_t *res)
-{
-	char *name = NULL;
-	uint32_t i = 0;
-	xmmsc_service_argument_t *ret = NULL;
-
-	if (xmmsc_result_iserror (res) || !xmmsc_result_list_valid (res))
-		return ret;
-
-	for (; xmmsc_result_list_valid (res); i++, xmmsc_result_list_next (res)) ;
-	xmmsc_result_list_first (res);
-	ret = x_new0 (xmmsc_service_argument_t, i);
-
-	i = 0;
-	while (xmmsc_result_list_valid (res)) {
-		if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
-			while (i-- > 0)
-				free (ret[i].name);
-			free (ret);
-			return NULL;
-		}
-		if (!xmmsc_result_get_dict_entry_uint (res, "type", &ret[i].type)) {
-			while (i-- > 0)
-				free (ret[i].name);
-			free (ret);
-			return NULL;
-		}
-		if (!xmmsc_result_get_dict_entry_uint (res, "optional",
-		                                       &ret[i].optional)) {
-			while (i-- > 0)
-				free (ret[i].name);
-			free (ret);
-			return NULL;
-		}
-		ret[i].name = x_new0 (char, strlen (name) + 1);
-		strcpy (ret[i].name, name);
-
-		i++;
-		xmmsc_result_list_next (res);
-	}
-
-	return ret;
-}
-
-/**
  * Create a new #xmmsc_service_t.
  *
  * Caller is responsible for freeing the returned structure using
@@ -458,10 +307,8 @@ xmmsc_service_new (const char *name, const char *description,
  */
 xmmsc_service_method_t *
 xmmsc_service_method_new (const char *name, const char *description,
-                          uint32_t num_rets,
-                          xmmsc_service_argument_t *rets,
-                          uint32_t num_args,
-                          xmmsc_service_argument_t *args,
+                          uint32_t num_rets, xmmsc_service_argument_t *rets,
+                          uint32_t num_args, xmmsc_service_argument_t *args,
                           xmmsc_result_notifier_t func)
 {
 	xmmsc_service_method_t *ret = NULL;
