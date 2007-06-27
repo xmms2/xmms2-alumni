@@ -138,8 +138,8 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
  */
 xmmsc_result_t *
 xmmsc_service_unregister (xmmsc_connection_t *conn,
-                          char *service,
-                          char *method)
+                          const char *service,
+                          const char *method)
 {
 	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
@@ -167,7 +167,7 @@ xmmsc_service_unregister (xmmsc_connection_t *conn,
  * @param conn The connection to the server.
  */
 xmmsc_result_t *
-xmmsc_service_list_service_ids (xmmsc_connection_t *conn)
+xmmsc_service_service_ids_list (xmmsc_connection_t *conn)
 {
 	x_check_conn (conn, NULL);
 
@@ -182,7 +182,7 @@ xmmsc_service_list_service_ids (xmmsc_connection_t *conn)
  * @param service The id of the service.
  */
 xmmsc_result_t *
-xmmsc_service_list_service (xmmsc_connection_t *conn, char *service)
+xmmsc_service_list (xmmsc_connection_t *conn, const char *service)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -201,14 +201,14 @@ xmmsc_service_list_service (xmmsc_connection_t *conn, char *service)
  * @param service The id of the service.
  */
 xmmsc_result_t *
-xmmsc_service_list_method_ids (xmmsc_connection_t *conn, char *service)
+xmmsc_service_method_ids_list (xmmsc_connection_t *conn, const char *service)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_LIST_METHOD);
+	                        XMMS_IPC_CMD_SERVICE_METHOD_LIST);
 	xmms_ipc_msg_put_string (msg, service);
 
 	return xmmsc_send_msg (conn, msg);
@@ -222,14 +222,15 @@ xmmsc_service_list_method_ids (xmmsc_connection_t *conn, char *service)
  * @param method The id of the method.
  */
 xmmsc_result_t *
-xmmsc_service_list_method (xmmsc_connection_t *conn, char *service, char *method)
+xmmsc_service_method_list (xmmsc_connection_t *conn, const char *service,
+                           const char *method)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_LIST_METHOD);
+	                        XMMS_IPC_CMD_SERVICE_METHOD_LIST);
 	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method);
 	xmms_ipc_msg_put_uint32 (msg, 0);
@@ -245,15 +246,15 @@ xmmsc_service_list_method (xmmsc_connection_t *conn, char *service, char *method
  * @param method The id of the method.
  */
 xmmsc_result_t *
-xmmsc_service_list_method_args (xmmsc_connection_t *conn, char *service,
-                                char *method)
+xmmsc_service_method_args_list (xmmsc_connection_t *conn, const char *service,
+                                const char *method)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_LIST_METHOD);
+	                        XMMS_IPC_CMD_SERVICE_METHOD_LIST);
 	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method);
 	xmms_ipc_msg_put_uint32 (msg, 1);
@@ -318,7 +319,7 @@ xmmsc_service_parse_service (xmmsc_result_t *res)
  * Caller is responsible for freeing the list and all the elements, or simply
  * call the helper function #xmmsc_service_free_method.
  * 
- * @param res The #xmmsc_result_t returned by #xmmsc_service_list_method.
+ * @param res The #xmmsc_result_t returned by #xmmsc_service_method_list.
  * @return The #xmmsc_service_method_t structure or NULL if failed.
  */
 xmmsc_service_method_t *
@@ -363,7 +364,7 @@ xmmsc_service_parse_method (xmmsc_result_t *res)
  * Caller is responsible for freeing the list and all the elements, or simply
  * call the helper function #xmmsc_service_free_args.
  * 
- * @param res The #xmmsc_result_t returned by #xmmsc_service_list_method_args.
+ * @param res The #xmmsc_result_t returned by #xmmsc_service_method_args_list.
  * @return The list of #xmmsc_service_argument_t or NULL if failed.
  */
 xmmsc_service_argument_t *
@@ -376,8 +377,11 @@ xmmsc_service_parse_arg_types (xmmsc_result_t *res)
 	if (xmmsc_result_iserror (res) || !xmmsc_result_list_valid (res))
 		return ret;
 
-	ret = x_new0 (xmmsc_service_argument_t, num);
+	for (; xmmsc_result_list_valid (res); i++, xmmsc_result_list_next (res)) ;
+	xmmsc_result_list_first (res);
+	ret = x_new0 (xmmsc_service_argument_t, i);
 
+	i = 0;
 	while (xmmsc_result_list_valid (res)) {
 		if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
 			while (i-- > 0)
