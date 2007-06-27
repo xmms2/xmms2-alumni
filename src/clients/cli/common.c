@@ -54,7 +54,7 @@ print_info (const gchar *fmt, ...)
 {
 	gchar buf[8096];
 	va_list ap;
-	
+
 	va_start (ap, fmt);
 	g_vsnprintf (buf, 8096, fmt, ap);
 	va_end (ap);
@@ -68,7 +68,7 @@ print_error (const gchar *fmt, ...)
 {
 	gchar buf[1024];
 	va_list ap;
-	
+
 	va_start (ap, fmt);
 	g_vsnprintf (buf, 1024, fmt, ap);
 	va_end (ap);
@@ -80,8 +80,8 @@ print_error (const gchar *fmt, ...)
 
 
 void
-print_hash (const void *key, xmmsc_result_value_type_t type, 
-			const void *value, void *udata)
+print_hash (const void *key, xmmsc_result_value_type_t type,
+            const void *value, void *udata)
 {
 	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
 		print_info ("%s = %s", key, value);
@@ -92,15 +92,15 @@ print_hash (const void *key, xmmsc_result_value_type_t type,
 
 
 void
-print_entry (const void *key, xmmsc_result_value_type_t type, 
-			 const void *value, const gchar *source, void *udata)
+print_entry (const void *key, xmmsc_result_value_type_t type,
+             const void *value, const gchar *source, void *udata)
 {
 	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
 		/* Ok it's a string, if it's the URL property from the
 		 * server source we need to decode it since it's
 		 * encoded in the server
 		 */
-		if (strcmp (key, "url") == 0 && strcmp(source, "server") == 0) {
+		if (strcmp (key, "url") == 0 && strcmp (source, "server") == 0) {
 			/* First decode the URL encoding */
 			const gchar *tmp = xmmsc_result_decode_url ((xmmsc_result_t *)udata, value);
 
@@ -141,12 +141,12 @@ print_padded_string (gint columns, gchar padchar, gboolean padright, const gchar
 	gchar *padstring;
 
 	va_list ap;
-	
+
 	va_start (ap, fmt);
 	g_vsnprintf (buf, 1024, fmt, ap);
 	va_end (ap);
 
-	padstring = g_strnfill (columns - g_utf8_strlen(buf, -1), padchar);
+	padstring = g_strnfill (columns - g_utf8_strlen (buf, -1), padchar);
 
 	if (padright) {
 		print_info ("%s%s", buf, padstring);
@@ -154,7 +154,7 @@ print_padded_string (gint columns, gchar padchar, gboolean padright, const gchar
 		print_info ("%s%s", padstring, buf);
 	}
 
-	g_free(padstring);
+	g_free (padstring);
 }
 
 gchar*

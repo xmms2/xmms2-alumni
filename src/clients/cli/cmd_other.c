@@ -20,7 +20,7 @@ void
 cmd_stats (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	
+
 	res = xmmsc_main_stats (conn);
 	xmmsc_result_wait (res);
 
@@ -67,7 +67,7 @@ cmd_plugin_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		    xmmsc_result_get_dict_entry_string (res, "description", &desc)) {
 			print_info ("%s - %s", shortname, desc);
 		}
-		
+
 		xmmsc_result_list_next (res);
 	}
 	xmmsc_result_unref (res);

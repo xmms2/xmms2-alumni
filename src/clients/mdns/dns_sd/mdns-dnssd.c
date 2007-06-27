@@ -33,12 +33,12 @@ static GPollFD *pollfd;
 static GMainLoop *ml;
 
 void
-dns_callback (DNSServiceRef sdref, 
-			  DNSServiceFlags flags, 
-			  DNSServiceErrorType errorCode, 
-			  const char *name, 
-			  const char *regtype, 
-			  const char *domain, void *context)
+dns_callback (DNSServiceRef sdref,
+              DNSServiceFlags flags,
+              DNSServiceErrorType errorCode,
+              const char *name,
+              const char *regtype,
+              const char *domain, void *context)
 {
 	if (errorCode == kDNSServiceErr_NoError) {
 		printf ("Registered: %s %s %s\n", name, regtype, domain);
@@ -77,8 +77,8 @@ dns_ipc_source_check (GSource *source)
 }
 
 static gboolean
-dns_ipc_source_dispatch (GSource *source, GSourceFunc callback, 
-						 gpointer user_data)
+dns_ipc_source_dispatch (GSource *source, GSourceFunc callback,
+                         gpointer user_data)
 {
 	if (pollfd->revents & G_IO_IN) {
 		if (DNSServiceProcessResult (g_sdref) != kDNSServiceErr_NoError) {
@@ -106,8 +106,8 @@ register_service (int port)
 	GSource *source;
 
 	if (DNSServiceRegister (&g_sdref, 0, 0, NULL, "_xmms2._tcp", NULL, NULL,
-							htons (port), 0, NULL, dns_callback, NULL) 
-		!= kDNSServiceErr_NoError) {
+	                        htons (port), 0, NULL, dns_callback, NULL)
+	    != kDNSServiceErr_NoError) {
 
 		printf ("failed to register!\n");
 		exit (1);
@@ -154,7 +154,7 @@ main (int argc, char **argv)
 			gp = ipcsplit[i];
 		}
 	}
-	
+
 	if (!gp) {
 		printf ("Need to have a socket listening to TCP before we can do that!");
 		exit (1);
@@ -183,9 +183,9 @@ main (int argc, char **argv)
 
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_quit, handle_quit, ml);
 	xmmsc_disconnect_callback_set (conn, disconnected, NULL);
-	
+
 	register_service (port);
-	
+
 	xmmsc_mainloop_gmain_init (conn);
 
 	g_main_loop_run (ml);

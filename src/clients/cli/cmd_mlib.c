@@ -77,7 +77,7 @@ cmd_mlib (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gint i;
 	if (argc < 3) {
-		cmd_mlib_help();
+		cmd_mlib_help ();
 		return;
 	}
 
@@ -88,7 +88,7 @@ cmd_mlib (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		}
 	}
 
-	cmd_mlib_help();
+	cmd_mlib_help ();
 	print_error ("Unrecognised mlib command: %s", argv[2]);
 }
 
@@ -128,7 +128,7 @@ cmd_info (xmmsc_connection_t *conn, gint argc, gchar **argv)
 			print_error ("Broken resultset");
 		}
 		xmmsc_result_unref (res);
-		
+
 		res = xmmsc_medialib_get_info (conn, id);
 		xmmsc_result_wait (res);
 
@@ -152,7 +152,7 @@ cmd_mlib_set_str (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	id = strtol (argv[3], NULL, 10);
-	
+
 	if (argc == 7) {
 		res = xmmsc_medialib_entry_property_set_str_with_source (conn,
 		                                                         id,
@@ -183,7 +183,7 @@ cmd_mlib_set_int (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	id = strtol (argv[3], NULL, 10);
-	
+
 	if (argc == 7) {
 		res = xmmsc_medialib_entry_property_set_int_with_source (conn,
 		                                                         id,
@@ -243,7 +243,7 @@ cmd_mlib_add (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	for (i = 3; argv[i]; i++) {
 		gchar *url;
-		
+
 		url = format_url (argv[i], G_FILE_TEST_IS_REGULAR);
 		if (url) {
 			res = xmmsc_medialib_add_entry (conn, url);
@@ -317,7 +317,7 @@ cmd_mlib_searchadd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	g_free (pattern);
-	
+
 	/* FIXME: Always add to active playlist: allow loading in other playlist! */
 	res = xmmsc_playlist_add_collection (conn, NULL, query, order);
 	xmmsc_result_wait (res);
@@ -433,7 +433,7 @@ cmd_mlib_remove (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	for (i = 3; i < argc; i++) {
 		entryid = atoi (argv[i]);
-		print_info("Removing entry %i", entryid);
+		print_info ("Removing entry %i", entryid);
 		res = xmmsc_medialib_remove_entry (conn, entryid);
 		xmmsc_result_wait (res);
 		if (xmmsc_result_iserror (res)) {
@@ -524,7 +524,7 @@ cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 			res2 = xmmsc_medialib_entry_property_set_str (conn, id, "picture_front", hash);
 			xmmsc_result_wait (res2);
-			
+
 			if (xmmsc_result_iserror (res2)) {
 				print_info ("%s", xmmsc_result_get_error (res2));
 			}

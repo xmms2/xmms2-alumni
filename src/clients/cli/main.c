@@ -60,7 +60,7 @@ cmds commands[] = {
 	{ "remove", "removes something from the playlist", cmd_remove },
 	{ "list", "lists the playlist", cmd_list },
 	{ "addpls", "Adds the contents of a playlist file to the playlist", cmd_addpls },
-	
+
 	/* Playback managment */
 	{ "play", "starts playback", cmd_play },
 	{ "stop", "stops playback", cmd_stop },
@@ -134,7 +134,7 @@ read_config ()
 	gint read_bytes = 0;
 	struct stat st;
 	FILE *fp;
-	
+
 	gchar userconf[PATH_MAX];
 	xmmsc_userconfdir_get (userconf, PATH_MAX);
 	file = g_build_path (G_DIR_SEPARATOR_S, userconf,
@@ -169,7 +169,7 @@ read_config ()
 
 		while (read_bytes < st.st_size) {
 			guint ret = fread (buffer + read_bytes,
-							   st.st_size - read_bytes, 1, fp);
+			                   st.st_size - read_bytes, 1, fp);
 
 			if (ret == 0) {
 				break;
@@ -245,7 +245,7 @@ main (gint argc, gchar **argv)
 
 	if (argc < 2) {
 		print_info ("Available commands:");
-		
+
 		for (i = 0; commands[i].name; i++) {
 			print_info ("  %s - %s", commands[i].name, commands[i].help);
 		}
@@ -283,13 +283,13 @@ main (gint argc, gchar **argv)
 	if (!ret) {
 		gboolean autostart = FALSE;
 		gchar *tmp;
-	
+
 		tmp = g_hash_table_lookup (config, "autostart");
 		if (tmp && !g_ascii_strcasecmp (tmp, "true")) {
 		   autostart = TRUE;
 		}
 
-		if (autostart && g_ascii_strncasecmp(argv[1], "quit", 4) &&
+		if (autostart && g_ascii_strncasecmp (argv[1], "quit", 4) &&
 		    (!path || !g_ascii_strncasecmp (path, "unix://", 7))) {
 			if (!system ("xmms2-launcher")) {
 				ret = xmmsc_connect (connection, path);

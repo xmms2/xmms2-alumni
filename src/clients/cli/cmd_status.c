@@ -55,7 +55,7 @@ void
 cmd_status (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	GMainLoop *ml;
-	
+
 	ml = g_main_loop_new (NULL, FALSE);
 
 	has_songname = FALSE;
@@ -83,7 +83,7 @@ cmd_status (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 void
 cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
-{ 
+{
 	xmmsc_result_t *res;
 	gchar print_text[256];
 	guint id;
@@ -108,10 +108,10 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	if (argc > 2) {
-		xmmsc_entry_format (print_text, sizeof(print_text), argv[2], res);	
+		xmmsc_entry_format (print_text, sizeof (print_text), argv[2], res);
 	} else {
-		xmmsc_entry_format (print_text, sizeof(print_text), 
-                            "${artist} - ${title}", res);
+		xmmsc_entry_format (print_text, sizeof (print_text),
+		                    "${artist} - ${title}", res);
 	}
 
 	print_info ("%s", print_text);
@@ -166,7 +166,7 @@ handle_playtime (xmmsc_result_t *res, void *userdata)
 	if (xmmsc_result_iserror (res)) {
 		print_error ("%s", xmmsc_result_get_error (res));
 	}
-	
+
 	if (!xmmsc_result_get_uint (res, &dur)) {
 		print_error ("Broken resultset");
 	}

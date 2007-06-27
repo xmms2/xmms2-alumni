@@ -22,18 +22,19 @@ xmmsc_io_cf_toggle_socket_flags (int toggle, void *userdata)
 {
 	CFSocketRef sockRef = (CFSocketRef) userdata;
 
-	if (toggle)
+	if (toggle) {
 		CFSocketEnableCallBacks (sockRef, kCFSocketWriteCallBack);
-	else
+	} else {
 		CFSocketDisableCallBacks (sockRef, kCFSocketWriteCallBack);
+	}
 }
 
-static void 
-xmmsc_io_cf_event_callback (CFSocketRef s, 
-							 CFSocketCallBackType type, 
-							 CFDataRef address, 
-							 const void *data, 
-							 void *info)
+static void
+xmmsc_io_cf_event_callback (CFSocketRef s,
+                            CFSocketCallBackType type,
+                            CFDataRef address,
+                            const void *data,
+                            void *info)
 {
 	CFSocketContext context;
 
@@ -64,26 +65,28 @@ xmmsc_setup_with_cf (xmmsc_connection_t *c)
 
 	context.version = 0;
 	context.info = c;
-	context.retain = NULL; 
+	context.retain = NULL;
 	context.release = NULL;
 	context.copyDescription = NULL;
 
 	flags = kCFSocketReadCallBack;
-	if (xmmsc_io_want_out (c))
+	if (xmmsc_io_want_out (c)) {
 		flags |= kCFSocketWriteCallBack;
+	}
 
-	sockRef = CFSocketCreateWithNative (kCFAllocatorDefault, 
-										xmmsc_io_fd_get (c),
-										flags,
-										&xmmsc_io_cf_event_callback,
-										&context);
+	sockRef = CFSocketCreateWithNative (kCFAllocatorDefault,
+	                                    xmmsc_io_fd_get (c),
+	                                    flags,
+	                                    &xmmsc_io_cf_event_callback,
+	                                    &context);
 
-	if (!sockRef)
+	if (!sockRef) {
 		return 0;
+	}
 
 
-	runLoopSourceRef = CFSocketCreateRunLoopSource (kCFAllocatorDefault, 
-													sockRef, 4);
+	runLoopSourceRef = CFSocketCreateRunLoopSource (kCFAllocatorDefault,
+	                                                sockRef, 4);
 
 	CFRunLoopAddSource (runLoopRef, runLoopSourceRef, kCFRunLoopDefaultMode);
 

@@ -34,7 +34,7 @@ cmd_config (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	key = argv[2];
 
-	if (g_strcasecmp(argv[3], "=") == 0) {
+	if (g_strcasecmp (argv[3], "=") == 0) {
 		value = argv[4];
 	} else {
 		value = argv[3];
