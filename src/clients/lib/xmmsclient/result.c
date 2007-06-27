@@ -556,7 +556,7 @@ xmmsc_result_get_service (xmmsc_result_t *res, xmmsc_service_t **service)
  *
  * Caller is responsible for freeing the list and all the elements, or simply
  * call the helper function #xmmsc_service_method_free.
- * 
+ *
  * @param res The #xmmsc_result_t returned by #xmmsc_service_method_list.
  * @param method The return method structure.
  * @return 1 for success, 0 otherwise.
@@ -604,7 +604,7 @@ xmmsc_result_get_service_method (xmmsc_result_t *res,
  *
  * Caller is responsible for freeing the list and all the elements, or simply
  * call the helper function #xmmsc_service_args_free.
- * 
+ *
  * @param res The #xmmsc_result_t returned by #xmmsc_service_method_args_list.
  * @param arg The return argument list.
  * @return 1 for success, 0 otherwise.
