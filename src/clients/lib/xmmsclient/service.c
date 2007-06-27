@@ -317,7 +317,7 @@ xmmsc_service_parse_service (xmmsc_result_t *res)
  * Parse a method's information.
  *
  * Caller is responsible for freeing the list and all the elements, or simply
- * call the helper function #xmmsc_service_free_method.
+ * call the helper function #xmmsc_service_method_free.
  * 
  * @param res The #xmmsc_result_t returned by #xmmsc_service_method_list.
  * @return The #xmmsc_service_method_t structure or NULL if failed.
@@ -362,7 +362,7 @@ xmmsc_service_parse_method (xmmsc_result_t *res)
  * Parse a method's argument types.
  *
  * Caller is responsible for freeing the list and all the elements, or simply
- * call the helper function #xmmsc_service_free_args.
+ * call the helper function #xmmsc_service_args_free.
  * 
  * @param res The #xmmsc_result_t returned by #xmmsc_service_method_args_list.
  * @return The list of #xmmsc_service_argument_t or NULL if failed.
@@ -413,12 +413,82 @@ xmmsc_service_parse_arg_types (xmmsc_result_t *res)
 }
 
 /**
+ * Create a new #xmmsc_service_t.
+ *
+ * Caller is responsible for freeing the returned structure using
+ * #xmmsc_service_free.
+ *
+ * @param name Service name (will be duplicated).
+ * @param description Service description (will be duplicated).
+ * @param major Service major version.
+ * @param minor Service minor version.
+ * @return The newly created #xmmsc_service_t.
+ */
+xmmsc_service_t *
+xmmsc_service_new (const char *name, const char *description,
+                   uint32_t major, uint32_t minor)
+{
+	xmmsc_service_t *ret = NULL;
+
+	if (!name || !description)
+		return NULL;
+
+	ret = x_new0 (xmmsc_service_t, 1);
+
+	ret->name = strdup (name);
+	ret->description = strdup (description);
+	ret->major_version = major;
+	ret->minor_version = minor;
+
+	return ret;
+}
+
+/**
+ * Create a new #xmmsc_service_method_t.
+ *
+ * Caller is responsible for freeing the returned structure using
+ * #xmmsc_service_method_free.
+ *
+ * @param name Method name (will be duplicated).
+ * @param description Method description (will be duplicated).
+ * @param rets Pointer to return #xmmsc_service_argument_t.
+ * @param args Pointer to argument list #xmmsc_service_argument_t.
+ * @param func Callback function.
+ * @return The newly created #xmmsc_service_method_t.
+ */
+xmmsc_service_method_t *
+xmmsc_service_method_new (const char *name, const char *description,
+                          uint32_t num_rets,
+                          xmmsc_service_argument_t *rets,
+                          uint32_t num_args,
+                          xmmsc_service_argument_t *args,
+                          xmmsc_result_notifier_t func)
+{
+	xmmsc_service_method_t *ret = NULL;
+
+	if (!name || !description || !func)
+		return NULL;
+
+	ret = x_new0 (xmmsc_service_method_t, 1);
+
+	ret->name = strdup (name);
+	ret->description = strdup (description);
+	ret->num_rets = num_rets;
+	ret->rets = rets;
+	ret->num_args = num_args;
+	ret->args = args;
+	ret->func = func;
+
+	return ret;
+}
+
+/**
  * Free the given #xmmsc_service_t.
  *
  * @param service The #xmmsc_service_t list.
  */
 void
-xmmsc_service_free_service (xmmsc_service_t *service)
+xmmsc_service_free (xmmsc_service_t *service)
 {
 	free (service->name);
 	free (service->description);
@@ -431,7 +501,7 @@ xmmsc_service_free_service (xmmsc_service_t *service)
  * @param method The #xmmsc_service_method_t list.
  */
 void
-xmmsc_service_free_method (xmmsc_service_method_t *method)
+xmmsc_service_method_free (xmmsc_service_method_t *method)
 {
 	free (method->name);
 	free (method->description);
@@ -445,13 +515,85 @@ xmmsc_service_free_method (xmmsc_service_method_t *method)
  * @param num The total number of arguments in the list.
  */
 void
-xmmsc_service_free_args (xmmsc_service_argument_t *args, uint32_t num)
+xmmsc_service_args_free (xmmsc_service_argument_t *args, uint32_t num)
 {
 	uint32_t i = num;
 
 	while (i-- > 0)
 		free (args[i].name);
 	free (args);
+}
+
+/**
+ * Get an attribute from a service.
+ *
+ * The returned value is owned by the service.
+ *
+ * @param service The service containing the attribute.
+ * @param key The name of the attribute.
+ * @param value Pointer to the place where the value should be stored to.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_attribute_get (xmmsc_service_t *service, const char *key,
+                             void *value)
+{
+	x_return_val_if_fail (service, 0);
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (value, 0);
+
+	if (strcasecmp (key, "name") == 0)
+		*(char **)value = service->name;
+	else if (strcasecmp (key, "description") == 0)
+		*(char **)value = service->description;
+	else if (strcasecmp (key, "major_version") == 0)
+		*(uint32_t *)value = service->major_version;
+	else if (strcasecmp (key, "minor_version") == 0)
+		*(uint32_t *)value = service->minor_version;
+	else if (strcasecmp (key, "count") == 0)
+		*(uint32_t *)value = service->count;
+	else
+		return 0;
+
+	return 1;
+}
+
+/**
+ * Get an attribute from a method.
+ *
+ * The returned value is owned by the method.
+ *
+ * @param method The method containing the attribute.
+ * @param key The name of the attribute.
+ * @param value Pointer to the place where the value should be stored to.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
+                                    const char *key, void *value)
+{
+	x_return_val_if_fail (method, 0);
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (value, 0);
+
+	if (strcasecmp (key, "name") == 0)
+		*(char **)value = method->name;
+	else if (strcasecmp (key, "description") == 0)
+		*(char **)value = method->description;
+	else if (strcasecmp (key, "num_rets") == 0)
+		*(uint32_t *)value = method->num_rets;
+	else if (strcasecmp (key, "rets") == 0)
+		*(xmmsc_service_argument_t **)value = method->rets;
+	else if (strcasecmp (key, "num_args") == 0)
+		*(uint32_t *)value = method->num_args;
+	else if (strcasecmp (key, "args") == 0)
+		*(xmmsc_service_argument_t **)value = method->args;
+	else if (strcasecmp (key, "func") == 0)
+		*(xmmsc_result_notifier_t *)value = method->func;
+	else
+		return 0;
+
+	return 1;
 }
 
 /* @} */
