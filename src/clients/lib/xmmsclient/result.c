@@ -771,6 +771,160 @@ xmmsc_result_get_collection (xmmsc_result_t *res, xmmsc_coll_t **c)
 }
 
 /**
+ * Retrieve a service's information.
+ *
+ * Caller is responsible for freeing the list and all the elements, or simply
+ * call the helper function #xmmsc_service_free.
+ * 
+ * @param res The #xmmsc_result_t returned by #xmmsc_service_list.
+ * @param service The return service structure.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_result_get_service (xmmsc_result_t *res, xmmsc_service_t **service)
+{
+	char *name = NULL;
+	char *desc = NULL;
+
+	if (xmmsc_result_iserror (res))
+		return 0;
+
+	*service = x_new0 (xmmsc_service_t, 1);
+
+	if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
+		free (*service);
+		return 0;
+	}
+	if (!xmmsc_result_get_dict_entry_string (res, "description", &desc)) {
+		free (*service);
+		return 0;
+	}
+	if (!xmmsc_result_get_dict_entry_uint (res, "major_version",
+	                                       &(*service)->major_version)) {
+		free (*service);
+		return 0;
+	}
+	if (!xmmsc_result_get_dict_entry_uint (res, "minor_version",
+										   &(*service)->minor_version)) {
+		free (*service);
+		return 0;
+	}
+	if (!xmmsc_result_get_dict_entry_uint (res, "count", &(*service)->count)) {
+		free (*service);
+		return 0;
+	}
+	(*service)->name = x_new0 (char, strlen (name) + 1);
+	strcpy ((*service)->name, name);
+	(*service)->description = x_new0 (char, strlen (desc) + 1);
+	strcpy ((*service)->description, desc);
+
+	return 1;
+}
+
+/**
+ * Retrieve a method's information.
+ *
+ * Caller is responsible for freeing the list and all the elements, or simply
+ * call the helper function #xmmsc_service_method_free.
+ * 
+ * @param res The #xmmsc_result_t returned by #xmmsc_service_method_list.
+ * @param method The return method structure.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_result_get_service_method (xmmsc_result_t *res,
+                                 xmmsc_service_method_t **method)
+{
+	char *name = NULL;
+	char *desc = NULL;
+
+	if (xmmsc_result_iserror (res))
+		return 0;
+
+	*method = x_new0 (xmmsc_service_method_t, 1);
+
+	if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
+		free (*method);
+		return 0;
+	}
+	if (!xmmsc_result_get_dict_entry_string (res, "description", &desc)) {
+		free (*method);
+		return 0;
+	}
+	if (!xmmsc_result_get_dict_entry_uint (res, "num_rets",
+	                                       &(*method)->num_rets)) {
+		free (*method);
+		return 0;
+	}
+	if (!xmmsc_result_get_dict_entry_uint (res, "num_args",
+	                                       &(*method)->num_args)) {
+		free (*method);
+		return 0;
+	}
+	(*method)->name = x_new0 (char, strlen (name) + 1);
+	strcpy ((*method)->name, name);
+	(*method)->description = x_new0 (char, strlen (desc) + 1);
+	strcpy ((*method)->description, desc);
+
+	return 1;
+}
+
+/**
+ * Retrieve a method's argument types.
+ *
+ * Caller is responsible for freeing the list and all the elements, or simply
+ * call the helper function #xmmsc_service_args_free.
+ * 
+ * @param res The #xmmsc_result_t returned by #xmmsc_service_method_args_list.
+ * @param arg The return argument list.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_result_get_service_args (xmmsc_result_t *res,
+                               xmmsc_service_argument_t **arg)
+{
+	char *name = NULL;
+	uint32_t i = 0;
+
+	if (xmmsc_result_iserror (res) || !xmmsc_result_list_valid (res))
+		return 0;
+
+	for (; xmmsc_result_list_valid (res); i++, xmmsc_result_list_next (res)) ;
+	xmmsc_result_list_first (res);
+	*arg = x_new0 (xmmsc_service_argument_t, i);
+
+	i = 0;
+	while (xmmsc_result_list_valid (res)) {
+		if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
+			while (i-- > 0)
+				free ((*arg)[i].name);
+			free (*arg);
+			return 0;
+		}
+		if (!xmmsc_result_get_dict_entry_uint (res, "type", &(*arg)[i].type)) {
+			while (i-- > 0)
+				free ((*arg)[i].name);
+			free (*arg);
+			return 0;
+		}
+		if (!xmmsc_result_get_dict_entry_uint (res, "optional",
+		                                       &(*arg)[i].optional)) {
+			while (i-- > 0)
+				free ((*arg)[i].name);
+			free (*arg);
+			return 0;
+		}
+		(*arg)[i].name = x_new0 (char, strlen (name) + 1);
+		strcpy ((*arg)[i].name, name);
+
+		i++;
+		xmmsc_result_list_next (res);
+	}
+
+	return 1;
+}
+
+/**
  * Retrives binary data from the resultset.
  * @param res a #xmmsc_result_t containing a string.
  * @param r the return data. This data is owned by the result and will be freed when the result is freed.
