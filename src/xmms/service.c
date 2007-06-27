@@ -335,19 +335,27 @@ xmms_service_register (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t *
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No service id given");
-		goto err;
+		free (name);
+		free (desc);
+		return FALSE;
 	}
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No service description given");
-		goto err;
+		free (name);
+		free (desc);
+		return FALSE;
 	}
 	if (!xmms_ipc_msg_get_uint32 (msg, &major)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No major version given");
-		goto err;
+		free (name);
+		free (desc);
+		return FALSE;
 	}
 	if (!xmms_ipc_msg_get_uint32 (msg, &minor)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No minor version given");
-		goto err;
+		free (name);
+		free (desc);
+		return FALSE;
 	}
 
 	if (entry = xmms_service_is_registered (name)) {
@@ -362,11 +370,6 @@ xmms_service_register (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t *
 	}
 
 	return xmms_service_method_register (msg, entry, err);
-
-err:
-	free (name);
-	free (desc);
-	return FALSE;
 }
 
 /**
@@ -387,25 +390,36 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	 * It might be the case that service client is only registering a service,
 	 * not a method.  So we don't report an error.
 	 */
-	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len))
-		goto err;
+	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
+		free (name);
+		free (desc);
+		return FALSE;
+	}
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No method description given");
-		goto err;
+		free (name);
+		free (desc);
+		return FALSE;
 	}
 	if (!(rets = xmms_service_parse_arg_types (msg, err))) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No method return types given");
-		goto err;
+		free (name);
+		free (desc);
+		return FALSE;
 	}
 	if (!(args = xmms_service_parse_arg_types (msg, err))) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No method argument types given");
-		goto err;
+		free (name);
+		free (desc);
+		return FALSE;
 	}
 
 	if (method = xmms_service_is_method_registered (entry, name)) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "Method already registered");
-		goto err;
+		free (name);
+		free (desc);
+		return FALSE;
 	}
 
 	method = xmms_service_method_new (name, desc, xmms_ipc_msg_get_cookie (msg),
@@ -419,11 +433,6 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	XMMS_DBG ("New method registered");
 
 	return TRUE;
-
-err:
-	free (name);
-	free (desc);
-	return FALSE;
 }
 
 /**
@@ -457,7 +466,8 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t
 	if (client != entry->sc) {
 		xmms_error_set (err, XMMS_ERROR_PERMISSION,
 		                "Permission denied to unregister");
-		goto err;
+		free (name);
+		return;
 	}
 
 	if (!xmms_service_method_unregister (msg, entry, err)) {
@@ -469,7 +479,6 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t
 
 	XMMS_DBG ("Service unregistered.");
 
-err:
 	free (name);
 	return;
 }
@@ -592,7 +601,8 @@ xmms_service_list_method (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 			g_mutex_unlock (method->mutex);
 
 			arg->retval = xmms_object_cmd_value_dict_new (dict);
-			goto err;
+			free (name);
+			return;
 		}
 	} else {
 		xmms_error_reset (&arg->error);
@@ -604,7 +614,6 @@ xmms_service_list_method (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 
 	arg->retval = xmms_object_cmd_value_list_new (list);
 
-err:
 	free (name);
 	return;
 }
@@ -637,8 +646,13 @@ xmms_service_request (xmms_ipc_msg_t *msg, xmms_socket_t client,
 	if (!(method = xmms_service_get_method (msg, entry, &name, err)))
 		return FALSE;
 
+	free (name);
+
 	g_mutex_lock (method->mutex);
-	table = xmms_service_parse_args (msg, method->args, err);
+	if (!(table = xmms_service_parse_args (msg, method->args, err))) {
+		g_mutex_unlock (method->mutex);
+		return FALSE;
+	}
 	g_mutex_unlock (method->mutex);
 	next = xmms_service_next_id ();
 	g_hash_table_insert (table, strdup ("sc_id"),
@@ -664,10 +678,6 @@ xmms_service_request (xmms_ipc_msg_t *msg, xmms_socket_t client,
 	xmms_object_cmd_value_free (arg.retval);
 
 	return TRUE;
-
-err:
-	free (name);
-	return FALSE;
 }
 
 /**
@@ -836,7 +846,7 @@ xmms_service_parse_arg_types (xmms_ipc_msg_t *msg, xmms_error_t *err)
 
 	if (!xmms_ipc_msg_get_uint32 (msg, &num)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No number of arguments given");
-		goto err;
+		return NULL;
 	}
 
 	for (; num > 0; num--) {
@@ -845,28 +855,30 @@ xmms_service_parse_arg_types (xmms_ipc_msg_t *msg, xmms_error_t *err)
 		if (!xmms_ipc_msg_get_string_alloc (msg, &arg->name, &len)) {
 			xmms_error_set (err, XMMS_ERROR_NOENT, "No argument name given");
 			free (arg->name);
-			goto err;
+			g_free (arg);
+			g_hash_table_destroy (table);
+			return NULL;
 		}
 		if (!xmms_ipc_msg_get_uint32 (msg, &arg->type)) {
 			xmms_error_set (err, XMMS_ERROR_NOENT, "No argument type given");
 			free (arg->name);
-			goto err;
+			g_free (arg);
+			g_hash_table_destroy (table);
+			return NULL;
 		}
 		if (!xmms_ipc_msg_get_uint32 (msg, &arg->optional)) {
 			xmms_error_set (err, XMMS_ERROR_NOENT,
 			                "Optional field missing for argument");
 			free (arg->name);
-			goto err;
+			g_free (arg);
+			g_hash_table_destroy (table);
+			return NULL;
 		}
 
 		g_hash_table_insert (table, arg->name, arg);
 	}
 
 	return table;
-
-err:
-	g_free (arg);
-	return NULL;
 }
 
 /**
@@ -891,17 +903,23 @@ xmms_service_parse_args (xmms_ipc_msg_t *msg, GHashTable *args,
 	for (i = g_hash_table_size (args); i > 0; i--) {
 		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
 			xmms_error_set (err, XMMS_ERROR_NOENT, "No argument name given");
-			goto err;
+			free (name);
+			g_hash_table_destroy (table);
+			return NULL;
 		}
 		if (!(arg = g_hash_table_lookup (args, name))) {
 			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid argument");
-			goto err;
+			free (name);
+			g_hash_table_destroy (table);
+			return NULL;
 		}
 		if (xmms_ipc_msg_get_uint32 (msg, &none) && none) {
 			if (!arg->optional) {
 				xmms_error_set (err, XMMS_ERROR_INVAL,
 				                "Required argument not given");
-				goto err;
+				free (name);
+				g_hash_table_destroy (table);
+				return NULL;
 			}
 
 			continue;
@@ -979,18 +997,15 @@ xmms_service_parse_args (xmms_ipc_msg_t *msg, GHashTable *args,
 		default:
 		inval:
 			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid argument");
-			goto err;
+			free (name);
+			g_hash_table_destroy (table);
+			return NULL;
 		}
 
 		g_hash_table_insert (table, name, val);
 	}
 
 	return table;
-
-err:
-	free (name);
-	g_hash_table_destroy (table);
-	return NULL;
 }
 
 /** @} */
