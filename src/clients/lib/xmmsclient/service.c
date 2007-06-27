@@ -140,7 +140,6 @@ xmmsc_service_unregister (xmmsc_connection_t *conn,
                           const char *service,
                           const char *method)
 {
-	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
@@ -153,9 +152,7 @@ xmmsc_service_unregister (xmmsc_connection_t *conn,
 	if (method)
 		xmms_ipc_msg_put_string (msg, method);
 
-	res = xmmsc_send_msg (conn, msg);
-
-	return res;
+	return xmmsc_send_msg (conn, msg);
 }
 
 /**
@@ -257,6 +254,62 @@ xmmsc_service_method_args_list (xmmsc_connection_t *conn, const char *service,
 	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method);
 	xmms_ipc_msg_put_uint32 (msg, 1);
+
+	return xmmsc_send_msg (conn, msg);
+}
+
+/**
+ * Make service method call.
+ *
+ * @param conn The connection to the server.
+ * @param service The id of the service.
+ * @param method The id of the method.
+ * @param args The arguments passing to the method.
+ */
+xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
+                                       const xmmsc_service_t *service,
+                                       const xmmsc_service_method_t *method,
+                                       const xmmsc_service_argument_t *args)
+{
+	xmms_ipc_msg_t *msg;
+	int i;
+
+	x_check_conn (conn, NULL);
+	x_return_val_if_fail (service, NULL);
+	x_return_val_if_fail (method, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_CMD_SERVICE_REQUEST);
+	xmms_ipc_msg_put_string (msg, service->name);
+	xmms_ipc_msg_put_string (msg, method->name);
+	if (args) {
+		for (i = 0; i < method->num_args; i++) {
+			xmms_ipc_msg_put_string (msg, args[i].name);
+			xmms_ipc_msg_put_uint32 (msg, args[i].none);
+			switch (args[i].type) {
+			case XMMSC_SERVICE_ARG_TYPE_UINT32:
+				xmms_ipc_msg_put_uint32 (msg, args[i].value.uint32);
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_INT32:
+				xmms_ipc_msg_put_int32 (msg, args[i].value.int32);
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_STRING:
+				xmms_ipc_msg_put_string (msg, args[i].value.string);
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_STRINGLIST:
+				xmms_ipc_msg_put_string_list (msg, (const char **)args[i].value.strings);
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_COLL:
+				xmms_ipc_msg_put_collection (msg, args[i].value.coll);
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_BIN:
+				xmms_ipc_msg_put_bin (msg, args[i].value.bin, args[i].len);
+				break;
+			default:
+				return NULL;
+			}
+		}
+	}
 
 	return xmmsc_send_msg (conn, msg);
 }
