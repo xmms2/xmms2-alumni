@@ -392,18 +392,20 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
                              void *user_data,
                              xmmsc_user_data_free_func_t free_func);
 xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn,
-                                          char *service,
-                                          char *method);
-xmmsc_result_t *xmmsc_service_list_service_ids (xmmsc_connection_t *conn);
+                                          const char *service,
+                                          const char *method);
+xmmsc_result_t *xmmsc_service_service_ids_list (xmmsc_connection_t *conn);
 
-xmmsc_result_t *xmmsc_service_list_service (xmmsc_connection_t *conn,
-                                            char *service);
-xmmsc_result_t *xmmsc_service_list_method_ids (xmmsc_connection_t *conn,
-                                               char *service);
-xmmsc_result_t *xmmsc_service_list_method (xmmsc_connection_t *conn,
-                                           char *service, char *method);
-xmmsc_result_t *xmmsc_service_list_method_args (xmmsc_connection_t *conn,
-                                                char *service, char *method);
+xmmsc_result_t *xmmsc_service_list (xmmsc_connection_t *conn,
+                                    const char *service);
+xmmsc_result_t *xmmsc_service_method_ids_list (xmmsc_connection_t *conn,
+                                               const char *service);
+xmmsc_result_t *xmmsc_service_method_list (xmmsc_connection_t *conn,
+                                           const char *service,
+                                           const char *method);
+xmmsc_result_t *xmmsc_service_method_args_list (xmmsc_connection_t *conn,
+                                                const char *service,
+                                                const char *method);
 
 xmmsc_service_t *xmmsc_service_parse_service (xmmsc_result_t *res);
 xmmsc_service_method_t *xmmsc_service_parse_method (xmmsc_result_t *res);
