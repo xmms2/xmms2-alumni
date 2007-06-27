@@ -174,13 +174,6 @@ gboolean
 xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, xmms_socket_t client,
                      xmms_object_cmd_arg_t *arg)
 {
-	if (cmdid <= XMMS_IPC_CMD_SERVICE_BEGIN ||
-		cmdid >= XMMS_IPC_CMD_SERVICE_END) {
-		xmms_error_set (&arg->error, XMMS_ERROR_INVAL,
-		                "Invalid service command");
-		return FALSE;
-	}
-
 	switch (cmdid) {
 	case XMMS_IPC_CMD_SERVICE_REGISTER:
 		arg->retval = xmms_object_cmd_value_none_new ();
@@ -206,6 +199,10 @@ xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid, xmms_socket_t client,
 		xmms_service_return (msg, &arg->error);
 		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_SHUTDOWN:
+		return FALSE;
+	default:
+		xmms_error_set (&arg->error, XMMS_ERROR_INVAL,
+		                "Invalid service command");
 		return FALSE;
 	}
 }
