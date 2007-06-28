@@ -459,6 +459,38 @@ xmmsc_service_attribute_get (xmmsc_service_t *service, const char *key,
 }
 
 /**
+ * Set an attribute from a service.
+ *
+ * @param service The service containing the attribute.
+ * @param key The name of the attribute.
+ * @param value The new value.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_attribute_set (xmmsc_service_t *service, const char *key,
+                             const void *value)
+{
+	x_return_val_if_fail (service, 0);
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (value, 0);
+
+	if (strcasecmp (key, "name") == 0)
+		service->name = *(char **)value;
+	else if (strcasecmp (key, "description") == 0)
+		service->description = *(char **)value;
+	else if (strcasecmp (key, "major_version") == 0)
+		service->major_version = *(uint32_t *)value;
+	else if (strcasecmp (key, "minor_version") == 0)
+		service->minor_version = *(uint32_t *)value;
+	else if (strcasecmp (key, "count") == 0)
+		service->count = *(uint32_t *)value;
+	else
+		return 0;
+
+	return 1;
+}
+
+/**
  * Get an attribute from a method.
  *
  * The returned value is owned by the method.
@@ -490,6 +522,42 @@ xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
 		*(xmmsc_service_argument_t **)value = method->args;
 	else if (strcasecmp (key, "func") == 0)
 		*(xmmsc_result_notifier_t *)value = method->func;
+	else
+		return 0;
+
+	return 1;
+}
+
+/**
+ * Set an attribute from a method.
+ *
+ * @param method The method containing the attribute.
+ * @param key The name of the attribute.
+ * @param value The new value.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_method_attribute_set (xmmsc_service_method_t *method,
+                                    const char *key, const void *value)
+{
+	x_return_val_if_fail (method, 0);
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (value, 0);
+
+	if (strcasecmp (key, "name") == 0)
+		method->name = *(char **)value;
+	else if (strcasecmp (key, "description") == 0)
+		method->description = *(char **)value;
+	else if (strcasecmp (key, "num_rets") == 0)
+		method->num_rets = *(uint32_t *)value;
+	else if (strcasecmp (key, "rets") == 0)
+		method->rets = *(xmmsc_service_argument_t **)value;
+	else if (strcasecmp (key, "num_args") == 0)
+		method->num_args = *(uint32_t *)value;
+	else if (strcasecmp (key, "args") == 0)
+		method->args = *(xmmsc_service_argument_t **)value;
+	else if (strcasecmp (key, "func") == 0)
+		method->func = *(xmmsc_result_notifier_t *)value;
 	else
 		return 0;
 

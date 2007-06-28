@@ -373,8 +373,12 @@ void xmmsc_service_method_free (xmmsc_service_method_t *method);
 void xmmsc_service_args_free (xmmsc_service_argument_t *args, uint32_t num);
 int xmmsc_service_attribute_get (xmmsc_service_t *service, const char *key,
                                  void *value);
+int xmmsc_service_attribute_set (xmmsc_service_t *service, const char *key,
+                                 const void *value);
 int xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
                                         const char *key, void *value);
+int xmmsc_service_method_attribute_set (xmmsc_service_method_t *method,
+                                        const char *key, const void *value);
 
 /*
  * RESULTS
