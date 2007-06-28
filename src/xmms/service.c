@@ -71,6 +71,7 @@ static xmms_service_t *xmms_service;
 typedef struct xmms_service_client_St {
 	xmms_socket_t fd;
 	guint cookie;
+	gchar *method;
 } xmms_service_client_t;
 
 typedef struct xmms_service_argument_St {
@@ -661,6 +662,7 @@ xmms_service_request (xmms_ipc_msg_t *msg, xmms_socket_t client,
 	cli = g_new0 (xmms_service_client_t, 1);
 	cli->fd = client;
 	cli->cookie = xmms_ipc_msg_get_cookie (msg);
+	cli->method = method->name;
 	g_mutex_lock (entry->mutex);
 	g_hash_table_insert (entry->clients, GUINT_TO_POINTER (next), cli);
 	g_mutex_unlock (entry->mutex);
@@ -687,7 +689,64 @@ static void
 xmms_service_return (xmms_ipc_msg_t *msg, xmms_socket_t client,
                      xmms_error_t *err)
 {
+	guint id;
+	guint len;
+	xmms_service_entry_t *entry;
+	xmms_service_method_t *method;
+	GHashTable *table = NULL;
+	guint next;
+	xmms_service_client_t *cli = NULL;
+	xmms_object_cmd_arg_t arg;
 
+	g_return_if_fail (msg);
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &id)) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No service cookie given");
+		return;
+	}
+
+	g_mutex_lock (xmms_service->mutex);
+	entry = g_hash_table_find (xmms_service->registry, xmms_service_matchsc,
+	                           GUINT_TO_POINTER (client));
+	g_mutex_unlock (xmms_service->mutex);
+
+	g_mutex_lock (entry->mutex);
+	if (!(cli = g_hash_table_lookup (entry->clients, GUINT_TO_POINTER (id)))) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid client id");
+		g_mutex_unlock (entry->mutex);
+		return;
+	}
+	g_mutex_unlock (entry->mutex);
+
+	XMMS_DBG ("Returning method call to client (%d)", cli->fd);
+
+	if (!(method = xmms_service_method_is_registered (entry, cli->method))) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid method id");
+		return;
+	}
+	if (!(table = xmms_service_args_parse (msg, method->rets, err)))
+		return;
+
+	xmms_object_cmd_arg_init (&arg);
+	arg.retval = xmms_object_cmd_value_dict_new (table);
+	arg.values[0].type = XMMS_OBJECT_CMD_ARG_UINT32;
+	arg.values[0].value.uint32 = cli->fd;
+	arg.values[1].type = XMMS_OBJECT_CMD_ARG_UINT32;
+	arg.values[1].value.uint32 = cli->cookie;
+	xmms_object_emit (XMMS_OBJECT (xmms_service),
+	                  XMMS_IPC_SIGNAL_SERVICE,
+	                  &arg);
+
+	g_mutex_lock (entry->mutex);
+	if (!g_hash_table_remove (entry->clients, GUINT_TO_POINTER (id))) {
+		xmms_error_set (err, XMMS_ERROR_GENERIC,
+		                "Failed to remove method call request");
+		g_mutex_unlock (entry->mutex);
+		return;
+	}
+	g_mutex_unlock (entry->mutex);
+
+	xmms_object_cmd_value_free (arg.retval);
 }
 
 static xmms_service_entry_t *
