@@ -66,10 +66,10 @@ static void install_scripts (const gchar *into_dir);
 static xmms_xform_object_t *xform_obj;
 static xmms_bindata_t *bindata_obj;
 
-XMMS_CMD_DEFINE (quit, quit, xmms_object_t*, NONE, NONE, NONE);
-XMMS_CMD_DEFINE (hello, hello, xmms_object_t *, UINT32, UINT32, STRING);
-XMMS_CMD_DEFINE (stats, stats, xmms_object_t *, DICT, NONE, NONE);
-XMMS_CMD_DEFINE (plugin_list, xmms_plugin_client_list, xmms_object_t *, LIST, UINT32, NONE);
+//XMMS_CMD_DEFINE (quit, quit, xmms_object_t*, NONE, NONE, NONE);
+//XMMS_CMD_DEFINE (hello, hello, xmms_object_t *, UINT32, UINT32, STRING);
+//XMMS_CMD_DEFINE (stats, stats, xmms_object_t *, DICT, NONE, NONE);
+//XMMS_CMD_DEFINE (plugin_list, xmms_plugin_client_list, xmms_object_t *, LIST, UINT32, NONE);
 
 /** @defgroup XMMSServer XMMSServer
   * @brief look at this if you want to code inside the server.
@@ -95,6 +95,8 @@ struct xmms_main_St {
 };
 
 typedef struct xmms_main_St xmms_main_t;
+
+#include "xmmspriv/xmms_main_cmds.h"
 
 /** This is the mainloop of the xmms2 server */
 static GMainLoop *mainloop;
@@ -358,6 +360,7 @@ main (int argc, char **argv)
 	xmms_output_plugin_t *o_plugin;
 	xmms_config_property_t *cv;
 	xmms_main_t *mainobj;
+	xmms_main_cmds_t *cmds;
 	int loglevel = 1;
 	xmms_playlist_t *playlist;
 	gchar default_path[XMMS_PATH_MAX + 16], *tmp;
@@ -504,24 +507,31 @@ main (int argc, char **argv)
 
 	xmms_signal_init (XMMS_OBJECT (mainobj));
 
+	cmds = xmms_main_cmds_init (XMMS_OBJECT (mainobj));
+
+	cmds->main_hello = hello;
+	cmds->main_quit = quit;
+
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_MAIN,
 	                          XMMS_OBJECT (mainobj));
 
-	xmms_ipc_broadcast_register (XMMS_OBJECT (mainobj),
-	                             XMMS_IPC_SIGNAL_QUIT);
+	xmms_main_cmds_register ();
 
-	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
-	                     XMMS_IPC_CMD_QUIT,
-	                     XMMS_CMD_FUNC (quit));
-	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
-	                     XMMS_IPC_CMD_HELLO,
-	                     XMMS_CMD_FUNC (hello));
-	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
-	                     XMMS_IPC_CMD_PLUGIN_LIST,
-	                     XMMS_CMD_FUNC (plugin_list));
-	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
-	                     XMMS_IPC_CMD_STATS,
-	                     XMMS_CMD_FUNC (stats));
+	//xmms_ipc_broadcast_register (XMMS_OBJECT (mainobj),
+	//                             XMMS_IPC_SIGNAL_QUIT);
+
+	//xmms_object_cmd_add (XMMS_OBJECT (mainobj),
+	//                     XMMS_IPC_CMD_QUIT,
+	//                     XMMS_CMD_FUNC (quit));
+	//xmms_object_cmd_add (XMMS_OBJECT (mainobj),
+	//                     XMMS_IPC_CMD_HELLO,
+	//                     XMMS_CMD_FUNC (hello));
+	//xmms_object_cmd_add (XMMS_OBJECT (mainobj),
+	//                     XMMS_IPC_CMD_PLUGIN_LIST,
+	//                     XMMS_CMD_FUNC (plugin_list));
+	//xmms_object_cmd_add (XMMS_OBJECT (mainobj),
+	//                     XMMS_IPC_CMD_STATS,
+	//                     XMMS_CMD_FUNC (stats));
 
 	/* Save the time we started in order to count uptime */
 	mainobj->starttime = time (NULL);
