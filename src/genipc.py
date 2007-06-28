@@ -33,6 +33,9 @@ def get_args(node):
 
     return argstring
 
+def write_cmd_code(node):
+    cfile = open("genipc_out/%s_cmds.c" % node.getAttribute("name"),"w+")
+
 def do_enums(enums):
     for node in enums:
         #if its a child of the main(ipc) tag
@@ -193,9 +196,22 @@ def do_objects(objects):
                     hfile.write("(*%s_%s) (%s);\n" % \
                                          (node.getAttribute("name"),method.getAttribute("name"),
                                         argstring))
-		hfile.write("} xmms_%s_cmds_t;\n" % node.getAttribute("name"))
+
+		hfile.write("\txmms_ipc_object_t *obj;\n")
+		hfile.write("} xmms_%s_cmds_t;\n\n" % node.getAttribute("name"))
+
+		#function declarations
+		hfile.write("xmms_%s_cmds_t * xmms_%s_cmds_init (xmms_object_t *obj);\n" % \
+			(node.getAttribute("name"), node.getAttribute("name")))
+
+		hfile.write("void xmms_%s_cmds_register (xmms_%s_cmds_t *cmds);\n" % \
+			(node.getAttribute("name"), node.getAttribute("name")))
+
 		hfile.write("#endif\n")
 		hfile.close()
+
+		#output the code for the cmd helper functions
+		write_cmd_code(node)
 
             print "done"
 
@@ -214,6 +230,8 @@ if __name__ == "__main__":
 
     #load the xml file
     doc = xml.dom.minidom.parse("ipc.xml")
+
+    xmmsclientfile = open("genipc_out/xmmsclient.h","w")
 
     #header guard and include file
     xmmsclientfile.write("#ifndef __GEN_XMMSCLIENT_H__\n#define \
