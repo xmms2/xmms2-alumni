@@ -24,6 +24,18 @@
 
 	<object name="main" type="both">
 		<method name="hello">
+			<arg name="protocolver">
+				<type>
+					<uint />
+				</type>
+			</arg>
+
+			<arg name="client">
+				<type>
+					<string />
+				</type>
+			</arg>
+
 			<retval>
 				<type>
 					<uint />
