@@ -129,6 +129,12 @@ def do_objects(objects):
 
 		objectlist.add(node.getAttribute("name"))
 
+		#header guard
+		hfile.write("#ifndef __XMMS_%s_CMD_H__\n" % \
+			node.getAttribute("name"))
+		hfile.write("#define __XMMS_%s_CMD_H__\n\n" % \
+			node.getAttribute("name"))
+
 		hfile.write("/* %s commands structure */\n" % node.getAttribute("name"))
 		hfile.write("typedef struct {\n")
 
@@ -188,6 +194,7 @@ def do_objects(objects):
                                          (node.getAttribute("name"),method.getAttribute("name"),
                                         argstring))
 		hfile.write("} xmms_%s_cmds_t;\n" % node.getAttribute("name"))
+		hfile.write("#endif\n")
 		hfile.close()
 
             print "done"
