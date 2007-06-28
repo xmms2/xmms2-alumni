@@ -538,6 +538,7 @@ xmms_service_list (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 		g_mutex_unlock (entry->mutex);
 
 		arg->retval = xmms_object_cmd_value_dict_new (dict);
+		free (name);
 	} else {
 		xmms_error_reset (&arg->error);
 
@@ -551,7 +552,6 @@ xmms_service_list (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 		arg->retval = xmms_object_cmd_value_list_new (list);
 	}
 
-	free (name);
 	return;
 }
 
@@ -601,6 +601,8 @@ xmms_service_method_list (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 			free (name);
 			return;
 		}
+
+		free (name);
 	} else {
 		xmms_error_reset (&arg->error);
 
@@ -611,7 +613,6 @@ xmms_service_method_list (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 
 	arg->retval = xmms_object_cmd_value_list_new (list);
 
-	free (name);
 	return;
 }
 

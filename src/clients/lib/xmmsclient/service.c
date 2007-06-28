@@ -642,16 +642,16 @@ xmmsc_service_argument_set (xmmsc_service_method_t *method, const char *key,
 				method->args[i].value.int32 = *(int32_t *)value;
 				break;
 			case XMMSC_SERVICE_ARG_TYPE_STRING:
-				method->args[i].value.string = *(char **)value;
+				method->args[i].value.string = (char *)value;
 				break;
 			case XMMSC_SERVICE_ARG_TYPE_STRINGLIST:
-				method->args[i].value.strings = *(char ***)value;
+				method->args[i].value.strings = (char **)value;
 				break;
 			case XMMSC_SERVICE_ARG_TYPE_COLL:
-				method->args[i].value.coll = *(xmmsc_coll_t **)value;
+				method->args[i].value.coll = (xmmsc_coll_t **)value;
 				break;
 			case XMMSC_SERVICE_ARG_TYPE_BIN:
-				method->args[i].value.bin = *(unsigned char **)value;
+				method->args[i].value.bin = (unsigned char **)value;
 				break;
 			default:
 				return 0;
