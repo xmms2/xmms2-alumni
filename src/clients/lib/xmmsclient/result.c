@@ -786,8 +786,9 @@ xmmsc_result_get_service (xmmsc_result_t *res, xmmsc_service_t **service)
 	char *name = NULL;
 	char *desc = NULL;
 
-	if (xmmsc_result_iserror (res))
+	if (!res || res->error != XMMS_ERROR_NONE) {
 		return 0;
+	}
 
 	*service = x_new0 (xmmsc_service_t, 1);
 
@@ -838,8 +839,9 @@ xmmsc_result_get_service_method (xmmsc_result_t *res,
 	char *name = NULL;
 	char *desc = NULL;
 
-	if (xmmsc_result_iserror (res))
+	if (!res || res->error != XMMS_ERROR_NONE) {
 		return 0;
+	}
 
 	*method = x_new0 (xmmsc_service_method_t, 1);
 
@@ -880,14 +882,15 @@ xmmsc_result_get_service_method (xmmsc_result_t *res,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_result_get_service_args (xmmsc_result_t *res,
-                               xmmsc_service_argument_t **arg)
+xmmsc_result_get_service_arg_types (xmmsc_result_t *res,
+                                    xmmsc_service_argument_t **arg)
 {
 	char *name = NULL;
 	uint32_t i = 0;
 
-	if (xmmsc_result_iserror (res) || !xmmsc_result_list_valid (res))
+	if (!res || res->error != XMMS_ERROR_NONE) {
 		return 0;
+	}
 
 	for (; xmmsc_result_list_valid (res); i++, xmmsc_result_list_next (res)) ;
 	xmmsc_result_list_first (res);
@@ -922,6 +925,23 @@ xmmsc_result_get_service_args (xmmsc_result_t *res,
 	}
 
 	return 1;
+}
+
+/**
+ * Retrieve service method request cookie.
+ * 
+ * @param res The #xmmsc_result_t containing the cookie.
+ * @param cookie The return cookie.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_result_get_service_cookie (xmmsc_result_t *res, uint32_t *cookie)
+{
+	if (!res || res->error != XMMS_ERROR_NONE) {
+		return 0;
+	}
+
+	return xmmsc_result_get_dict_entry_uint (res, "sc_id", cookie);
 }
 
 /**

@@ -406,7 +406,7 @@ int xmmsc_result_get_string (xmmsc_result_t *res, char **r);
 int xmmsc_result_get_collection (xmmsc_result_t *conn, xmmsc_coll_t **coll);
 int xmmsc_result_get_service (xmmsc_result_t *res, xmmsc_service_t **service);
 int xmmsc_result_get_service_method (xmmsc_result_t *res, xmmsc_service_method_t **method);
-int xmmsc_result_get_service_args (xmmsc_result_t *res, xmmsc_service_argument_t **arg);
+int xmmsc_result_get_service_arg_types (xmmsc_result_t *res, xmmsc_service_argument_t **arg);
 int xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen);
 
 typedef enum {
