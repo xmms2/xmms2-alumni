@@ -20,6 +20,7 @@ source = """config.c
             collquery.c
             collserial.c
             ipc.c
+	    ipc_cmds.c
             log.c
             plugin.c
             magic.c

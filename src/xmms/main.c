@@ -515,7 +515,7 @@ main (int argc, char **argv)
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_MAIN,
 	                          XMMS_OBJECT (mainobj));
 
-	xmms_main_cmds_register ();
+	xmms_main_cmds_register (cmds);
 
 	//xmms_ipc_broadcast_register (XMMS_OBJECT (mainobj),
 	//                             XMMS_IPC_SIGNAL_QUIT);
