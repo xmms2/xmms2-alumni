@@ -215,10 +215,6 @@ if __name__ == "__main__":
     #load the xml file
     doc = xml.dom.minidom.parse("ipc.xml")
 
-    #open up the output ipc.c file
-    ipcfile = open("genipc_out/ipc.c", "w+")
-    xmmsclientfile = open("genipc_out/xmmsclient.h", "w+");
-
     #header guard and include file
     xmmsclientfile.write("#ifndef __GEN_XMMSCLIENT_H__\n#define \
 __GEN_XMMSCLIENT_H__\n\n")
