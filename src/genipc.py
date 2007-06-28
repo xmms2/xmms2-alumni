@@ -16,6 +16,8 @@ global_idnum = -1
 
 objectlist = set()
 
+cfile = open("genipc_out/ipc_cmds.c","w+")
+
 def get_nextid():
     global global_idnum
     global_idnum +=1
@@ -34,7 +36,17 @@ def get_args(node):
     return argstring
 
 def write_cmd_code(node):
-    cfile = open("genipc_out/%s_cmds.c" % node.getAttribute("name"),"w+")
+    cfile.write("#include \"includepriv/xmmspriv/xmms_%s_cmds.h\"\n\n" % node.getAttribute("name"))
+
+    cfile.write("xmms_%s_cmds_t *\nxmms_%s_cmds_init (xmms_object_t *obj)\n{\n" % \
+	    (node.getAttribute("name"),node.getAttribute("name")))
+
+    cfile.write("\txmms_%s_cmds_t *cmd = calloc (sizeof (xmms_%s_cmds_t),1);\n"% \
+	    (node.getAttribute("name"),node.getAttribute("name")))
+    cfile.write("\tcmd->obj = obj;\n\n")
+    cfile.write("\treturn cmd;\n")
+
+    cfile.write("}\n\n");
 
 def do_enums(enums):
     for node in enums:
@@ -231,7 +243,7 @@ if __name__ == "__main__":
     #load the xml file
     doc = xml.dom.minidom.parse("ipc.xml")
 
-    xmmsclientfile = open("genipc_out/xmmsclient.h","w")
+    xmmsclientfile = open("genipc_out/xmmsclient.h","w+")
 
     #header guard and include file
     xmmsclientfile.write("#ifndef __GEN_XMMSCLIENT_H__\n#define \
