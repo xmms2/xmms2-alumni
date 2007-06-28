@@ -36,7 +36,11 @@ def get_args(node):
     return argstring
 
 def write_cmd_code(node):
-    cfile.write("#include \"includepriv/xmmspriv/xmms_%s_cmds.h\"\n\n" % node.getAttribute("name"))
+    cfile.write("typedef struct xmms_%s_St xmms_%s_t;\n" % \
+	    (node.getAttribute("name"),node.getAttribute("name")))
+    cfile.write("#include \"xmms/xmms_object.h\"\n")
+    cfile.write("#include \"xmmspriv/xmms_%s_cmds.h\"\n" % node.getAttribute("name"))
+    cfile.write("#include \"xmmsclient/xmmsclient.h\"\n\n")
 
     #init function
     cfile.write("xmms_%s_cmds_t *\nxmms_%s_cmds_init (xmms_object_t *obj)\n{\n" % \
@@ -50,11 +54,12 @@ def write_cmd_code(node):
     cfile.write("}\n\n");
 
     #registration function
-    cfile.write("void\nxmms_%s_cmds_register ();\n{\n" % \
-	    (node.getAttribute("name")))
+    cfile.write("void\nxmms_%s_cmds_register (xmms_%s_cmds_t *cmds)\n{\n" % \
+	    (node.getAttribute("name"),node.getAttribute("name")))
 
 #    cfile.write("\t
     #go through each method in the node and call xmms_object_cmd_add on them
+    cfile.write("}\n\n")
 
 def do_enums(enums):
     for node in enums:
@@ -217,7 +222,7 @@ def do_objects(objects):
                                          (node.getAttribute("name"),method.getAttribute("name"),
                                         argstring))
 
-		hfile.write("\txmms_ipc_object_t *obj;\n")
+		hfile.write("\txmms_object_t *obj;\n")
 		hfile.write("} xmms_%s_cmds_t;\n\n" % node.getAttribute("name"))
 
 		#function declarations
@@ -272,6 +277,7 @@ __GEN_XMMSCLIENT_H__\n\n")
 
     #parse all objects
     print "Parsing objects"
+    cfile.write("#include <stdlib.h>\n")
     object_list = nodes[0].getElementsByTagName("object")
     do_objects(object_list)
 
