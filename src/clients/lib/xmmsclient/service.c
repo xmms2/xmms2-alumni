@@ -564,4 +564,104 @@ xmmsc_service_method_attribute_set (xmmsc_service_method_t *method,
 	return 1;
 }
 
+/**
+ * Get an argument value of a method.
+ *
+ * @param method The method containing the argument.
+ * @param key The name of the argument.
+ * @param value Pointer to the place where the value will be stored to.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_argument_get (xmmsc_service_method_t *method, const char *key,
+                            void *value)
+{
+	int i;
+
+	x_return_val_if_fail (method, 0);
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (value, 0);
+
+	for (i = 0; i < method->num_args; i++) {
+		if (strcasecmp(method->args[i].name, key) == 0) {
+			switch (method->args[i].type) {
+			case XMMSC_SERVICE_ARG_TYPE_UINT32:
+				*(uint32_t *)value = method->args[i].value.uint32;
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_INT32:
+				*(int32_t *)value = method->args[i].value.int32;
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_STRING:
+				*(char **)value = method->args[i].value.string;
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_STRINGLIST:
+				*(char ***)value = method->args[i].value.strings;
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_COLL:
+				*(xmmsc_coll_t **)value = method->args[i].value.coll;
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_BIN:
+				*(unsigned char **)value = method->args[i].value.bin;
+				break;
+			default:
+				return 0;
+			}
+
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Set an argument value of a method.
+ *
+ * @param method The method containing the argument.
+ * @param key The name of the argument.
+ * @param value The new value.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_argument_set (xmmsc_service_method_t *method, const char *key,
+                            const void *value)
+{
+	int i;
+
+	x_return_val_if_fail (method, 0);
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (value, 0);
+
+	for (i = 0; i < method->num_args; i++) {
+		if (strcasecmp(method->args[i].name, key) == 0) {
+			switch (method->args[i].type) {
+			case XMMSC_SERVICE_ARG_TYPE_UINT32:
+				method->args[i].value.uint32 = *(uint32_t *)value;
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_INT32:
+				method->args[i].value.int32 = *(int32_t *)value;
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_STRING:
+				method->args[i].value.string = *(char **)value;
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_STRINGLIST:
+				method->args[i].value.strings = *(char ***)value;
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_COLL:
+				method->args[i].value.coll = *(xmmsc_coll_t **)value;
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_BIN:
+				method->args[i].value.bin = *(unsigned char **)value;
+				break;
+			default:
+				return 0;
+			}
+
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 /* @} */

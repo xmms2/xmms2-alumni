@@ -643,6 +643,8 @@ xmms_service_request (xmms_ipc_msg_t *msg, xmms_socket_t client,
 	if (!(method = xmms_service_method_get (msg, entry, &name, err)))
 		return FALSE;
 
+	XMMS_DBG ("Requesting method (%s) from client (%d)", name, client);
+
 	free (name);
 
 	g_mutex_lock (method->mutex);
@@ -665,9 +667,9 @@ xmms_service_request (xmms_ipc_msg_t *msg, xmms_socket_t client,
 	xmms_object_cmd_arg_init (&arg);
 	arg.retval = xmms_object_cmd_value_dict_new (table);
 	arg.values[0].type = XMMS_OBJECT_CMD_ARG_UINT32;
-	arg.values[0].value.uint32 = cli->fd;
+	arg.values[0].value.uint32 = entry->sc;
 	arg.values[1].type = XMMS_OBJECT_CMD_ARG_UINT32;
-	arg.values[1].value.uint32 = cli->cookie;
+	arg.values[1].value.uint32 = method->cookie;
 	xmms_object_emit (XMMS_OBJECT (xmms_service),
 	                  XMMS_IPC_SIGNAL_SERVICE,
 	                  &arg);
