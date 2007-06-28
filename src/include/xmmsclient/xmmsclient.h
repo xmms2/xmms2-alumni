@@ -361,6 +361,9 @@ xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
                                        const xmmsc_service_t *service,
                                        const xmmsc_service_method_t *method,
                                        const xmmsc_service_argument_t *args);
+xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn, uint32_t cookie,
+                                      const xmmsc_service_method_t *method,
+                                      const xmmsc_service_argument_t *args);
 xmmsc_service_t *xmmsc_service_new (const char *name, const char *description,
                                     uint32_t major, uint32_t minor);
 xmmsc_service_method_t *
@@ -410,6 +413,7 @@ int xmmsc_result_get_collection (xmmsc_result_t *conn, xmmsc_coll_t **coll);
 int xmmsc_result_get_service (xmmsc_result_t *res, xmmsc_service_t **service);
 int xmmsc_result_get_service_method (xmmsc_result_t *res, xmmsc_service_method_t **method);
 int xmmsc_result_get_service_arg_types (xmmsc_result_t *res, xmmsc_service_argument_t **arg);
+int xmmsc_result_get_service_cookie (xmmsc_result_t *res, uint32_t *cookie);
 int xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen);
 
 typedef enum {
