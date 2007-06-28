@@ -263,7 +263,7 @@ xmmsc_service_method_args_list (xmmsc_connection_t *conn, const char *service,
  *
  * @param conn The connection to the server.
  * @param service The id of the service.
- * @param method The id of the method.
+ * @param method The method structure.
  * @param args The arguments passing to the method.
  */
 xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
@@ -272,6 +272,7 @@ xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
                                        const xmmsc_service_argument_t *args)
 {
 	xmms_ipc_msg_t *msg;
+	xmmsc_result_t *res;
 	int i;
 
 	x_check_conn (conn, NULL);
@@ -284,6 +285,63 @@ xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
 	xmms_ipc_msg_put_string (msg, method->name);
 	if (args) {
 		for (i = 0; i < method->num_args; i++) {
+			xmms_ipc_msg_put_string (msg, args[i].name);
+			xmms_ipc_msg_put_uint32 (msg, args[i].none);
+			switch (args[i].type) {
+			case XMMSC_SERVICE_ARG_TYPE_UINT32:
+				xmms_ipc_msg_put_uint32 (msg, args[i].value.uint32);
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_INT32:
+				xmms_ipc_msg_put_int32 (msg, args[i].value.int32);
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_STRING:
+				xmms_ipc_msg_put_string (msg, args[i].value.string);
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_STRINGLIST:
+				xmms_ipc_msg_put_string_list (msg, (const char **)args[i].value.strings);
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_COLL:
+				xmms_ipc_msg_put_collection (msg, args[i].value.coll);
+				break;
+			case XMMSC_SERVICE_ARG_TYPE_BIN:
+				xmms_ipc_msg_put_bin (msg, args[i].value.bin, args[i].len);
+				break;
+			default:
+				return NULL;
+			}
+		}
+	}
+
+	res = xmmsc_send_msg (conn, msg);
+	xmmsc_result_restartable (res, XMMS_IPC_SIGNAL_SERVICE);
+
+	return res;
+}
+
+/**
+ * Return service method request.
+ *
+ * @param conn The connection to the server.
+ * @param cookie The service method request cookie.
+ * @param method The method structure.
+ * @param args The returning arguments.
+ */
+xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn,
+                                      uint32_t cookie,
+                                      const xmmsc_service_method_t *method,
+                                      const xmmsc_service_argument_t *args)
+{
+	xmms_ipc_msg_t *msg;
+	int i;
+
+	x_check_conn (conn, NULL);
+	x_return_val_if_fail (method, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_CMD_SERVICE_RETURN);
+	xmms_ipc_msg_put_uint32 (msg, cookie);
+	if (args) {
+		for (i = 0; i < method->num_rets; i++) {
 			xmms_ipc_msg_put_string (msg, args[i].name);
 			xmms_ipc_msg_put_uint32 (msg, args[i].none);
 			switch (args[i].type) {
@@ -648,10 +706,10 @@ xmmsc_service_argument_set (xmmsc_service_method_t *method, const char *key,
 				method->args[i].value.strings = (char **)value;
 				break;
 			case XMMSC_SERVICE_ARG_TYPE_COLL:
-				method->args[i].value.coll = (xmmsc_coll_t **)value;
+				method->args[i].value.coll = (xmmsc_coll_t *)value;
 				break;
 			case XMMSC_SERVICE_ARG_TYPE_BIN:
-				method->args[i].value.bin = (unsigned char **)value;
+				method->args[i].value.bin = (unsigned char *)value;
 				break;
 			default:
 				return 0;
