@@ -84,16 +84,22 @@ xmmsc_request_send (xmmsc_request_t *req)
 xmmsc_request_t *
 xmmsc_object_property_get (xmmsc_connection_t *c, int object, int property)
 {
+	xmmsc_request_t *req;
 	xmms_ipc_msg_t *msg;
-	int obj, prop;
-
-	/* Probably looks like a switch or cascading if's to determine what
-	 * server-side CMDS are needed to fulfull the property getting */
 
 	msg = xmms_ipc_msg_new (object, property);
 
-	/* If we need to add args now do it */
+	xmms_ipc_msg_put_uint32 (msg, 0); /* 0 is for property, 1 is for cmd */
 
-	return xmmsc_request_new (c, msg);
+	req = xmmsc_request_new (c, msg);
+
+	req->type = 0;
+}
+
+void xmmsc_request_now (xmmsc_request_t *req)
+{
+	if (!req->type) {
+		xmms_ipc_msg_put_uint32 (msg, XMMSC_REQUEST_INTERVAL_NOW);
+	}
 }
 
