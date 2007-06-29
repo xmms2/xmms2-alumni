@@ -31,6 +31,7 @@ struct xmms_service_St {
 
 	GMutex *mutex;
 	GHashTable *registry;
+	GHashTable *clients;
 };
 
 typedef struct xmms_service_St xmms_service_t;

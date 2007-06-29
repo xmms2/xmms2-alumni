@@ -39,7 +39,6 @@ typedef struct xmms_service_entry_St {
 
 	/* Service client fd */
 	xmms_socket_t sc;
-	GHashTable *clients;
 
 	GMutex *mutex;
 	guint count;
@@ -149,6 +148,8 @@ xmms_service_init(void)
 	ret->mutex = g_mutex_new ();
 	ret->registry = g_hash_table_new_full (g_str_hash, g_str_equal, free,
 										   xmms_service_registry_destroy);
+	ret->clients = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+	                                      NULL, g_free);
 
 	xmms_ipc_broadcast_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
 
@@ -227,8 +228,6 @@ xmms_service_entry_new (gchar *name, gchar *description, guint major,
 	entry->minor_version = minor;
 	entry->count = 0;
 	entry->sc = client;
-	entry->clients = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-	                                        NULL, g_free);
 	entry->mutex = g_mutex_new ();
 	entry->methods = g_hash_table_new_full (g_str_hash, g_str_equal, free,
 	                                        xmms_service_method_destroy);
@@ -275,6 +274,7 @@ xmms_service_destroy (xmms_object_t *object)
 	g_mutex_free (service->mutex);
 
 	g_hash_table_destroy (service->registry);
+	g_hash_table_destroy (service->clients);
 
 	xmms_ipc_signal_unregister (XMMS_IPC_SIGNAL_SERVICE);
 
@@ -295,7 +295,6 @@ xmms_service_registry_destroy (gpointer value)
 
 	g_mutex_free (val->mutex);
 
-	g_hash_table_destroy (val->clients);
 	g_hash_table_destroy (val->methods);
 }
 
@@ -663,9 +662,9 @@ xmms_service_request (xmms_ipc_msg_t *msg, xmms_socket_t client,
 	cli->fd = client;
 	cli->cookie = xmms_ipc_msg_get_cookie (msg);
 	cli->method = method->name;
-	g_mutex_lock (entry->mutex);
-	g_hash_table_insert (entry->clients, GUINT_TO_POINTER (next), cli);
-	g_mutex_unlock (entry->mutex);
+	g_mutex_lock (xmms_service->mutex);
+	g_hash_table_insert (xmms_service->clients, GUINT_TO_POINTER (next), cli);
+	g_mutex_unlock (xmms_service->mutex);
 
 	xmms_object_cmd_arg_init (&arg);
 	arg.retval = xmms_object_cmd_value_dict_new (table);
@@ -710,13 +709,14 @@ xmms_service_return (xmms_ipc_msg_t *msg, xmms_socket_t client,
 	                           GUINT_TO_POINTER (client));
 	g_mutex_unlock (xmms_service->mutex);
 
-	g_mutex_lock (entry->mutex);
-	if (!(cli = g_hash_table_lookup (entry->clients, GUINT_TO_POINTER (id)))) {
+	g_mutex_lock (xmms_service->mutex);
+	if (!(cli = g_hash_table_lookup (xmms_service->clients,
+	                                 GUINT_TO_POINTER (id)))) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid client id");
-		g_mutex_unlock (entry->mutex);
+		g_mutex_unlock (xmms_service->mutex);
 		return;
 	}
-	g_mutex_unlock (entry->mutex);
+	g_mutex_unlock (xmms_service->mutex);
 
 	XMMS_DBG ("Returning method call to client (%d)", cli->fd);
 
@@ -737,14 +737,14 @@ xmms_service_return (xmms_ipc_msg_t *msg, xmms_socket_t client,
 	                  XMMS_IPC_SIGNAL_SERVICE,
 	                  &arg);
 
-	g_mutex_lock (entry->mutex);
-	if (!g_hash_table_remove (entry->clients, GUINT_TO_POINTER (id))) {
+	g_mutex_lock (xmms_service->mutex);
+	if (!g_hash_table_remove (xmms_service->clients, GUINT_TO_POINTER (id))) {
 		xmms_error_set (err, XMMS_ERROR_GENERIC,
 		                "Failed to remove method call request");
-		g_mutex_unlock (entry->mutex);
+		g_mutex_unlock (xmms_service->mutex);
 		return;
 	}
-	g_mutex_unlock (entry->mutex);
+	g_mutex_unlock (xmms_service->mutex);
 
 	xmms_object_cmd_value_free (arg.retval);
 }
