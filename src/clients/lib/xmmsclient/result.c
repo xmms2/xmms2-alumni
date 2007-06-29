@@ -583,16 +583,6 @@ xmmsc_result_get_service_method (xmmsc_result_t *res,
 		free (*method);
 		return 0;
 	}
-	if (!xmmsc_result_get_dict_entry_uint (res, "num_rets",
-	                                       &(*method)->num_rets)) {
-		free (*method);
-		return 0;
-	}
-	if (!xmmsc_result_get_dict_entry_uint (res, "num_args",
-	                                       &(*method)->num_args)) {
-		free (*method);
-		return 0;
-	}
 	(*method)->name = x_new0 (char, strlen (name) + 1);
 	strcpy ((*method)->name, name);
 	(*method)->description = x_new0 (char, strlen (desc) + 1);
@@ -608,12 +598,12 @@ xmmsc_result_get_service_method (xmmsc_result_t *res,
  * call the helper function #xmmsc_service_args_free.
  *
  * @param res The #xmmsc_result_t returned by #xmmsc_service_method_args_list.
- * @param arg The return argument list.
+ * @param arg_list The return argument list.
  * @return 1 for success, 0 otherwise.
  */
 int
 xmmsc_result_get_service_arg_types (xmmsc_result_t *res,
-                                    xmmsc_service_argument_t **arg)
+                                    xmmsc_service_arg_list_t **arg_list)
 {
 	char *name = NULL;
 	uint32_t i = 0;
@@ -622,33 +612,40 @@ xmmsc_result_get_service_arg_types (xmmsc_result_t *res,
 		return 0;
 	}
 
+	*arg_list = x_new0 (xmmsc_service_arg_list_t, 1);
+
 	for (; xmmsc_result_list_valid (res); i++, xmmsc_result_list_next (res)) ;
 	xmmsc_result_list_first (res);
-	*arg = x_new0 (xmmsc_service_argument_t, i);
+	(*arg_list)->size = i;
+	(*arg_list)->args = x_new0 (xmmsc_service_argument_t, i);
 
 	i = 0;
 	while (xmmsc_result_list_valid (res)) {
 		if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
 			while (i-- > 0)
-				free ((*arg)[i].name);
-			free (*arg);
+				free ((*arg_list)->args[i].name);
+			free ((*arg_list)->args);
+			free (*arg_list);
 			return 0;
 		}
-		if (!xmmsc_result_get_dict_entry_uint (res, "type", &(*arg)[i].type)) {
+		if (!xmmsc_result_get_dict_entry_uint (res, "type",
+		                                       &(*arg_list)->args[i].type)) {
 			while (i-- > 0)
-				free ((*arg)[i].name);
-			free (*arg);
+				free ((*arg_list)->args[i].name);
+			free ((*arg_list)->args);
+			free (*arg_list);
 			return 0;
 		}
 		if (!xmmsc_result_get_dict_entry_uint (res, "optional",
-		                                       &(*arg)[i].optional)) {
+		                                       &(*arg_list)->args[i].optional)) {
 			while (i-- > 0)
-				free ((*arg)[i].name);
-			free (*arg);
+				free ((*arg_list)->args[i].name);
+			free ((*arg_list)->args);
+			free (*arg_list);
 			return 0;
 		}
-		(*arg)[i].name = x_new0 (char, strlen (name) + 1);
-		strcpy ((*arg)[i].name, name);
+		(*arg_list)->args[i].name = x_new0 (char, strlen (name) + 1);
+		strcpy ((*arg_list)->args[i].name, name);
 
 		i++;
 		xmmsc_result_list_next (res);
