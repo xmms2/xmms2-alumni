@@ -58,7 +58,7 @@ def write_cmd_code(node):
 	    (node.getAttribute("name"),node.getAttribute("name")))
 
 #    cfile.write("\t
-    #go through each method in the node and call xmms_object_cmd_add on them
+    #go through each method in the node and call xmms_ipc_object_cmd_add on them
     cfile.write("}\n\n")
 
 def do_enums(enums):
