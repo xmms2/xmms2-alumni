@@ -54,7 +54,7 @@ def write_cmd_code(node):
     cfile.write("}\n\n");
 
     #registration function
-    cfile.write("void\nxmms_%s_cmds_register (xmms_%s_cmds_t *cmds)\n{\n" % \
+    cfile.write("void\nxmms_%s_cmds_register (xmms_ipc_t *ipc, xmms_%s_cmds_t *cmds)\n{\n" % \
 	    (node.getAttribute("name"),node.getAttribute("name")))
 
 #    cfile.write("\t
@@ -229,7 +229,7 @@ def do_objects(objects):
 		hfile.write("xmms_%s_cmds_t * xmms_%s_cmds_init (xmms_object_t *obj);\n" % \
 			(node.getAttribute("name"), node.getAttribute("name")))
 
-		hfile.write("void xmms_%s_cmds_register (xmms_%s_cmds_t *cmds);\n" % \
+		hfile.write("void xmms_%s_cmds_register (xmms_ipc_t *ipc, xmms_%s_cmds_t *cmds);\n" % \
 			(node.getAttribute("name"), node.getAttribute("name")))
 
 		hfile.write("#endif\n")
