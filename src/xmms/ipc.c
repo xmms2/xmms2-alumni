@@ -35,8 +35,6 @@
  */
 typedef struct xmms_ipc_object_pool_t {
 	xmms_object_t *objects[XMMS_IPC_OBJECT_END];
-	xmms_object_t *signals[XMMS_IPC_SIGNAL_END];
-	xmms_object_t *broadcasts[XMMS_IPC_SIGNAL_END];
 } xmms_ipc_object_pool_t;
 
 
@@ -49,8 +47,7 @@ struct xmms_ipc_St {
 	GIOChannel *chan;
 	GMutex *mutex_lock;
 	xmms_object_t **objects;
-	xmms_object_t **signals;
-	xmms_object_t **broadcasts;
+	GPtrArray *cmds; /* List of all the xmms_*_cmds_t structures */
 };
 
 
@@ -74,9 +71,6 @@ typedef struct xmms_ipc_client_St {
 
 	/** Messages waiting to be written */
 	GQueue *out_msg;
-
-	guint pendingsignals[XMMS_IPC_SIGNAL_END];
-	GList *broadcasts[XMMS_IPC_SIGNAL_END];
 } xmms_ipc_client_t;
 
 static GMutex *ipc_servers_lock;
