@@ -56,9 +56,7 @@ typedef struct xmms_service_method_St {
 
 	guint cookie;
 
-	guint num_rets;
 	GHashTable *rets;
-	guint num_args;
 	GHashTable *args;
 } xmms_service_method_t;
 
@@ -89,9 +87,7 @@ static xmms_service_entry_t *xmms_service_entry_new (gchar *name,
 static xmms_service_method_t *xmms_service_method_new (gchar *name,
                                                        gchar *description,
                                                        guint cookie,
-                                                       guint num_rets,
                                                        GHashTable *rets,
-                                                       guint num_args,
                                                        GHashTable *args);
 static void xmms_service_destroy (xmms_object_t *object);
 static void xmms_service_registry_destroy (gpointer value);
@@ -237,8 +233,7 @@ xmms_service_entry_new (gchar *name, gchar *description, guint major,
 
 static xmms_service_method_t *
 xmms_service_method_new (gchar *name, gchar *description, guint cookie,
-                         guint num_rets, GHashTable *rets,
-                         guint num_args, GHashTable *args)
+                         GHashTable *rets, GHashTable *args)
 {
 	xmms_service_method_t *method;
 
@@ -253,9 +248,7 @@ xmms_service_method_new (gchar *name, gchar *description, guint cookie,
 	method->description = description;
 	method->mutex = g_mutex_new ();
 	method->cookie = cookie;
-	method->num_rets = num_rets;
 	method->rets = rets;
-	method->num_args = num_args;
 	method->args = args;
 
 	return method;
@@ -420,8 +413,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	}
 
 	method = xmms_service_method_new (name, desc, xmms_ipc_msg_get_cookie (msg),
-	                                  g_hash_table_size (rets), rets,
-	                                  g_hash_table_size (args), args);
+	                                  rets, args);
 	g_mutex_lock (entry->mutex);
 	entry->count++;
 	g_hash_table_insert (entry->methods, name, method);
@@ -591,9 +583,9 @@ xmms_service_method_list (xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg)
 			g_hash_table_insert (dict, "name", val);
 			val = xmms_object_cmd_value_str_new (method->description);
 			g_hash_table_insert (dict, "description", val);
-			val = xmms_object_cmd_value_uint_new (method->num_rets);
+			val = xmms_object_cmd_value_uint_new (g_hash_table_size (method->rets));
 			g_hash_table_insert (dict, "num_rets", val);
-			val = xmms_object_cmd_value_uint_new (method->num_args);
+			val = xmms_object_cmd_value_uint_new (g_hash_table_size (method->args));
 			g_hash_table_insert (dict, "num_args", val);
 			g_mutex_unlock (method->mutex);
 
