@@ -389,10 +389,20 @@ int xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
                                         const char *key, void *value);
 int xmmsc_service_method_attribute_set (xmmsc_service_method_t *method,
                                         const char *key, const void *value);
-int xmmsc_service_argument_get (xmmsc_service_arg_list_t *arg_list,
-                                const char *key, void *value);
-int xmmsc_service_argument_set (xmmsc_service_arg_list_t *arg_list,
-                                const char *key, const void *value);
+int xmmsc_service_arg_list_size (xmmsc_service_arg_list_t *arg_list,
+                                 uint32_t *size);
+int xmmsc_service_arg_attribute_get (xmmsc_service_arg_list_t *arg_list,
+                                     const char *name, const char *key,
+                                     void *value);
+int xmmsc_service_arg_attribute_set (xmmsc_service_arg_list_t *arg_list,
+                                     const char *name, const char *key,
+                                     const void *value);
+int xmmsc_service_arg_value_get (xmmsc_service_arg_list_t *arg_list,
+                                 const char *key, void *value);
+int xmmsc_service_arg_value_set (xmmsc_service_arg_list_t *arg_list,
+                                 const char *key, const void *value);
+int xmmsc_service_arg_value_setnone (xmmsc_service_arg_list_t *arg_list,
+                                     const char *key);
 
 /*
  * RESULTS
