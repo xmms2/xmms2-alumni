@@ -39,6 +39,9 @@
  * @{
  */
 
+static int xmmsc_service_argument_write (xmms_ipc_msg_t *msg,
+                                         xmmsc_service_argument_t *arg);
+
 /**
  * Register a new method.
  *
@@ -287,29 +290,10 @@ xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
 		for (i = 0; i < arg_list->size; i++) {
 			xmms_ipc_msg_put_string (msg, arg_list->args[i].name);
 			xmms_ipc_msg_put_uint32 (msg, arg_list->args[i].none);
-			switch (arg_list->args[i].type) {
-			case XMMSC_SERVICE_ARG_TYPE_UINT32:
-				xmms_ipc_msg_put_uint32 (msg, arg_list->args[i].value.uint32);
-				break;
-			case XMMSC_SERVICE_ARG_TYPE_INT32:
-				xmms_ipc_msg_put_int32 (msg, arg_list->args[i].value.int32);
-				break;
-			case XMMSC_SERVICE_ARG_TYPE_STRING:
-				xmms_ipc_msg_put_string (msg, arg_list->args[i].value.string);
-				break;
-			case XMMSC_SERVICE_ARG_TYPE_STRINGLIST:
-				xmms_ipc_msg_put_string_list (msg, (const char **)arg_list->args[i].value.strings);
-				break;
-			case XMMSC_SERVICE_ARG_TYPE_COLL:
-				xmms_ipc_msg_put_collection (msg, arg_list->args[i].value.coll);
-				break;
-			case XMMSC_SERVICE_ARG_TYPE_BIN:
-				xmms_ipc_msg_put_bin (msg, arg_list->args[i].value.bin,
-				                      arg_list->args[i].len);
-				break;
-			default:
-				return NULL;
-			}
+			if (arg_list->args[i].none)
+				continue;
+			if (!xmmsc_service_argument_write (msg, arg_list->args + i))
+				return 0;
 		}
 	}
 
@@ -347,29 +331,10 @@ xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn,
 		for (i = 0; i < arg_list->size; i++) {
 			xmms_ipc_msg_put_string (msg, arg_list->args[i].name);
 			xmms_ipc_msg_put_uint32 (msg, arg_list->args[i].none);
-			switch (arg_list->args[i].type) {
-			case XMMSC_SERVICE_ARG_TYPE_UINT32:
-				xmms_ipc_msg_put_uint32 (msg, arg_list->args[i].value.uint32);
-				break;
-			case XMMSC_SERVICE_ARG_TYPE_INT32:
-				xmms_ipc_msg_put_int32 (msg, arg_list->args[i].value.int32);
-				break;
-			case XMMSC_SERVICE_ARG_TYPE_STRING:
-				xmms_ipc_msg_put_string (msg, arg_list->args[i].value.string);
-				break;
-			case XMMSC_SERVICE_ARG_TYPE_STRINGLIST:
-				xmms_ipc_msg_put_string_list (msg, (const char **)arg_list->args[i].value.strings);
-				break;
-			case XMMSC_SERVICE_ARG_TYPE_COLL:
-				xmms_ipc_msg_put_collection (msg, arg_list->args[i].value.coll);
-				break;
-			case XMMSC_SERVICE_ARG_TYPE_BIN:
-				xmms_ipc_msg_put_bin (msg, arg_list->args[i].value.bin,
-				                      arg_list->args[i].len);
-				break;
-			default:
-				return NULL;
-			}
+			if (arg_list->args[i].none)
+				continue;
+			if (!xmmsc_service_argument_write (msg, arg_list->args + i))
+				return 0;
 		}
 	}
 
@@ -521,7 +486,7 @@ xmmsc_service_args_free (xmmsc_service_arg_list_t *args)
 }
 
 /**
- * Get an attribute from a service.
+ * Get an attribute of a service.
  *
  * The returned value is owned by the service.
  *
@@ -555,7 +520,7 @@ xmmsc_service_attribute_get (xmmsc_service_t *service, const char *key,
 }
 
 /**
- * Set an attribute from a service.
+ * Set an attribute of a service.
  *
  * @param service The service containing the attribute.
  * @param key The name of the attribute.
@@ -587,7 +552,7 @@ xmmsc_service_attribute_set (xmmsc_service_t *service, const char *key,
 }
 
 /**
- * Get an attribute from a method.
+ * Get an attribute of a method.
  *
  * The returned value is owned by the method.
  *
@@ -621,7 +586,7 @@ xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
 }
 
 /**
- * Set an attribute from a method.
+ * Set an attribute of a method.
  *
  * @param method The method containing the attribute.
  * @param key The name of the attribute.
@@ -653,6 +618,102 @@ xmmsc_service_method_attribute_set (xmmsc_service_method_t *method,
 }
 
 /**
+ * Get the size of an argument list.
+ *
+ * @param arg_list The argument list containing the size.
+ * @param size Pointer to the place to store the size.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_arg_list_size (xmmsc_service_arg_list_t *arg_list, uint32_t *size)
+{
+	x_return_val_if_fail (arg_list, 0);
+	x_return_val_if_fail (size, 0);
+
+	*size = arg_list->size;
+
+	return 1;
+}
+
+/**
+ * Get an attribute of an argument.
+ *
+ * @param arg_list The argument list containing the argument.
+ * @param name The name of the argument.
+ * @param key The name of the attribute.
+ * @param value The new value.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_arg_attribute_get (xmmsc_service_arg_list_t *arg_list,
+                                 const char *name, const char *key,
+                                 void *value)
+{
+	int i;
+
+	x_return_val_if_fail (arg_list, 0);
+	x_return_val_if_fail (name, 0);
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (value, 0);
+
+	for (i = 0; i < arg_list->size; i++) {
+		if (strcasecmp (arg_list->args[i].name, name) == 0) {
+			if (strcasecmp (key, "type") == 0)
+				*(xmmsc_service_arg_type_t *)value = arg_list->args[i].type;
+			else if (strcasecmp (key, "optional") == 0)
+				*(uint32_t *)value = arg_list->args[i].optional;
+			else if (strcasecmp (key, "none") == 0)
+				*(uint32_t *)value = arg_list->args[i].none;
+			else
+				return 0;
+
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Set an attribute of an argument.
+ *
+ * @param arg_list The argument list containing the argument.
+ * @param name The name of the argument.
+ * @param key The name of the attribute.
+ * @param value The new value.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_arg_attribute_set (xmmsc_service_arg_list_t *arg_list,
+                                 const char *name, const char *key,
+                                 const void *value)
+{
+	int i;
+
+	x_return_val_if_fail (arg_list, 0);
+	x_return_val_if_fail (name, 0);
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (value, 0);
+
+	for (i = 0; i < arg_list->size; i++) {
+		if (strcasecmp (arg_list->args[i].name, name) == 0) {
+			if (strcasecmp (key, "type") == 0)
+				arg_list->args[i].type = *(xmmsc_service_arg_type_t *)value;
+			else if (strcasecmp (key, "optional") == 0)
+				arg_list->args[i].optional = *(uint32_t *)value;
+			else if (strcasecmp (key, "none") == 0)
+				arg_list->args[i].none = *(uint32_t *)value;
+			else
+				return 0;
+
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+/**
  * Get an argument value of a method.
  *
  * @param arg_list The argument list containing the argument.
@@ -661,8 +722,8 @@ xmmsc_service_method_attribute_set (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_argument_get (xmmsc_service_arg_list_t *arg_list, const char *key,
-                            void *value)
+xmmsc_service_arg_value_get (xmmsc_service_arg_list_t *arg_list, const char *key,
+                             void *value)
 {
 	int i;
 
@@ -671,7 +732,7 @@ xmmsc_service_argument_get (xmmsc_service_arg_list_t *arg_list, const char *key,
 	x_return_val_if_fail (value, 0);
 
 	for (i = 0; i < arg_list->size; i++) {
-		if (strcasecmp(arg_list->args[i].name, key) == 0) {
+		if (strcasecmp (arg_list->args[i].name, key) == 0) {
 			switch (arg_list->args[i].type) {
 			case XMMSC_SERVICE_ARG_TYPE_UINT32:
 				*(uint32_t *)value = arg_list->args[i].value.uint32;
@@ -711,7 +772,7 @@ xmmsc_service_argument_get (xmmsc_service_arg_list_t *arg_list, const char *key,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_argument_set (xmmsc_service_arg_list_t *arg_list, const char *key,
+xmmsc_service_arg_value_set (xmmsc_service_arg_list_t *arg_list, const char *key,
                             const void *value)
 {
 	int i;
@@ -721,7 +782,7 @@ xmmsc_service_argument_set (xmmsc_service_arg_list_t *arg_list, const char *key,
 	x_return_val_if_fail (value, 0);
 
 	for (i = 0; i < arg_list->size; i++) {
-		if (strcasecmp(arg_list->args[i].name, key) == 0) {
+		if (strcasecmp (arg_list->args[i].name, key) == 0) {
 			switch (arg_list->args[i].type) {
 			case XMMSC_SERVICE_ARG_TYPE_UINT32:
 				arg_list->args[i].value.uint32 = *(uint32_t *)value;
@@ -750,6 +811,69 @@ xmmsc_service_argument_set (xmmsc_service_arg_list_t *arg_list, const char *key,
 	}
 
 	return 0;
+}
+
+/**
+ * Set an argument value to none.
+ *
+ * @param arg_list The argument list containing the argument.
+ * @param key The name of the argument.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_arg_value_setnone (xmmsc_service_arg_list_t *arg_list,
+                                 const char *key)
+{
+	int i;
+
+	x_return_val_if_fail (arg_list, 0);
+	x_return_val_if_fail (key, 0);
+
+	for (i = 0; i < arg_list->size; i++) {
+		if (strcasecmp (arg_list->args[i].name, key) == 0) {
+			arg_list->args[i].none = 1;
+
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * @internal
+ */
+static int
+xmmsc_service_argument_write (xmms_ipc_msg_t *msg, xmmsc_service_argument_t *arg)
+{
+	x_return_val_if_fail (msg, 0);
+	x_return_val_if_fail (arg, 0);
+
+	switch (arg->type) {
+	case XMMSC_SERVICE_ARG_TYPE_UINT32:
+		xmms_ipc_msg_put_uint32 (msg, arg->value.uint32);
+		break;
+	case XMMSC_SERVICE_ARG_TYPE_INT32:
+		xmms_ipc_msg_put_int32 (msg, arg->value.int32);
+		break;
+	case XMMSC_SERVICE_ARG_TYPE_STRING:
+		xmms_ipc_msg_put_string (msg, arg->value.string);
+		break;
+	case XMMSC_SERVICE_ARG_TYPE_STRINGLIST:
+		xmms_ipc_msg_put_string_list (msg, (const char **)arg->value.strings);
+		break;
+	case XMMSC_SERVICE_ARG_TYPE_COLL:
+		xmms_ipc_msg_put_collection (msg, arg->value.coll);
+		break;
+	case XMMSC_SERVICE_ARG_TYPE_BIN:
+		xmms_ipc_msg_put_bin (msg, arg->value.bin,
+							  arg->len);
+		break;
+	default:
+		return 0;
+	}
+
+	return 1;
 }
 
 /* @} */
