@@ -16,8 +16,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
-#include <ctype.h>
 
 #include "xmmsclient/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient.h"
@@ -438,6 +438,42 @@ xmmsc_service_method_new (const char *name, const char *description,
 	ret->ret_list = rets;
 	ret->arg_list = args;
 	ret->func = func;
+
+	return ret;
+}
+
+/**
+ * Create a new #xmmsc_service_arg_list_t.
+ *
+ * Caller is responsible for freeing the returned structure using
+ * #xmmsc_service_args_free.
+ *
+ * @param size The size of the argument list.
+ * @return The newly created #xmmsc_service_arg_list_t.
+ */
+xmmsc_service_arg_list_t *
+xmmsc_service_args_new (uint32_t size, ...)
+{
+	xmmsc_service_arg_list_t *ret = NULL;
+	va_list ap;
+	char *name = NULL;
+	xmmsc_service_arg_type_t type;
+	uint32_t i;
+
+	if (!size)
+		return NULL;
+
+	ret = x_new0 (xmmsc_service_arg_list_t, 1);
+
+	ret->size = size;
+	ret->args = x_new0 (xmmsc_service_argument_t, size);
+
+	va_start (ap, size);
+	for (i = 0; i < ret->size; i++) {
+		ret->args[i].name = strdup (va_arg (ap, char *));
+		ret->args[i].type = va_arg (ap, xmmsc_service_arg_type_t);
+	}
+	va_end (ap);
 
 	return ret;
 }
