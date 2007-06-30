@@ -757,6 +757,12 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 				xmms_ipc_msg_set_cookie (msg, GPOINTER_TO_UINT (l->data));
 				xmms_ipc_handle_cmd_value (msg, ((xmms_object_cmd_arg_t*)arg)->retval);
 				xmms_ipc_client_msg_write (cli, msg);
+				if (broadcastid == XMMS_IPC_SIGNAL_SERVICE) {
+					g_mutex_unlock (cli->lock);
+					g_mutex_unlock (ipc->mutex_lock);
+					g_mutex_unlock (ipc_servers_lock);
+					return;
+				}
 			}
 			g_mutex_unlock (cli->lock);
 		}
