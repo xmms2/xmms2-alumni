@@ -380,6 +380,7 @@ xmmsc_service_method_new (const char *name, const char *description,
                           xmmsc_service_arg_list_t *rets,
                           xmmsc_service_arg_list_t *args,
                           xmmsc_result_notifier_t func);
+xmmsc_service_arg_list_t *xmmsc_service_args_new (uint32_t size, ...);
 void xmmsc_service_free (xmmsc_service_t *service);
 void xmmsc_service_method_free (xmmsc_service_method_t *method);
 void xmmsc_service_args_free (xmmsc_service_arg_list_t *args);
