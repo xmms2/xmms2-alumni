@@ -53,6 +53,63 @@ struct xmmsc_connection_St {
 	char *clientname;
 };
 
+/**
+ * @typedef xmmsc_service_argument_t
+ *
+ * Holds all data about a single service method argument.
+ */
+struct xmmsc_service_argument_St {
+	char *name;
+	xmmsc_service_arg_type_t type;
+	uint32_t optional;
+	uint32_t none;
+	union {
+		uint32_t uint32;
+		int32_t int32;
+		char *string;
+		char **strings;
+		xmmsc_coll_t *coll;
+		unsigned char *bin;
+	} value;
+	uint32_t len;
+};
+
+/**
+ * @typedef xmmsc_service_arg_list_t
+ *
+ * Holds an argument list of a method.
+ */
+struct xmmsc_service_arg_list_St {
+	uint32_t size;
+	xmmsc_service_argument_t *args;
+};
+
+/**
+ * @typedef xmmsc_service_t
+ *
+ * Holds all data of a single service.
+ */
+struct xmmsc_service_St {
+	char *name;
+	char *description;
+	uint32_t major_version;
+	uint32_t minor_version;
+	uint32_t count;
+};
+
+/**
+ * @typedef xmmsc_service_method_t
+ *
+ * Holds all data of a single service method.
+ */
+struct xmmsc_service_method_St {
+	char *name;
+	char *description;
+	xmmsc_service_arg_list_t *ret_list;
+	xmmsc_service_arg_list_t *arg_list;
+	xmmsc_result_notifier_t func;
+};
+
 xmmsc_result_t *xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type, uint32_t cookie);
 
 uint32_t xmmsc_result_cookie_get (xmmsc_result_t *result);
