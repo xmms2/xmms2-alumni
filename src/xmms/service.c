@@ -148,6 +148,10 @@ xmms_service_init(void)
 	                                      NULL, g_free);
 
 	xmms_ipc_broadcast_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
+	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
+	                             XMMS_IPC_SIGNAL_SERVICE_CHANGED);
+	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
+	                             XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED);
 
 	xmms_service = ret;
 
@@ -319,6 +323,7 @@ xmms_service_register (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t *
 	guint len;
 	gchar *desc = NULL;
 	guint major, minor;
+	GList *list = NULL;
 	xmms_service_entry_t *entry;
 
 	g_return_val_if_fail (msg, FALSE);
@@ -355,7 +360,14 @@ xmms_service_register (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t *
 		entry = xmms_service_entry_new (name, desc, major, minor, client);
 		g_mutex_lock (xmms_service->mutex);
 		g_hash_table_insert (xmms_service->registry, name, entry);
+		g_hash_table_foreach (xmms_service->registry,
+		                      xmms_service_key_insert, &list);
 		g_mutex_unlock (xmms_service->mutex);
+
+		xmms_object_emit_f (XMMS_OBJECT (xmms_service),
+		                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
+		                    XMMS_OBJECT_CMD_ARG_STRINGLIST,
+		                    list);
 		XMMS_DBG ("New service registered");
 	}
 
@@ -374,6 +386,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	gchar *desc = NULL;
 	GHashTable *rets = NULL;
 	GHashTable *args = NULL;
+	GList *list = NULL;
 	xmms_service_method_t *method;
 
 	/**
@@ -417,8 +430,13 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	g_mutex_lock (entry->mutex);
 	entry->count++;
 	g_hash_table_insert (entry->methods, name, method);
+	g_hash_table_foreach (entry->methods, xmms_service_key_insert, &list);
 	g_mutex_unlock (entry->mutex);
 
+	xmms_object_emit_f (XMMS_OBJECT (xmms_service),
+	                    XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED,
+	                    XMMS_OBJECT_CMD_ARG_STRINGLIST,
+	                    list);
 	XMMS_DBG ("New method registered");
 
 	return TRUE;
@@ -431,6 +449,7 @@ static void
 xmms_service_unregister (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t *err)
 {
 	gchar *name = NULL;
+	GList *list = NULL;
 	xmms_service_entry_t *entry;
 
 	if (!msg) {
@@ -463,7 +482,14 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t
 		g_mutex_lock (xmms_service->mutex);
 		if (!g_hash_table_remove (xmms_service->registry, name))
 			xmms_error_set (err, XMMS_ERROR_GENERIC, "Failed to remove service");
+		g_hash_table_foreach (xmms_service->registry,
+		                      xmms_service_key_insert, &list);
 		g_mutex_unlock (xmms_service->mutex);
+
+		xmms_object_emit_f (XMMS_OBJECT (xmms_service),
+		                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
+		                    XMMS_OBJECT_CMD_ARG_STRINGLIST,
+		                    list);
 	}
 
 	XMMS_DBG ("Service unregistered.");
@@ -480,6 +506,7 @@ xmms_service_method_unregister (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry
                                 xmms_error_t *err)
 {
 	gchar *name = NULL;
+	GList *list = NULL;
 	gboolean ret = FALSE;
 
 	if (xmms_service_method_get (msg, entry, &name, err)) {
@@ -487,10 +514,17 @@ xmms_service_method_unregister (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry
 		if (!g_hash_table_remove (entry->methods, name)) {
 			xmms_error_set (err, XMMS_ERROR_INVAL, "Invalid method name!");
 			ret = TRUE;
-		} else
+		} else {
 			ret = --(entry->count) == 0 ? FALSE : TRUE;
+			g_hash_table_foreach (entry->methods,
+			                      xmms_service_key_insert, &list);
+		}
 		g_mutex_unlock (entry->mutex);
 
+		xmms_object_emit_f (XMMS_OBJECT (xmms_service),
+		                    XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED,
+		                    XMMS_OBJECT_CMD_ARG_STRINGLIST,
+		                    list);
 		XMMS_DBG ("Method unregistered.");
 	}
 
