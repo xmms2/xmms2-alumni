@@ -342,6 +342,37 @@ xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn,
 }
 
 /**
+ * Request the service changed broadcast from the server.
+ *
+ * Everytime a service is registered, unregistered or modified, the broadcast
+ * will be emitted. The returned #xmmsc_result_t of the broadcast is a list of
+ * service ids after the service's modification.
+ */
+xmmsc_result_t *
+xmmsc_broadcast_service_changed (xmmsc_connection_t *c)
+{
+	x_check_conn (c, NULL);
+
+	return xmmsc_send_broadcast_msg (c, XMMS_IPC_SIGNAL_SERVICE_CHANGED);
+}
+
+/**
+ * Request the service method changed broadcast from the server.
+ *
+ * Everytime a service method is registered, unregistered or modified, the
+ * broadcast will be emitted. The returned #xmmsc_result_t of the broadcast is a
+ * list of method ids available in the same service after the method's
+ * modification.
+ */
+xmmsc_result_t *
+xmmsc_broadcast_service_method_changed (xmmsc_connection_t *c)
+{
+	x_check_conn (c, NULL);
+
+	return xmmsc_send_broadcast_msg (c, XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED);
+}
+
+/**
  * Create a new #xmmsc_service_t.
  *
  * Caller is responsible for freeing the returned structure using
