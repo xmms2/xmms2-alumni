@@ -295,46 +295,10 @@ typedef enum {
 	XMMSC_SERVICE_ARG_TYPE_BIN = XMMS_OBJECT_CMD_ARG_BIN
 } xmmsc_service_arg_type_t;
 
-typedef struct xmmsc_service_argument_St xmmsc_service_argument_t;
-struct xmmsc_service_argument_St {
-	char *name;
-	xmmsc_service_arg_type_t type;
-	uint32_t optional;
-	uint32_t none;
-	union {
-		uint32_t uint32;
-		int32_t int32;
-		char *string;
-		char **strings;
-		xmmsc_coll_t *coll;
-		unsigned char *bin;
-	} value;
-	uint32_t len;
-};
-
-typedef struct xmmsc_service_arg_list_St xmmsc_service_arg_list_t;
-struct xmmsc_service_arg_list_St {
-	uint32_t size;
-	xmmsc_service_argument_t *args;
-};
-
 typedef struct xmmsc_service_St xmmsc_service_t;
-struct xmmsc_service_St {
-	char *name;
-	char *description;
-	uint32_t major_version;
-	uint32_t minor_version;
-	uint32_t count;
-};
-
 typedef struct xmmsc_service_method_St xmmsc_service_method_t;
-struct xmmsc_service_method_St {
-	char *name;
-	char *description;
-	xmmsc_service_arg_list_t *ret_list;
-	xmmsc_service_arg_list_t *arg_list;
-	xmmsc_result_notifier_t func;
-};
+typedef struct xmmsc_service_arg_list_St xmmsc_service_arg_list_t;
+typedef struct xmmsc_service_argument_St xmmsc_service_argument_t;
 
 xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn,
                                         xmmsc_service_t *service,
