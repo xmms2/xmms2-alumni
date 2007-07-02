@@ -57,8 +57,9 @@ def write_cmd_code(node):
     cfile.write("void\nxmms_%s_cmds_register (xmms_ipc_t *ipc, xmms_%s_cmds_t *cmds)\n{\n" % \
 	    (node.getAttribute("name"),node.getAttribute("name")))
 
-#    cfile.write("\t
-    #go through each method in the node and call xmms_ipc_object_cmd_add on them
+    #add an entry in GPtrArray for the cmds(indexed by XMMSC_IPC_OBJECT_XXX)
+    cfile.write("\tipc->cmds = g_list_insert (ipc->cmds, (gpointer) cmds, XMMSC_IPC_OBJECT_%s);\n" % node.getAttribute("name"))
+
     cfile.write("}\n\n")
 
 def do_enums(enums):
