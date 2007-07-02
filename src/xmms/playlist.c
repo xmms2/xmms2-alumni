@@ -286,12 +286,12 @@ xmms_playlist_init (void)
 
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_PLAYLIST, XMMS_OBJECT (ret));
 
-	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
-	                             XMMS_IPC_SIGNAL_PLAYLIST_CHANGED);
-	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
-	                             XMMS_IPC_SIGNAL_PLAYLIST_CURRENT_POS);
-	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
-	                             XMMS_IPC_SIGNAL_PLAYLIST_LOADED);
+//	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
+//	                             XMMS_IPC_SIGNAL_PLAYLIST_CHANGED);
+//	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
+//	                             XMMS_IPC_SIGNAL_PLAYLIST_CURRENT_POS);
+//	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
+//	                             XMMS_IPC_SIGNAL_PLAYLIST_LOADED);
 
 	val = xmms_config_property_register ("playlist.repeat_one", "0",
 	                                     on_playlist_r_one_changed, ret);
@@ -1509,8 +1509,8 @@ xmms_playlist_destroy (xmms_object_t *object)
 	xmms_object_unref (playlist->colldag);
 	xmms_object_unref (playlist->mediainfordr);
 
-	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_PLAYLIST_CHANGED);
-	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_PLAYLIST_CURRENT_POS);
+//	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_PLAYLIST_CHANGED);
+//	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_PLAYLIST_CURRENT_POS);
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_PLAYLIST);
 }
 
