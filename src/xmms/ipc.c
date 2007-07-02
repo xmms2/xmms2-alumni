@@ -47,7 +47,7 @@ struct xmms_ipc_St {
 	GIOChannel *chan;
 	GMutex *mutex_lock;
 	xmms_object_t **objects;
-	GPtrArray *cmds; /* List of all the xmms_*_cmds_t structures */
+	GList *cmds; /* List of all the xmms_*_cmds_t structures */
 };
 
 
@@ -527,6 +527,7 @@ xmms_ipc_setup_server (const gchar *path)
 		ipc->signals = ipc_object_pool->signals;
 		ipc->broadcasts = ipc_object_pool->broadcasts;
 		ipc->objects = ipc_object_pool->objects;
+		ipc->cmds = NULL;
 
 		xmms_ipc_setup_server_internaly (ipc);
 		xmms_log_info ("IPC listening on '%s'.", split[i]);
