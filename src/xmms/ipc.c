@@ -278,6 +278,10 @@ xmms_ipc_client_destroy (xmms_ipc_client_t *client)
 
 	g_queue_free (client->out_msg);
 
+	for (i = 0; i < XMMS_IPC_SIGNAL_END; i++) {
+		g_list_free (client->broadcasts[i]);
+	}
+
 	g_mutex_unlock (client->lock);
 	g_mutex_free (client->lock);
 	g_free (client);
@@ -390,12 +394,12 @@ xmms_ipc_has_pending (guint signalid)
 		for (c = ipc->clients; c; c = g_list_next (c)) {
 			xmms_ipc_client_t *cli = c->data;
 			g_mutex_lock (cli->lock);
-//			if (cli->pendingsignals[signalid]) {
-//				g_mutex_unlock (cli->lock);
-//				g_mutex_unlock (ipc->mutex_lock);
-//				g_mutex_unlock (ipc_servers_lock);
-//				return TRUE;
-//			}
+			if (cli->pendingsignals[signalid]) {
+				g_mutex_unlock (cli->lock);
+				g_mutex_unlock (ipc->mutex_lock);
+				g_mutex_unlock (ipc_servers_lock);
+				return TRUE;
+			}
 			g_mutex_unlock (cli->lock);
 		}
 		g_mutex_unlock (ipc->mutex_lock);
@@ -520,6 +524,8 @@ xmms_ipc_setup_server (const gchar *path)
 
 		ipc->mutex_lock = g_mutex_new ();
 		ipc->transport = transport;
+		ipc->signals = ipc_object_pool->signals;
+		ipc->broadcasts = ipc_object_pool->broadcasts;
 		ipc->objects = ipc_object_pool->objects;
 		ipc->cmds = NULL;
 
