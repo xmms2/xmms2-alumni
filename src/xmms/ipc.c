@@ -102,7 +102,7 @@ hash_to_dict (gpointer key, gpointer value, gpointer udata)
 
 	if (k && v) {
 		xmms_ipc_msg_put_string (msg, k);
-		xmms_ipc_handle_cmd_value (msg, v);
+//		xmms_ipc_handle_cmd_value (msg, v);
 	}
 
 }
@@ -137,7 +137,7 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 			if (xmms_ipc_msg_read_transport (client->read_msg, client->transport, &disconnect)) {
 				xmms_ipc_msg_t *msg = client->read_msg;
 				client->read_msg = NULL;
-				process_msg (client, client->ipc, msg);
+//				process_msg (client, client->ipc, msg);
 				xmms_ipc_msg_destroy (msg);
 			} else {
 				break;

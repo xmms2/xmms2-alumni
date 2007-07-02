@@ -643,7 +643,7 @@ xmms_config_destroy (xmms_object_t *object)
 
 	g_hash_table_destroy (config->properties);
 
-	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED);
+//	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED);
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_CONFIG);
 }
 
@@ -692,8 +692,8 @@ xmms_config_init (const gchar *filename)
 	global_config = config;
 
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_CONFIG, XMMS_OBJECT (config));
-	xmms_ipc_broadcast_register (XMMS_OBJECT (config),
-	                             XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED);
+//	xmms_ipc_broadcast_register (XMMS_OBJECT (config),
+//	                             XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED);
 
 	memset (&pars, 0, sizeof (pars));
 
