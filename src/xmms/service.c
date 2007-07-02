@@ -431,6 +431,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	entry->count++;
 	g_hash_table_insert (entry->methods, name, method);
 	g_hash_table_foreach (entry->methods, xmms_service_key_insert, &list);
+	list = g_list_prepend (list, xmms_object_cmd_value_str_new (entry->name));
 	g_mutex_unlock (entry->mutex);
 
 	xmms_object_emit_f (XMMS_OBJECT (xmms_service),
@@ -484,6 +485,8 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t
 			xmms_error_set (err, XMMS_ERROR_GENERIC, "Failed to remove service");
 		g_hash_table_foreach (xmms_service->registry,
 		                      xmms_service_key_insert, &list);
+		list = g_list_prepend (list,
+		                       xmms_object_cmd_value_str_new (entry->name));
 		g_mutex_unlock (xmms_service->mutex);
 
 		xmms_object_emit_f (XMMS_OBJECT (xmms_service),
