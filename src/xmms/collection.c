@@ -223,8 +223,8 @@ xmms_collection_init (xmms_playlist_t *playlist)
 
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_COLLECTION, XMMS_OBJECT (ret));
 
-	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
-	                             XMMS_IPC_SIGNAL_COLLECTION_CHANGED);
+//	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
+//	                             XMMS_IPC_SIGNAL_COLLECTION_CHANGED);
 
 	xmms_object_cmd_add (XMMS_OBJECT (ret),
 	                     XMMS_IPC_CMD_COLLECTION_GET,
@@ -968,7 +968,7 @@ xmms_collection_destroy (xmms_object_t *object)
 		g_hash_table_destroy (dag->collrefs[i]);  /* dag is freed here */
 	}
 
-	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_COLLECTION_CHANGED);
+//	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_COLLECTION_CHANGED);
 
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_COLLECTION);
 }

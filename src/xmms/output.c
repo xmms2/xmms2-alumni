@@ -809,10 +809,10 @@ xmms_output_destroy (xmms_object_t *object)
 	g_cond_free (output->filler_state_cond);
 	xmms_ringbuf_destroy (output->filler_buffer);
 
-	xmms_ipc_broadcast_unregister ( XMMS_IPC_SIGNAL_OUTPUT_VOLUME_CHANGED);
-	xmms_ipc_broadcast_unregister ( XMMS_IPC_SIGNAL_PLAYBACK_STATUS);
-	xmms_ipc_broadcast_unregister ( XMMS_IPC_SIGNAL_OUTPUT_CURRENTID);
-	xmms_ipc_signal_unregister (XMMS_IPC_SIGNAL_OUTPUT_PLAYTIME);
+//	xmms_ipc_broadcast_unregister ( XMMS_IPC_SIGNAL_OUTPUT_VOLUME_CHANGED);
+//	xmms_ipc_broadcast_unregister ( XMMS_IPC_SIGNAL_PLAYBACK_STATUS);
+//	xmms_ipc_broadcast_unregister ( XMMS_IPC_SIGNAL_OUTPUT_CURRENTID);
+//	xmms_ipc_signal_unregister (XMMS_IPC_SIGNAL_OUTPUT_PLAYTIME);
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_OUTPUT);
 }
 
@@ -892,17 +892,17 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 
 	/* Broadcasts are always transmitted to the client if he
 	 * listens to them. */
-	xmms_ipc_broadcast_register (XMMS_OBJECT (output),
-	                             XMMS_IPC_SIGNAL_OUTPUT_VOLUME_CHANGED);
-	xmms_ipc_broadcast_register (XMMS_OBJECT (output),
-	                             XMMS_IPC_SIGNAL_PLAYBACK_STATUS);
-	xmms_ipc_broadcast_register (XMMS_OBJECT (output),
-	                             XMMS_IPC_SIGNAL_OUTPUT_CURRENTID);
+	//xmms_ipc_broadcast_register (XMMS_OBJECT (output),
+	  //                           XMMS_IPC_SIGNAL_OUTPUT_VOLUME_CHANGED);
+//	xmms_ipc_broadcast_register (XMMS_OBJECT (output),
+//	                             XMMS_IPC_SIGNAL_PLAYBACK_STATUS);
+//	xmms_ipc_broadcast_register (XMMS_OBJECT (output),
+//	                             XMMS_IPC_SIGNAL_OUTPUT_CURRENTID);
 
 	/* Signals are only emitted if the client has a pending question to it
 	 * after the client recivies a signal, he must ask for it again */
-	xmms_ipc_signal_register (XMMS_OBJECT (output),
-	                          XMMS_IPC_SIGNAL_OUTPUT_PLAYTIME);
+//	xmms_ipc_signal_register (XMMS_OBJECT (output),
+//	                          XMMS_IPC_SIGNAL_OUTPUT_PLAYTIME);
 
 
 	xmms_object_cmd_add (XMMS_OBJECT (output),

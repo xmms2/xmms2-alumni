@@ -77,10 +77,10 @@ xmms_mediainfo_reader_start (xmms_playlist_t *playlist)
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_MEDIAINFO_READER,
 	                          XMMS_OBJECT (mrt));
 
-	xmms_ipc_broadcast_register (XMMS_OBJECT (mrt),
-	                             XMMS_IPC_SIGNAL_MEDIAINFO_READER_STATUS);
-	xmms_ipc_signal_register (XMMS_OBJECT (mrt),
-	                          XMMS_IPC_SIGNAL_MEDIAINFO_READER_UNINDEXED);
+//	xmms_ipc_broadcast_register (XMMS_OBJECT (mrt),
+//	                             XMMS_IPC_SIGNAL_MEDIAINFO_READER_STATUS);
+//	xmms_ipc_signal_register (XMMS_OBJECT (mrt),
+//	                          XMMS_IPC_SIGNAL_MEDIAINFO_READER_UNINDEXED);
 
 	mrt->mutex = g_mutex_new ();
 	mrt->cond = g_cond_new ();
@@ -107,8 +107,8 @@ xmms_mediainfo_reader_stop (xmms_object_t *o)
 	g_cond_signal (mir->cond);
 	g_mutex_unlock (mir->mutex);
 
-	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_MEDIAINFO_READER_STATUS);
-	xmms_ipc_signal_unregister (XMMS_IPC_SIGNAL_MEDIAINFO_READER_UNINDEXED);
+//	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_MEDIAINFO_READER_STATUS);
+//	xmms_ipc_signal_unregister (XMMS_IPC_SIGNAL_MEDIAINFO_READER_UNINDEXED);
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_MEDIAINFO_READER);
 
 	g_thread_join (mir->thread);

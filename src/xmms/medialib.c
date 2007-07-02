@@ -144,8 +144,8 @@ xmms_medialib_destroy (xmms_object_t *object)
 	g_mutex_free (mlib->source_lock);
 	g_hash_table_destroy (mlib->sources);
 	g_mutex_free (global_medialib_session_mutex);
-	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_MEDIALIB_ENTRY_UPDATE);
-	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_OUTPUT);
+//	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_MEDIALIB_ENTRY_UPDATE);
+//	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_OUTPUT);
 }
 
 static void
@@ -299,8 +299,8 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	medialib->playlist = playlist;
 
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_MEDIALIB, XMMS_OBJECT (medialib));
-	xmms_ipc_broadcast_register (XMMS_OBJECT (medialib), XMMS_IPC_SIGNAL_MEDIALIB_ENTRY_ADDED);
-	xmms_ipc_broadcast_register (XMMS_OBJECT (medialib), XMMS_IPC_SIGNAL_MEDIALIB_ENTRY_UPDATE);
+//	xmms_ipc_broadcast_register (XMMS_OBJECT (medialib), XMMS_IPC_SIGNAL_MEDIALIB_ENTRY_ADDED);
+//	xmms_ipc_broadcast_register (XMMS_OBJECT (medialib), XMMS_IPC_SIGNAL_MEDIALIB_ENTRY_UPDATE);
 
 	xmms_object_cmd_add (XMMS_OBJECT (medialib),
 	                     XMMS_IPC_CMD_INFO,
