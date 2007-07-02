@@ -99,7 +99,7 @@ xmmsc_object_property_get (xmmsc_connection_t *c, int object, int property)
 void xmmsc_request_now (xmmsc_request_t *req)
 {
 	if (!req->type) {
-		xmms_ipc_msg_put_uint32 (req->msg, XMMSC_REQUEST_INTERVAL_NOW);
+		xmms_ipc_msg_put_uint32 (msg, XMMSC_REQUEST_INTERVAL_NOW);
 	}
 }
 
