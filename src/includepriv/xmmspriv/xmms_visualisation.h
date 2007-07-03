@@ -16,24 +16,28 @@
 
 
 
-
 #ifndef __XMMS_VISUALISATION_H__
 #define __XMMS_VISUALISATION_H__
 
+#include "xmms/xmms_object.h"
+#include "xmms/xmms_error.h"
 #include "xmms/xmms_sample.h"
 
 /* this is in number of samples! */
-#define FFT_BITS 10
-#define FFT_LEN (1<<FFT_BITS)
+//~ #define FFT_BITS 10
+//~ #define FFT_LEN (1<<FFT_BITS)
 
-
+struct xmms_visualisation_St;
 typedef struct xmms_visualisation_St xmms_visualisation_t;
 
-void xmms_visualisation_init ();
-void xmms_visualisation_shutdown ();
+uint32_t xmms_visualisation_version (xmms_visualisation_t *vis, xmms_error_t *err);
+int32_t xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t shmid, int32_t semid, xmms_error_t *err);
+void xmms_visualisation_shutdown (xmms_visualisation_t *vis, int32_t id, xmms_error_t *err);
+
+void xmms_visualisation_init (void);
 xmms_visualisation_t *xmms_visualisation_new ();
-void xmms_visualisation_calc (xmms_visualisation_t *vis, xmms_sample_t *buf, int len, guint32 pos);
-void xmms_visualisation_format_set (xmms_visualisation_t *vis, xmms_audio_format_t *fmt);
+//~ void xmms_visualisation_calc (xmms_visualisation_t *vis, xmms_sample_t *buf, int len, guint32 pos);
+//~ void xmms_visualisation_format_set (xmms_visualisation_t *vis, xmms_audio_format_t *fmt);
 
 
 

@@ -161,8 +161,27 @@ xmmsc_result_t *xmmsc_main_stats (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_broadcast_mediainfo_reader_status (xmmsc_connection_t *c);
 
 /* signals */
-xmmsc_result_t *xmmsc_signal_visualisation_data (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_signal_mediainfo_reader_unindexed (xmmsc_connection_t *c);
+
+
+/*
+ * VISUALISATION **************************************************
+ */
+
+typedef struct xmmsc_visualisation_St xmmsc_visualisation_t;
+
+/* commands */
+xmmsc_result_t *xmmsc_visualisation_version (xmmsc_connection_t *c);
+int xmmsc_visualisation_init (xmmsc_connection_t *c);
+xmmsc_result_t *xmmsc_visualisation_connect (xmmsc_connection_t *c, int v);
+
+xmmsc_result_t *xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int v);
+
+
+/* broadcasts */
+
+/* signals */
+
 
 /*
  * MEDIALIB ***********************************************

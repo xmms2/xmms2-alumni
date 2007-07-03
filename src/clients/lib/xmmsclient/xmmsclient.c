@@ -58,10 +58,10 @@ static void xmmsc_deinit (xmmsc_connection_t *c);
  * application.
  *
  * There are three kinds of messages that will be involved in communication
- * with the XMMS2 server. 
+ * with the XMMS2 server.
  * - Commands: Sent by the client to the server with arguments. Commands will
  * generate a reply to the client.
- * - Broadcasts: Sent by the server to the client if requested. Requesting a 
+ * - Broadcasts: Sent by the server to the client if requested. Requesting a
  * broadcast is done by calling one of the xmmsc_broadcast functions.
  * - Signals: Like broadcasts but they are throttled, the client has to request
  * the next signal when the callback is called. #xmmsc_result_restart is used to
@@ -69,7 +69,7 @@ static void xmmsc_deinit (xmmsc_connection_t *c);
  *
  * Each client command will return a #xmmsc_result_t which holds the command id
  * that will be used to map the result back to the right caller. The #xmmsc_result_t
- * is used to get the result from the server. 
+ * is used to get the result from the server.
  *
  * @{
  */
@@ -115,6 +115,9 @@ xmmsc_init (const char *clientname)
 		return NULL;
 	}
 
+    c->visc = 0;
+    c->visv = NULL;
+
 	xmmsc_ref (c);
 
 	return c;
@@ -138,7 +141,7 @@ xmmsc_send_hello (xmmsc_connection_t *c)
 /**
  * Connects to the XMMS server.
  * If ipcpath is NULL, it will try to open the default path.
- * 
+ *
  * @param c The connection to the server. This must be initialized
  * with #xmmsc_init first.
  * @param ipcpath The IPC path, it's broken down like this: &lt;protocol&gt;://&lt;path&gt;[:&lt;port&gt;].
@@ -435,7 +438,7 @@ xmmsc_io_want_out (xmmsc_connection_t *c)
  *
  * Should be called when the mainloop flags that writing is available
  * on the socket.
- * 
+ *
  * @returns 1 if everything is well, 0 if the connection is broken.
  */
 int
@@ -452,7 +455,7 @@ xmmsc_io_out_handle (xmmsc_connection_t *c)
  *
  * Should be called when the mainloop flags that reading is available
  * on the socket.
- * 
+ *
  * @returns 1 if everything is well, 0 if the connection is broken.
  */
 int
@@ -511,7 +514,7 @@ xmmsc_io_need_out_callback_set_full (xmmsc_connection_t *c, void (*callback) (in
  * connection. This is optional, any call to #xmmsc_io_out_handle or
  * #xmmsc_io_in_handle will notice the disconnection and handle it
  * accordingly.
- * 
+ *
  */
 void
 xmmsc_io_disconnect (xmmsc_connection_t *c)
