@@ -47,6 +47,7 @@
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_bindata.h"
 #include "xmmspriv/xmms_utils.h"
+#include "xmmspriv/xmms_visualisation.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -247,6 +248,10 @@ xmms_main_destroy (xmms_object_t *object)
 	xmms_config_save ();
 
 	xmms_config_shutdown ();
+
+	/* ugly, as usual */
+	xmms_visualisation_destroy (xmms_visualisation_new ());
+
 	xmms_plugin_shutdown ();
 
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_MAIN);

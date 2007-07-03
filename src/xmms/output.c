@@ -29,6 +29,7 @@
 #include "xmmspriv/xmms_sample.h"
 #include "xmmspriv/xmms_medialib.h"
 #include "xmmspriv/xmms_outputplugin.h"
+#include "xmmspriv/xmms_visualisation.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_ipc.h"
 #include "xmms/xmms_object.h"
@@ -200,12 +201,12 @@ xmms_output_stream_type_add (xmms_output_t *output, ...)
 }
 
 void
-update_playtime (xmms_output_t *output, int ret)
+update_playtime (xmms_output_t *output, int advance)
 {
 	guint buffersize = 0;
 
 	g_mutex_lock (output->playtime_mutex);
-	output->played += ret;
+	output->played += advance;
 	g_mutex_unlock (output->playtime_mutex);
 
 	buffersize = xmms_output_plugin_method_latency_get (output->plugin, output);
@@ -434,6 +435,8 @@ xmms_output_filler (void *arg)
 				g_mutex_lock (output->filler_mutex);
 				continue;
 			}
+
+			xmms_visualisation_register_output (output);
 
 			arg = g_new0 (xmms_output_song_changed_arg_t, 1);
 			arg->output = output;
@@ -740,6 +743,27 @@ xmms_output_playtime (xmms_output_t *output, xmms_error_t *error)
 	return ret;
 }
 
+/* returns the current latency: time left in ms until the data currently read
+ *                              from the latest xform in the chain will actually be played
+ */
+guint32
+xmms_output_latency (xmms_output_t *output)
+{
+	guint ret = 0;
+	guint buffersize = 0;
+
+	/* data already waiting in the ringbuffer */
+	buffersize += xmms_ringbuf_bytes_used(output->filler_buffer);
+
+	/* latency of the soundcard */
+	buffersize += xmms_output_plugin_method_latency_get (output->plugin, output);
+
+	if (output->format) {
+		ret = xmms_sample_bytes_to_ms (output->format, buffersize);
+	}
+
+	return ret;
+}
 
 /**
  * @internal

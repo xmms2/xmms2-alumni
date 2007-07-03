@@ -40,7 +40,7 @@
 
 struct xmmsc_connection_St {
 	int ref;
-	
+
 	xmmsc_ipc_t *ipc;
 
 	x_list_t *callbacks;
@@ -51,6 +51,10 @@ struct xmmsc_connection_St {
 	uint32_t cookie;
 
 	char *clientname;
+
+    /** data array for visualisation connections */
+    int visc;
+    xmmsc_visualisation_t **visv;
 };
 
 xmmsc_result_t *xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type, uint32_t cookie);

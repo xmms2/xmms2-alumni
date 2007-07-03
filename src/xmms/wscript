@@ -32,7 +32,9 @@ source = """config.c
             strfunc.c
             bindata.c
             sample.genpy
-            utils.c""".split()
+            utils.c
+			visualisation.c
+			visualisation_xform.c""".split()
 
 def build(bld):
     env = bld.env()
