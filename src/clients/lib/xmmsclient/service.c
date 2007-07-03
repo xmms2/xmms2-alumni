@@ -456,9 +456,6 @@ xmmsc_service_args_new (uint32_t size, ...)
 	xmmsc_service_arg_type_t type;
 	uint32_t i;
 
-	if (!size)
-		return NULL;
-
 	ret = x_new0 (xmmsc_service_arg_list_t, 1);
 
 	ret->size = size;
