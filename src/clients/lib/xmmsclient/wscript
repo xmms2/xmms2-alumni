@@ -18,7 +18,7 @@ def build(bld):
                  xmmsclient.c
                  xform.c
                  xqueue.c
-                 """.split()
+                 visualisation.c""".split()
     obj.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes'
     obj.uselib = 'socket'
     obj.vnum = '3.0.0'
