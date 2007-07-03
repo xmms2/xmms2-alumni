@@ -36,6 +36,18 @@ char *tap_todo_reason = NULL;
 		} \
 	}
 
+#define IS(a, b, desc) \
+	do { \
+		if (!a && !b) { \
+			OK(1, desc); \
+		} else if (!a || !b || strcmp (a, b)) { \
+			OK(0, desc); \
+			printf("# expected: '%s'\n# got: '%s'\n", b, a); \
+		} else { \
+			OK(1, desc); \
+		} \
+	} while (0);
+
 #define EXIT_STATUS \
 	!(tap_tests_ran == tap_tests_planned)
 
