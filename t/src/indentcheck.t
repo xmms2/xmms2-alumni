@@ -2,83 +2,157 @@
 
 import sys
 import re
-import os
+import glob
 
-def count_and_strip(x, c):
-    if not x: return 0, ''
-    if x[0] == c:
-        a,b = count_and_strip(x[1:], c)
-        return a+1, b
-    else:
-        return 0, x
+files = ['src/xmms/*.c', 'src/xmms/*/*.c', 'src/plugins/*/*.c', 'src/clients/lib/xmmsclient/*.c', 'src/clients/lib/xmmsclient-glib/*.c', 'src/clients/lib/xmmsclient-cf/*.c', 'src/clients/lib/xmmsclient-ecore/*.c', 'src/lib/*/*.c', 'src/clients/et/*.c', 'src/clients/cli/*.c', 'src/clients/cli/launcher/*.c', 'src/clients/mdns/*/*.c', 'src/client/medialib-updater/*.c']
+blacklist_patterns = ['src/plugins/equalizer/iir*.c', 'src/clients/mdns/avahi/find-avahi.c']
+todo = ['src/plugins/flac/flac.c']
+
+
+fun_no_space = re.compile('^.*?(\w+\()')
+non_indent_tab = re.compile('^\t*[^\t]+\t')
+
+def leading(x, c):
+    """
+    Count number of leading /c/ chars in /x/
+    """
+    a = 0
+    while a < len(x) and x[a] == c:
+        a += 1
+    return a
 
 def all_same(x):
+    """
+    Check if all elements in /x/ are equal
+    """
     if len(x) < 2:
         return True
-    return (x[0] == x[1]) and all_same(x[1:])
-
-def count(s, c):
-    return len([x for x in s if x == c])
+    for a in x[1:]:
+        if a != x[0]:
+            return False
+    return True
 
 def check(filename):
-    lines = file(filename).readlines()
+    data = file(filename).read()
 
     errors = 0
     balance = 0
     curr = []
     multilines = []
-    for i,li in enumerate(lines):
+
+    if data[-1] != '\n':
+        print "# File %s does not end with newline" % (filename)
+        errors += 1
+
+    NORM, COMM, STR = range(3)
+    state = NORM
+    pos = 0
+    fdata = ""
+    while pos < len(data):
+        c = data[pos]
+        if state == NORM:
+            if c == '"':
+                state = STR
+            elif c == "'":
+                if data[pos+1] == '\\':
+                    pos += 1
+                pos += 2
+                fdata += "CHR"
+            elif c == "/" and data[pos+1] == "*":
+                state = COMM
+            #elif c == '\\' and data[pos+1] == '\n':
+            #    pos += 1
+            else:
+                fdata += c
+        elif state == COMM:
+            if c == '*' and data[pos+1] == '/':
+                fdata += "/*COMM*/"
+                pos += 1
+                state = NORM
+            elif c == '\n':
+                fdata += '/*COMM*/\n'
+        elif state == STR:
+            if c == '"' and data[pos-1] != '\\':
+                fdata += "STR"
+                state = NORM
+            elif c == '\n':
+                print "# Runaway string in %s" % (filename)
+                errors += 1
+                state = NORM
+        pos += 1
+
+    for i,li in enumerate(fdata.split("\n")):
         if '\r' in li:
             print "# Line %d in file %s has \\r" % (i+1, filename)
             errors += 1
-        if li[-1] != '\n':
-            print "# Line %d in file %s does not end with newline" % (i+1, filename)
+
+        if not li:
+            continue
+
+        if not li.replace(" ", "").replace("\t", ""):
+            print "# line %d in file %s only contains whitespace" % (i+1, filename)
             errors += 1
-        else:
-            li = li[:-1]
-        if len(li) and li[-1] == ' ':
+            continue
+            
+        if li[-1] == ' ':
             print "# Line %d in file %s has extra whitespace at end:" % (i+1, filename)
             print "# %s<--" % li
             errors += 1
 
-        balance += count(li, "(")
-        balance -= count(li, ")")
+        if non_indent_tab.match(li):
+            print "# Line %d in file %s has tab not used for indentation:" % (i+1, filename)
+            print "# %s" % li.replace("\t","|---->")
+            errors += 1
+
+	if li[0] != '#':
+            m = fun_no_space.match(li)
+            if m:
+                print "# Line %d in file %s has no space between function and left parenthesis:" % (i+1, filename)
+                print "# %s<--" % m.group(1)
+                errors += 1
+
+        balance += li.count("(")
+        balance -= li.count(")")
         if balance > 0:
             curr.append(li)
         elif balance == 0:
             if curr:
                 curr.append(li)
-                multilines.append((i-len(curr),curr))
+                multilines.append((i+1-(len(curr) - 1),curr))
                 curr = []
         else:
             print "# Negative balance in file %s line %d" % (filename, i)
+            print "# '%s'" % li
             errors += 1
             return errors
 
     for lineno, ml in multilines:
-        d = [count_and_strip(x, "\t") for x in ml]
-        tabs = [x[0] for x in d if x]
+        tabs = [leading(x, "\t") for x in ml]
         if not all_same(tabs):
-            print "# not same indentation in %s:%d:" % (filename, lineno)
+            print "# not same indentation in file %s line %d:" % (filename, lineno)
             print "# " + "\n# ".join(ml).replace("\t","|---->")
             print "#"
             errors += 1
     
     return errors
 
-def find_sources(sources, dir, files):
-    for file in files:
-        path = os.path.join(dir, file)
-        if os.path.isfile(path) and path.endswith('.c'):
-            sources.append(path)
 
 if __name__ == '__main__':
     sources = []
-    os.path.walk('src/xmms', find_sources, sources)
-    os.path.walk('src/plugins', find_sources, sources)
+    blacklist = []
 
-    print "1.." + str(len(sources))
-    for i in range(0, len(sources)):
-        if check(sources[i]):
+    for p in blacklist_patterns:
+        blacklist += glob.glob(p)
+
+    for p in files:
+        sources += [x for x in glob.glob(p) if x not in blacklist]
+
+    print "1..%d" % len(sources)
+    for i, src in enumerate(sources):
+        if check(src):
             print "not",
-        print "ok %d - %s" % (i+1, sources[i])
+        print "ok %d - %s" % (i+1, src),
+        if src in todo:
+            print " # TODO indentcheck.py bug",
+        print
+        sys.stdout.flush()
