@@ -167,6 +167,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 		return;
 	} else if (objid == XMMS_IPC_OBJECT_SERVICE) {
 		xmms_object_cmd_arg_init (&arg);
+		object = ipc_object_pool->objects[objid];
 
 		/**
 		 * Have to register first, otherwise the return message might arrive
@@ -180,7 +181,8 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 				               GUINT_TO_POINTER (xmms_ipc_msg_get_cookie (msg)));
 			g_mutex_unlock (client->lock);
 		}
-		if (!xmms_service_handle (msg, cmdid, client->transport->fd, &arg)) {
+		if (!xmms_service_handle (object, msg, cmdid, client->transport->fd,
+		                          &arg)) {
 			if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER ||
 			    cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
 				g_mutex_lock (client->lock);
@@ -268,6 +270,7 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
                          gpointer data)
 {
 	xmms_ipc_client_t *client = data;
+	xmms_object_t *object;
 	bool disconnect = FALSE;
 
 	g_return_val_if_fail (client, FALSE);
@@ -296,7 +299,8 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 		}
 		XMMS_DBG ("disconnect was true!");
 		g_main_loop_quit (client->ml);
-		xmms_service_handle (NULL, XMMS_IPC_CMD_SERVICE_UNREGISTER,
+		object = ipc_object_pool->objects[XMMS_IPC_OBJECT_SERVICE];
+		xmms_service_handle (object, NULL, XMMS_IPC_CMD_SERVICE_UNREGISTER,
 		                     client->transport->fd, NULL);
 		return FALSE;
 	}
