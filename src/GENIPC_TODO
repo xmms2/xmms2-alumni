@@ -3,6 +3,8 @@ List of things TODO
 * Generate code for ipc.c to serialize/deserialize messages and call
 * appropriate cmd handlers
 
+* Handle lists of complex types correctly/generate the correct code(right now  we just skip over them)
+
 * Figure out how to implement property requests in the server
 
 * Convert all of the server over to the new cmd handling api
