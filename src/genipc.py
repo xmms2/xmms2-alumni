@@ -64,6 +64,10 @@ def write_processmsg(node):
     for method in methodmap[node.getAttribute("name")]:
         ipcmsggen.write("\t\t\tif (cmd == XMMS_%s_CMD_%s) {\n" % \
 		(node.getAttribute("name").upper(),method.getAttribute("name").upper()))
+	ipcmsggen.write("\t\t\t\t//deserialize\n")
+	ipcmsggen.write("\t\t\t\t//call func\n")
+	ipcmsggen.write("\t\t\t}\n")
+
     ipcmsggen.write("\t\t\tbreak;\n")
 
 
