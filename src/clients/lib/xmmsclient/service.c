@@ -345,8 +345,9 @@ xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn,
  * Request the service changed broadcast from the server.
  *
  * Everytime a service is registered, unregistered or modified, the broadcast
- * will be emitted. The returned #xmmsc_result_t of the broadcast is a list of
- * service ids after the service's modification.
+ * will be emitted. The returned #xmmsc_result_t of the broadcast is a dict
+ * containing the action type #xmms_service_changed_actions_t as well as the ID
+ * of the changed service.
  */
 xmmsc_result_t *
 xmmsc_broadcast_service_changed (xmmsc_connection_t *c)
@@ -360,9 +361,9 @@ xmmsc_broadcast_service_changed (xmmsc_connection_t *c)
  * Request the service method changed broadcast from the server.
  *
  * Everytime a service method is registered, unregistered or modified, the
- * broadcast will be emitted. The returned #xmmsc_result_t is a list of IDs,
- * where the first one is the ID of the service which all the methods belong to,
- * followed by the IDs of the all the methods this service provides.
+ * broadcast will be emitted. The returned #xmmsc_result_t is a dict containing
+ * the action type #xmms_service_changed_actions_t as well as the ID of service
+ * and the changed method.
  */
 xmmsc_result_t *
 xmmsc_broadcast_service_method_changed (xmmsc_connection_t *c)
