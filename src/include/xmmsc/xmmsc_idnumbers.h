@@ -189,6 +189,11 @@ typedef enum {
 } xmms_collection_changed_actions_t;
 
 typedef enum {
+	XMMS_SERVICE_CHANGED_REGISTER,
+	XMMS_SERVICE_CHANGED_UNREGISTER
+} xmms_service_changed_actions_t;
+
+typedef enum {
 	XMMS_PLAYBACK_STATUS_STOP,
 	XMMS_PLAYBACK_STATUS_PLAY,
 	XMMS_PLAYBACK_STATUS_PAUSE
