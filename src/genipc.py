@@ -61,7 +61,9 @@ def write_processmsg(node):
 	    node.getAttribute("name").upper())
     #output code that deserializes the arguments to the command, finds the
     #hooks in ipc->cmds, and calls it correctly
-
+    for method in methodmap[node.getAttribute("name")]:
+        ipcmsggen.write("\t\t\tif (cmd == XMMS_%s_CMD_%s) {\n" % \
+		(node.getAttribute("name").upper(),method.getAttribute("name").upper()))
     ipcmsggen.write("\t\t\tbreak;\n")
 
 
@@ -190,7 +192,6 @@ def do_objects(objects):
 			node.getAttribute("name"),"w+");
 
 		objectlist.add(node.getAttribute("name"))
-		write_processmsg(node)
 
 		#header guard
 		hfile.write("#ifndef __XMMS_%s_CMD_H__\n" % \
@@ -260,6 +261,9 @@ def do_objects(objects):
                     hfile.write("(*%s_%s) (%s);\n" % \
                                          (node.getAttribute("name"),method.getAttribute("name"),
                                         argstring))
+
+		#now that we have the methods we can write the processmsg code
+		write_processmsg(node)
 
 		hfile.write("\txmms_object_t *obj;\n")
 		hfile.write("} xmms_%s_cmds_t;\n\n" % node.getAttribute("name"))
