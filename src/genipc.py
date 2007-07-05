@@ -52,7 +52,13 @@ def start_processmsg():
     #case for each of the objects
 
 
-#def write_processmsg(node):
+def write_processmsg(node):
+    ipcmsggen.write("\t\tcase XMMSC_IPC_OBJECT_%s:\n" % \
+	    node.getAttribute("name").upper())
+    #output code that deserializes the arguments to the command, finds the
+    #hooks in ipc->cmds, and calls it correctly
+
+    ipcmsggen.write("\t\t\tbreak;\n")
 
 
 def write_cmd_code(node):
@@ -177,6 +183,7 @@ def do_objects(objects):
 			node.getAttribute("name"),"w+");
 
 		objectlist.add(node.getAttribute("name"))
+		write_processmsg(node)
 
 		#header guard
 		hfile.write("#ifndef __XMMS_%s_CMD_H__\n" % \
