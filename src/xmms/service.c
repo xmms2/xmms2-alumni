@@ -131,6 +131,9 @@ static GHashTable *xmms_service_arg_types_parse (xmms_ipc_msg_t *msg,
                                                  xmms_error_t *err);
 static GHashTable *xmms_service_args_parse (xmms_ipc_msg_t *msg,
                                             GHashTable *args, xmms_error_t *err);
+static GHashTable *
+xmms_service_changed_msg_new (gchar *service, gchar *method,
+                              xmms_service_changed_actions_t type);
 
 /**
  * Initialize service client handling
@@ -317,13 +320,14 @@ xmms_service_method_destroy (gpointer value)
  * Register a new service
  */
 static gboolean
-xmms_service_register (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t *err)
+xmms_service_register (xmms_ipc_msg_t *msg, xmms_socket_t client,
+                       xmms_error_t *err)
 {
 	gchar *name = NULL;
 	guint len;
 	gchar *desc = NULL;
 	guint major, minor;
-	GList *list = NULL;
+	GHashTable *table = NULL;
 	xmms_service_entry_t *entry;
 
 	g_return_val_if_fail (msg, FALSE);
@@ -360,14 +364,15 @@ xmms_service_register (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t *
 		entry = xmms_service_entry_new (name, desc, major, minor, client);
 		g_mutex_lock (xmms_service->mutex);
 		g_hash_table_insert (xmms_service->registry, name, entry);
-		g_hash_table_foreach (xmms_service->registry,
-		                      xmms_service_key_insert, &list);
 		g_mutex_unlock (xmms_service->mutex);
 
+		table = xmms_service_changed_msg_new (entry->name, NULL,
+		                                      XMMS_SERVICE_CHANGED_REGISTER);
 		xmms_object_emit_f (XMMS_OBJECT (xmms_service),
 		                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
-		                    XMMS_OBJECT_CMD_ARG_STRINGLIST,
-		                    list);
+		                    XMMS_OBJECT_CMD_ARG_DICT,
+		                    table);
+		g_hash_table_destroy (table);
 		XMMS_DBG ("New service registered");
 	}
 
@@ -386,7 +391,7 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	gchar *desc = NULL;
 	GHashTable *rets = NULL;
 	GHashTable *args = NULL;
-	GList *list = NULL;
+	GHashTable *table = NULL;
 	xmms_service_method_t *method;
 
 	/**
@@ -430,14 +435,15 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	g_mutex_lock (entry->mutex);
 	entry->count++;
 	g_hash_table_insert (entry->methods, name, method);
-	g_hash_table_foreach (entry->methods, xmms_service_key_insert, &list);
-	list = g_list_prepend (list, xmms_object_cmd_value_str_new (entry->name));
+	table = xmms_service_changed_msg_new (entry->name, method->name,
+	                                      XMMS_SERVICE_CHANGED_REGISTER);
 	g_mutex_unlock (entry->mutex);
 
 	xmms_object_emit_f (XMMS_OBJECT (xmms_service),
 	                    XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED,
-	                    XMMS_OBJECT_CMD_ARG_STRINGLIST,
-	                    list);
+	                    XMMS_OBJECT_CMD_ARG_DICT,
+	                    table);
+	g_hash_table_destroy (table);
 	XMMS_DBG ("New method registered");
 
 	return TRUE;
@@ -447,10 +453,11 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
  * Unregister an existing service
  */
 static void
-xmms_service_unregister (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t *err)
+xmms_service_unregister (xmms_ipc_msg_t *msg, xmms_socket_t client,
+                         xmms_error_t *err)
 {
 	gchar *name = NULL;
-	GList *list = NULL;
+	GHashTable *table = NULL;
 	xmms_service_entry_t *entry;
 
 	if (!msg) {
@@ -483,16 +490,15 @@ xmms_service_unregister (xmms_ipc_msg_t *msg, xmms_socket_t client, xmms_error_t
 		g_mutex_lock (xmms_service->mutex);
 		if (!g_hash_table_remove (xmms_service->registry, name))
 			xmms_error_set (err, XMMS_ERROR_GENERIC, "Failed to remove service");
-		g_hash_table_foreach (xmms_service->registry,
-		                      xmms_service_key_insert, &list);
-		list = g_list_prepend (list,
-		                       xmms_object_cmd_value_str_new (entry->name));
 		g_mutex_unlock (xmms_service->mutex);
 
+		table = xmms_service_changed_msg_new (name, NULL,
+		                                      XMMS_SERVICE_CHANGED_UNREGISTER);
 		xmms_object_emit_f (XMMS_OBJECT (xmms_service),
 		                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
-		                    XMMS_OBJECT_CMD_ARG_STRINGLIST,
-		                    list);
+		                    XMMS_OBJECT_CMD_ARG_DICT,
+		                    table);
+		g_hash_table_destroy (table);
 	}
 
 	XMMS_DBG ("Service unregistered.");
@@ -509,7 +515,7 @@ xmms_service_method_unregister (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry
                                 xmms_error_t *err)
 {
 	gchar *name = NULL;
-	GList *list = NULL;
+	GHashTable *table = NULL;
 	gboolean ret = FALSE;
 
 	if (xmms_service_method_get (msg, entry, &name, err)) {
@@ -519,15 +525,16 @@ xmms_service_method_unregister (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry
 			ret = TRUE;
 		} else {
 			ret = --(entry->count) == 0 ? FALSE : TRUE;
-			g_hash_table_foreach (entry->methods,
-			                      xmms_service_key_insert, &list);
+			table = xmms_service_changed_msg_new (entry->name, name,
+			                                      XMMS_SERVICE_CHANGED_UNREGISTER);
 		}
 		g_mutex_unlock (entry->mutex);
 
 		xmms_object_emit_f (XMMS_OBJECT (xmms_service),
 		                    XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED,
-		                    XMMS_OBJECT_CMD_ARG_STRINGLIST,
-		                    list);
+		                    XMMS_OBJECT_CMD_ARG_DICT,
+		                    table);
+		g_hash_table_destroy (table);
 		XMMS_DBG ("Method unregistered.");
 	}
 
@@ -875,6 +882,7 @@ xmms_service_get (xmms_ipc_msg_t *msg, gchar **name, xmms_error_t *err)
 	xmms_service_entry_t *entry = NULL;
 
 	g_return_val_if_fail (msg, NULL);
+	g_return_val_if_fail (name, NULL);
 
 	*name = NULL;
 
@@ -1092,6 +1100,32 @@ xmms_service_args_parse (xmms_ipc_msg_t *msg, GHashTable *args,
 		}
 
 		g_hash_table_insert (table, name, val);
+	}
+
+	return table;
+}
+
+/**
+ * Create a new return message for XMMS_IPC_SIGNAL_SERVICE_#_CHANGED broadcasts.
+ */
+static GHashTable *
+xmms_service_changed_msg_new (gchar *service, gchar *method,
+                              xmms_service_changed_actions_t type)
+{
+	GHashTable *table = NULL;
+	xmms_object_cmd_value_t *val = NULL;
+
+	g_return_val_if_fail (service, NULL);
+
+	table = g_hash_table_new_full (g_str_hash, g_str_equal,
+	                               NULL, xmms_object_cmd_value_free);
+	val = xmms_object_cmd_value_uint_new (type);
+	g_hash_table_insert (table, "type", val);
+	val = xmms_object_cmd_value_str_new (service);
+	g_hash_table_insert (table, "service", val);
+	if (method) {
+		val = xmms_object_cmd_value_str_new (method);
+		g_hash_table_insert (table, "method", val);
 	}
 
 	return table;
