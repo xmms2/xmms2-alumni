@@ -187,7 +187,8 @@ xmmsc_service_list (xmmsc_connection_t *conn, const char *service)
 
 	x_check_conn (conn, NULL);
 
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE, XMMS_IPC_CMD_SERVICE_LIST);
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_CMD_SERVICE_INFO_LIST);
 	xmms_ipc_msg_put_string (msg, service);
 
 	return xmmsc_send_msg (conn, msg);
@@ -229,7 +230,7 @@ xmmsc_service_method_list (xmmsc_connection_t *conn, const char *service,
 	x_check_conn (conn, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_METHOD_LIST);
+	                        XMMS_IPC_CMD_SERVICE_METHOD_INFO_LIST);
 	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method);
 	xmms_ipc_msg_put_uint32 (msg, 0);
@@ -253,7 +254,7 @@ xmmsc_service_method_args_list (xmmsc_connection_t *conn, const char *service,
 	x_check_conn (conn, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_METHOD_LIST);
+	                        XMMS_IPC_CMD_SERVICE_METHOD_INFO_LIST);
 	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method);
 	xmms_ipc_msg_put_uint32 (msg, 1);
