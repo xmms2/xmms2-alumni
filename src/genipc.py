@@ -14,7 +14,11 @@ c_map["enum"] = "int"
 
 global_idnum = -1
 
+#set of strings, not the node objects
 objectlist = set()
+
+#map of node objects corresponding to the root node of methods of objects
+methodmap = {}
 
 cfile = open("genipc_out/ipc_cmds.c","w+")
 
@@ -123,7 +127,7 @@ def do_objects(objects):
 
 		objectlist.add(node.getAttribute("name"))
 
-                #enums (properties/variables)
+		#enums (properties/variables)
                 xmmsclientfile.write("typedef enum {\n")
 
                 props = node.getElementsByTagName("prop")
@@ -146,7 +150,11 @@ def do_objects(objects):
 		xmmsclientfile.write("typedef enum {\n");
 
 		methods = node.getElementsByTagName("method")
+		methodmap[node.getAttribute("name")] = set()
+
 		for method in methods:
+		    #add to the methodmap
+		    methodmap[node.getAttribute("name")].add(method)
 		    type = node.getElementsByTagName("type")
 		    xmmsclientfile.write("\tXMMSC_%s_METHOD_%s = %d,\n" % \
 					 (node.getAttribute("name").upper(),
@@ -160,7 +168,6 @@ def do_objects(objects):
 
 
                 #higher-level method declarations
-                methods = node.getElementsByTagName("method")
                 for method in methods:
                     retval = method.getElementsByTagName("retval")
                     xmmsclientfile.write("%s " % \
