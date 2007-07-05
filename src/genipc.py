@@ -242,7 +242,11 @@ def do_objects(objects):
 
 		#make function ptrs for the methods
 		methods = node.getElementsByTagName("method")
+		methodmap[node.getAttribute("name")] = set()
+
 		for method in methods:
+		    #add to the methodmap
+		    methodmap[node.getAttribute("name")].add(method)
 		    retval = method.getElementsByTagName("retval")
 		    hfile.write("\t%s " % \
 			    c_map[retval[0].childNodes[1].childNodes[1].nodeName])
