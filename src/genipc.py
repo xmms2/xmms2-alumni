@@ -44,6 +44,13 @@ def start_processmsg():
     ipcmsggen.write("{\n")
     #body of func
 
+    ipcmsggen.write("\tint obj, cmd;\n")
+    ipcmsggen.write("\n\tobj = xmms_ipc_msg_get_object (msg);\n")
+    ipcmsggen.write("\tcmd = xmms_ipc_msg_get_cmd (msg);\n")
+
+    ipcmsggen.write("\tswitch (obj) {\n")
+    #case for each of the objects
+
 
 #def write_processmsg(node):
 
