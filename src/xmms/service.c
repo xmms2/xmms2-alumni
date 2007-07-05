@@ -108,11 +108,16 @@ static gboolean xmms_service_method_unregister (xmms_service_t *xmms_service,
                                                 xmms_service_entry_t *entry,
                                                 xmms_error_t *err);
 static void xmms_service_list (xmms_service_t *xmms_service,
-                               xmms_ipc_msg_t *msg,
                                xmms_object_cmd_arg_t *arg);
+static void xmms_service_info_list (xmms_service_t *xmms_service,
+                                    xmms_ipc_msg_t *msg,
+                                    xmms_object_cmd_arg_t *arg);
 static void xmms_service_method_list (xmms_service_t *xmms_service,
                                       xmms_ipc_msg_t *msg,
                                       xmms_object_cmd_arg_t *arg);
+static void xmms_service_method_info_list (xmms_service_t *xmms_service,
+                                           xmms_ipc_msg_t *msg,
+                                           xmms_object_cmd_arg_t *arg);
 static gboolean xmms_service_request (xmms_service_t *xmms_service,
                                       xmms_ipc_msg_t *msg,
                                       xmms_socket_t client,
@@ -210,10 +215,16 @@ xmms_service_handle (xmms_object_t *obj, xmms_ipc_msg_t *msg,
 			xmms_service_unregister (serv, msg, client, NULL);
 		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_LIST:
-		xmms_service_list (serv, msg, arg);
+		xmms_service_list (serv, arg);
+		return FALSE;
+	case XMMS_IPC_CMD_SERVICE_INFO_LIST:
+		xmms_service_info_list (serv, msg, arg);
 		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_METHOD_LIST:
 		xmms_service_method_list (serv, msg, arg);
+		return FALSE;
+	case XMMS_IPC_CMD_SERVICE_METHOD_INFO_LIST:
+		xmms_service_method_info_list (serv, msg, arg);
 		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_REQUEST:
 		arg->retval = xmms_object_cmd_value_none_new ();
@@ -568,11 +579,29 @@ xmms_service_method_unregister (xmms_service_t *xmms_service,
 }
 
 /**
- * List all available service ids or details of a single service.
+ * List all available service ids.
  */
 static void
-xmms_service_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
-                   xmms_object_cmd_arg_t *arg)
+xmms_service_list (xmms_service_t *xmms_service, xmms_object_cmd_arg_t *arg)
+{
+	GList *list = NULL;
+
+	g_mutex_lock (xmms_service->mutex);
+	g_hash_table_foreach (xmms_service->registry,
+						  xmms_service_key_insert, &list);
+	g_mutex_unlock (xmms_service->mutex);
+
+	arg->retval = xmms_object_cmd_value_list_new (list);
+
+	return;
+}
+
+/**
+ * List the details of a single service.
+ */
+static void
+xmms_service_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
+                        xmms_object_cmd_arg_t *arg)
 {
 	gchar *name = NULL;
 	xmms_service_entry_t *entry;
@@ -601,17 +630,6 @@ xmms_service_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 
 		arg->retval = xmms_object_cmd_value_dict_new (dict);
 		free (name);
-	} else {
-		xmms_error_reset (&arg->error);
-
-		GList *list = NULL;
-
-		g_mutex_lock (xmms_service->mutex);
-		g_hash_table_foreach (xmms_service->registry,
-		                      xmms_service_key_insert, &list);
-		g_mutex_unlock (xmms_service->mutex);
-
-		arg->retval = xmms_object_cmd_value_list_new (list);
 	}
 
 	return;
@@ -627,6 +645,32 @@ xmms_service_method_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	gchar *name = NULL;
 	GList *list = NULL;
 	xmms_service_entry_t *entry;
+
+	g_return_if_fail (msg);
+
+	if (!(entry = xmms_service_get (xmms_service, msg, &name, &arg->error)))
+		return;
+
+	free (name);
+
+	g_mutex_lock (entry->mutex);
+	g_hash_table_foreach (entry->methods, xmms_service_key_insert, &list);
+	g_mutex_unlock (entry->mutex);
+
+	arg->retval = xmms_object_cmd_value_list_new (list);
+
+	return;
+}
+
+/**
+ * List the details of a single method.
+ */
+static void
+xmms_service_method_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
+                               xmms_object_cmd_arg_t *arg)
+{
+	gchar *name = NULL;
+	xmms_service_entry_t *entry;
 	xmms_service_method_t *method;
 	guint i;
 
@@ -639,9 +683,13 @@ xmms_service_method_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 
 	if (method = xmms_service_method_get (msg, entry, &name, &arg->error)) {
 		if (xmms_ipc_msg_get_uint32 (msg, &i) && i == TRUE) {
+			GList *list = NULL;
+
 			g_mutex_lock (method->mutex);
 			g_hash_table_foreach (method->args, xmms_service_arg_insert, &list);
 			g_mutex_unlock (method->mutex);
+
+			arg->retval = xmms_object_cmd_value_list_new (list);
 		} else {
 			GHashTable *dict = g_hash_table_new_full (g_str_hash,
 													  g_str_equal,
@@ -661,21 +709,10 @@ xmms_service_method_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 			g_mutex_unlock (method->mutex);
 
 			arg->retval = xmms_object_cmd_value_dict_new (dict);
-			free (name);
-			return;
 		}
-
-		free (name);
-	} else {
-		xmms_error_reset (&arg->error);
-
-		g_mutex_lock (entry->mutex);
-		g_hash_table_foreach (entry->methods, xmms_service_key_insert, &list);
-		g_mutex_unlock (entry->mutex);
 	}
 
-	arg->retval = xmms_object_cmd_value_list_new (list);
-
+	free (name);
 	return;
 }
 
