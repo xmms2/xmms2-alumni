@@ -40,7 +40,7 @@ typedef struct xmms_service_St xmms_service_t;
  * Public functions
  */
 xmms_service_t *xmms_service_init (void);
-gboolean xmms_service_handle (xmms_ipc_msg_t *msg, uint32_t cmdid,
+gboolean xmms_service_handle (xmms_ipc_msg_t *msg, xmms_ipc_cmds_t cmdid,
                               xmms_socket_t client, xmms_object_cmd_arg_t *arg);
 
 #endif
