@@ -335,7 +335,6 @@ xmms_service_register (xmms_ipc_msg_t *msg, xmms_socket_t client,
 	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No service id given");
 		free (name);
-		free (desc);
 		return FALSE;
 	}
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len)) {
@@ -400,7 +399,6 @@ xmms_service_method_register (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	 */
 	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
 		free (name);
-		free (desc);
 		return FALSE;
 	}
 
