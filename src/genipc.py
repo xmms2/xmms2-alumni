@@ -32,6 +32,7 @@ def get_args(node):
     argstring = ""
     if args.length > 0:
 	for arg in args:
+	    #FIXME lists of complex types, complex types
 	    type = arg.getElementsByTagName("type")
 	    type = type[0].childNodes[1].nodeName
 	    name = arg.getAttribute("name")
@@ -46,11 +47,23 @@ def start_deser():
 
 def output_deserialize_server(obj,method):
     ipcmsgdeser.write("void\ndeserialize_call_%s_cmd_%s (xmms_ipc_t *ipc, \
-xmms_ipc_msg_t *msg)\n{\n\n" % (obj.getAttribute("name"),
+xmms_ipc_msg_t *msg)\n{\n" % (obj.getAttribute("name"),
 			    method.getAttribute("name")))
 
     #for each argument to the method, get the type of the argument out of the
     #msg and put in a variable, then call the method
+    args = method.getElementsByTagName("arg")
+
+    if args.length > 0:
+	for arg in args:
+	    #FIXME lists of complex types, complex types
+	    type = arg.getElementsByTagName("type")
+	    type = type[0].childNodes[1].nodeName
+	    name = arg.getAttribute("name")
+
+	    ipcmsgdeser.write("\t%s %s;\n" % (c_map[type], name))
+	ipcmsgdeser.write("\n")
+
 
     ipcmsgdeser.write("}\n\n")
 
