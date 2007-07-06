@@ -56,6 +56,7 @@ def start_processmsg():
     #case for each of the objects
 
 
+#output the processmsg code for an object
 def write_processmsg(node):
     ipcmsggen.write("\t\tcase XMMSC_IPC_OBJECT_%s:\n" % \
 	    node.getAttribute("name").upper())
@@ -98,6 +99,7 @@ def write_cmd_code(node):
 
     cfile.write("}\n\n")
 
+#deal with enums
 def do_enums(enums):
     for node in enums:
         #if its a child of the main(ipc) tag
@@ -120,6 +122,8 @@ def do_enums(enums):
                     node.getAttribute("name"))
             print "done"
 
+#deal with objects
+#TODO this should probably be split up, its quite long
 def do_objects(objects):
     for node in objects:
         #if its a child of the main(ipc) tag
@@ -297,7 +301,7 @@ def do_objects(objects):
 
     xmmsclientfile.write("\tXMMSC_IPC_OBJECT_END\n} xmmsc_ipc_object_t;\n")
 
-
+#start here
 if __name__ == "__main__":
 
     #load the xml file
@@ -308,7 +312,7 @@ if __name__ == "__main__":
 
     start_processmsg()
 
-    #header guard and include file
+    #header guard and include file for xmmsclient.h
     xmmsclientfile.write("#ifndef __GEN_XMMSCLIENT_H__\n#define \
 __GEN_XMMSCLIENT_H__\n\n")
     xmmsclientfile.write("#include \"xmmsclient_conn.h\"\n\n")
@@ -331,4 +335,5 @@ __GEN_XMMSCLIENT_H__\n\n")
     object_list = nodes[0].getElementsByTagName("object")
     do_objects(object_list)
 
+    #close the header guard on xmmsclient.h
     xmmsclientfile.write("#endif\n")
