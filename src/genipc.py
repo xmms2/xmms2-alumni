@@ -12,6 +12,12 @@ c_map["uint"] = "unsigned int"
 c_map["string"] = "char *"
 c_map["enum"] = "int"
 
+#dictionary mapping of types to xmms_ipc_msg types
+msg_map = {}
+msg_map["int"] = "int32"
+msg_map["uint"] = "uint32"
+msg_map["string"] = "string"
+
 global_idnum = -1
 
 #set of strings, not the node objects
@@ -64,7 +70,21 @@ xmms_ipc_msg_t *msg)\n{\n" % (obj.getAttribute("name"),
 	    ipcmsgdeser.write("\t%s %s;\n" % (c_map[type], name))
 	ipcmsgdeser.write("\n")
 
+	for arg in args:
+	    type = arg.getElementsByTagName("type")
+	    type = type[0].childNodes[1].nodeName
+	    name = arg.getAttribute("name")
 
+	    if type != "string":
+		    ipcmsgdeser.write("\txmms_ipc_msg_get_%s (msg, &%s);\n" % \
+			(msg_map[type], name))
+	    elif type == "string":
+		    #FIXME should probably be a realloc() loop or somesuch
+		    ipcmsgdeser.write("\t%s = malloc(1000);\n" % name)
+		    ipcmsgdeser.write("\txmms_ipc_msg_get_%s (msg, %s, 1000);\n" % \
+			(msg_map[type], name))
+
+	#now we need to find the cmd structure and call the right method
     ipcmsgdeser.write("}\n\n")
 
 #write the header of the ipc_msg_gen.c file
