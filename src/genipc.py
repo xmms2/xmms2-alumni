@@ -63,9 +63,10 @@ def start_processmsg():
 *ipc, xmms_ipc_msg_t *msg)\n{\n\n")
     #body of func
 
-    ipcmsggen.write("\tint obj, cmd;\n")
+    ipcmsggen.write("\tint obj, cmd, type;\n")
     ipcmsggen.write("\n\tobj = xmms_ipc_msg_get_object (msg);\n")
     ipcmsggen.write("\tcmd = xmms_ipc_msg_get_cmd (msg);\n")
+    ipcmsggen.write("\txmms_ipc_msg_get_uint32 (msg, &type);\n")
 
     #case for each of the objects
     ipcmsggen.write("\tswitch (obj) {\n")
@@ -77,7 +78,7 @@ def write_processmsg(node):
     #output code that deserializes the arguments to the command, finds the
     #hooks in ipc->cmds, and calls it correctly
     for method in methodmap[node.getAttribute("name")]:
-        ipcmsggen.write("\t\t\tif (cmd == XMMS_%s_CMD_%s) {\n" % \
+        ipcmsggen.write("\t\t\tif ((cmd == XMMS_%s_CMD_%s) && (type == 1)) {\n" % \
 		(node.getAttribute("name").upper(),method.getAttribute("name").upper()))
 	ipcmsggen.write("\t\t\t\tdeserialize_call_%s_cmd_%s (ipc, msg)\n" %
 		(node.getAttribute("name"),method.getAttribute("name")))
