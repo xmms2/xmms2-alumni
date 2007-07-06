@@ -147,3 +147,6 @@ src/plugins/faad/faad.c
 src/plugins/id3v2/id3.c
 	Licensed under a BSD 3-Clause license
 
+src/plugins/directsound/directsound*
+        Based on mplayer code, Copyright (c) 2004 Gabor Szecsi <deje@miki.hu>
+        Licensed under GPL license.

@@ -1,0 +1,8 @@
+from waftools.plugin import plugin
+
+def plugin_configure(conf):
+    return (conf.check_header2('windows.h', mandatory=0) and
+            conf.check_header2('dsound.h', mandatory=0))
+
+configure, build = plugin('directsound', configure=plugin_configure,
+                          needs_lib=True, output_prio=3)
