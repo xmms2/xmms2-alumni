@@ -61,7 +61,7 @@ struct xmmsc_connection_St {
 struct xmmsc_service_argument_St {
 	char *name;
 	xmmsc_service_arg_type_t type;
-	uint32_t optional;
+	int32_t optional;
 	uint32_t none;
 	union {
 		uint32_t uint32;
