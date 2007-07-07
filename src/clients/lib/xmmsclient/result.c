@@ -636,8 +636,8 @@ xmmsc_result_get_service_arg_types (xmmsc_result_t *res,
 			free (*arg_list);
 			return 0;
 		}
-		if (!xmmsc_result_get_dict_entry_uint (res, "optional",
-		                                       &(*arg_list)->args[i].optional)) {
+		if (!xmmsc_result_get_dict_entry_int (res, "optional",
+		                                      &(*arg_list)->args[i].optional)) {
 			while (i-- > 0)
 				free ((*arg_list)->args[i].name);
 			free ((*arg_list)->args);
