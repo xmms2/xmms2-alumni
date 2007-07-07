@@ -702,10 +702,6 @@ xmms_service_method_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg
 			g_hash_table_insert (dict, "name", val);
 			val = xmms_object_cmd_value_str_new (method->description);
 			g_hash_table_insert (dict, "description", val);
-			val = xmms_object_cmd_value_uint_new (g_hash_table_size (method->rets));
-			g_hash_table_insert (dict, "num_rets", val);
-			val = xmms_object_cmd_value_uint_new (g_hash_table_size (method->args));
-			g_hash_table_insert (dict, "num_args", val);
 			g_mutex_unlock (method->mutex);
 
 			arg->retval = xmms_object_cmd_value_dict_new (dict);
