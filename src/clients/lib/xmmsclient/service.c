@@ -531,9 +531,9 @@ xmmsc_service_attribute_get (xmmsc_service_t *service, const char *key,
 	x_return_val_if_fail (key, 0);
 	x_return_val_if_fail (value, 0);
 
-	if (strcasecmp (key, "name") == 0)
+	if (strcasecmp (key, "name") == 0 && service->name)
 		*(char **)value = service->name;
-	else if (strcasecmp (key, "description") == 0)
+	else if (strcasecmp (key, "description") == 0 && service->description)
 		*(char **)value = service->description;
 	else if (strcasecmp (key, "major_version") == 0)
 		*(uint32_t *)value = service->major_version;
@@ -597,15 +597,19 @@ xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
 	x_return_val_if_fail (key, 0);
 	x_return_val_if_fail (value, 0);
 
-	if (strcasecmp (key, "name") == 0)
+	if (strcasecmp (key, "name") == 0 && method->name)
 		*(char **)value = method->name;
-	else if (strcasecmp (key, "description") == 0)
+	else if (strcasecmp (key, "description") == 0 && method->description)
 		*(char **)value = method->description;
-	else if (strcasecmp (key, "ret_list") == 0)
+	else if (strcasecmp (key, "num_rets") == 0)
+		return xmmsc_service_arg_list_size (method->ret_list, (uint32_t *)value);
+	else if (strcasecmp (key, "ret_list") == 0 && method->ret_list)
 		*(xmmsc_service_arg_list_t **)value = method->ret_list;
-	else if (strcasecmp (key, "arg_list") == 0)
+	else if (strcasecmp (key, "num_args") == 0)
+		return xmmsc_service_arg_list_size (method->arg_list, (uint32_t *)value);
+	else if (strcasecmp (key, "arg_list") == 0 && method->arg_list)
 		*(xmmsc_service_arg_list_t **)value = method->arg_list;
-	else if (strcasecmp (key, "func") == 0)
+	else if (strcasecmp (key, "func") == 0 && method->func)
 		*(xmmsc_result_notifier_t *)value = method->func;
 	else
 		return 0;
