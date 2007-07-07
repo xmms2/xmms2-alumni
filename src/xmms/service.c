@@ -388,7 +388,7 @@ xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		return FALSE;
 	}
 
-	if (entry = xmms_service_is_registered (xmms_service, name)) {
+	if ((entry = xmms_service_is_registered (xmms_service, name))) {
 		free (name);
 		free (desc);
 	} else {
@@ -456,7 +456,7 @@ xmms_service_method_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		return FALSE;
 	}
 
-	if (method = xmms_service_method_is_registered (entry, name)) {
+	if ((method = xmms_service_method_is_registered (entry, name))) {
 		xmms_service_error (err, XMMS_ERROR_INVAL, "Method already registered");
 		free (name);
 		free (desc);
@@ -608,7 +608,7 @@ xmms_service_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 
 	g_return_if_fail (msg);
 
-	if (entry = xmms_service_get (xmms_service, msg, &name, &arg->error)) {
+	if ((entry = xmms_service_get (xmms_service, msg, &name, &arg->error))) {
 		GHashTable *dict = g_hash_table_new_full (g_str_hash,
 		                                          g_str_equal,
 		                                          NULL,
@@ -681,7 +681,7 @@ xmms_service_method_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg
 
 	free (name);
 
-	if (method = xmms_service_method_get (msg, entry, &name, &arg->error)) {
+	if ((method = xmms_service_method_get (msg, entry, &name, &arg->error))) {
 		if (xmms_ipc_msg_get_uint32 (msg, &i) && i == TRUE) {
 			GList *list = NULL;
 
@@ -726,7 +726,6 @@ xmms_service_request (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
                       xmms_socket_t client, xmms_error_t *err)
 {
 	gchar *name = NULL;
-	guint len;
 	xmms_service_entry_t *entry;
 	xmms_service_method_t *method;
 	GHashTable *table = NULL;
@@ -789,12 +788,10 @@ xmms_service_return (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
                      xmms_socket_t client, xmms_error_t *err)
 {
 	guint id;
-	guint len;
 	xmms_service_entry_t *entry;
 	xmms_service_method_t *method;
-	GHashTable *table = NULL;
-	guint next;
 	xmms_service_client_t *cli = NULL;
+	GHashTable *table = NULL;
 	xmms_object_cmd_arg_t arg;
 
 	g_return_if_fail (msg);
@@ -887,7 +884,6 @@ xmms_service_method_is_registered (xmms_service_entry_t *entry,
 static gboolean
 xmms_service_matchsc (gpointer key, gpointer value, gpointer data)
 {
-	gchar *k = key;
 	xmms_service_entry_t *v = value;
 	guint sc = GPOINTER_TO_UINT (data);
 
@@ -920,7 +916,7 @@ xmms_service_arg_insert (gpointer key, gpointer value, gpointer data)
 	g_hash_table_insert (t, "name", xmms_object_cmd_value_str_new (val->name));
 	g_hash_table_insert (t, "type", xmms_object_cmd_value_uint_new (val->type));
 	g_hash_table_insert (t, "optional",
-	                     xmms_object_cmd_value_uint_new (val->optional));
+	                     xmms_object_cmd_value_int_new (val->optional));
 
 	*l = g_list_prepend (*l, xmms_object_cmd_value_dict_new (t));
 }
@@ -1029,7 +1025,7 @@ xmms_service_arg_types_parse (xmms_ipc_msg_t *msg, xmms_error_t *err)
 			g_hash_table_destroy (table);
 			return NULL;
 		}
-		if (!xmms_ipc_msg_get_uint32 (msg, &arg->optional)) {
+		if (!xmms_ipc_msg_get_int32 (msg, &arg->optional)) {
 			xmms_service_error (err, XMMS_ERROR_NOENT,
 			                    "Optional field missing for argument");
 			free (arg->name);

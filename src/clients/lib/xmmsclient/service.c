@@ -103,7 +103,7 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
 			arg = method->ret_list->args + count;
 			xmms_ipc_msg_put_string (msg, arg->name);
 			xmms_ipc_msg_put_uint32 (msg, arg->type);
-			xmms_ipc_msg_put_uint32 (msg, arg->optional);
+			xmms_ipc_msg_put_int32 (msg, arg->optional);
 		}
 
 		xmms_ipc_msg_put_uint32 (msg, method->arg_list->size);
@@ -166,7 +166,7 @@ xmmsc_service_unregister (xmmsc_connection_t *conn,
  * @param conn The connection to the server.
  */
 xmmsc_result_t *
-xmmsc_service_service_ids_list (xmmsc_connection_t *conn)
+xmmsc_service_ids_list (xmmsc_connection_t *conn)
 {
 	x_check_conn (conn, NULL);
 
@@ -454,8 +454,6 @@ xmmsc_service_args_new (uint32_t size, ...)
 {
 	xmmsc_service_arg_list_t *ret = NULL;
 	va_list ap;
-	char *name = NULL;
-	xmmsc_service_arg_type_t type;
 	uint32_t i;
 
 	ret = x_new0 (xmmsc_service_arg_list_t, 1);
