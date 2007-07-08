@@ -16,17 +16,17 @@ struct expected_result {
 };
 
 struct expected_result expected_results[] = {
-	{ "unix:///foo", "unix", "", "", 0, "", "", "foo" },
-	{ "unix:////foo", "unix", "", "", 0, "", "", "/foo" },
-	{ "unix://foo", "unix", "", "", 0, "foo", "", "" }, /* TODO: err.. unix host? */
-	{ "tcp://foo.bar", "tcp", "", "", 0, "foo.bar", "", "" },
-	{ "tcp://foo.bar:9968", "tcp", "", "", 0, "foo.bar", "9968", "" },
-	{ "tcp://foo.bar:invalid", "tcp", "", "", 0, "foo.bar", "invalid", "" }, /* TODO: FAIL! */
-	{ "tcp://[foo.bar]", "tcp", "", "", 1, "foo.bar", "", "" },
-	{ "tcp://[::1]", "tcp", "", "", 1, "::1", "", "" },
-	{ "tcp://foo:bar@foo.bar:9968", "tcp", "foo", "bar", 0, "foo.bar", "9968", "" },
-	{ "tcp://foo:bar@[foo.bar]:9968", "tcp", "foo", "bar", 1, "foo.bar", "9968", "" },
-	{ " ", "", "", "", 0, " ", "", "" }, /* TODO: FAIL! */
+	{ "unix:///foo",                  "unix", "",    "",    0, "",        "",        "foo"  },
+	{ "unix:////foo",                 "unix", "",    "",    0, "",        "",        "/foo" },
+	{ "unix://foo",                   "unix", "",    "",    0, "foo",     "",        ""     }, /* TODO: err.. unix host? */
+	{ "tcp://foo.bar",                "tcp",  "",    "",    0, "foo.bar", "",        ""     },
+	{ "tcp://foo.bar:9968",           "tcp",  "",    "",    0, "foo.bar", "9968",    ""     },
+	{ "tcp://foo.bar:invalid",        "tcp",  "",    "",    0, "foo.bar", "invalid", ""     }, /* TODO: FAIL! */
+	{ "tcp://[foo.bar]",              "tcp",  "",    "",    1, "foo.bar", "",        ""     },
+	{ "tcp://[::1]",                  "tcp",  "",    "",    1, "::1",     "",        ""     },
+	{ "tcp://foo:bar@foo.bar:9968",   "tcp",  "foo", "bar", 0, "foo.bar", "9968",    ""     },
+	{ "tcp://foo:bar@[foo.bar]:9968", "tcp",  "foo", "bar", 1, "foo.bar", "9968",    ""     },
+	{ " ",                            "",     "",    "",    0, " ",       "",        ""     }, /* TODO: FAIL! */
 };
 
 void
