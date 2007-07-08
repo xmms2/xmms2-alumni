@@ -7,15 +7,14 @@
 #include "xmmsc/xmmsc_ipc_transport.h"
 
 char *msg = "korv";
-char *ipc_path = "unix:///tmp/xmms2.socket";
+char *unix_ipc_path = "unix:///tmp/xmms2.socket";
+char *tcp_ipc_path = "tcp://localhost:12345";
 
-int
-main (int argc, char **argv) {
+void
+test_korv (char *ipc_path) {
 	xmms_ipc_transport_t *transport;
 	int fd, status;
 	pid_t pid;
-
-	PLAN_TESTS(3);
 
 	transport = xmms_ipc_server_init (ipc_path);
 	OK(transport != NULL, "connected");
@@ -43,16 +42,26 @@ main (int argc, char **argv) {
 	FD_SET (fd, &set);
 
 	if (select (fd + 1, &set, NULL, NULL, NULL) > 0) {
-		char buffer[sizeof (msg) + 1];
+		char *buffer = malloc (sizeof (char) * strlen (msg) + 1);
 
 		xmms_ipc_transport_t *client = xmms_ipc_server_accept (transport);
 		OK(client != NULL, "connection accepted");
 
 		xmms_ipc_transport_read (client, buffer, strlen (msg));
 		IS(buffer, msg, "got correct message");
+
+		free (buffer);
 	}
 
 	waitpid (-1, &status, 0);
+}
+
+int
+main (int argc, char **argv) {
+	PLAN_TESTS(6);
+
+	test_korv(unix_ipc_path);
+	test_korv(tcp_ipc_path);
 
 	return EXIT_STATUS;
 }

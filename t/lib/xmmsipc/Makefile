@@ -1,4 +1,4 @@
-CFLAGS = -I../../include -I../../../src/lib/xmmsipc -I../../../src/include
+CFLAGS = -g -O0 -I../../include -I../../../src/lib/xmmsipc -I../../../src/include
 
 all: parse_url.t client_server.t
 
