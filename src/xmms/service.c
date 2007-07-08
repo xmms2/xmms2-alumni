@@ -1104,6 +1104,7 @@ xmms_service_args_parse (xmms_ipc_msg_t *msg, GHashTable *args,
 				goto inval;
 			}
 			val = xmms_object_cmd_value_str_new (tmp);
+			free (tmp);
 		}
 		break;
 		case XMMS_OBJECT_CMD_ARG_STRINGLIST:
