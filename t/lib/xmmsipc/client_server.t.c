@@ -7,8 +7,11 @@
 #include "xmmsc/xmmsc_ipc_transport.h"
 
 char *msg = "korv";
-char *unix_ipc_path = "unix:///tmp/xmms2.socket";
-char *tcp_ipc_path = "tcp://localhost:12345";
+char *ipc_paths[] = {
+	"unix:///tmp/xmms2.socket",
+	"tcp://localhost:12345",
+	"tcp://[::1]:12345",
+};
 
 void
 test_korv (char *ipc_path) {
@@ -58,10 +61,14 @@ test_korv (char *ipc_path) {
 
 int
 main (int argc, char **argv) {
-	PLAN_TESTS(6);
+	int i;
+	int num_ipc_paths = sizeof (ipc_paths) / sizeof (ipc_paths[0]);
 
-	test_korv(unix_ipc_path);
-	test_korv(tcp_ipc_path);
+	PLAN_TESTS(num_ipc_paths * 3);
+
+	for (i = 0; i < num_ipc_paths; i++) {
+		test_korv(ipc_paths[i]);
+	}
 
 	return EXIT_STATUS;
 }
