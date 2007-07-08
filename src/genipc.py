@@ -71,6 +71,7 @@ def write_deserialization(file,args):
 		    ipcmsgdeser.write("\t%s = malloc(1000);\n" % name)
 		    ipcmsgdeser.write("\txmms_ipc_msg_get_%s (msg, %s, 1000);\n" % \
 			(msg_map[type], name))
+	file.write("\n")
 
 
 #write header of the ipc_msg_deserialize.c file
@@ -90,6 +91,23 @@ xmms_ipc_msg_t *msg)\n{\n" % (obj.getAttribute("name"),
     write_deserialization(ipcmsgdeser,args)
 
     #now we need to find the cmd structure and call the right method
+    ipcmsgdeser.write("\txmms_%s_cmds_t *cmds = (xmms_%s_cmds_t \
+*)g_list_nth_data (ipc->cmds, XMMS_IPC_OBJECT_%s);\n" % \
+	(obj.getAttribute("name"), obj.getAttribute("name"), \
+	obj.getAttribute("name").upper()))
+
+    #FIXME should check that it exists, if not throw error
+    ipcmsgdeser.write("\tcmds->%s (" % method.getAttribute("name"))
+    for arg in args:
+	type = arg.getElementsByTagName("type")
+	type = type[0].childNodes[1].nodeName
+	name = arg.getAttribute("name")
+
+	ipcmsgdeser.write("%s, " % name);
+
+    #FIXME define error somewhere
+    ipcmsgdeser.write("NULL);\n")
+
     ipcmsgdeser.write("}\n\n")
 
 #write the header of the ipc_msg_gen.c file
