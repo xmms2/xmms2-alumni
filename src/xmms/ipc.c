@@ -83,6 +83,11 @@ static void xmms_ipc_client_destroy (xmms_ipc_client_t *client);
 
 static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
 
+void
+xmms_ipc_add_cmds(xmms_ipc_t *ipc, gpointer *cmds, guint type)
+{
+	ipc->cmds = g_list_insert (ipc->cmds, cmds, type);
+}
 
 static void
 count_hash (gpointer key, gpointer value, gpointer udata)
