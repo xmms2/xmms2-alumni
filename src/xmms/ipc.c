@@ -37,6 +37,7 @@ typedef struct xmms_ipc_object_pool_t {
 	xmms_object_t *objects[XMMS_IPC_OBJECT_END];
 } xmms_ipc_object_pool_t;
 
+GList *cmds_list; /* List of all the xmms_*_cmds_t structures */
 
 /**
  * The server IPC object
@@ -47,7 +48,6 @@ struct xmms_ipc_St {
 	GIOChannel *chan;
 	GMutex *mutex_lock;
 	xmms_object_t **objects;
-	GList *cmds; /* List of all the xmms_*_cmds_t structures */
 };
 
 
@@ -84,15 +84,15 @@ static void xmms_ipc_client_destroy (xmms_ipc_client_t *client);
 static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
 
 
-GList *xmms_ipc_get_cmds(xmms_ipc_t *ipc)
+GList *xmms_ipc_get_cmds()
 {
-	return ipc->cmds;
+	return cmds_list;
 }
 
 void
-xmms_ipc_add_cmds(xmms_ipc_t *ipc, gpointer *cmds, guint type)
+xmms_ipc_add_cmds(gpointer *cmds, guint type)
 {
-	ipc->cmds = g_list_insert (ipc->cmds, cmds, type);
+	cmds_list = g_list_insert (cmds_list, cmds, type);
 }
 
 static void
@@ -532,7 +532,8 @@ xmms_ipc_setup_server (const gchar *path)
 		ipc->mutex_lock = g_mutex_new ();
 		ipc->transport = transport;
 		ipc->objects = ipc_object_pool->objects;
-		ipc->cmds = NULL;
+
+		cmds_list = NULL;
 
 		xmms_ipc_setup_server_internaly (ipc);
 		xmms_log_info ("IPC listening on '%s'.", split[i]);

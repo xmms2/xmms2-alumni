@@ -90,7 +90,7 @@ struct xmms_main_St {
 	time_t starttime;
 };
 
-typedef struct xmms_main_St xmms_main_t;
+//typedef struct xmms_main_St xmms_main_t;
 
 #include "xmmspriv/xmms_main_cmds.h"
 
