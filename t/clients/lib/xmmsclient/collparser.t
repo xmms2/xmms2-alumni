@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 use Test::More qw/no_plan/;
+use Test::XMMS qw/-nostart/;
 use Audio::XMMSClient;
 
 my $coll_ns = 'Audio::XMMSClient::Collection';
@@ -136,24 +137,4 @@ my $universe = {
             type     => 'intersection',
             operands => [ $expected_ref_all_media, $expected_title_foo ],
     });
-}
-
-sub coll_ok {
-    my ($coll, $expected) = @_;
-
-    isa_ok($coll, $coll_ns);
-
-    if (defined (my $type = $expected->{type})) {
-        is($coll->get_type, $type, "coll type `$type'");
-    }
-
-    is_deeply({ $coll->attribute_list }, $expected->{attributes} || {}, 'correct attributes');
-
-    my @operands = $coll->operand_list;
-
-    is(scalar @operands, scalar @{ $expected->{operands} || [] }, 'correct number of operands');
-
-    for (my $i = 0; $i < @operands; $i++) {
-        coll_ok($operands[$i], $expected->{operands}->[$i]);
-    }
 }
