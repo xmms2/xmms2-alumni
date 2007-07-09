@@ -148,7 +148,7 @@ def write_processmsg(node):
     #output code that deserializes the arguments to the command, finds the
     #hooks in ipc->cmds, and calls it correctly
     for method in methodmap[node.getAttribute("name")]:
-        ipcmsggen.write("\t\t\tif ((cmd == XMMS_%s_CMD_%s) && (type == 1)) {\n" % \
+        ipcmsggen.write("\t\t\tif ((cmd == XMMSC_%s_CMD_%s) && (type == 1)) {\n" % \
 		(node.getAttribute("name").upper(),method.getAttribute("name").upper()))
 	ipcmsggen.write("\t\t\t\tdeserialize_call_%s_cmd_%s (ipc, msg)\n" %
 		(node.getAttribute("name"),method.getAttribute("name")))
@@ -255,12 +255,12 @@ def do_objects(objects):
 		    #add to the methodmap
 		    methodmap[node.getAttribute("name")].add(method)
 		    type = node.getElementsByTagName("type")
-		    xmmsclientfile.write("\tXMMSC_%s_METHOD_%s = %d,\n" % \
+		    xmmsclientfile.write("\tXMMSC_%s_CMD_%s = %d,\n" % \
 					 (node.getAttribute("name").upper(),
 					 method.getAttribute("name").upper(),
 					 get_nextid()))
 
-		xmmsclientfile.write("\tXMMSC_%s_METHOD_END\n" % \
+		xmmsclientfile.write("\tXMMSC_%s_CMD_END\n" % \
 			node.getAttribute("name").upper())
 		xmmsclientfile.write("} xmmsc_%s_methods_t;\n\n" % \
 			node.getAttribute("name"))
@@ -300,6 +300,7 @@ def do_objects(objects):
 		hfile.write("#define __XMMS_%s_CMD_H__\n\n" % \
 			node.getAttribute("name"))
 
+		#because it isn't defined in a header file anywhere else
 		hfile.write("typedef struct xmms_%s_St xmms_%s_t;\n" % \
 			(node.getAttribute("name"),node.getAttribute("name")))
 
