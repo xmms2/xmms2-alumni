@@ -46,6 +46,11 @@ def get_args(node):
 
     return argstring
 
+#add a method's include to a big include header
+def add_cmdsheader(node):
+    cmdsheader.write("#include \"xmmspriv/xmms_%s_cmds.h\"\n" % \
+	    node.getAttribute("name"))
+
 def write_deserialization(file,args):
     if args.length > 0:
 	for arg in args:
@@ -118,7 +123,7 @@ def start_processmsg():
 
     #include files go here
     ipcmsggen.write("#include \"xmmspriv/xmms_ipc.h\"\n")
-
+    ipcmsggen.write("#include \"xmmspriv/xmms_cmds.h\"\n")
 
     ipcmsggen.write("\n")
 
@@ -279,9 +284,13 @@ def do_objects(objects):
 
 	    if node.getAttribute("type") == "server" or \
 	    node.getAttribute("type") == "both":
+
+		#add to the big command header
+		add_cmdsheader(node)
+
                 #Open up the output header file
 		hfile = open("genipc_out/xmms_%s_cmds.h" % \
-			node.getAttribute("name"),"w+");
+			node.getAttribute("name"),"w+")
 
 		objectlist.add(node.getAttribute("name"))
 
@@ -395,6 +404,7 @@ if __name__ == "__main__":
     xmmsclientfile = open("genipc_out/xmmsclient.h","w+")
     ipcmsggen = open("genipc_out/ipc_msg_gen.c","w+")
     ipcmsgdeser = open("genipc_out/ipc_msg_deserialize.c","w+")
+    cmdsheader = open("genipc_out/xmms_cmds.h","w+")
 
     start_processmsg()
     start_deser()
