@@ -1,5 +1,7 @@
 #!/bin/sh
 
+./genipc.py
+
 #source
 cp genipc_out/ipc_cmds.c xmms
 cp genipc_out/ipc_msg_gen.c xmms
