@@ -1,7 +1,7 @@
 List of things TODO
 
-* Generate code for ipc.c to serialize/deserialize messages and call
-* appropriate cmd handlers
+* Figure out how to let the cmd_register functions not take an ipc argument(or
+		* how to get one in the files that need to call it)
 
 * Handle lists of complex types correctly/generate the correct code(right now  we just skip over them)
 
