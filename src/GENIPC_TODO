@@ -1,13 +1,12 @@
-List of things TODO
+List of things TODO(in rough order)
 
-* Figure out how to let the cmd_register functions not take an ipc argument(or
-		* how to get one in the files that need to call it)
+* Test the server side using the stripped clientlib in my tree
 
-* Handle lists of complex types correctly/generate the correct code(right now  we just skip over them)
+* Handle lists of complex types correctly/generate the correct code(right now
+* we just skip over them) (Maybe should be before rigerous
+* testing)
 
 * Figure out how to implement property requests in the server
 
 * Convert all of the server over to the new cmd handling api
-
-* Testing
 
