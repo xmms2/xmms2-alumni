@@ -116,7 +116,7 @@ def start_processmsg():
     #include files go here
 
     ipcmsggen.write("void\nprocess_msg (xmms_ipc_client_t *client, xmms_ipc_t\
-*ipc, xmms_ipc_msg_t *msg)\n{\n\n")
+ *ipc, xmms_ipc_msg_t *msg)\n{\n\n")
     #body of func
 
     ipcmsggen.write("\tint obj, cmd, type;\n")
@@ -414,3 +414,9 @@ __GEN_XMMSCLIENT_H__\n\n")
 
     #close the header guard on xmmsclient.h
     xmmsclientfile.write("#endif\n")
+
+    #close off ipcmsggen.c
+    ipcmsggen.write("\t\tdefault:\n\t\t\tbreak;\n") #should do an error
+
+    ipcmsggen.write("\t}\n")
+    ipcmsggen.write("}\n")
