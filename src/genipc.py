@@ -188,11 +188,11 @@ def write_cmd_code(node):
     cfile.write("}\n\n");
 
     #registration function
-    cfile.write("void\nxmms_%s_cmds_register (xmms_ipc_t *ipc, xmms_%s_cmds_t *cmds)\n{\n" % \
+    cfile.write("void\nxmms_%s_cmds_register (xmms_%s_cmds_t *cmds)\n{\n" % \
 	    (node.getAttribute("name"),node.getAttribute("name")))
 
     #add an entry in GPtrArray for the cmds(indexed by XMMSC_IPC_OBJECT_XXX)
-    cfile.write("\txmms_ipc_add_cmds(ipc, (gpointer) cmds, XMMSC_IPC_OBJECT_%s);\n" % \
+    cfile.write("\txmms_ipc_add_cmds((gpointer) cmds, XMMSC_IPC_OBJECT_%s);\n" % \
 		    node.getAttribute("name").upper())
 
     cfile.write("}\n\n")
@@ -348,7 +348,7 @@ def do_objects(objects):
 		hfile.write("xmms_%s_cmds_t * xmms_%s_cmds_init (xmms_object_t *obj);\n" % \
 			(node.getAttribute("name"), node.getAttribute("name")))
 
-		hfile.write("void xmms_%s_cmds_register (xmms_ipc_t *ipc, xmms_%s_cmds_t *cmds);\n" % \
+		hfile.write("void xmms_%s_cmds_register (xmms_%s_cmds_t *cmds);\n" % \
 			(node.getAttribute("name"), node.getAttribute("name")))
 
 		hfile.write("#endif\n")
