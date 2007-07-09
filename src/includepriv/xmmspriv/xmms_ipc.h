@@ -17,6 +17,7 @@ gboolean xmms_ipc_setup_with_gmain (xmms_ipc_t *ipc);
 
 gboolean xmms_ipc_has_pending (guint signalid);
 
+GList *xmms_ipc_get_cmds(xmms_ipc_t *ipc);
 void xmms_ipc_add_cmds(xmms_ipc_t *ipc, gpointer *cmds, guint type);
 
 #endif
