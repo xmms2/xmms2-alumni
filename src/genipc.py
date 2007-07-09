@@ -148,7 +148,7 @@ def write_processmsg(node):
     #output code that deserializes the arguments to the command, finds the
     #hooks in ipc->cmds, and calls it correctly
     for method in methodmap[node.getAttribute("name")]:
-        ipcmsggen.write("\t\t\tif ((cmd == XMMS_%s_CMD_%s) && (type == 1)) {\n" % \
+        ipcmsggen.write("\t\t\tif ((cmd == XMMSC_%s_METHOD_%s) && (type == 1)) {\n" % \
 		(node.getAttribute("name").upper(),method.getAttribute("name").upper()))
 	ipcmsggen.write("\t\t\t\tdeserialize_call_%s_cmd_%s (ipc, msg)\n" %
 		(node.getAttribute("name"),method.getAttribute("name")))
@@ -245,46 +245,9 @@ def do_objects(objects):
                 xmmsclientfile.write("} xmmsc_%s_properties_t;\n\n" % \
                         node.getAttribute("name"))
 
-		#enums (methods)
-		xmmsclientfile.write("typedef enum {\n");
-
-		methods = node.getElementsByTagName("method")
-		methodmap[node.getAttribute("name")] = set()
-
-		for method in methods:
-		    #add to the methodmap
-		    methodmap[node.getAttribute("name")].add(method)
-		    type = node.getElementsByTagName("type")
-		    xmmsclientfile.write("\tXMMSC_%s_METHOD_%s = %d,\n" % \
-					 (node.getAttribute("name").upper(),
-					 method.getAttribute("name").upper(),
-					 get_nextid()))
-
-		xmmsclientfile.write("\tXMMSC_%s_METHOD_END\n" % \
-			node.getAttribute("name").upper())
-		xmmsclientfile.write("} xmmsc_%s_methods_t;\n\n" % \
-			node.getAttribute("name"))
-
-
-                #higher-level method declarations
-                for method in methods:
-                    retval = method.getElementsByTagName("retval")
-                    xmmsclientfile.write("%s " % \
-                        (c_map[retval[0].childNodes[1].childNodes[1].nodeName]))
-
-                    #figure out how to write the arguments
-                    argstring = "xmmsc_connection_t *c"
-		    argstring = argstring + get_args(method)
-                    argstring = argstring + ", xmmsc_error_t *err"
-
-                    #actually output the rest of the line
-                    xmmsclientfile.write("xmmsc_%s_%s (%s);\n" % \
-                                         (node.getAttribute("name"),method.getAttribute("name"),
-                                        argstring))
 
 	    if node.getAttribute("type") == "server" or \
 	    node.getAttribute("type") == "both":
-
 		#add to the big command header
 		add_cmdsheader(node)
 
@@ -384,6 +347,45 @@ def do_objects(objects):
 
 		#output the code for the cmd helper functions
 		write_cmd_code(node)
+
+	    #this is done for both server and client
+
+	    #enums (methods)
+	    xmmsclientfile.write("typedef enum {\n");
+
+	    methods = node.getElementsByTagName("method")
+	    methodmap[node.getAttribute("name")] = set()
+
+	    for method in methods:
+		#add to the methodmap
+		methodmap[node.getAttribute("name")].add(method)
+		type = node.getElementsByTagName("type")
+		xmmsclientfile.write("\tXMMSC_%s_METHOD_%s = %d,\n" % \
+				     (node.getAttribute("name").upper(),
+				     method.getAttribute("name").upper(),
+				     get_nextid()))
+
+	    xmmsclientfile.write("\tXMMSC_%s_METHOD_END\n" % \
+		    node.getAttribute("name").upper())
+	    xmmsclientfile.write("} xmmsc_%s_methods_t;\n\n" % \
+		    node.getAttribute("name"))
+
+
+	    #higher-level method declarations
+	    for method in methods:
+		retval = method.getElementsByTagName("retval")
+		xmmsclientfile.write("%s " % \
+		    (c_map[retval[0].childNodes[1].childNodes[1].nodeName]))
+
+		#figure out how to write the arguments
+		argstring = "xmmsc_connection_t *c"
+		argstring = argstring + get_args(method)
+		argstring = argstring + ", xmmsc_error_t *err"
+
+		#actually output the rest of the line
+		xmmsclientfile.write("xmmsc_%s_%s (%s);\n" % \
+				     (node.getAttribute("name"),method.getAttribute("name"),
+				    argstring))
 
             print "done"
 
