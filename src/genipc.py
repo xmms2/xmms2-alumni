@@ -150,7 +150,7 @@ def write_processmsg(node):
     for method in methodmap[node.getAttribute("name")]:
         ipcmsggen.write("\t\t\tif ((cmd == XMMSC_%s_METHOD_%s) && (type == 1)) {\n" % \
 		(node.getAttribute("name").upper(),method.getAttribute("name").upper()))
-	ipcmsggen.write("\t\t\t\tdeserialize_call_%s_cmd_%s (ipc, msg)\n" %
+	ipcmsggen.write("\t\t\t\tdeserialize_call_%s_cmd_%s (ipc, msg);\n" %
 		(node.getAttribute("name"),method.getAttribute("name")))
 	ipcmsggen.write("\t\t\t}\n")
 
