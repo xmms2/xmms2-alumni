@@ -171,8 +171,8 @@ def write_cmd_code(node):
 	    (node.getAttribute("name"),node.getAttribute("name")))
 
     #add an entry in GPtrArray for the cmds(indexed by XMMSC_IPC_OBJECT_XXX)
-    cfile.write("\tipc->cmds = g_list_insert (ipc->cmds, (gpointer) cmds,\
- XMMSC_IPC_OBJECT_%s);\n" % node.getAttribute("name").upper())
+    cfile.write("\txmms_ipc_add_cmds(ipc, (gpointer) cmds, XMMSC_IPC_OBJECT_%s);\n" % \
+		    node.getAttribute("name").upper())
 
     cfile.write("}\n\n")
 
