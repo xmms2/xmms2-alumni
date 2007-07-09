@@ -10,7 +10,7 @@ c_map["none"] = "void"
 c_map["int"] = "int"
 c_map["uint"] = "unsigned int"
 c_map["string"] = "char *"
-c_map["enum"] = "int"
+c_map["enum"] = "unsigned int"
 
 #dictionary mapping of types to xmms_ipc_msg types
 msg_map = {}
