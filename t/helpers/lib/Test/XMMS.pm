@@ -2,7 +2,9 @@ package Test::XMMS;
 
 use strict;
 use warnings;
+use base qw/Test::Builder::Module Exporter/;
 use Carp qw/croak/;
+use Scalar::Util qw/blessed/;
 use POSIX qw/SIGINT SIG_BLOCK SIG_UNBLOCK/;
 use Audio::XMMSClient;
 use File::Path qw/mkpath/;
@@ -11,6 +13,8 @@ use File::Spec::Functions qw/splitpath splitdir catdir catfile/;
 
 my $xmms_client;
 my $xmms_pid;
+
+our @EXPORT = qw/coll_ok/;
 
 sub do_fork {
     my $sigset = POSIX::SigSet->new(SIGINT);
@@ -46,6 +50,8 @@ sub create_goof_plugin_dir {
 
 sub import {
     my ($self, @args) = @_;
+
+    $self->export_to_level( 1, $self, $_ ) foreach @EXPORT;
 
     my $top_dir = '/home/rafl/projects/c/xmms2/xmms2-rafl/'; #FIXME
     my $build_dir = catfile($top_dir, qw/_build_ default/);
@@ -105,10 +111,75 @@ sub tear_down {
     $xmms_client->quit->wait;
 }
 
-END {
-    tear_down();
+{
+    my $Tester = __PACKAGE__->builder;
 
-    waitpid $xmms_pid, 0;
+    sub coll_ok {
+        my ($coll, $expected_coll) = @_;
+        my $diag;
+
+        if (!defined $coll) {
+            $diag = 'The object is not defined';
+        }
+        elsif (!ref $coll) {
+            $diag = 'The object is not a reference';
+        }
+        elsif (!blessed($coll)) {
+            $diag = 'The object is not blessed';
+        }
+        elsif (!$coll->isa('Audio::XMMSClient::Collection')) {
+            $diag = 'The object is a ' . blessed($coll) . ', not an Audio::XMMSClient::Collection instance';
+        }
+
+        if ($diag) {
+            $Tester->ok(0, 'Not a collection');
+            $Tester->diag($diag);
+            return;
+        }
+        else {
+            $Tester->ok(1, 'isa collection');
+        }
+
+        if (defined (my $type = $expected_coll->{type})) {
+            $Tester->is_eq($coll->get_type, $type, 'collection type');
+        }
+
+        {
+            my ($got, $expected, $name) = ({ $coll->attribute_list }, $expected_coll->{attributes} || {}, 'correct attributes');
+
+            if( !ref $got and !ref $expected ) {
+                $Tester->is_eq($got, $expected, $name);
+            }
+            elsif (!ref $got xor !ref $expected) {
+                $Tester->ok(0, $name);
+                $Tester->diag( Test::More::_format_stack({ vals => [ $got, $expected ] }) );
+            }
+            else {
+                local @Test::More::Data_Stack = ();
+                if (Test::More::_deep_check($got, $expected)) {
+                    $Tester->ok(1, $name);
+                }
+                else {
+                    $Tester->ok(0, $name);
+                    $Tester->diag(Test::More::_format_stack(@Test::More::Data_Stack));
+                }
+            }
+        }
+
+        my @operands = $coll->operand_list;
+        $Tester->is_num(scalar @operands, scalar @{ $expected_coll->{operands} || [] }, 'correct number of operands');
+
+        for (my $i = 0; $i < @operands; $i++) {
+            coll_ok($operands[$i], $expected_coll->{operands}->[$i]);
+        }
+    }
+}
+
+END {
+    if (defined $xmms_pid) {
+        tear_down();
+        waitpid $xmms_pid, 0;
+    }
 }
 
 1;
