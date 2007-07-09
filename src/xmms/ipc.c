@@ -83,6 +83,12 @@ static void xmms_ipc_client_destroy (xmms_ipc_client_t *client);
 
 static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
 
+
+GList *xmms_ipc_get_cmds(xmms_ipc_t *ipc)
+{
+	return ipc->cmds;
+}
+
 void
 xmms_ipc_add_cmds(xmms_ipc_t *ipc, gpointer *cmds, guint type)
 {
