@@ -149,7 +149,9 @@ def write_processmsg(node):
 def write_cmd_code(node):
     cfile.write("typedef struct xmms_%s_St xmms_%s_t;\n" % \
 	    (node.getAttribute("name"),node.getAttribute("name")))
+    #include files
     cfile.write("#include \"xmms/xmms_object.h\"\n")
+    cfile.write("#include \"xmmspriv/xmms_ipc.h\"\n")
     cfile.write("#include \"xmmspriv/xmms_%s_cmds.h\"\n" % node.getAttribute("name"))
     cfile.write("#include \"xmmsclient/xmmsclient.h\"\n\n")
 
