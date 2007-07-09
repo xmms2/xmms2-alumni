@@ -21,6 +21,8 @@ source = """config.c
             collserial.c
             ipc.c
 	    ipc_cmds.c
+	    ipc_msg_gen.c
+	    ipc_msg_deserialize.c
             log.c
             plugin.c
             magic.c
