@@ -21,10 +21,18 @@
  *
  */
 
+#define x_check_client(ret) \
+	if (!c) { \
+		xmms_error_set (err, XMMS_ERROR_INVAL, "invalid server-side identifier provided"); \
+		return ret; \
+	}
+
+
 #include <math.h>
 #include <glib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <sys/shm.h>
 #include <sys/sem.h>
@@ -52,6 +60,8 @@ typedef struct {
 		xmmsc_vis_udp_t udp;
 	} transport;
 	xmmsc_vis_transport_t type;
+	unsigned short format;
+	xmmsc_vis_properties_t prop;
 } xmms_vis_client_t;
 
 /**
@@ -70,8 +80,11 @@ static xmms_visualisation_t *vis;
 static void xmms_visualisation_destroy (xmms_object_t *object);
 
 XMMS_CMD_DEFINE (query_version, xmms_visualisation_version, xmms_visualisation_t *, UINT32, NONE, NONE);
-XMMS_CMD_DEFINE (init_shm, xmms_visualisation_init_shm, xmms_visualisation_t *, UINT32, INT32, INT32);
-XMMS_CMD_DEFINE (shutdown, xmms_visualisation_shutdown, xmms_visualisation_t *, NONE, UINT32, NONE);
+XMMS_CMD_DEFINE (registercl, xmms_visualisation_register_client, xmms_visualisation_t *, INT32, NONE, NONE);
+XMMS_CMD_DEFINE3 (init_shm, xmms_visualisation_init_shm, xmms_visualisation_t *, NONE, INT32, INT32, INT32);
+XMMS_CMD_DEFINE3 (property_set, xmms_visualisation_property_set, xmms_visualisation_t *, INT32, INT32, STRING, STRING);
+XMMS_CMD_DEFINE (properties_set, xmms_visualisation_properties_set, xmms_visualisation_t *, INT32, INT32, STRINGLIST);
+XMMS_CMD_DEFINE (shutdown, xmms_visualisation_shutdown, xmms_visualisation_t *, NONE, INT32, NONE);
 
 /**
  * Initialize the Vis module.
@@ -87,11 +100,22 @@ xmms_visualisation_init ()
 					 XMMS_IPC_CMD_VISUALISATION_QUERY_VERSION,
 					 XMMS_CMD_FUNC (query_version));
 	xmms_object_cmd_add (XMMS_OBJECT (vis),
+					 XMMS_IPC_CMD_VISUALISATION_REGISTER,
+					 XMMS_CMD_FUNC (registercl));
+	xmms_object_cmd_add (XMMS_OBJECT (vis),
 					 XMMS_IPC_CMD_VISUALISATION_INIT_SHM,
 					 XMMS_CMD_FUNC (init_shm));
 	xmms_object_cmd_add (XMMS_OBJECT (vis),
+					 XMMS_IPC_CMD_VISUALISATION_PROPERTY,
+					 XMMS_CMD_FUNC (property_set));
+	xmms_object_cmd_add (XMMS_OBJECT (vis),
+					 XMMS_IPC_CMD_VISUALISATION_PROPERTIES,
+					 XMMS_CMD_FUNC (properties_set));
+	xmms_object_cmd_add (XMMS_OBJECT (vis),
 					 XMMS_IPC_CMD_VISUALISATION_SHUTDOWN,
 					 XMMS_CMD_FUNC (shutdown));
+
+	//xmms_plugin_load (&xmms_builtin_visualisation, NULL);
 }
 
 /**
@@ -137,12 +161,21 @@ create_client() {
 }
 
 xmms_vis_client_t *
-get_client(int32_t id) {
+get_client (int32_t id) {
 	if (id < 0 || id >= vis->clientc) {
 		return NULL;
 	}
 
 	return vis->clientv[id];
+}
+
+void
+delete_client (int32_t id) {
+	if (id < 0 || id >= vis->clientc) {
+		return;
+	}
+	g_free (vis->clientv[id]);
+	vis->clientv[id] = NULL;
 }
 
 uint32_t
@@ -153,45 +186,127 @@ xmms_visualisation_version (xmms_visualisation_t *vis, xmms_error_t *err) {
 	return XMMS_VISPACKET_VERSION;
 }
 
+void
+properties_init (xmmsc_vis_properties_t *p) {
+	p->type = VIS_PCM;
+	p->stereo = 1;
+	p->timeframe = 0.015;
+}
+
+gboolean
+property_set (xmmsc_vis_properties_t *p, gchar* key, gchar* data) {
+
+	if (!g_strcasecmp (key, "type")) {
+		if (!g_strcasecmp (data, "pcm")) {
+			p->type = VIS_PCM;
+		} else if (!g_strcasecmp (data, "fft")) {
+			p->type = VIS_FFT;
+		} else {
+			return FALSE;
+		}
+	} else if (!g_strcasecmp (key, "stereo")) {
+		p->stereo = (atoi (data) > 0);
+	} else if (!g_strcasecmp (key, "timeframe")) {
+		p->timeframe = g_strtod (data, NULL);
+		if (p->timeframe == 0.0) {
+			return FALSE;
+		}
+		/* TODO: restart timer */
+	} else {
+		return FALSE;
+	}
+	return TRUE;
+}
+
 int32_t
-xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t shmid, int32_t semid, xmms_error_t *err)
-{
-	int32_t clientid;
+xmms_visualisation_register_client (xmms_visualisation_t *vis, xmms_error_t *err) {
+	int32_t id;
 	xmms_vis_client_t *c;
+
+	id = create_client();
+	if (id < 0) {
+		xmms_error_set (err, XMMS_ERROR_OOM, "could not allocate dataset");
+		return -1;
+	}
+
+	/* do necessary initialisations here */
+	c = get_client(id);
+	c->format = 0;
+	c->type = VIS_NONE;
+	properties_init(&c->prop);
+
+	return id;
+}
+
+
+int32_t
+xmms_visualisation_property_set (xmms_visualisation_t *vis, int32_t id, gchar* key, gchar* value, xmms_error_t *err)
+{
+	xmms_vis_client_t *c = get_client(id);
+
+	x_check_client (-1);
+
+	if (!property_set (&c->prop, key, value)) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "property could not be set!");
+	}
+	/* the format identifier (between client and server) changes. so the client can recognize the first packet
+	   which is built using the new format according to the newly set property */
+	return (++c->format);
+}
+
+int32_t
+xmms_visualisation_properties_set (xmms_visualisation_t *vis, int32_t id, GList* prop, xmms_error_t *err)
+{
+	GList* n;
+	xmms_vis_client_t *c = get_client(id);
+
+	x_check_client (-1);
+
+	for (n = prop; n; n = n->next) {
+		if (!property_set (&c->prop, (gchar*)n->data, (gchar*)n->next->data)) {
+			xmms_error_set (err, XMMS_ERROR_INVAL, "property could not be set!");
+		}
+		n = n->next;
+	}
+	return (++c->format);
+}
+
+void
+xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmid, int32_t semid, xmms_error_t *err)
+{
 	void *buffer;
+	xmms_vis_client_t *c = get_client(id);
+
+	x_check_client ();
 
 	/* test the shm */
 	buffer = shmat(shmid, NULL, SHM_RDONLY);
 	if (buffer == (void*)-1) {
 		xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "couldn't attach to shared memory");
+		return;
 	}
 
 	/* set up client structure */
-	clientid = create_client();
-	if (clientid < 0) {
-		xmms_error_set (err, XMMS_ERROR_OOM, "could not allocate dataset");
-	}
-	c = get_client(clientid);
 	c->type = VIS_UNIXSHM;
 	c->transport.shm.buffer = buffer;
 	c->transport.shm.semid = semid;
 
-	return clientid;
+	/* TODO: start delivery timer, etc. */
+	printf("T: %d\t S: %d\t TF: %lf \n", c->prop.type, c->prop.stereo, c->prop.timeframe);
 }
 
 void
 xmms_visualisation_shutdown (xmms_visualisation_t *vis, int32_t id, xmms_error_t *err)
 {
-	xmms_vis_client_t *c = get_client(id);
-	if (!c) {
-		xmms_error_set (err, XMMS_ERROR_INVAL, "invalid server-side identifier provided");
-	}
+	xmms_vis_client_t *c = get_client (id);
+
+	x_check_client ();
 
 	if (c->type == VIS_UNIXSHM) {
 		shmdt (c->transport.shm.buffer);
 	}
 
-	g_free (c);
+	delete_client (id);
 }
 
 //~ static void output_spectrum (xmms_visualisation_t *vis, guint32 pos)

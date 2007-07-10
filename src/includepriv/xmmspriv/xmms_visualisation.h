@@ -31,7 +31,10 @@ struct xmms_visualisation_St;
 typedef struct xmms_visualisation_St xmms_visualisation_t;
 
 uint32_t xmms_visualisation_version (xmms_visualisation_t *vis, xmms_error_t *err);
-int32_t xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t shmid, int32_t semid, xmms_error_t *err);
+int32_t xmms_visualisation_register_client (xmms_visualisation_t *vis, xmms_error_t *err);
+void xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmid, int32_t semid, xmms_error_t *err);
+int32_t xmms_visualisation_property_set (xmms_visualisation_t *vis, int32_t id, gchar *key, gchar *value, xmms_error_t *err);
+int32_t xmms_visualisation_properties_set (xmms_visualisation_t *vis, int32_t id, GList *prop, xmms_error_t *err);
 void xmms_visualisation_shutdown (xmms_visualisation_t *vis, int32_t id, xmms_error_t *err);
 
 void xmms_visualisation_init (void);

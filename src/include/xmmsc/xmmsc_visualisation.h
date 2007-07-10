@@ -22,7 +22,6 @@
 #ifndef __XMMS_VIS_COMMON_H__
 #define __XMMS_VIS_COMMON_H__
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -45,12 +44,41 @@ typedef struct {
 } xmmsc_vispacket_t;
 
 /**
+ * Possible data modes
+ */
+
+typedef enum {
+	VIS_PCM,
+	VIS_FFT
+} xmmsc_vis_data_t;
+
+/**
+ * Properties of the delivered vis data. The client doesn't use this struct
+ * to date, but perhaps could in future
+ */
+
+typedef struct {
+	/* type of data */
+	xmmsc_vis_data_t type;
+	/* wether to send both channels seperate, or mixed */
+	int stereo;
+	/* TODO frequency of package delivery in hz */
+	double freq;
+	double timeframe;
+	/* pcm amount of data wanted */
+	int pcm_samplecount;
+	/* pcm bitsize wanted */
+/*	TODO xmms_sample_format_t pcm_sampleformat;*/
+} xmmsc_vis_properties_t;
+
+/**
  * Possible vis transports
  */
 
 typedef enum {
 	VIS_UNIXSHM,
-	VIS_UDP
+	VIS_UDP,
+	VIS_NONE
 } xmmsc_vis_transport_t;
 
 /**

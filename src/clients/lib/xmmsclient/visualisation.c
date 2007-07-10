@@ -44,19 +44,8 @@ struct xmmsc_visualisation_St {
 	} transport;
 	xmmsc_vis_transport_t type;
 	/** server side identifier */
-	uint32_t id;
+	int32_t id;
 };
-
-xmmsc_visualisation_t *
-create_dataset(xmmsc_connection_t *c, int vv) {
-	if (vv < 0 || vv >= c->visc)
-		return NULL;
-
-	if (!(c->visv[vv] = x_new0 (xmmsc_visualisation_t, 1))) {
-        x_oom ();
-    }
-	return c->visv[vv];
-}
 
 xmmsc_visualisation_t *
 get_dataset(xmmsc_connection_t *c, int vv) {
@@ -83,6 +72,8 @@ xmmsc_visualisation_version (xmmsc_connection_t *c) {
 
 int
 xmmsc_visualisation_init (xmmsc_connection_t *c) {
+	xmmsc_result_t *res;
+
 	x_check_conn (c, 0);
 
 	c->visc++;
@@ -91,9 +82,21 @@ xmmsc_visualisation_init (xmmsc_connection_t *c) {
 		x_oom ();
 		c->visc = 0;
 	}
-	if (c->visc > 0)
-		c->visv[c->visc-1] = NULL;
-	return c->visc - 1;
+	if (c->visc > 0) {
+		if (!(c->visv[c->visc-1] = x_new0 (xmmsc_visualisation_t, 1))) {
+			x_oom ();
+		} else {
+			res = xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_REGISTER);
+			xmmsc_result_wait (res);
+			if (xmmsc_result_iserror (res)) {
+				c->error = strdup("Couldn't register to the server!");
+				return -1;
+			}
+			xmmsc_result_get_int (res, &c->visv[c->visc-1]->id);
+			xmmsc_result_unref (res);
+		}
+	}
+	return c->visc-1;
 }
 
 /**
@@ -101,7 +104,7 @@ xmmsc_visualisation_init (xmmsc_connection_t *c) {
  */
 
 xmmsc_result_t *
-xmmsc_visualisation_connect (xmmsc_connection_t *c, int vv) {
+xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 	xmms_ipc_msg_t *msg;
 	xmmsc_result_t *res;
 	xmmsc_visualisation_t *v;
@@ -110,6 +113,8 @@ xmmsc_visualisation_connect (xmmsc_connection_t *c, int vv) {
 
 	/* we can't transmit 64 bit int yet, but it could be that shmget() gives one */
 	x_api_error_if (sizeof(int) != sizeof(int32_t), "on yet unsupported 64 bit machine", NULL);
+
+	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered/unconnected visualisation dataset", NULL);
 
 	x_check_conn (c, NULL);
 
@@ -124,6 +129,7 @@ xmmsc_visualisation_connect (xmmsc_connection_t *c, int vv) {
 
 	/* send packet */
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_INIT_SHM);
+	xmms_ipc_msg_put_int32 (msg, v->id);
 	xmms_ipc_msg_put_int32 (msg, shmid);
 	xmms_ipc_msg_put_int32 (msg, semid);
 	res = xmmsc_send_msg (c, msg);
@@ -131,9 +137,6 @@ xmmsc_visualisation_connect (xmmsc_connection_t *c, int vv) {
 	/* find out if it worked */
 	xmmsc_result_wait (res);
 	if (!xmmsc_result_iserror (res)) {
-		x_api_error_if (!(v = create_dataset(c, vv)), "with unregistered visualisation dataset", NULL);
-
-		xmmsc_result_get_uint (res, &v->id);
 		v->type = VIS_UNIXSHM;
 		v->transport.shm.buffer = shmat(shmid, NULL, SHM_RDONLY);
 		v->transport.shm.semid = semid;
@@ -149,6 +152,44 @@ xmmsc_visualisation_connect (xmmsc_connection_t *c, int vv) {
 }
 
 /**
+ * Deliver one property
+ */
+xmmsc_result_t *
+xmmsc_visualisation_property_set (xmmsc_connection_t *c, int vv, const char* key, const char* value)
+{
+	xmms_ipc_msg_t *msg;
+	xmmsc_visualisation_t *v;
+
+	x_check_conn (c, NULL);
+	v = get_dataset(c, vv);
+	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_PROPERTY);
+	xmms_ipc_msg_put_int32 (msg, v->id);
+	//xmms_ipc_msg_put_string (msg, key);
+	//xmms_ipc_msg_put_string (msg, value);
+	return xmmsc_send_msg (c, msg);
+}
+
+/**
+ * Deliver some properties
+ */
+xmmsc_result_t *
+xmmsc_visualisation_properties_set (xmmsc_connection_t *c, int vv, const char* prop[])
+{
+	xmms_ipc_msg_t *msg;
+	xmmsc_visualisation_t *v;
+
+	x_check_conn (c, NULL);
+	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_PROPERTIES);
+	xmms_ipc_msg_put_int32 (msg, v->id);
+	xmms_ipc_msg_put_string_list (msg, prop);
+	return xmmsc_send_msg (c, msg);
+}
+
+/**
  * Says goodbye and cleans up
  */
 
@@ -160,10 +201,10 @@ xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int vv)
 	xmmsc_visualisation_t *v;
 
 	x_check_conn (c, NULL);
-	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered/unconnected visualisation dataset", NULL);
+	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_SHUTDOWN);
-	xmms_ipc_msg_put_uint32 (msg, v->id);
+	xmms_ipc_msg_put_int32 (msg, v->id);
 	res = xmmsc_send_msg (c, msg);
 
 	/* detach from shm, close socket.. */

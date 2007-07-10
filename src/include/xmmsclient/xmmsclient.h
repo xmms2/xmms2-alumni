@@ -173,7 +173,9 @@ typedef struct xmmsc_visualisation_St xmmsc_visualisation_t;
 /* commands */
 xmmsc_result_t *xmmsc_visualisation_version (xmmsc_connection_t *c);
 int xmmsc_visualisation_init (xmmsc_connection_t *c);
-xmmsc_result_t *xmmsc_visualisation_connect (xmmsc_connection_t *c, int v);
+xmmsc_result_t *xmmsc_visualisation_start (xmmsc_connection_t *c, int v);
+xmmsc_result_t *xmmsc_visualisation_property_set (xmmsc_connection_t *c, int v, const char* key, const char* value);
+xmmsc_result_t *xmmsc_visualisation_properties_set (xmmsc_connection_t *c, int v, const char* prop[]);
 
 xmmsc_result_t *xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int v);
 

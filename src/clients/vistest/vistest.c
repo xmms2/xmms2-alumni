@@ -37,10 +37,11 @@ static GMainLoop *mainloop;
 static xmmsc_connection_t *connection;
 static int vis;
 
-static char* config[][2] = {
-	{"test", "yeah"},
-	{"no", "remorse"},
-	{"blackjack", "nutten"}
+static char* config[] = {
+	"type", "pcm",
+	"stereo", "0",
+	"timeframe", "1",
+	NULL
 };
 
 int
@@ -100,8 +101,15 @@ main (int argc, char **argv)
 	xmmsc_result_unref (res);
 
 	vis = xmmsc_visualisation_init (connection);
-	printf("vis: %d\n", vis);
-	res = xmmsc_visualisation_connect (connection, vis);
+	res = xmmsc_visualisation_properties_set (connection, vis, config);
+	xmmsc_result_wait (res);
+	if (xmmsc_result_iserror (res)) {
+		puts (xmmsc_result_get_error (res));
+		exit(EXIT_FAILURE);
+	}
+	xmmsc_result_unref (res);
+
+	res = xmmsc_visualisation_start (connection, vis);
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {
 		puts (xmmsc_result_get_error (res));
