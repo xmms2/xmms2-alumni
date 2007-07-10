@@ -149,6 +149,7 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 				xmms_ipc_msg_t *msg = client->read_msg;
 				client->read_msg = NULL;
 //				process_msg (client, client->ipc, msg);
+				process_msg (client->ipc, msg);
 				xmms_ipc_msg_destroy (msg);
 			} else {
 				break;
