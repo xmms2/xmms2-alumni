@@ -426,12 +426,14 @@ if __name__ == "__main__":
     #header guard and include file for xmmsclient.h
     xmmsclientfile.write("#ifndef __GEN_XMMSCLIENT_H__\n#define \
 __GEN_XMMSCLIENT_H__\n\n")
-    xmmsclientfile.write("#include \"xmmsclient_conn.h\"\n\n")
+    xmmsclientfile.write("#include \"xmmsclient_conn.h\"\n")
 
     nodes = doc.getElementsByTagName("ipc")
     if nodes[0].nodeName == "ipc":
         print "Parsing XMMS2 IPC XML Description file version %s..." % \
         nodes[0].getAttribute("version")
+	xmmsclientfile.write("#define XMMSC_VERSION %s\n\n" % \
+		nodes[0].getAttribute("version"))
     else:
         print "Error, XML files not IPC Description file."
 
