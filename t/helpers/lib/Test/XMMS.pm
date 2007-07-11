@@ -6,7 +6,6 @@ use base qw/Test::Builder::Module Exporter/;
 use Carp qw/croak/;
 use Scalar::Util qw/blessed/;
 use POSIX qw/SIGINT SIG_BLOCK SIG_UNBLOCK/;
-use Audio::XMMSClient;
 use File::Path qw/mkpath/;
 use File::Basename qw/basename/;
 use File::Spec::Functions qw/splitpath splitdir catdir catfile/;
@@ -48,13 +47,32 @@ sub create_goof_plugin_dir {
     return $to;
 }
 
+my ($top_dir, $build_dir);
+
+BEGIN {
+    my $package = __PACKAGE__;
+    (my $path = $package) =~ s{::}{/}g;
+    $path .= '.pm';
+
+    my $module_path = $INC{$path};
+
+    my (undef, $directories, undef) = splitpath($module_path);
+
+    $top_dir = catdir($directories, (('..') x 4));
+    my $build_dir = catfile($top_dir, qw/_build_ default/);
+
+    $ENV{LD_LIBRARY_PATH} = catdir($build_dir, qw/ src clients lib xmmsclient/);
+    die $ENV{LD_LIBRARY_PATH};
+
+    eval "require Audio::XMMSClient";
+    Audio::XMMSClient->import;
+}
+
 sub import {
     my ($self, @args) = @_;
 
     $self->export_to_level( 1, $self, $_ ) foreach @EXPORT;
 
-    my $top_dir = '/home/rafl/projects/c/xmms2/xmms2-rafl/'; #FIXME
-    my $build_dir = catfile($top_dir, qw/_build_ default/);
     my $exec_path = catfile($build_dir, qw/src xmms xmms2d/);
     my $goof_dir = catfile($top_dir, qw/t goofy/);
     my $plugin_path;
