@@ -400,3 +400,158 @@ my $universe = {
     $coll = $coll_ns->parse('tracknr<=42');
     coll_ok($coll, $expected_coll_lteq);
 }
+
+{
+    my @expected_artists = map {
+        +{
+            type       => 'equals',
+            attributes => {
+                field => 'artist',
+                value => $_,
+            },
+            operands   => [ $universe ],
+        }
+    } qw/A B C/;
+
+    my $coll = $coll_ns->parse('a:A OR a:B OR a:C');
+    coll_ok($coll, {
+            type     => 'union',
+            operands => \@expected_artists,
+    });
+
+    $coll = $coll_ns->parse('a:A AND a:B AND a:C');
+    coll_ok($coll, {
+            type     => 'intersection',
+            operands => \@expected_artists,
+    });
+
+    $coll = $coll_ns->parse('a:A AND a:B OR a:C');
+    coll_ok($coll, {
+            type     => 'intersection',
+            operands => [
+                $expected_artists[0],
+                {
+                    type => 'union',
+                    operands => [ @expected_artists[1, 2] ],
+                },
+            ],
+    });
+
+    $coll = $coll_ns->parse('a:A OR a:B AND a:C');
+    coll_ok($coll, {
+            type     => 'intersection',
+            operands => [
+                {
+                    type => 'union',
+                    operands => [ @expected_artists[0, 1] ],
+                },
+                $expected_artists[2],
+            ],
+    });
+
+    $coll = $coll_ns->parse('NOT a:A');
+    coll_ok($coll, {
+            type     => 'complement',
+            operands => [ $expected_artists[0] ],
+    });
+
+    $coll = $coll_ns->parse('NOT a:A OR a:B');
+    coll_ok($coll, {
+            type     => 'union',
+            operands => [
+                {
+                    type     => 'complement',
+                    operands => [ $expected_artists[0] ],
+                },
+                $expected_artists[1],
+            ],
+    });
+
+    $coll = $coll_ns->parse('NOT (a:A OR a:B)');
+    coll_ok($coll, {
+            type     => 'complement',
+            operands => [
+                {
+                    type     => 'union',
+                    operands => [ @expected_artists[0, 1] ],
+                },
+            ],
+    });
+
+    $coll = $coll_ns->parse('(NOT a:A) OR a:B');
+    coll_ok($coll, {
+            type     => 'union',
+            operands => [
+                {
+                    type     => 'complement',
+                    operands => [ $expected_artists[0] ],
+                },
+                $expected_artists[1],
+            ],
+    });
+}
+
+{
+    my $coll = $coll_ns->parse('+compilation');
+    coll_ok($coll, {
+            type       => 'has',
+            attributes => {
+                field => 'compilation',
+            },
+            operands   => [ $universe ],
+    });
+}
+
+{
+    my $coll = $coll_ns->parse('((t:Foo))');
+    coll_ok($coll, {
+            type       => 'equals',
+            attributes => {
+                field => 'title',
+                value => 'Foo',
+            },
+            operands   => [ $universe ],
+    });
+}
+
+{
+    my $coll = $coll_ns->parse('7-42 -4 666-');
+    coll_ok($coll, {
+            type     => 'intersection',
+            operands => [
+                {
+                    type       => 'smaller',
+                    attributes => {
+                        field => 'position',
+                        value => '43',
+                    },
+                    operands   => [
+                        {
+                            type       => 'greater',
+                            attributes => {
+                                field => 'position',
+                                value => '6',
+                            },
+                            operands => [ $universe ],
+                        },
+                    ],
+                },
+                {
+                    type       => 'smaller',
+                    attributes => {
+                        field => 'position',
+                        value => '5',
+                    },
+                    operands   => [ $universe ],
+                },
+                {
+                    type       => 'greater',
+                    attributes => {
+                        field => 'position',
+                        value => '665',
+                    },
+                    operands   => [ $universe ],
+                },
+            ],
+    });
+}
