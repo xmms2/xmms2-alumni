@@ -3,8 +3,12 @@
 use strict;
 use warnings;
 use Test::More qw/no_plan/;
-use Test::XMMS qw/-nostart/;
 use Audio::XMMSClient;
+
+use FindBin;
+use lib "$FindBin::Bin/../../../helpers/lib";
+
+use Test::XMMS qw/-nostart/;
 
 my $coll_ns = 'Audio::XMMSClient::Collection';
 
