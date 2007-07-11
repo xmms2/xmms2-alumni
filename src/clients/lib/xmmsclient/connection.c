@@ -108,18 +108,18 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
                 c->error = strdup ("xmms2d is not running.");
 		return false;
 	}
-/* Make this a request */
-//	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_HELLO);
-//	xmms_ipc_msg_set_cookie (msg, xmmsc_next_id (c));
-//	xmms_ipc_msg_put_int32 (msg, 1);
-//	xmms_ipc_msg_put_string (msg, c->clientname);
 
-//	req = xmmsc_request_new (c, msg);
-//	req->interval = XMMSC_REQUEST_INTERVAL_NOW;
-//	xmmsc_request_set_callback (req, xmmsc_hello_callback);
-//	xmmsc_request_send (req);
+	/* Make this a request */
 
-//	xmmsc_ipc_msg_write (c,msg);
+	/* XXX This is pretty ad-hoc ATM, will be fixed before integrating in
+	 *  real xmmsclient */
+
+	msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_MAIN, XMMSC_MAIN_METHOD_HELLO);
+        xmms_ipc_msg_put_uint32 (msg, 1);
+        xmms_ipc_msg_put_uint32 (msg, XMMSC_VERSION);
+        xmms_ipc_msg_put_string (msg, "GENIPC TEST");
+        req = xmmsc_request_new (c, msg);
+	req->interval = -500;
 
         return ret;
 }
