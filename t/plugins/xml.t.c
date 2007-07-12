@@ -10,11 +10,16 @@ typedef struct expected_results_St {
 } expected_results_t;
 
 expected_results_t expected_results[] = {
-	{ "<foo>",      6, "foo",     0 },
-	{ "<foo>xx",    8, "foo",     0 },
-	{ "<bar",       5, NULL,      1 },
-	{ "korv",       5, NULL,      1 },
-	{ "<foo bar>", 10, "foo bar", 0 },
+	{ "<foo>",               6, "foo",     0 },
+	{ "<foo>xx",             8, "foo",     0 },
+	{ "<bar",                5, NULL,      1 },
+	{ "bar<",                5, NULL,      1 },
+	{ "bar>",                5, NULL,      1 },
+	{ "korv",                5, NULL,      1 },
+	{ "<foo bar>",          10, "foo bar", 0 },
+	{ "<!foo><bar>",        12, "bar",     0 },
+	{ "<?foo><bar>",        12, "bar",     0 },
+	{ "<!foo><?bar><korv>", 18, "korv",    0 },
 };
 
 const gchar *url = "korv://sausage";
@@ -79,7 +84,7 @@ int
 main (int argc, char **argv) {
 	int i;
 
-	PLAN_TESTS(16);
+	PLAN_TESTS(56);
 
 	g_thread_init (NULL);
 	xmms_ipc_init ();
@@ -90,4 +95,6 @@ main (int argc, char **argv) {
 	for (i = 0; i < G_N_ELEMENTS (expected_results); i++) {
 		test_xml (expected_results[i]);
 	}
+
+	return EXIT_STATUS;
 }
