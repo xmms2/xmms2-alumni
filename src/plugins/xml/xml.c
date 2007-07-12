@@ -80,9 +80,9 @@ get_root_node_name (xmms_xform_t *xform)
 				start = i;
 			}
 		} else {
-			if (isalpha (buf[i])) {
+			if (buf[i] != '>') {
 				len++;
-			} else if (len) {
+			} else {
 				ret = g_memdup (buf + start + 1, len);
 				ret[len] = '\0';
 				break;
