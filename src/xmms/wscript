@@ -33,7 +33,8 @@ source = """config.c
             bindata.c
             sample.genpy
             utils.c
-			visualisation.c""".split()
+			visualisation.c
+			visualisation_xform.c""".split()
 
 def build(bld):
     if g_platform == 'win32':
