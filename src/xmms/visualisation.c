@@ -249,6 +249,8 @@ xmms_visualisation_property_set (xmms_visualisation_t *vis, int32_t id, gchar* k
 	if (!property_set (&c->prop, key, value)) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "property could not be set!");
 	}
+	/* TODO: propagate new format to xform! */
+
 	/* the format identifier (between client and server) changes. so the client can recognize the first packet
 	   which is built using the new format according to the newly set property */
 	return (++c->format);
@@ -268,6 +270,8 @@ xmms_visualisation_properties_set (xmms_visualisation_t *vis, int32_t id, GList*
 		}
 		n = n->next;
 	}
+	/* TODO: propagate new format to xform! */
+
 	return (++c->format);
 }
 
@@ -280,7 +284,7 @@ xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmi
 	x_check_client ();
 
 	/* test the shm */
-	buffer = shmat(shmid, NULL, SHM_RDONLY);
+	buffer = shmat(shmid, NULL, 0);
 	if (buffer == (void*)-1) {
 		xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "couldn't attach to shared memory");
 		return;
@@ -288,11 +292,13 @@ xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmi
 
 	/* set up client structure */
 	c->type = VIS_UNIXSHM;
-	c->transport.shm.buffer = buffer;
 	c->transport.shm.semid = semid;
+	c->transport.shm.buffer = buffer;
+	/* at the beginning, all slots are free */
+	c->transport.shm.size = semctl(semid, 0, GETVAL);
+	c->transport.shm.pos = 0;
 
-	/* TODO: start delivery timer, etc. */
-	printf("T: %d\t S: %d\t TF: %lf \n", c->prop.type, c->prop.stereo, c->prop.timeframe);
+	//printf("SIZE: %d\tT: %d\t S: %d\t TF: %lf \n", c->transport.shm.size, c->prop.type, c->prop.stereo, c->prop.timeframe);
 }
 
 void
@@ -307,6 +313,77 @@ xmms_visualisation_shutdown (xmms_visualisation_t *vis, int32_t id, xmms_error_t
 	}
 
 	delete_client (id);
+}
+
+
+/**
+ * Decrements the server's semaphor (to write the next chunk)
+ */
+gboolean
+decrement_server (xmmsc_vis_unixshm_t *t) {
+	/* alter semaphore 0 by -1, don't block */
+	struct sembuf op = { 0, -1, IPC_NOWAIT };
+
+	{
+		int a = semctl(t->semid, 0, GETVAL, 0);
+		int b = semctl(t->semid, 1, GETVAL, 0);
+		//printf("DECR | %d, %d | pos %d\n", a, b, t->pos);
+	}
+
+	if (semop (t->semid, &op, 1) == -1) {
+		/* TODO: test if it really is EAGAIN */
+		perror("SKIP");
+		return FALSE;
+	}
+	return TRUE;
+}
+
+/**
+ * Increments the client's semaphor (after a chunk was written)
+ */
+void
+increment_client (xmmsc_vis_unixshm_t *t) {
+	/* alter semaphore 1 by 1, no flags */
+	struct sembuf op = { 1, +1, 0 };
+
+	{
+		int a = semctl(t->semid, 0, GETVAL, 0);
+		int b = semctl(t->semid, 1, GETVAL, 0);
+		//printf("INCR | %d, %d | pos %d\n", a, b, t->pos);
+	}
+
+	if (semop (t->semid, &op, 1) == -1) {
+		/* there should not occur any error */
+		perror("");
+	}
+}
+
+/* TODO: sick in various ways */
+void
+xmms_visualisation_send_data (xmms_visualisation_t *unused, short l, short r) {
+	int i;
+	xmmsc_vispacket_t *dest;
+
+	for (i = 0; i < vis->clientc; ++i) {
+		if (vis->clientv[i] && vis->clientv[i]->type == VIS_UNIXSHM) {
+			xmmsc_vis_unixshm_t *t = &vis->clientv[i]->transport.shm;
+			if (!decrement_server (t)) {
+				break;
+			}
+
+			dest = &t->buffer[t->pos];
+			/* TODO: we aren't searching the answer here */
+			dest->timestamp = 42;
+			dest->format = vis->clientv[i]->format;
+			/* TODO: make this usable ;-) */
+			short* data = (short*)dest->data;
+			data[0] = l;
+			data[1] = r;
+
+			t->pos = (t->pos + 1) % t->size;
+			increment_client (t);
+		}
+	}
 }
 
 //~ static void output_spectrum (xmms_visualisation_t *vis, guint32 pos)

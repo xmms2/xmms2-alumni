@@ -19,6 +19,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/stat.h>
@@ -28,6 +29,15 @@
 
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsc_visualisation.h"
+
+#ifdef _SEM_SEMUN_UNDEFINED
+	union semun {
+	   int              val;    /* Value for SETVAL */
+	   struct semid_ds *buf;    /* Buffer for IPC_STAT, IPC_SET */
+	   unsigned short  *array;  /* Array for GETALL, SETALL */
+	   struct seminfo  *__buf;  /* Buffer for IPC_INFO (Linux specific) */
+	};
+#endif
 
 /**
  * @defgroup Visualisation Visualisation
@@ -83,7 +93,8 @@ xmmsc_visualisation_init (xmmsc_connection_t *c) {
 		c->visc = 0;
 	}
 	if (c->visc > 0) {
-		if (!(c->visv[c->visc-1] = x_new0 (xmmsc_visualisation_t, 1))) {
+		int vv = c->visc-1;
+		if (!(c->visv[vv] = x_new0 (xmmsc_visualisation_t, 1))) {
 			x_oom ();
 		} else {
 			res = xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_REGISTER);
@@ -92,7 +103,8 @@ xmmsc_visualisation_init (xmmsc_connection_t *c) {
 				c->error = strdup("Couldn't register to the server!");
 				return -1;
 			}
-			xmmsc_result_get_int (res, &c->visv[c->visc-1]->id);
+			xmmsc_result_get_int (res, &c->visv[vv]->id);
+			c->visv[vv]->type = VIS_NONE;
 			xmmsc_result_unref (res);
 		}
 	}
@@ -108,6 +120,7 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 	xmms_ipc_msg_t *msg;
 	xmmsc_result_t *res;
 	xmmsc_visualisation_t *v;
+	union semun semopts;
 
 	int32_t shmid, semid;
 
@@ -116,16 +129,25 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 
 	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered/unconnected visualisation dataset", NULL);
 
+	x_api_error_if (!(v->type == VIS_NONE), "with already transmitting visualisation dataset", NULL);
+
 	x_check_conn (c, NULL);
 
 	/* prepare unixshm + semaphores */
 	  /* following means everyone on the system could inject wrong vis data ;) */
-	shmid = shmget (IPC_PRIVATE, sizeof (xmmsc_vispacket_t), S_IRWXU + S_IRWXG + S_IRWXO);
+	shmid = shmget (IPC_PRIVATE, sizeof (xmmsc_vispacket_t) * XMMS_VISPACKET_SHMCOUNT, S_IRWXU + S_IRWXG + S_IRWXO);
 	semid = semget (IPC_PRIVATE, 2, S_IRWXU + S_IRWXG + S_IRWXO);
 	if (shmid == -1 || semid == -1) {
 		c->error = strdup("Couldn't create the shared memory and semaphore set!");
 		return NULL;
 	}
+
+	/* initially set semaphores - nothing to read, buffersize to write
+	   first semaphore is the server semaphore */
+	semopts.val = XMMS_VISPACKET_SHMCOUNT;
+	semctl(semid, 0, SETVAL, semopts);
+	semopts.val = 0;
+	semctl(semid, 1, SETVAL, semopts);
 
 	/* send packet */
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_INIT_SHM);
@@ -140,6 +162,8 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 		v->type = VIS_UNIXSHM;
 		v->transport.shm.buffer = shmat(shmid, NULL, SHM_RDONLY);
 		v->transport.shm.semid = semid;
+		v->transport.shm.size = XMMS_VISPACKET_SHMCOUNT;
+		v->transport.shm.pos = 0;
 	} else {
 		/* try udp here */
 	}
@@ -210,13 +234,79 @@ xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int vv)
 	/* detach from shm, close socket.. */
 	if (v->type == VIS_UNIXSHM) {
 		shmdt(v->transport.shm.buffer);
-		/* this is for x-platform compat. but it sucks at it: union semun su; */
-		semctl(v->transport.shm.semid, 0, IPC_RMID/*, su*/);
+		semctl(v->transport.shm.semid, 0, IPC_RMID, 0);
 	}
 
 	free(v);
 	c->visv[vv] = NULL;
 	return res;
+}
+
+/**
+ * Decrements the client's semaphor (to read the next available chunk)
+ */
+void
+decrement_client (xmmsc_vis_unixshm_t *t) {
+	/* alter semaphore 1 by -1, no flags */
+	struct sembuf op = { 1, -1, 0 };
+
+	{
+		int a = semctl(t->semid, 0, GETVAL, 0);
+		int b = semctl(t->semid, 1, GETVAL, 0);
+		//printf("DECR | %d, %d | pos %d\n", a, b, t->pos);
+	}
+
+	if (semop (t->semid, &op, 1) == -1) {
+		/* TODO: restart after signals, etc. */
+		perror("");
+	}
+}
+
+/**
+ * Increments the server's semaphor (after a chunk was read)
+ */
+void
+increment_server (xmmsc_vis_unixshm_t *t) {
+	/* alter semaphore 0 by 1, no flags */
+	struct sembuf op = { 0, +1, 0 };
+
+	{
+		int a = semctl(t->semid, 0, GETVAL, 0);
+		int b = semctl(t->semid, 1, GETVAL, 0);
+		//printf("INCR | %d, %d | pos %d\n", a, b, t->pos);
+	}
+
+	if (semop (t->semid, &op, 1) == -1) {
+		/* there should not occur any error */
+		perror("");
+	}
+}
+
+/**
+ * Fetches the next available data chunk (blocking)
+ */
+
+int
+xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data) {
+	xmmsc_visualisation_t *v;
+	xmmsc_vispacket_t *src;
+
+	x_check_conn (c, 0);
+	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", 0);
+
+	if (v->type == VIS_UNIXSHM) {
+		xmmsc_vis_unixshm_t *t = &v->transport.shm;
+		decrement_client (t);
+		src = &t->buffer[t->pos];
+		//printf("timestamp: %d, format: %hd\n", src->timestamp, src->format);
+		/* TODO: make this usable ;-) */
+		memcpy(data, src->data, 2*sizeof(short));
+		t->pos = (t->pos + 1) % t->size;
+		increment_server (t);
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 /** @} */

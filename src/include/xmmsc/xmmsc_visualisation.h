@@ -32,6 +32,12 @@ extern "C" {
    than the client's version! */
 #define XMMS_VISPACKET_VERSION 1
 
+/* How many packages are in the shm queue?
+	* one package the server can operate on
+	* one packate the client can operate on
+	* to avoid needing to be in sync, one spare packet */
+#define XMMS_VISPACKET_SHMCOUNT 3
+
 /**
  * Package format for vis data, encapsulated by unixshm or udp transport
  */
@@ -40,7 +46,7 @@ typedef struct {
 	int timestamp;
 	unsigned short graceleft;
 	unsigned short format;
-	char randomdata[24];
+	char data[2048];
 } xmmsc_vispacket_t;
 
 /**
@@ -88,6 +94,7 @@ typedef enum {
 typedef struct {
 	int semid;
 	xmmsc_vispacket_t *buffer;
+	int pos, size;
 } xmmsc_vis_unixshm_t;
 
 /**

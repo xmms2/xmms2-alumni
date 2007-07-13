@@ -26,23 +26,40 @@
 #include <glib.h>
 #include <math.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #include <xmmsclient/xmmsclient.h>
 #include "xmmsclient/xmmsclient-glib.h"
 
-#include "cmd_status.h"
-
-static GMainLoop *mainloop;
-
 static xmmsc_connection_t *connection;
 static int vis;
 
+void
+quit (void *data)
+{
+	xmmsc_visualisation_shutdown (connection, vis);
+	puts ("\nbye cruel world!");
+	exit (EXIT_SUCCESS);
+}
+
+void
+quit2 (int sig)
+{
+	xmmsc_visualisation_shutdown (connection, vis);
+	puts("");
+	exit (EXIT_SUCCESS);
+}
+
+
 static char* config[] = {
 	"type", "pcm",
-	"stereo", "0",
-	"timeframe", "1",
+	"stereo", "1",
+	//"freq", "44100",
+	//"pcm_samplecount", "512",
 	NULL
 };
+
+short data[2];
 
 int
 main (int argc, char **argv)
@@ -63,24 +80,8 @@ main (int argc, char **argv)
 		return 1;
 	}
 
-	mainloop = g_main_loop_new (NULL, FALSE);
-	has_songname = FALSE;
-
-	/* Setup onchange signal for mediainfo */
-	XMMS_CALLBACK_SET (connection, xmmsc_broadcast_playback_current_id,
-	                   handle_current_id, connection);
-	XMMS_CALLBACK_SET (connection, xmmsc_signal_playback_playtime,
-	                   handle_playtime, NULL);
-	XMMS_CALLBACK_SET (connection, xmmsc_playback_current_id,
-	                   handle_current_id, connection);
-	XMMS_CALLBACK_SET (connection, xmmsc_broadcast_medialib_entry_changed,
-	                   handle_mediainfo_update, connection);
-	XMMS_CALLBACK_SET (connection, xmmsc_broadcast_playback_status,
-	                   handle_status_change, NULL);
-	XMMS_CALLBACK_SET (connection, xmmsc_playback_status,
-	                   handle_status_change, NULL);
-
 	xmmsc_disconnect_callback_set (connection, quit, NULL);
+	signal(SIGINT, quit2);
 
 	uint32_t version;
 	xmmsc_result_t *res = xmmsc_visualisation_version (connection);
@@ -119,13 +120,60 @@ main (int argc, char **argv)
 
 //	xmmsc_mainloop_gmain_init (connection);
 //	g_main_loop_run (mainloop);
-	int bla; scanf("%d", &bla);
+
+	char buf[38+38];
+	int i, w;
+	while (xmmsc_visualisation_chunk_get (connection, vis, &data)) {
+		w = (int)(((double)data[0] / (double)SHRT_MAX) * 36.0);
+		for (i = 0; i < 36 - w; ++i) {
+			switch (buf[i]) {
+				case '#':
+					buf[i] = '*';
+					break;
+				case '*':
+					buf[i] = '+';
+					break;
+				case '+':
+					buf[i] = '-';
+					break;
+				default:
+					buf[i] = ' ';
+			}
+		}
+		for (i = 36 - w; i < 36; ++i)
+			buf[i] = '#';
+
+		buf[36] = buf[37] = ' ';
+
+		w = 38 + (int)(((double)data[0] / (double)SHRT_MAX) * 36.0);
+		for (i = 38; i < w; ++i)
+			buf[i] = '#';
+		for (i = w; i < 38+38; ++i) {
+			switch (buf[i]) {
+				case '#':
+					buf[i] = '*';
+					break;
+				case '*':
+					buf[i] = '+';
+					break;
+				case '+':
+					buf[i] = '-';
+					break;
+				default:
+					buf[i] = ' ';
+			}
+		}
+		fputs(buf, stdout);
+		putchar('\r');
+		fflush(stdout);
+	}
+	puts ("");
 
 	res = xmmsc_visualisation_shutdown (connection, vis);
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {
 		puts (xmmsc_result_get_error (res));
-		exit(EXIT_FAILURE);
+		exit (EXIT_FAILURE);
 	}
 	xmmsc_result_unref (res);
 

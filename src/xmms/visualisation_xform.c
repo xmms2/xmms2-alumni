@@ -25,6 +25,7 @@
 
 #include <glib.h>
 #include <stdio.h>
+#include <limits.h>
 
 static gboolean xmms_vis_init (xmms_xform_t *xform);
 static void xmms_vis_destroy (xmms_xform_t *xform);
@@ -39,8 +40,6 @@ xmms_vis_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	xmms_xform_methods_t methods;
 
 	XMMS_XFORM_METHODS_INIT (methods);
-
-	printf("setup called!\n");
 
 	methods.init = xmms_vis_init;
 	methods.destroy = xmms_vis_destroy;
@@ -98,8 +97,18 @@ xmms_vis_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 	read = xmms_xform_read (xform, buf, len, error);
 	chan = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
 	if (read > 0) {
-/*		iir (buf, read, chan, priv->extra_filtering);
+/*		TODO: do this the right way etc.
 		copy the data, baby! */
+		short l = SHRT_MIN, r = SHRT_MIN;
+		int i;
+		short *b = buf;
+		for (i = 0; i < read/2; i+=2) {
+			if (b[i] > l)
+				l = b[i];
+			if (b[i+1] > r)
+				r = b[i+1];
+		}
+		xmms_visualisation_send_data(NULL, l, r);
 	}
 
 	return read;
