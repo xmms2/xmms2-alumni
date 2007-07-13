@@ -1,0 +1,9 @@
+Until this test suite is integrated into waf you'll need to compile things as
+usual and execute the following lines of code:
+
+  $ cd t
+  $ export LD_LIBRARY_PATH="../_build_/default/src/clients/lib/xmmsclient:${LD_LIBRARY_PATH}"
+  $ make test
+
+Due to a limitation of the test suite and/or waf you'll need to have the Perl
+bindings *installed* to run some of the tests.
