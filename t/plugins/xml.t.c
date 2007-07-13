@@ -94,9 +94,9 @@ main (int argc, char **argv) {
 
 	g_thread_init (NULL);
 	xmms_ipc_init ();
-	xmms_config_init ("../goofy/home/xmms2d/.config/xmms2/xmms2.conf");
+	xmms_config_init ("goofy/home/xmms2d/.config/xmms2/xmms2.conf");
 	xmms_medialib_init (NULL);
-	xmms_plugin_init ("../goofy/plugins");
+	xmms_plugin_init ("goofy/plugins");
 
 	for (i = 0; i < G_N_ELEMENTS (expected_results); i++) {
 		test_xml (expected_results[i]);
