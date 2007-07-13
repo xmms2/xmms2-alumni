@@ -8,7 +8,7 @@ use Scalar::Util qw/blessed/;
 use POSIX qw/SIGINT SIG_BLOCK SIG_UNBLOCK/;
 use File::Path qw/mkpath/;
 use File::Basename qw/basename/;
-use File::Spec::Functions qw/splitpath splitdir catdir catfile/;
+use File::Spec::Functions qw/splitpath splitdir catdir catfile rel2abs/;
 
 my $xmms_client;
 my $xmms_pid;
@@ -54,15 +54,14 @@ BEGIN {
     (my $path = $package) =~ s{::}{/}g;
     $path .= '.pm';
 
-    my $module_path = $INC{$path};
+    my $module_path = rel2abs($INC{$path});
 
     my (undef, $directories, undef) = splitpath($module_path);
 
     $top_dir = catdir($directories, (('..') x 4));
-    my $build_dir = catfile($top_dir, qw/_build_ default/);
+    $build_dir = catfile($top_dir, qw/_build_ default/);
 
     $ENV{LD_LIBRARY_PATH} = catdir($build_dir, qw/ src clients lib xmmsclient/);
-    die $ENV{LD_LIBRARY_PATH};
 
     eval "require Audio::XMMSClient";
     Audio::XMMSClient->import;
