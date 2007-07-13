@@ -40,6 +40,8 @@ test_nulstripper (struct expected_results_t results) {
 	korv = (xmms_xform_plugin_t *)xmms_plugin_find (XMMS_PLUGIN_TYPE_XFORM, "korv");
 	OK(korv != NULL, "got korv plugin");
 
+	SKIP_START(!korv, results.init_should_fail ? 3 : 5, "couldn't find korv plugin");
+
 	xform = xmms_xform_new (korv, xform, 1, NULL);
 	OK(xform != NULL, "korv in chain");
 
@@ -51,6 +53,8 @@ test_nulstripper (struct expected_results_t results) {
 
 	nulstripper = (xmms_xform_plugin_t *)xmms_plugin_find (XMMS_PLUGIN_TYPE_XFORM, "nulstripper");
 	OK(nulstripper != NULL, "got nulstripper plugin");
+
+	SKIP_START(!nulstripper, results.init_should_fail ? 1 : 3, "couldn't find nulstripper plugin");
 
 	xform = xmms_xform_new (nulstripper, xform, 1, NULL);
 	if (results.init_should_fail) {
@@ -68,6 +72,9 @@ test_nulstripper (struct expected_results_t results) {
 	OK(ret == results.output_len, "output data has expected length");
 
 	OK(!strncmp (buf, results.output_data, ret), "output data has expected content");
+
+	SKIP_END;
+	SKIP_END;
 }
 
 int main (int argc, char **argv) {

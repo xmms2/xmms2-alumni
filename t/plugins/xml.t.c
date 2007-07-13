@@ -46,6 +46,8 @@ test_xml (expected_results_t results) {
 	korv = (xmms_xform_plugin_t *)xmms_plugin_find (XMMS_PLUGIN_TYPE_XFORM, "korv");
 	OK(korv != NULL, "got korv plugin");
 
+	SKIP_START(!korv, results.init_should_fail ? 3 : 4, "couldn't get korv plugin");
+
 	chain = xmms_xform_new (korv, chain, 1, NULL);
 	OK(chain != NULL, "korv in chain");
 
@@ -57,6 +59,8 @@ test_xml (expected_results_t results) {
 
 	xml = (xmms_xform_plugin_t *)xmms_plugin_find (XMMS_PLUGIN_TYPE_XFORM, "xml");
 	OK(xml != NULL, "got xml plugin");
+
+	SKIP_START(!xml, results.init_should_fail ? 1 : 2, "couldn't get xml plugin");
 
 	chain = xmms_xform_new (xml, chain, 1, NULL);
 	if (results.init_should_fail) {
@@ -77,7 +81,9 @@ test_xml (expected_results_t results) {
 	IS(mime_type, expected_mime_type, "got correct mimetype");
 	g_free (expected_mime_type);
 
-	SKIP_END;
+	SKIP_END; /* xml not in chain */
+	SKIP_END; /* missing xml plugin */
+	SKIP_END; /* missing korv plugin */
 }
 
 int
