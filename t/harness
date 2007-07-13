@@ -1,0 +1,41 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use TAP::Harness;
+use FindBin;
+
+my $harness = TAP::Harness->new({
+        exec  => [],
+        timer => 1,
+});
+
+my %exec_for = (
+        exact => {
+            (map {
+                $_ => [qw{perl -I helpers/lib}, $_],
+            } qw{xmms/bindata.t clients/lib/xmmsclient/collparser.t}),
+            (map {
+                $_ => [qw{python}, $_],
+            } qw{src/indentcheck.t}),
+        },
+);
+
+$harness->_execrc(\%exec_for);
+
+my @tests = @ARGV || find_tests($FindBin::Bin);
+$harness->runtests(@tests);
+
+sub find_tests {
+    return qw{
+        plugins/xml.t
+        plugins/nulstripper.t
+        xmms/bindata.t
+        xmms/config.t
+        lib/xmmsipc/parse_url.t
+        lib/xmmsutils/unix.t
+        clients/lib/xmmsclient/collparser.t
+        src/indentcheck.t
+    };
+# broken under TAP::Parser: lib/xmmsipc/client_server.t
+}
