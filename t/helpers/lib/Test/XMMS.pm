@@ -12,6 +12,7 @@ use File::Spec::Functions qw/splitpath splitdir catdir catfile rel2abs/;
 
 my $xmms_client;
 my $xmms_pid;
+my $goof_dir;
 
 our @EXPORT = qw/coll_ok/;
 
@@ -61,10 +62,16 @@ BEGIN {
     $top_dir = catdir($directories, (('..') x 4));
     $build_dir = catfile($top_dir, qw/_build_ default/);
 
-    $ENV{LD_LIBRARY_PATH} = catdir($build_dir, qw/ src clients lib xmmsclient/);
+    $ENV{LD_LIBRARY_PATH} = catdir($build_dir, qw/src clients lib xmmsclient/);
 
     eval "require Audio::XMMSClient";
     Audio::XMMSClient->import;
+
+    $goof_dir = catfile($top_dir, qw/t goofy/);
+}
+
+sub create_std_goof_plugin_dir {
+    create_goof_plugin_dir(catdir($build_dir, qw/src plugins/), $goof_dir);
 }
 
 sub import {
@@ -73,7 +80,6 @@ sub import {
     $self->export_to_level( 1, $self, $_ ) foreach @EXPORT;
 
     my $exec_path = catfile($build_dir, qw/src xmms xmms2d/);
-    my $goof_dir = catfile($top_dir, qw/t goofy/);
     my $plugin_path;
     my @extra_args;
 
