@@ -3,10 +3,11 @@
 import sys
 import re
 import glob
+import os
 
 files = ['src/xmms/*.c', 'src/xmms/*/*.c', 'src/plugins/*/*.c', 'src/clients/lib/xmmsclient/*.c', 'src/clients/lib/xmmsclient-glib/*.c', 'src/clients/lib/xmmsclient-cf/*.c', 'src/clients/lib/xmmsclient-ecore/*.c', 'src/lib/*/*.c', 'src/clients/et/*.c', 'src/clients/cli/*.c', 'src/clients/cli/launcher/*.c', 'src/clients/mdns/*/*.c', 'src/client/medialib-updater/*.c']
 blacklist_patterns = ['src/plugins/equalizer/iir*.c', 'src/clients/mdns/avahi/find-avahi.c']
-todo = ['src/plugins/flac/flac.c']
+todo = ['src/plugins/flac/flac.c', 'src/plugins/ofa/ofa.c']
 
 
 fun_no_space = re.compile('^.*?(\w+\()')
@@ -93,7 +94,7 @@ def check(filename):
             print "# line %d in file %s only contains whitespace" % (i+1, filename)
             errors += 1
             continue
-            
+
         if li[-1] == ' ':
             print "# Line %d in file %s has extra whitespace at end:" % (i+1, filename)
             print "# %s<--" % li
@@ -104,7 +105,7 @@ def check(filename):
             print "# %s" % li.replace("\t","|---->")
             errors += 1
 
-	if li[0] != '#':
+        if li[0] != '#':
             m = fun_no_space.match(li)
             if m:
                 print "# Line %d in file %s has no space between function and left parenthesis:" % (i+1, filename)
@@ -133,13 +134,15 @@ def check(filename):
             print "# " + "\n# ".join(ml).replace("\t","|---->")
             print "#"
             errors += 1
-    
+
     return errors
 
 
 if __name__ == '__main__':
     sources = []
     blacklist = []
+
+    os.chdir('..')
 
     for p in blacklist_patterns:
         blacklist += glob.glob(p)
