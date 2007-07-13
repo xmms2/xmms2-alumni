@@ -1,5 +1,10 @@
 CFLAGS = -I../../include -I../../../src/include
 
-all: unix.t
+TESTS = unix.t
 
-unix.t: ../../../_build_/default/src/lib/xmmsutils/libxmmsutils.a
+all: $(TESTS)
+
+$(TESTS): ../../../_build_/default/src/lib/xmmsutils/libxmmsutils.a
+
+clean:
+	rm -f $(TESTS)

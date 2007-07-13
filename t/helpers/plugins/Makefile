@@ -11,4 +11,10 @@ libxmms_korv.so: korv.o
 
 all: libxmms_korv.so
 
-.PHONY: all
+clean:
+	rm -f libxmms_korv.so korv.o
+
+symlink: libxmms_korv.so
+	-ln -s $(PWD)/helpers/plugins/libxmms_korv.so ../../goofy/plugins/
+
+.PHONY: all clean
