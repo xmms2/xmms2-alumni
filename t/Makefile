@@ -14,7 +14,7 @@ $(RECURSIVE_TARGETS)::
 		do $(MAKE) -C $$dir $@; \
 	done
 
-test:
+test: all
 	-./harness
 
 .PHONY: $(RECURSIVE_TARGETS) test
