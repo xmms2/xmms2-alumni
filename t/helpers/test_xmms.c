@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <sys/wait.h>
 #include "test_xmms.h"
 
