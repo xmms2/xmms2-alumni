@@ -80,13 +80,13 @@ xmms_rss_start_element (xmms_rss_data_t *data, const xmlChar *name,
 	if (!attrs || !data)
 		return;
 
-	if (xmlStrncmp (name, (xmlChar *) "enclosure", 9))
+	if (xmlStrncmp (name, BAD_CAST "enclosure", 10))
 		return;
 
 	for (i = 0; attrs[i]; i += 2) {
 		char *attr;
 
-		if (xmlStrncmp (attrs[i], (xmlChar *) "url", 3))
+		if (xmlStrncmp (attrs[i], BAD_CAST "url", 4))
 			continue;
 
 		attr = (char *) attrs[i + 1];
