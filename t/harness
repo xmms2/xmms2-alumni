@@ -2,10 +2,10 @@
 
 use strict;
 use warnings;
-use TAP::Harness;
+use TAP::Harness::Color;
 use FindBin;
 
-my $harness = TAP::Harness->new({
+my $harness = TAP::Harness::Color->new({
         exec  => [],
         timer => 1,
 });
