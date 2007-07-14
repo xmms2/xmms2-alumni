@@ -1,0 +1,21 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+my $test = $ARGV[0];
+
+my %exec_for = (
+        (map {
+            $_ => [qw{perl -I helpers/lib}, $_],
+        } qw{xmms/bindata.t clients/lib/xmmsclient/collparser.t}),
+        (map {
+            $_ => [qw{python}, $_],
+        } qw{src/indentcheck.t}),
+);
+
+if (exists $exec_for{$test}) {
+    exec @{ $exec_for{$test} };
+}
+
+exec $test;
