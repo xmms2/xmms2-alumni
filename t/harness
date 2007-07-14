@@ -29,6 +29,8 @@ $harness->runtests(@tests);
 sub find_tests {
     return qw{
         plugins/xml.t
+        plugins/rss.t
+        plugins/xspf.t
         plugins/nulstripper.t
         xmms/bindata.t
         xmms/config.t

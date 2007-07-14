@@ -2,7 +2,9 @@ CFLAGS = -g -O0 -I../include -I../../src/includepriv -I../../src/include $(shell
 
 TESTS = \
 	nulstripper.t \
-	xml.t
+	xml.t \
+	rss.t \
+	xspf.t
 
 all: $(TESTS)
 
