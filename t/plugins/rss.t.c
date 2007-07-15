@@ -95,6 +95,7 @@ main (int argc, char **argv) {
 	PLAN_TESTS(60);
 
 	g_thread_init (NULL);
+	xmms_log_init (0);
 	xmms_ipc_init ();
 	xmms_config_init ("goofy/home/xmms2d/.config/xmms2/xmms2.conf");
 	xmms_medialib_init (NULL);
