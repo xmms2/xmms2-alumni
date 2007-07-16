@@ -241,9 +241,6 @@ def do_objects(objects):
                 props = node.getElementsByTagName("prop")
                 for prop in props:
                     type = node.getElementsByTagName("type")
-#                   xmmsclientfile.write("\t%s %s;\n" % \
-#                                        (c_map[type[0].childNodes[1].nodeName],
-#                                        prop.getAttribute("name")))
 
                     xmmsclientfile.write("\tXMMSC_%s_PROPERTY_%s = %d,\n" % \
                                          (node.getAttribute("name").upper(),
