@@ -52,6 +52,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "xmmspriv/xmms_main_cmds.h"
+
 /*
  * Forward declarations of the methods in the main object
  */
@@ -92,7 +94,6 @@ struct xmms_main_St {
 
 //typedef struct xmms_main_St xmms_main_t;
 
-#include "xmmspriv/xmms_main_cmds.h"
 
 /** This is the mainloop of the xmms2 server */
 static GMainLoop *mainloop;
