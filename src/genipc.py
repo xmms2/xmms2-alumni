@@ -404,6 +404,7 @@ def do_objects(objects):
 	xmmsclientfile.write("\tXMMSC_IPC_OBJECT_%s,\n" % object.upper())
 
     xmmsclientfile.write("\tXMMSC_IPC_OBJECT_END\n} xmmsc_ipc_object_t;\n")
+#END do_objects
 
 #start here
 if __name__ == "__main__":
