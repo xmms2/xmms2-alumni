@@ -140,8 +140,8 @@ def start_processmsg():
 
     ipcmsggen.write("void\nprocess_msg (xmms_ipc_t *ipc, \
 xmms_ipc_msg_t *msg)\n{\n\n")
-    #body of func
 
+    #body of func
     ipcmsggen.write("\tint obj, cmd, type;\n")
     ipcmsggen.write("\n\tobj = xmms_ipc_msg_get_object (msg);\n")
     ipcmsggen.write("\tcmd = xmms_ipc_msg_get_cmd (msg);\n")
@@ -202,7 +202,7 @@ def do_enums(enums):
     for node in enums:
         #if its a child of the main(ipc) tag
         if node.parentNode == nodes[0]:
-            sys.stdout.write("%s..." % node.getAttribute("name"))
+            print "%s..." % node.getAttribute("name")
 
             xmmsclientfile.write("/* %s enum */\n" % \
                     node.getAttribute("name"));
@@ -226,7 +226,7 @@ def do_objects(objects):
     for node in objects:
         #if its a child of the main(ipc) tag
         if node.parentNode == nodes[0]:
-            sys.stdout.write("%s..." % node.getAttribute("name"))
+            print "%s..." % node.getAttribute("name")
 
             if node.getAttribute("type") == "client" or \
 	    node.getAttribute("type") == "both":
@@ -435,7 +435,7 @@ __GEN_XMMSCLIENT_H__\n\n")
 	xmmsclientfile.write("#define XMMSC_VERSION %s\n\n" % \
 		nodes[0].getAttribute("version"))
     else:
-        print "Error, XML files not IPC Description file."
+        print "Error, XML file is not XMMS2 IPC Description file."
 
     #parse all the enumerations
     print "Parsing enumerations"
@@ -453,6 +453,5 @@ __GEN_XMMSCLIENT_H__\n\n")
 
     #close off ipcmsggen.c
     ipcmsggen.write("\t\tdefault:\n\t\t\tbreak;\n") #should do an error
-
     ipcmsggen.write("\t}\n")
     ipcmsggen.write("}\n")
