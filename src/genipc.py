@@ -72,12 +72,11 @@ def write_deserialization(file,args):
 		    ipcmsgdeser.write("\txmms_ipc_msg_get_%s (msg, &%s);\n" % \
 			(msg_map[type], name))
 	    elif type == "string":
-		    #FIXME should probably be a realloc() loop or somesuch
+		    #FIXME should probably be a realloc() loop or somesuch FIXME
 		    ipcmsgdeser.write("\t%s = malloc(1000);\n" % name)
 		    ipcmsgdeser.write("\txmms_ipc_msg_get_%s (msg, %s, 1000);\n" % \
 			(msg_map[type], name))
 	file.write("\n")
-
 
 #write header of the ipc_msg_deserialize.c file
 def start_deser():
@@ -90,6 +89,7 @@ def start_deser():
     ipcmsgdeser.write("#include \"xmmspriv/xmms_cmds.h\"\n")
     ipcmsgdeser.write("#include \"xmmsc/xmmsc_ipc_msg.h\"\n")
 
+#write the deserialize function for a specific ipc method
 def output_deserialize_server(obj,method):
     ipcmsgdeser.write("void\ndeserialize_call_%s_cmd_%s (xmms_ipc_t *ipc, \
 xmms_ipc_msg_t *msg)\n{\n" % (obj.getAttribute("name"),
