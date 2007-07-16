@@ -29,8 +29,9 @@
 #include "xmms/xmms_error.h"
 #include "xmms/xmms_config.h"
 #include "xmms/xmms_streamtype.h"
+#include "xmmspriv/xmms_output_cmds.h"
 
-typedef struct xmms_output_St xmms_output_t;
+//typedef struct xmms_output_St xmms_output_t;
 
 #define XMMS_OUTPUT_API_VERSION 2
 
