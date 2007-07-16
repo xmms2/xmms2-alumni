@@ -22,6 +22,13 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "xmms/xmms_log.h"
+#include "xmms/xmms_ipc.h"
+#include "xmms/xmms_object.h"
+#include "xmms/xmms_config.h"
+#include "xmmsc/xmmsc_util.h"
+#include "xmmspriv/xmms_utils.h"
+#include "xmmspriv/xmms_output_cmds.h"
 #include "xmmspriv/xmms_output.h"
 #include "xmmspriv/xmms_ringbuf.h"
 #include "xmmspriv/xmms_plugin.h"
@@ -29,10 +36,6 @@
 #include "xmmspriv/xmms_sample.h"
 #include "xmmspriv/xmms_medialib.h"
 #include "xmmspriv/xmms_outputplugin.h"
-#include "xmms/xmms_log.h"
-#include "xmms/xmms_ipc.h"
-#include "xmms/xmms_object.h"
-#include "xmms/xmms_config.h"
 
 #define VOLUME_MAX_CHANNELS 128
 
@@ -77,6 +80,7 @@ static GHashTable *xmms_volume_map_to_hash (xmms_volume_map_t *vl);
 static gboolean xmms_output_status_set (xmms_output_t *output, gint status);
 static gboolean set_plugin (xmms_output_t *output, xmms_output_plugin_t *plugin);
 
+#if 0
 XMMS_CMD_DEFINE (start, xmms_output_start, xmms_output_t *, NONE, NONE, NONE);
 XMMS_CMD_DEFINE (stop, xmms_output_stop, xmms_output_t *, NONE, NONE, NONE);
 XMMS_CMD_DEFINE (pause, xmms_output_pause, xmms_output_t *, NONE, NONE, NONE);
@@ -90,6 +94,7 @@ XMMS_CMD_DEFINE (output_status, xmms_output_status, xmms_output_t *, UINT32, NON
 XMMS_CMD_DEFINE (currentid, xmms_output_current_id, xmms_output_t *, UINT32, NONE, NONE);
 XMMS_CMD_DEFINE (volume_set, xmms_output_volume_set, xmms_output_t *, NONE, STRING, UINT32);
 XMMS_CMD_DEFINE (volume_get, xmms_output_volume_get, xmms_output_t *, DICT, NONE, NONE);
+#endif
 
 /*
  * Type definitions
@@ -865,6 +870,7 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 	xmms_output_t *output;
 	xmms_config_property_t *prop;
 	gint size;
+	xmms_output_cmds_t *cmds;
 
 	g_return_val_if_fail (playlist, NULL);
 
@@ -904,7 +910,16 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 //	xmms_ipc_signal_register (XMMS_OBJECT (output),
 //	                          XMMS_IPC_SIGNAL_OUTPUT_PLAYTIME);
 
+	cmds = xmms_output_cmds_init (XMMS_OBJECT (output));
 
+	cmds->output_start = xmms_output_start;
+	cmds->output_stop = xmms_output_stop;
+	cmds->output_pause = xmms_output_pause;
+	cmds->output_status = NULL;
+
+	xmms_output_cmds_register (cmds);
+
+	/*
 	xmms_object_cmd_add (XMMS_OBJECT (output),
 	                     XMMS_IPC_CMD_START,
 	                     XMMS_CMD_FUNC (start));
@@ -944,7 +959,7 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 	xmms_object_cmd_add (XMMS_OBJECT (output),
 	                     XMMS_IPC_CMD_VOLUME_GET,
 	                     XMMS_CMD_FUNC (volume_get));
-
+	*/
 	output->status = XMMS_PLAYBACK_STATUS_STOP;
 
 	if (plugin) {

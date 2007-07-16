@@ -29,7 +29,9 @@
 #include "xmms/xmms_error.h"
 #include "xmms/xmms_config.h"
 #include "xmms/xmms_streamtype.h"
+#include "xmmspriv/xmms_output_cmds.h"
 
+<<<<<<< HEAD:src/include/xmms/xmms_outputplugin.h
 
 /**
  * @defgroup OutputPlugin OutputPlugin
@@ -39,6 +41,9 @@
 
 
 typedef struct xmms_output_St xmms_output_t;
+=======
+//typedef struct xmms_output_St xmms_output_t;
+>>>>>>> FEATURE(1600): Convert output.c to genipc:src/include/xmms/xmms_outputplugin.h
 
 /**
  * The current API version.
