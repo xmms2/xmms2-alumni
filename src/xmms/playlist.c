@@ -67,7 +67,7 @@ static gint xmms_playlist_coll_get_size (xmmsc_coll_t *plcoll);
 static void xmms_playlist_update_queue (xmms_playlist_t *playlist, gchar *plname, xmmsc_coll_t *coll);
 static void xmms_playlist_update_partyshuffle (xmms_playlist_t *playlist, gchar *plname, xmmsc_coll_t *coll);
 
-
+#if 0
 XMMS_CMD_DEFINE  (load, xmms_playlist_load, xmms_playlist_t *, NONE, STRING, NONE);
 XMMS_CMD_DEFINE3 (insert_url, xmms_playlist_insert_url, xmms_playlist_t *, NONE, STRING, UINT32, STRING);
 XMMS_CMD_DEFINE3 (insert_id, xmms_playlist_insert_id, xmms_playlist_t *, NONE, STRING, UINT32, UINT32);
@@ -86,7 +86,7 @@ XMMS_CMD_DEFINE  (current_active, xmms_playlist_current_active, xmms_playlist_t 
 XMMS_CMD_DEFINE  (set_pos, xmms_playlist_set_current_position, xmms_playlist_t *, UINT32, UINT32, NONE);
 XMMS_CMD_DEFINE  (set_pos_rel, xmms_playlist_set_current_position_rel, xmms_playlist_t *, UINT32, INT32, NONE);
 XMMS_CMD_DEFINE  (radd, xmms_playlist_radd, xmms_playlist_t *, NONE, STRING, STRING);
-
+#endif
 #define XMMS_PLAYLIST_CHANGED_MSG(type, id, name) xmms_playlist_changed_msg_send (playlist, xmms_playlist_changed_msg_new (playlist, type, id, name))
 
 
@@ -280,6 +280,7 @@ xmms_playlist_init (void)
 {
 	xmms_playlist_t *ret;
 	xmms_config_property_t *val;
+	xmms_playlist_cmds_t *cmds;
 
 	ret = xmms_object_new (xmms_playlist_t, xmms_playlist_destroy);
 	ret->mutex = g_mutex_new ();
@@ -303,6 +304,8 @@ xmms_playlist_init (void)
 
 	ret->update_flag = FALSE;
 
+
+	/*
 	xmms_object_connect (XMMS_OBJECT (ret),
 	                     XMMS_IPC_SIGNAL_PLAYLIST_CHANGED,
 	                     on_playlist_updated_chg, ret);
@@ -383,7 +386,7 @@ xmms_playlist_init (void)
 	xmms_object_cmd_add (XMMS_OBJECT (ret),
 	                     XMMS_IPC_CMD_RADD,
 	                     XMMS_CMD_FUNC (radd));
-
+*/
 	ret->medialib = xmms_medialib_init (ret);
 	ret->mediainfordr = xmms_mediainfo_reader_start (ret);
 	ret->colldag = xmms_collection_init (ret);
