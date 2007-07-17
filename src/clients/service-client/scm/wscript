@@ -1,0 +1,18 @@
+from Params import g_platform
+
+def build(bld):
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'xmms2-scm'
+    obj.source = """common.c
+                    config.c
+                    main.c""".split()
+
+    obj.includes = '. ../../../include'
+    obj.uselib_local = 'xmmsclient-glib xmmsclient'
+    obj.uselib = 'glib2'
+
+def configure(conf):
+    return True
+
+def set_options(opt):
+    pass
