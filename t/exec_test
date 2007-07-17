@@ -8,7 +8,12 @@ my $test = $ARGV[0];
 my %exec_for = (
         (map {
             $_ => [$^X, qw{-I helpers/lib}, $_],
-        } qw{xmms/bindata.t clients/lib/xmmsclient/collparser.t clients/lib/perl/class_api.t}),
+        } qw{
+            xmms/bindata.t
+            clients/lib/xmmsclient/collparser.t
+            clients/lib/perl/class_api.t
+            clients/lib/perl/refcnt.t
+        }),
         (map {
             $_ => [qw{python}, $_],
         } qw{src/indentcheck.t}),
