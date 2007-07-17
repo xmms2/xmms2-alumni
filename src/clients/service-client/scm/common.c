@@ -21,7 +21,7 @@ print_info (const gchar *fmt, ...)
 {
 	gchar buf[8096];
 	va_list ap;
-	
+
 	va_start (ap, fmt);
 	g_vsnprintf (buf, 8096, fmt, ap);
 	va_end (ap);
@@ -34,7 +34,7 @@ print_error (const gchar *fmt, ...)
 {
 	gchar buf[1024];
 	va_list ap;
-	
+
 	va_start (ap, fmt);
 	g_vsnprintf (buf, 1024, fmt, ap);
 	va_end (ap);
