@@ -452,6 +452,9 @@ __GEN_XMMSCLIENT_H__\n\n")
     xmmsclientfile.write("#endif\n")
 
     #close off ipcmsggen.c
-    ipcmsggen.write("\t\tdefault:\n\t\t\tbreak;\n") #should do an error
+    ipcmsggen.write("\t\tdefault:\n\t\t\tfprintf(stderr, \"Error, incorrect \
+IPC object detected.\\n\");\n\t\t\tbreak;\n")
+
     ipcmsggen.write("\t}\n")
     ipcmsggen.write("}\n")
+
