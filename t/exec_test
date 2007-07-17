@@ -7,7 +7,7 @@ my $test = $ARGV[0];
 
 my %exec_for = (
         (map {
-            $_ => [qw{perl -I helpers/lib}, $_],
+            $_ => [$^X, qw{-I helpers/lib}, $_],
         } qw{xmms/bindata.t clients/lib/xmmsclient/collparser.t}),
         (map {
             $_ => [qw{python}, $_],

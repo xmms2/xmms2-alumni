@@ -6,7 +6,7 @@ use TAP::Harness::Color;
 use FindBin;
 
 my $harness = TAP::Harness::Color->new({
-        exec  => './exec_test',
+        exec  => $^X . ' ./exec_test',
         timer => 1,
 });
 
@@ -44,6 +44,7 @@ sub find_tests {
         plugins/nulstripper.t
         xmms/bindata.t
         xmms/config.t
+        xmms/collquery.t
         lib/xmmsipc/parse_url.t
         lib/xmmsutils/unix.t
         clients/lib/xmmsclient/collparser.t
