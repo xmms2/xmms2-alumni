@@ -1,3 +1,4 @@
+import os, Common
 from Params import g_platform
 
 def build(bld):
@@ -6,10 +7,14 @@ def build(bld):
     obj.source = """common.c
                     config.c
                     main.c""".split()
-
     obj.includes = '. ../../../include'
     obj.uselib_local = 'xmmsclient-glib xmmsclient'
     obj.uselib = 'glib2'
+
+    obj = bld.create_obj('subst')
+    obj.source = 'xmms2-scm-launcher.sh.in'
+    obj.dict = {'PRG_PATH': os.path.join(bld.env_of_name('default')['PREFIX'], 'bin')}
+    Common.install_files('SCRIPTDIR', None, 'xmms2-scm-launcher.sh', chmod=0755)
 
 def configure(conf):
     return True
