@@ -53,6 +53,22 @@ parse_config (const gchar *buffer)
 }
 
 /**
+ * Write one entry into the config file.
+ */
+static void
+write_entry (gpointer key, gpointer value, gpointer udata)
+{
+	FILE *fp = udata;
+	gchar *entry;
+
+	entry = g_strconcat (key, "=", value, "\n", NULL);
+
+	fwrite (entry, strlen (entry), 1, fp);
+
+	g_free (entry);
+}
+
+/**
  * Read config file.
  */
 GHashTable *
@@ -110,6 +126,39 @@ read_config (const gchar *name)
 }
 
 /**
+ * Write contents to config file.
+ */
+gboolean
+write_config (const gchar *name, GHashTable *contents)
+{
+	FILE *fp;
+	gchar *file;
+	gchar userconf[PATH_MAX];
+
+	xmmsc_userconfdir_get (userconf, PATH_MAX);
+	file = g_build_path (G_DIR_SEPARATOR_S, userconf,
+	                     "service_clients", name, NULL);
+
+	if (!g_file_test (file, G_FILE_TEST_EXISTS)) {
+		print_error ("Config file %s does not exist", file);
+		return FALSE;
+	} else {
+		fp = fopen (file, "w");
+		if (fp) {
+			g_hash_table_foreach (contents, write_entry, fp);
+			fclose (fp);
+		} else {
+			print_error ("Could not write to config file: %s\n"
+			             "Make sure you have write permission to the file.",
+			             file);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+/**
  * Create the config file if it doesn't exist, and then write contents into the
  * file.
  */
@@ -127,7 +176,9 @@ create_config (const gchar *file, const gchar *contents)
 		fwrite (contents, strlen (contents), 1, fp);
 		fclose (fp);
 	} else {
-		print_info ("Could not create configfile: %s\nMake sure you have write permissions to that location.", file);
+		print_error ("Could not create config file: %s\n"
+		             "Make sure you have write permissions to that location.",
+		             file);
 		return FALSE;
 	}
 
