@@ -51,6 +51,8 @@ def add_cmdsheader(node):
     cmdsheader.write("#include \"xmmspriv/xmms_%s_cmds.h\"\n" % \
 	    node.getAttribute("name"))
 
+#will output code to deserialize a message's arguments
+#the code for serialization will be only a few changed lines
 def write_deserialization(file,args):
     if args.length > 0:
 	for arg in args:
@@ -61,7 +63,7 @@ def write_deserialization(file,args):
 
 	    #var declarations
 	    ipcmsgdeser.write("\t%s %s;\n" % (c_map[type], name))
-	ipcmsgdeser.write("\n")
+	    ipcmsgdeser.write("\n")
 
 	for arg in args:
 	    type = arg.getElementsByTagName("type")
