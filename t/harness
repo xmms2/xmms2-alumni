@@ -48,6 +48,7 @@ sub find_tests {
         lib/xmmsipc/parse_url.t
         lib/xmmsutils/unix.t
         clients/lib/xmmsclient/collparser.t
+        clients/lib/perl/class_api.t
         src/indentcheck.t
     };
 # broken under TAP::Parser: lib/xmmsipc/client_server.t
