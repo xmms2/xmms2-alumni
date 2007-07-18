@@ -14,19 +14,15 @@
  *  Lesser General Public License for more details.
  */
 
-#ifndef __CONFIG_H__
-#define __CONFIG_H__
-
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#ifndef __MANAGEMENT_H__
+#define __MANAGEMENT_H__
 
 #include "common.h"
 
-config_t *read_config (const gchar *name);
-gboolean create_config (const gchar *name, const gchar *contents);
-gboolean remove_config (const gchar *name);
-void free_config (gpointer v);
-void free_service (gpointer v);
+void cb_uninstall (xmmsc_result_t *res, void *data);
+void cb_startup_arg_change (xmmsc_result_t *res, void *data);
+void cb_launch (xmmsc_result_t *res, void *data);
+void cb_shutdown (xmmsc_result_t *res, void *data);
+void cb_autostart_toggle (xmmsc_result_t *res, void *data);
 
 #endif
