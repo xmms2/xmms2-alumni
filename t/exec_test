@@ -13,6 +13,8 @@ my %exec_for = (
             clients/lib/xmmsclient/collparser.t
             clients/lib/perl/class_api.t
             clients/lib/perl/refcnt.t
+            clients/lib/perl/collections.t
+            clients/lib/perl/result.t
         }),
         (map {
             $_ => [qw{python}, $_],

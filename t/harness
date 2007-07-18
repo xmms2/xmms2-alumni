@@ -50,6 +50,8 @@ sub find_tests {
         clients/lib/xmmsclient/collparser.t
         clients/lib/perl/class_api.t
         clients/lib/perl/refcnt.t
+        clients/lib/perl/collections.t
+        clients/lib/perl/result.t
         src/indentcheck.t
     };
 # broken under TAP::Parser: lib/xmmsipc/client_server.t
