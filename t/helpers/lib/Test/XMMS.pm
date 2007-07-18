@@ -130,6 +130,10 @@ sub import {
     $xmms_pid = $pid;
 }
 
+sub client {
+    return $xmms_client;
+}
+
 sub tear_down {
     $xmms_client->quit->wait;
 }
