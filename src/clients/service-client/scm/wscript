@@ -6,6 +6,7 @@ def build(bld):
     obj.target = 'xmms2-scm'
     obj.source = """common.c
                     config.c
+                    management.c
                     main.c""".split()
     obj.includes = '. ../../../include'
     obj.uselib_local = 'xmmsclient-glib xmmsclient'

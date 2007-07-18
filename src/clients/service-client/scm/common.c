@@ -44,3 +44,42 @@ print_error (const gchar *fmt, ...)
 	exit (EXIT_FAILURE);
 }
 
+/**
+ * Debugging functions.
+ */
+void
+print_method (gpointer k, gpointer v, gpointer d)
+{
+	gchar *name = k;
+	gchar *desc = v;
+
+	print_info ("\t\t%s", name);
+	print_info ("\t\tdesc: %s", desc);
+}
+
+void
+print_service (gpointer k, gpointer v, gpointer d)
+{
+	gchar *name = k;
+	service_t *serv = v;
+
+	print_info ("\t%s", name);
+	print_info ("\tdesc: %s\n\tmajor: %d\n\tminor: %d", serv->desc, serv->major,
+	            serv->minor);
+	g_hash_table_foreach (serv->methods, print_method, NULL);
+}
+
+void
+print_config (gpointer k, gpointer v, gpointer d)
+{
+	gchar *name = k;
+	config_t *conf = v;
+
+	print_info ("%s", name);
+	print_info ("path: %s\nargv: %s", conf->path, conf->argv);
+	if (conf->autostart)
+		print_info ("auto: yes");
+	else
+		print_info ("auto: no");
+	g_hash_table_foreach (conf->services, print_service, NULL);
+}

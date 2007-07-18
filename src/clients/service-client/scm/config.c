@@ -14,6 +14,7 @@
  *  Lesser General Public License for more details.
  */
 
+#include <glib/gstdio.h>
 #include "config.h"
 
 /**
@@ -22,27 +23,102 @@
  */
 
 /**
+ * Get the config file dir.
+ */
+static const gchar *
+config_dir ()
+{
+	static gchar userconf[PATH_MAX];
+	static gchar *dir = NULL;
+
+	if (!dir) {
+		xmmsc_userconfdir_get (userconf, PATH_MAX);
+		dir = g_build_path (G_DIR_SEPARATOR_S, userconf,
+		                    "service_clients", NULL);
+	}
+
+	return dir;
+}
+
+/**
+ * Parse service section.
+ */
+static void
+parse_service (service_t **service, gchar **split, gint *i)
+{
+	gchar *stripped;
+	gchar **s;
+
+	*service = g_new0 (service_t, 1);
+	(*service)->methods = g_hash_table_new_full (g_str_hash, g_str_equal,
+	                                             g_free, g_free);
+
+	for ((*i)++; split && split[*i]; (*i)++) {
+		stripped = g_strstrip (split[*i]);
+
+		if (g_str_has_prefix (stripped, "[") &&
+		    g_str_has_suffix (stripped, "]"))
+			break;
+
+		s = g_strsplit (stripped, "=", 2);
+		if (s && s[0] && s[1]) {
+			if (g_strcasecmp (s[0], "description") == 0)
+				(*service)->desc = g_strdup (s[1]);
+			else if (g_strcasecmp (s[0], "major") == 0)
+				(*service)->major = g_ascii_strtoull (s[1], NULL, 10);
+			else if (g_strcasecmp (s[0], "minor") == 0)
+				(*service)->minor = g_ascii_strtoull (s[1], NULL, 10);
+			else
+				g_hash_table_insert ((*service)->methods, g_strdup (s[0]),
+				                     g_strdup (s[1]));
+		}
+		g_strfreev (s);
+	}
+
+	(*i)--;
+}
+
+/**
  * Parse config file.
  */
-static GHashTable *
+static config_t *
 parse_config (const gchar *buffer)
 {
-	gchar **split;
+	gchar **split, **s;
+	gchar *stripped;
 	gint i;
-	GHashTable *config;
+	config_t *config;
+	service_t *service;
 
-	config = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+	config = g_new0 (config_t, 1);
+	config->services = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+	                                          free_service);
 
 	split = g_strsplit (buffer, "\n", 0);
 	for (i = 0; split && split[i]; i++) {
-		gchar **s;
+		stripped = g_strstrip (split[i]);
 
-		s = g_strsplit (split[i], "=", 2);
+		if (g_str_has_prefix (stripped, "[") &&
+		    g_str_has_suffix (stripped, "]")) {
+			parse_service (&service, split, &i);
+			g_hash_table_insert (config->services,
+			                     g_strndup (stripped + 1, strlen (stripped) - 2),
+			                     service);
+
+			continue;
+		}
+
+		s = g_strsplit (stripped, "=", 2);
 		if (s && s[0] && s[1]) {
-			if (g_strcasecmp (s[1], "NULL") == 0) {
-				g_hash_table_insert (config, g_strdup (s[0]), NULL);
-			} else {
-				g_hash_table_insert (config, g_strdup (s[0]), g_strdup (s[1]));
+			if (g_strcasecmp (s[0], "path") == 0)
+				config->path = g_strdup (s[1]);
+			else if (g_strcasecmp (s[0], "argv") == 0)
+				config->argv = g_strdup (s[1]);
+			else if (g_strcasecmp (s[0], "auto") == 0) {
+				if (g_strcasecmp (s[1], "yes") == 0)
+					config->autostart = TRUE;
+				else
+					config->autostart = FALSE;
 			}
 		}
 		g_strfreev (s);
@@ -71,34 +147,31 @@ write_entry (gpointer key, gpointer value, gpointer udata)
 /**
  * Read config file.
  */
-GHashTable *
+config_t *
 read_config (const gchar *name)
 {
-	GHashTable *config;
+	config_t *config;
 	gchar *buffer, *file;
 	gint read_bytes = 0;
 	struct stat st;
 	FILE *fp;
 
-	gchar userconf[PATH_MAX];
-	xmmsc_userconfdir_get (userconf, PATH_MAX);
-	file = g_build_path (G_DIR_SEPARATOR_S, userconf,
-	                     "service_clients", name, NULL);
+	file = g_build_path (G_DIR_SEPARATOR_S, config_dir (), name, NULL);
 
 	if (!g_file_test (file, G_FILE_TEST_EXISTS)) {
-		print_error ("Config file %s does not exist", file);
+		print_info ("Config file %s does not exist", file);
 		return NULL;
 	} else {
 		fp = fopen (file, "r");
 		if (!fp) {
-			print_error ("Could not open configfile %s", file);
+			print_info ("Could not open configfile %s", file);
 			g_free (file);
 			return NULL;
 		}
 		g_free (file);
 
 		if (fstat (fileno (fp), &st) == -1) {
-			print_error ("fstat");
+			print_info ("fstat");
 			return NULL;
 		}
 
@@ -133,29 +206,29 @@ write_config (const gchar *name, GHashTable *contents)
 {
 	FILE *fp;
 	gchar *file;
-	gchar userconf[PATH_MAX];
+	gboolean ret = TRUE;
 
-	xmmsc_userconfdir_get (userconf, PATH_MAX);
-	file = g_build_path (G_DIR_SEPARATOR_S, userconf,
-	                     "service_clients", name, NULL);
+	file = g_build_path (G_DIR_SEPARATOR_S, config_dir (), name, NULL);
 
 	if (!g_file_test (file, G_FILE_TEST_EXISTS)) {
-		print_error ("Config file %s does not exist", file);
-		return FALSE;
+		print_info ("Config file %s does not exist", file);
+		ret = FALSE;
 	} else {
 		fp = fopen (file, "w");
 		if (fp) {
 			g_hash_table_foreach (contents, write_entry, fp);
 			fclose (fp);
 		} else {
-			print_error ("Could not write to config file: %s\n"
-			             "Make sure you have write permission to the file.",
-			             file);
-			return FALSE;
+			print_info ("Could not write to config file: %s\n"
+			            "Make sure you have write permission to the file.",
+			            file);
+			ret = FALSE;
 		}
 	}
 
-	return TRUE;
+	g_free (file);
+
+	return ret;
 }
 
 /**
@@ -163,22 +236,24 @@ write_config (const gchar *name, GHashTable *contents)
  * file.
  */
 gboolean
-create_config (const gchar *file, const gchar *contents)
+create_config (const gchar *name, const gchar *contents)
 {
+	const gchar *dir;
+	gchar *file;
 	FILE *fp;
 
-	gchar *dir = g_path_get_dirname (file);
+	dir = config_dir ();
+	file = g_build_path (G_DIR_SEPARATOR_S, dir, name, NULL);
 	g_mkdir_with_parents (dir, 0755);
-	g_free (dir);
 
 	fp = fopen (file, "w+");
 	if (fp) {
 		fwrite (contents, strlen (contents), 1, fp);
 		fclose (fp);
 	} else {
-		print_error ("Could not create config file: %s\n"
-		             "Make sure you have write permissions to that location.",
-		             file);
+		print_info ("Could not create config file: %s\n"
+		            "Make sure you have write permissions to that location.",
+		            file);
 		return FALSE;
 	}
 
@@ -186,11 +261,48 @@ create_config (const gchar *file, const gchar *contents)
 }
 
 /**
- * Free the config hash table created by read_config.
+ * Remove config file.
+ */
+gboolean
+remove_config (const gchar *name)
+{
+	gchar *file;
+
+	file = g_build_path (G_DIR_SEPARATOR_S, config_dir (), name, NULL);
+
+	if (g_unlink (file))
+		return FALSE;
+
+	return TRUE;
+}
+
+/**
+ * Free the config structure created by parse_config().
  */
 void
-free_config (GHashTable *config)
+free_config (gpointer v)
 {
-	if (config)
-		g_hash_table_destroy (config);
+	config_t *config = v;
+
+	if (config) {
+		g_free (config->path);
+		g_free (config->argv);
+		g_hash_table_destroy (config->services);
+		g_free (config);
+	}
+}
+
+/**
+ * Free the service structure created by parse_service().
+ */
+void
+free_service (gpointer v)
+{
+	service_t *service = v;
+
+	if (service) {
+		g_free (service->desc);
+		g_hash_table_destroy (service->methods);
+		g_free (service);
+	}
 }
