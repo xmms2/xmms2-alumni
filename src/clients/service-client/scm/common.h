@@ -24,7 +24,24 @@
 #include <xmmsclient/xmmsclient.h>
 #include <xmmsclient/xmmsclient-glib.h>
 
+typedef struct config_St {
+	gchar *path;
+	gchar *argv;
+	gboolean autostart;
+	GHashTable *services;
+} config_t;
+
+typedef struct service_St {
+	gchar *desc;
+	guint major;
+	guint minor;
+	GHashTable *methods;
+} service_t;
+
 void print_info (const gchar *fmt, ...);
 void print_error (const gchar *fmt, ...);
+void print_method (gpointer k, gpointer v, gpointer d);
+void print_service (gpointer k, gpointer v, gpointer d);
+void print_config (gpointer k, gpointer v, gpointer d);
 
 #endif

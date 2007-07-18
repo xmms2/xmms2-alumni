@@ -14,19 +14,49 @@
  *  Lesser General Public License for more details.
  */
 
-#ifndef __CONFIG_H__
-#define __CONFIG_H__
+#include "management.h"
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+/**
+ * Remove the corresponding config file.
+ */
+void
+cb_uninstall (xmmsc_result_t *res, void *data)
+{
 
-#include "common.h"
+}
 
-config_t *read_config (const gchar *name);
-gboolean create_config (const gchar *name, const gchar *contents);
-gboolean remove_config (const gchar *name);
-void free_config (gpointer v);
-void free_service (gpointer v);
+/**
+ * Change startup argument passed to the service client.
+ */
+void
+cb_startup_arg_change (xmmsc_result_t *res, void *data)
+{
 
-#endif
+}
+
+/**
+ * Start a service client.
+ */
+void
+cb_launch (xmmsc_result_t *res, void *data)
+{
+
+}
+
+/**
+ * Shutdown a service client.
+ */
+void
+cb_shutdown (xmmsc_result_t *res, void *data)
+{
+
+}
+
+/**
+ * Toggle a service client's autostart.
+ */
+void
+cb_autostart_toggle (xmmsc_result_t *res, void *data)
+{
+
+}
