@@ -513,6 +513,8 @@ xmmsc_service_args_free (xmmsc_service_arg_list_t *args)
 
 	while (i-- > 0)
 		free (args->args[i].name);
+	if (args->error && args->error_str)
+		free (args->error_str);
 	free (args->args);
 	free (args);
 }
@@ -889,10 +891,28 @@ xmmsc_service_error_set (xmmsc_service_arg_list_t *arg_list, const char *err)
 	x_return_val_if_fail (arg_list, 0);
 	x_return_val_if_fail (err, 0);
 
+	if (arg_list->error && arg_list->error_str)
+		free (arg_list->error_str);
+
 	arg_list->error = 1;
-	arg_list->error_str = err;
+	if (!(arg_list->error_str = strdup (err)))
+		return 0;
 
 	return 1;
+}
+
+/**
+ * Check if an argument list already contains an error message.
+ *
+ * @param arg_list The argument list to check.
+ * @return 1 means yes, 0 otherwise.
+ */
+int
+xmmsc_service_error_isset (xmmsc_service_arg_list_t *arg_list)
+{
+	x_return_val_if_fail (arg_list, 0);
+
+	return arg_list->error;
 }
 
 /**
