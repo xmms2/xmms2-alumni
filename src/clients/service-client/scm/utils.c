@@ -14,17 +14,4 @@
  *  Lesser General Public License for more details.
  */
 
-#ifndef __MANAGEMENT_H__
-#define __MANAGEMENT_H__
-
-#include "common.h"
-
-void cb_uninstall (xmmsc_result_t *res, void *data);
-void cb_change_startup_arg (xmmsc_result_t *res, void *data);
-void cb_launch (xmmsc_result_t *res, void *data);
-void cb_shutdown (xmmsc_result_t *res, void *data);
-void cb_toggle_autostart (xmmsc_result_t *res, void *data);
-
-gboolean shutdown_all (GHashTable *clients);
-
-#endif
+#include "utils.h"
