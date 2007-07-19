@@ -305,6 +305,11 @@ xmms_playlist_init (void)
 
 	ret->update_flag = FALSE;
 
+	cmds = xmms_playlist_cmds_init (XMMS_OBJECT(ret));
+
+	cmds->playlist_load = xmms_playlist_load;
+
+	xmms_playlist_cmds_register (cmds);
 
 	/*
 	xmms_object_connect (XMMS_OBJECT (ret),
