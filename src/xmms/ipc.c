@@ -611,7 +611,7 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 {
 	GList *c, *s;
 	guint broadcastid = GPOINTER_TO_UINT (userdata);
-	const xmms_object_cmd_arg_t *a = arg;
+	xmms_object_cmd_arg_t *a = (xmms_object_cmd_arg_t *)arg;
 	xmms_ipc_t *ipc;
 	xmms_ipc_msg_t *msg = NULL;
 	GList *l;
