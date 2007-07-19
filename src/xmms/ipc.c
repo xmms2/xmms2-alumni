@@ -611,14 +611,15 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 {
 	GList *c, *s;
 	guint broadcastid = GPOINTER_TO_UINT (userdata);
+	const xmms_object_cmd_arg_t *a = arg;
 	xmms_ipc_t *ipc;
 	xmms_ipc_msg_t *msg = NULL;
 	GList *l;
 	guint fd, cookie;
 
 	if (broadcastid == XMMS_IPC_SIGNAL_SERVICE) {
-		fd = ((xmms_object_cmd_arg_t*)arg)->values[0].value.uint32;
-		cookie = ((xmms_object_cmd_arg_t*)arg)->values[1].value.uint32;
+		fd = a->values[0].value.uint32;
+		cookie = a->values[1].value.uint32;
 	}
 
 	g_mutex_lock (ipc_servers_lock);
@@ -641,9 +642,17 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 				if (broadcastid == XMMS_IPC_SIGNAL_SERVICE &&
 					cookie != GPOINTER_TO_UINT (l->data))
 					continue;
-				msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_BROADCAST);
+				if (xmms_error_isok (&a->error)) {
+					msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL,
+					                        XMMS_IPC_CMD_BROADCAST);
+					xmms_ipc_handle_cmd_value (msg, a->retval);
+				} else {
+					msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL,
+					                        XMMS_IPC_CMD_ERROR);
+					xmms_ipc_msg_put_string (msg,
+					                         xmms_error_message_get (&a->error));
+				}
 				xmms_ipc_msg_set_cookie (msg, GPOINTER_TO_UINT (l->data));
-				xmms_ipc_handle_cmd_value (msg, ((xmms_object_cmd_arg_t*)arg)->retval);
 				xmms_ipc_client_msg_write (cli, msg);
 				if (broadcastid == XMMS_IPC_SIGNAL_SERVICE) {
 					g_mutex_unlock (cli->lock);

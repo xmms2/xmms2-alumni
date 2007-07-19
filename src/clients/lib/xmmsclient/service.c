@@ -22,7 +22,7 @@
 #include "xmmsclient/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient.h"
 #include "xmmsc/xmmsc_idnumbers.h"
-
+#include "xmmsc/xmmsc_errorcodes.h"
 
 /**
  * @defgroup Service Service
@@ -328,7 +328,11 @@ xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn,
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_RETURN);
 	xmms_ipc_msg_put_uint32 (msg, cookie);
-	if (arg_list->args) {
+	if (arg_list->error) {
+		xmms_ipc_msg_put_uint32 (msg, XMMS_IPC_CMD_ERROR);
+		xmms_ipc_msg_put_string (msg, arg_list->error_str);
+	} else if (arg_list->args) {
+		xmms_ipc_msg_put_uint32 (msg, XMMS_IPC_CMD_REPLY);
 		for (i = 0; i < arg_list->size; i++) {
 			xmms_ipc_msg_put_string (msg, arg_list->args[i].name);
 			xmms_ipc_msg_put_uint32 (msg, arg_list->args[i].none);
@@ -870,6 +874,25 @@ xmmsc_service_arg_value_setnone (xmmsc_service_arg_list_t *arg_list,
 	}
 
 	return 0;
+}
+
+/**
+ * Set an error message
+ *
+ * @param arg_list The argument list that will contain the error message.
+ * @param err The error message willing to set.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_service_error_set (xmmsc_service_arg_list_t *arg_list, const char *err)
+{
+	x_return_val_if_fail (arg_list, 0);
+	x_return_val_if_fail (err, 0);
+
+	arg_list->error = 1;
+	arg_list->error_str = err;
+
+	return 1;
 }
 
 /**

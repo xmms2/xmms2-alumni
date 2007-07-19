@@ -82,6 +82,8 @@ struct xmmsc_service_argument_St {
 struct xmmsc_service_arg_list_St {
 	uint32_t size;
 	xmmsc_service_argument_t *args;
+	int error;
+	char *error_str;
 };
 
 /**

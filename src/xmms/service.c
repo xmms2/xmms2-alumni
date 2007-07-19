@@ -27,6 +27,12 @@
  * @{
  */
 
+#define XMMS_SERVICE_ERROR(err, code, message) \
+{ \
+	xmms_log_error ("%s", message); \
+	xmms_error_set (err, code, message); \
+}
+
 /**
  * A single service representation
  */
@@ -149,11 +155,12 @@ static GHashTable *xmms_service_arg_types_parse (xmms_ipc_msg_t *msg,
                                                  xmms_error_t *err);
 static GHashTable *xmms_service_args_parse (xmms_ipc_msg_t *msg,
                                             GHashTable *args, xmms_error_t *err);
+static gboolean xmms_service_args_is_error (xmms_ipc_msg_t *msg);
+static gboolean xmms_service_args_error_parse (xmms_ipc_msg_t *msg,
+                                               gchar **error, xmms_error_t *err);
 static GHashTable *
 xmms_service_changed_msg_new (gchar *service, gchar *method,
                               xmms_service_changed_actions_t type);
-static inline void xmms_service_error (xmms_error_t *err, xmms_error_code_t code,
-                                       const gchar *message);
 
 /**
  * Initialize service client handling
@@ -236,7 +243,7 @@ xmms_service_handle (xmms_object_t *obj, xmms_ipc_msg_t *msg,
 	case XMMS_IPC_CMD_SERVICE_SHUTDOWN:
 		return FALSE;
 	default:
-		xmms_service_error (&arg->error, XMMS_ERROR_INVAL,
+		XMMS_SERVICE_ERROR (&arg->error, XMMS_ERROR_INVAL,
 		                    "Invalid service command");
 		return FALSE;
 	}
@@ -364,25 +371,25 @@ xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	g_return_val_if_fail (msg, FALSE);
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
-		xmms_service_error (err, XMMS_ERROR_NOENT, "No service id given");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No service id given");
 		free (name);
 		return FALSE;
 	}
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len)) {
-		xmms_service_error (err, XMMS_ERROR_NOENT,
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 		                    "No service description given");
 		free (name);
 		free (desc);
 		return FALSE;
 	}
 	if (!xmms_ipc_msg_get_uint32 (msg, &major)) {
-		xmms_service_error (err, XMMS_ERROR_NOENT, "No major version given");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No major version given");
 		free (name);
 		free (desc);
 		return FALSE;
 	}
 	if (!xmms_ipc_msg_get_uint32 (msg, &minor)) {
-		xmms_service_error (err, XMMS_ERROR_NOENT, "No minor version given");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No minor version given");
 		free (name);
 		free (desc);
 		return FALSE;
@@ -435,21 +442,21 @@ xmms_service_method_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	}
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len)) {
-		xmms_service_error (err, XMMS_ERROR_NOENT,
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 		                    "No method description given");
 		free (name);
 		free (desc);
 		return FALSE;
 	}
 	if (!(rets = xmms_service_arg_types_parse (msg, err))) {
-		xmms_service_error (err, XMMS_ERROR_NOENT,
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 		                    "No method return types given");
 		free (name);
 		free (desc);
 		return FALSE;
 	}
 	if (!(args = xmms_service_arg_types_parse (msg, err))) {
-		xmms_service_error (err, XMMS_ERROR_NOENT,
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 		                    "No method argument types given");
 		free (name);
 		free (desc);
@@ -457,7 +464,7 @@ xmms_service_method_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	}
 
 	if ((method = xmms_service_method_is_registered (entry, name))) {
-		xmms_service_error (err, XMMS_ERROR_INVAL, "Method already registered");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Method already registered");
 		free (name);
 		free (desc);
 		return FALSE;
@@ -513,7 +520,7 @@ xmms_service_unregister (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		return;
 
 	if (client != entry->sc) {
-		xmms_service_error (err, XMMS_ERROR_PERMISSION,
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_PERMISSION,
 		                    "Permission denied to unregister");
 		free (name);
 		return;
@@ -522,7 +529,7 @@ xmms_service_unregister (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	if (!xmms_service_method_unregister (xmms_service, msg, entry, err)) {
 		g_mutex_lock (xmms_service->mutex);
 		if (!g_hash_table_remove (xmms_service->registry, name))
-			xmms_service_error (err, XMMS_ERROR_GENERIC,
+			XMMS_SERVICE_ERROR (err, XMMS_ERROR_GENERIC,
 			                    "Failed to remove service");
 		g_mutex_unlock (xmms_service->mutex);
 
@@ -557,7 +564,7 @@ xmms_service_method_unregister (xmms_service_t *xmms_service,
 	if (xmms_service_method_get (msg, entry, &name, err)) {
 		g_mutex_lock (entry->mutex);
 		if (!g_hash_table_remove (entry->methods, name)) {
-			xmms_service_error (err, XMMS_ERROR_INVAL, "Invalid method name!");
+			XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Invalid method name!");
 			ret = TRUE;
 		} else {
 			ret = --(entry->count) == 0 ? FALSE : TRUE;
@@ -789,11 +796,12 @@ xmms_service_return (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	xmms_service_client_t *cli = NULL;
 	GHashTable *table = NULL;
 	xmms_object_cmd_arg_t arg;
+	gchar *error = NULL;
 
 	g_return_if_fail (msg);
 
 	if (!xmms_ipc_msg_get_uint32 (msg, &id)) {
-		xmms_service_error (err, XMMS_ERROR_NOENT, "No service cookie given");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No service cookie given");
 		return;
 	}
 
@@ -805,7 +813,7 @@ xmms_service_return (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	g_mutex_lock (xmms_service->mutex);
 	if (!(cli = g_hash_table_lookup (xmms_service->clients,
 	                                 GUINT_TO_POINTER (id)))) {
-		xmms_service_error (err, XMMS_ERROR_INVAL, "Invalid client id");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Invalid client id");
 		g_mutex_unlock (xmms_service->mutex);
 		return;
 	}
@@ -814,25 +822,33 @@ xmms_service_return (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	XMMS_DBG ("Returning method call to client (%d)", cli->fd);
 
 	if (!(method = xmms_service_method_is_registered (entry, cli->method))) {
-		xmms_service_error (err, XMMS_ERROR_INVAL, "Invalid method id");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Invalid method id");
 		return;
 	}
-	if (!(table = xmms_service_args_parse (msg, method->rets, err)))
-		return;
 
 	xmms_object_cmd_arg_init (&arg);
-	arg.retval = xmms_object_cmd_value_dict_new (table);
 	arg.values[0].type = XMMS_OBJECT_CMD_ARG_UINT32;
 	arg.values[0].value.uint32 = cli->fd;
 	arg.values[1].type = XMMS_OBJECT_CMD_ARG_UINT32;
 	arg.values[1].value.uint32 = cli->cookie;
+
+	if (xmms_service_args_is_error (msg) &&
+	    xmms_service_args_error_parse (msg, &error, err)) {
+		XMMS_SERVICE_ERROR (&arg.error, XMMS_ERROR_GENERIC, error);
+		free (error);
+	} else {
+		if (!(table = xmms_service_args_parse (msg, method->rets, err)))
+			return;
+		arg.retval = xmms_object_cmd_value_dict_new (table);
+	}
+
 	xmms_object_emit (XMMS_OBJECT (xmms_service),
 	                  XMMS_IPC_SIGNAL_SERVICE,
 	                  &arg);
 
 	g_mutex_lock (xmms_service->mutex);
 	if (!g_hash_table_remove (xmms_service->clients, GUINT_TO_POINTER (id))) {
-		xmms_service_error (err, XMMS_ERROR_GENERIC,
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_GENERIC,
 		                    "Failed to remove method call request");
 		g_mutex_unlock (xmms_service->mutex);
 		return;
@@ -944,12 +960,12 @@ xmms_service_get (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	*name = NULL;
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, name, &len)) {
-		xmms_service_error (err, XMMS_ERROR_NOENT, "No service id given");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No service id given");
 		free (*name);
 	}
 
 	if (!(entry = xmms_service_is_registered (xmms_service, *name))) {
-		xmms_service_error (err, XMMS_ERROR_INVAL, "Invalid service id");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Invalid service id");
 		free (*name);
 	}
 
@@ -971,12 +987,12 @@ xmms_service_method_get (xmms_ipc_msg_t *msg, xmms_service_entry_t *entry,
 	*name = NULL;
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, name, &len)) {
-		xmms_service_error (err, XMMS_ERROR_NOENT, "No method id given");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No method id given");
 		free (*name);
 	}
 
 	if (!(method = xmms_service_method_is_registered (entry, *name))) {
-		xmms_service_error (err, XMMS_ERROR_INVAL, "Invalid method id");
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Invalid method id");
 		free (*name);
 	}
 
@@ -999,7 +1015,7 @@ xmms_service_arg_types_parse (xmms_ipc_msg_t *msg, xmms_error_t *err)
 	table = g_hash_table_new_full (g_str_hash, g_str_equal, free, g_free);
 
 	if (!xmms_ipc_msg_get_uint32 (msg, &num)) {
-		xmms_service_error (err, XMMS_ERROR_NOENT,
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 		                    "No number of arguments given");
 		return NULL;
 	}
@@ -1008,21 +1024,21 @@ xmms_service_arg_types_parse (xmms_ipc_msg_t *msg, xmms_error_t *err)
 		arg = g_new0 (xmms_service_argument_t, 1);
 
 		if (!xmms_ipc_msg_get_string_alloc (msg, &arg->name, &len)) {
-			xmms_service_error (err, XMMS_ERROR_NOENT, "No argument name given");
+			XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No argument name given");
 			free (arg->name);
 			g_free (arg);
 			g_hash_table_destroy (table);
 			return NULL;
 		}
 		if (!xmms_ipc_msg_get_uint32 (msg, &arg->type)) {
-			xmms_service_error (err, XMMS_ERROR_NOENT, "No argument type given");
+			XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No argument type given");
 			free (arg->name);
 			g_free (arg);
 			g_hash_table_destroy (table);
 			return NULL;
 		}
 		if (!xmms_ipc_msg_get_int32 (msg, &arg->optional)) {
-			xmms_service_error (err, XMMS_ERROR_NOENT,
+			XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 			                    "Optional field missing for argument");
 			free (arg->name);
 			g_free (arg);
@@ -1057,20 +1073,20 @@ xmms_service_args_parse (xmms_ipc_msg_t *msg, GHashTable *args,
 
 	for (i = g_hash_table_size (args); i > 0; i--) {
 		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
-			xmms_service_error (err, XMMS_ERROR_NOENT, "No argument name given");
+			XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No argument name given");
 			free (name);
 			g_hash_table_destroy (table);
 			return NULL;
 		}
 		if (!(arg = g_hash_table_lookup (args, name))) {
-			xmms_service_error (err, XMMS_ERROR_INVAL, "Invalid argument");
+			XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Invalid argument");
 			free (name);
 			g_hash_table_destroy (table);
 			return NULL;
 		}
 		if (xmms_ipc_msg_get_uint32 (msg, &none) && none) {
 			if (!arg->optional) {
-				xmms_service_error (err, XMMS_ERROR_INVAL,
+				XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL,
 				                    "Required argument not given");
 				free (name);
 				g_hash_table_destroy (table);
@@ -1152,7 +1168,7 @@ xmms_service_args_parse (xmms_ipc_msg_t *msg, GHashTable *args,
 		break;
 		default:
 		inval:
-			xmms_service_error (err, XMMS_ERROR_INVAL, "Invalid argument");
+			XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Invalid argument");
 			free (name);
 			g_hash_table_destroy (table);
 			return NULL;
@@ -1162,6 +1178,45 @@ xmms_service_args_parse (xmms_ipc_msg_t *msg, GHashTable *args,
 	}
 
 	return table;
+}
+
+/**
+ * Test if a return value message is an error message.
+ */
+static gboolean
+xmms_service_args_is_error (xmms_ipc_msg_t *msg)
+{
+	guint err;
+
+	g_return_val_if_fail (msg, FALSE);
+
+	if (xmms_ipc_msg_get_uint32 (msg, &err) && err == XMMS_IPC_CMD_ERROR)
+		return TRUE;
+
+	return FALSE;
+}
+
+/**
+ * Parse error message
+ */
+static gboolean
+xmms_service_args_error_parse (xmms_ipc_msg_t *msg, gchar **error,
+                               xmms_error_t *err)
+{
+	guint len;
+	*error = NULL;
+
+	g_return_val_if_fail (msg, FALSE);
+	g_return_val_if_fail (error, FALSE);
+	g_return_val_if_fail (err, FALSE);
+
+	if (!xmms_ipc_msg_get_string_alloc (msg, error, &len)) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "Error message missing");
+		free (*error);
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 /**
@@ -1188,17 +1243,6 @@ xmms_service_changed_msg_new (gchar *service, gchar *method,
 	}
 
 	return table;
-}
-
-static inline void
-xmms_service_error (xmms_error_t *err, xmms_error_code_t code,
-                    const gchar *message)
-{
-	g_return_if_fail (err);
-	g_return_if_fail (message);
-
-	xmms_log_error ("%s", message);
-	xmms_error_set (err, code, message);
 }
 
 /** @} */

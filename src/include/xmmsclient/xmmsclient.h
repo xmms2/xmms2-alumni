@@ -393,6 +393,8 @@ int xmmsc_service_arg_value_set (xmmsc_service_arg_list_t *arg_list,
                                  const char *key, const void *value);
 int xmmsc_service_arg_value_setnone (xmmsc_service_arg_list_t *arg_list,
                                      const char *key);
+int xmmsc_service_error_set (xmmsc_service_arg_list_t *arg_list,
+                             const char *err);
 
 /*
  * RESULTS
