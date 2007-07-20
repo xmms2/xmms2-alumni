@@ -15,3 +15,16 @@
  */
 
 #include "utils.h"
+
+/**
+ * Insert each service client with autostart property set to true to the list.
+ */
+void
+match_auto (gpointer key, gpointer value, gpointer data)
+{
+	GList **list = data;
+	config_t *config = value;
+
+	if (config->autostart)
+		*list = g_list_prepend (*list, config);
+}
