@@ -1,5 +1,8 @@
 List of things TODO(in rough order)
 
+* Figure out why my test clientlib keeps disconnection after sending a single
+* request.
+
 * Test the server side using the stripped clientlib in my tree
 
 * Handle lists of complex types correctly/generate the correct code(right now
