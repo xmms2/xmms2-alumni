@@ -40,10 +40,12 @@ typedef struct service_St {
 	GHashTable *methods;
 } service_t;
 
+GMainLoop *ml;
 xmmsc_connection_t *conn;
 
 void print_info (const gchar *fmt, ...);
 void print_error (const gchar *fmt, ...);
+void print_error_and_exit (const gchar *fmt, ...);
 void print_method (gpointer k, gpointer v, gpointer d);
 void print_service (gpointer k, gpointer v, gpointer d);
 void print_config (gpointer k, gpointer v, gpointer d);
