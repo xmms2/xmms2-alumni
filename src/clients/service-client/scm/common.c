@@ -40,6 +40,19 @@ print_error (const gchar *fmt, ...)
 	va_end (ap);
 
 	g_printerr ("ERROR: %s\n", buf);
+}
+
+void
+print_error_and_exit (const gchar *fmt, ...)
+{
+	gchar buf[1024];
+	va_list ap;
+
+	va_start (ap, fmt);
+	g_vsnprintf (buf, 1024, fmt, ap);
+	va_end (ap);
+
+	g_printerr ("ERROR: %s\n", buf);
 
 	exit (EXIT_FAILURE);
 }
