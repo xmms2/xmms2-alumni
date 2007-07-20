@@ -16,6 +16,7 @@
 
 #include "management.h"
 #include "config.h"
+#include "utils.h"
 
 static config_t *lookup_client (xmmsc_result_t *res, GHashTable *clients,
                                 gchar **name, xmmsc_service_arg_list_t *err);
@@ -163,7 +164,18 @@ cb_toggle_autostart (xmmsc_result_t *res, void *data)
 gboolean
 launch_all (GHashTable *clients)
 {
-	return FALSE;
+	GList *list = NULL;
+	GList *n;
+
+	g_hash_table_foreach (clients, match_auto, &list);
+
+	for (n = list; n; n = g_list_next (n)) {
+		if (!launch_single ((config_t *)n->data))
+			return FALSE;
+	}
+
+	g_list_free (list);
+	return TRUE;
 }
 
 /**
@@ -224,7 +236,24 @@ return_and_free (xmmsc_result_t *res, xmmsc_service_arg_list_t *ret)
 static gboolean
 launch_single (config_t *config)
 {
-	return FALSE;
+	GError *err = NULL;
+	gchar *argv[2] = {NULL, NULL};
+
+	x_return_val_if_fail (config, FALSE);
+	x_return_val_if_fail (config->pid, FALSE);
+
+	argv[0] = config->path;
+	argv[1] = config->argv;
+	if (g_file_test (config->path, G_FILE_TEST_IS_EXECUTABLE)) {
+		if (!g_spawn_async (g_get_home_dir (),
+		                    argv, NULL, 0,
+		                    NULL, NULL, &config->pid, &err)) {
+			print_info ("Failed to launch client (%s)", config->path);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }
 
 /**
