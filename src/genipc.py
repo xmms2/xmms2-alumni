@@ -104,10 +104,8 @@ xmms_ipc_msg_t *msg)\n{\n" % (obj.getAttribute("name"),
     write_deserialization(ipcmsgdeser,args)
 
     #now we need to find the cmd structure and call the right method
-    ipcmsgdeser.write("\txmms_%s_cmds_t *cmds = (xmms_%s_cmds_t \
-*)g_list_nth_data (xmms_ipc_get_cmds(ipc), XMMS_IPC_OBJECT_%s);\n" % \
-	(obj.getAttribute("name"), obj.getAttribute("name"), \
-	obj.getAttribute("name").upper()))
+    ipcmsgdeser.write("\txmms_%s_cmds_t *cmds = xmms_ipc_get_%s_cmds();\n" % \
+	(obj.getAttribute("name"), obj.getAttribute("name")))
 
     #FIXME should check that it exists, if not throw error
     ipcmsgdeser.write("\tcmds->%s_%s (" % \
@@ -402,8 +400,11 @@ def do_objects(objects):
     xmmsclientfile.write("\n/* Enum of all valid objects */\n")
     xmmsclientfile.write("typedef enum {\n")
 
+    global global_idnum
+    global_idnum = 0
     for object in objectlist:
-	xmmsclientfile.write("\tXMMSC_IPC_OBJECT_%s,\n" % object.upper())
+	xmmsclientfile.write("\tXMMSC_IPC_OBJECT_%s = %d,\n" % (object.upper(),
+		get_nextid()))
 
     xmmsclientfile.write("\tXMMSC_IPC_OBJECT_END\n} xmmsc_ipc_object_t;\n")
 #END do_objects
