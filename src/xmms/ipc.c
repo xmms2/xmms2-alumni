@@ -19,7 +19,8 @@
 #include "xmms/xmms_log.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
-
+#include "xmmspriv/xmms_cmds.h"
+#include "xmmsclient/xmmsclient.h"
 
 /**
   * @defgroup IPC IPC
@@ -37,7 +38,9 @@ typedef struct xmms_ipc_object_pool_t {
 	xmms_object_t *objects[XMMS_IPC_OBJECT_END];
 } xmms_ipc_object_pool_t;
 
-GList *cmds_list; /* List of all the xmms_*_cmds_t structures */
+xmms_main_cmds_t *main_cmds;
+xmms_output_cmds_t *output_cmds;
+xmms_playlist_cmds_t *playlist_cmds;
 
 /**
  * The server IPC object
@@ -83,16 +86,37 @@ static void xmms_ipc_client_destroy (xmms_ipc_client_t *client);
 
 static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
 
-
-GList *xmms_ipc_get_cmds()
+xmms_main_cmds_t *xmms_ipc_get_main_cmds (void)
 {
-	return cmds_list;
+	return main_cmds;
+}
+
+xmms_output_cmds_t *xmms_ipc_get_output_cmds(void)
+{
+	return output_cmds;
+}
+
+xmms_playlist_cmds_t *xmms_ipc_get_playlist_cmds(void)
+{
+	return playlist_cmds;
 }
 
 void
-xmms_ipc_add_cmds(gpointer *cmds, guint type)
+xmms_ipc_add_cmds (gpointer *cmds, guint type)
 {
-	cmds_list = g_list_insert (cmds_list, cmds, type);
+	switch(type) {
+		case XMMSC_IPC_OBJECT_MAIN:
+			main_cmds = (xmms_main_cmds_t *)cmds;
+			break;
+		case XMMSC_IPC_OBJECT_OUTPUT:
+			output_cmds = (xmms_output_cmds_t *)cmds;
+			break;
+		case XMMSC_IPC_OBJECT_PLAYLIST:
+			playlist_cmds = (xmms_playlist_cmds_t *)cmds;
+			break;
+		default:
+			XMMS_DBG("Incorrect IPC object type");
+	}
 }
 
 static void
@@ -544,8 +568,6 @@ xmms_ipc_setup_server (const gchar *path)
 		ipc->mutex_lock = g_mutex_new ();
 		ipc->transport = transport;
 		ipc->objects = ipc_object_pool->objects;
-
-		cmds_list = NULL;
 
 		xmms_ipc_setup_server_internaly (ipc);
 		xmms_log_info ("IPC listening on '%s'.", split[i]);
