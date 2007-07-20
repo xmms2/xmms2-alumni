@@ -54,6 +54,7 @@ print_error_and_exit (const gchar *fmt, ...)
 
 	g_printerr ("ERROR: %s\n", buf);
 
+	xmmsc_unref (conn);
 	exit (EXIT_FAILURE);
 }
 
