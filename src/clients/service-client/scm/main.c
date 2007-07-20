@@ -104,9 +104,9 @@ main ()
 
 	conn = xmmsc_init ("scm");
 	if (!conn)
-		print_error ("Unable to initialize connection.");
+		print_error_and_exit ("Unable to initialize connection.");
 	if (!xmmsc_connect (conn, getenv ("XMMS_PATH")))
-		print_error ("Unable to connect to server.");
+		print_error_and_exit ("Unable to connect to server.");
 
 	if (!register_all (clients)) {
 		xmmsc_unref (conn);
@@ -116,6 +116,8 @@ main ()
 	ml = g_main_loop_new (NULL, FALSE);
 	xmmsc_mainloop_gmain_init (conn);
 	g_main_loop_run (ml);
+
+	xmmsc_unref (conn);
 
 	return 0;
 }
