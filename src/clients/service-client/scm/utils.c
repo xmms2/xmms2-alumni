@@ -28,3 +28,16 @@ match_auto (gpointer key, gpointer value, gpointer data)
 	if (config->autostart)
 		*list = g_list_prepend (*list, config);
 }
+
+/**
+ * Insert each service client with a valid pid.
+ */
+void
+match_pid (gpointer key, gpointer value, gpointer data)
+{
+	GList **list = data;
+	config_t *config = value;
+
+	if (config->pid)
+		*list = g_list_prepend (*list, config);
+}

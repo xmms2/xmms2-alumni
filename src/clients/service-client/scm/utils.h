@@ -20,5 +20,6 @@
 #include "common.h"
 
 void match_auto (gpointer key, gpointer value, gpointer data);
+void match_pid (gpointer key, gpointer value, gpointer data);
 
 #endif
