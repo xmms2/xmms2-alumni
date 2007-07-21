@@ -14,15 +14,107 @@
  *  Lesser General Public License for more details.
  */
 
+#include <sys/types.h>
+#include <signal.h>
+#include <errno.h>
+
 #include "management.h"
 #include "config.h"
 #include "utils.h"
 
-static config_t *lookup_client (xmmsc_result_t *res, GHashTable *clients,
-                                gchar **name, xmmsc_service_arg_list_t *err);
-static void return_and_free (xmmsc_result_t *res, xmmsc_service_arg_list_t *ret);
-static gboolean launch_single (config_t *config);
-static gboolean shutdown_single (config_t *config);
+/**
+ * internal
+ */
+
+/**
+ * Get client name and look it up.
+ */
+static config_t *
+lookup_client (xmmsc_result_t *res, GHashTable *clients, gchar **name,
+               xmmsc_service_arg_list_t *err)
+{
+	config_t *config;
+
+	x_return_null_if_fail (res);
+	x_return_null_if_fail (name);
+	x_return_null_if_fail (err);
+
+	if (!xmmsc_result_get_dict_entry_string (res, "name", name))
+		xmmsc_service_error_set (err, "Service client name not given.");
+	else
+		if (!(config = g_hash_table_lookup (clients, *name)))
+			xmmsc_service_error_set (err, "Service client does not exist"
+			                         " or it is a remote service client.");
+
+	return config;
+}
+
+/**
+ * Return and free arg list.
+ */
+static void
+return_and_free (xmmsc_result_t *res, xmmsc_service_arg_list_t *ret)
+{
+	xmmsc_result_t *result;
+
+	x_return_if_fail (res);
+	x_return_if_fail (ret);
+
+	result = xmmsc_service_return (conn, res, ret);
+	xmmsc_result_unref (result);
+	xmmsc_service_args_free (ret);
+}
+
+/**
+ * Launch a single service client.
+ */
+static gboolean
+launch_single (config_t *config)
+{
+	GError *err = NULL;
+	gchar *argv[2] = {NULL, NULL};
+
+	x_return_val_if_fail (config, FALSE);
+	x_return_val_if_fail (config->pid, FALSE);
+
+	argv[0] = config->path;
+	argv[1] = config->argv;
+	if (g_file_test (config->path, G_FILE_TEST_IS_EXECUTABLE)) {
+		if (!g_spawn_async (g_get_home_dir (),
+		                    argv, NULL, 0,
+		                    NULL, NULL, &config->pid, &err)) {
+			print_info ("Failed to launch client (%s)", config->path);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+/**
+ * Shutdown a single service client.
+ */
+static gboolean
+shutdown_single (config_t *config)
+{
+	x_return_val_if_fail (config, FALSE);
+
+	if (!config->pid) {
+		print_info ("Service client (%s) is not running.", config->path);
+		return FALSE;
+	}
+
+	if (kill (config->pid, SIGTERM)) {
+		print_info ("Failed to shutdown service client: %s", strerror (errno));
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+/**
+ * public
+ */
 
 /**
  * Remove the corresponding config file.
@@ -184,83 +276,16 @@ launch_all (GHashTable *clients)
 gboolean
 shutdown_all (GHashTable *clients)
 {
-	return FALSE;
-}
+	GList *list = NULL;
+	GList *n;
 
-/**
- * internal
- */
+	g_hash_table_foreach (clients, match_pid, &list);
 
-/**
- * Get client name and look it up.
- */
-static config_t *
-lookup_client (xmmsc_result_t *res, GHashTable *clients, gchar **name,
-               xmmsc_service_arg_list_t *err)
-{
-	config_t *config;
-
-	x_return_null_if_fail (res);
-	x_return_null_if_fail (name);
-	x_return_null_if_fail (err);
-
-	if (!xmmsc_result_get_dict_entry_string (res, "name", name))
-		xmmsc_service_error_set (err, "Service client name not given.");
-	else
-		if (!(config = g_hash_table_lookup (clients, *name)))
-			xmmsc_service_error_set (err, "Service client does not exist"
-			                         " or it is a remote service client.");
-
-	return config;
-}
-
-/**
- * Return and free arg list.
- */
-static void
-return_and_free (xmmsc_result_t *res, xmmsc_service_arg_list_t *ret)
-{
-	xmmsc_result_t *result;
-
-	x_return_if_fail (res);
-	x_return_if_fail (ret);
-
-	result = xmmsc_service_return (conn, res, ret);
-	xmmsc_result_unref (result);
-	xmmsc_service_args_free (ret);
-}
-
-/**
- * Launch a single service client.
- */
-static gboolean
-launch_single (config_t *config)
-{
-	GError *err = NULL;
-	gchar *argv[2] = {NULL, NULL};
-
-	x_return_val_if_fail (config, FALSE);
-	x_return_val_if_fail (config->pid, FALSE);
-
-	argv[0] = config->path;
-	argv[1] = config->argv;
-	if (g_file_test (config->path, G_FILE_TEST_IS_EXECUTABLE)) {
-		if (!g_spawn_async (g_get_home_dir (),
-		                    argv, NULL, 0,
-		                    NULL, NULL, &config->pid, &err)) {
-			print_info ("Failed to launch client (%s)", config->path);
+	for (n = list; n; n = g_list_next (n)) {
+		if (!shutdown_single ((config_t *)n->data))
 			return FALSE;
-		}
 	}
 
+	g_list_free (list);
 	return TRUE;
-}
-
-/**
- * Shutdown a single service client.
- */
-static gboolean
-shutdown_single (config_t *config)
-{
-	return FALSE;
 }
