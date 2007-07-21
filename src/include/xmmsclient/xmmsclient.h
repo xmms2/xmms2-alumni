@@ -332,9 +332,12 @@ xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
 xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn,
                                       xmmsc_result_t *res,
                                       const xmmsc_service_arg_list_t *arg_list);
+xmmsc_result_t *xmmsc_service_shutdown (xmmsc_connection_t *conn,
+                                        const char *service);
 /* broadcasts */
 xmmsc_result_t *xmmsc_broadcast_service_changed (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_broadcast_service_method_changed (xmmsc_connection_t *c);
+xmmsc_result_t *xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c);
 
 xmmsc_service_t *xmmsc_service_new (const char *name, const char *description,
                                     uint32_t major, uint32_t minor);

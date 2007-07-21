@@ -733,7 +733,8 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 	GList *l;
 	guint fd, cookie;
 
-	if (broadcastid == XMMS_IPC_SIGNAL_SERVICE) {
+	if (broadcastid == XMMS_IPC_SIGNAL_SERVICE ||
+	    broadcastid == XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN) {
 		fd = a->values[0].value.uint32;
 		cookie = a->values[1].value.uint32;
 	}
@@ -746,14 +747,11 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 		for (c = ipc->clients; c; c = g_list_next (c)) {
 			xmms_ipc_client_t *cli = c->data;
 
-			if (broadcastid == XMMS_IPC_SIGNAL_SERVICE) {
-				g_mutex_lock (cli->lock);
-				if (fd != cli->transport->fd) {
-					g_mutex_unlock (cli->lock);
+			if ((broadcastid == XMMS_IPC_SIGNAL_SERVICE ||
+			     broadcastid == XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN) &&
+			    fd != cli->transport->fd)
 					continue;
-				}
-			} else
-				g_mutex_lock (cli->lock);
+			g_mutex_lock (cli->lock);
 			for (l = cli->broadcasts[broadcastid]; l; l = g_list_next (l)) {
 				if (broadcastid == XMMS_IPC_SIGNAL_SERVICE &&
 					cookie != GPOINTER_TO_UINT (l->data))
