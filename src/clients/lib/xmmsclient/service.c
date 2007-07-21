@@ -347,6 +347,27 @@ xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn,
 }
 
 /**
+ * Send shutdown broadcast to a service client.
+ *
+ * @param conn The connection to the server.
+ * @param service Any service name the service client provides.
+ */
+xmmsc_result_t *
+xmmsc_service_shutdown (xmmsc_connection_t *conn, const char *service)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (conn, NULL);
+	x_return_val_if_fail (service, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_CMD_SERVICE_SHUTDOWN);
+	xmms_ipc_msg_put_string (msg, service);
+
+	return xmmsc_send_msg (conn, msg);
+}
+
+/**
  * Request the service changed broadcast from the server.
  *
  * Everytime a service is registered, unregistered or modified, the broadcast
@@ -376,6 +397,20 @@ xmmsc_broadcast_service_method_changed (xmmsc_connection_t *c)
 	x_check_conn (c, NULL);
 
 	return xmmsc_send_broadcast_msg (c, XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED);
+}
+
+/**
+ * Request the service client shutdown broadcast from the server.
+ *
+ * When a client sends a shutdown command to the service client, this broadcast
+ * will be received.
+ */
+xmmsc_result_t *
+xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c)
+{
+	x_check_conn (c, NULL);
+
+	return xmmsc_send_broadcast_msg (c, XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN);
 }
 
 /**

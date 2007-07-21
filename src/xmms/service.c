@@ -132,6 +132,8 @@ static void xmms_service_return (xmms_service_t *xmms_service,
                                  xmms_ipc_msg_t *msg,
                                  xmms_socket_t client,
                                  xmms_error_t *err);
+static void xmms_service_shutdown (xmms_service_t *xmms_service,
+                                   xmms_ipc_msg_t *msg, xmms_error_t *err);
 
 static xmms_service_entry_t *
 xmms_service_is_registered (xmms_service_t *xmms_service, const gchar *name);
@@ -183,6 +185,8 @@ xmms_service_init(void)
 	                             XMMS_IPC_SIGNAL_SERVICE_CHANGED);
 	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
 	                             XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED);
+	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
+	                             XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN);
 
 	XMMS_DBG ("Service object initialized.");
 
@@ -241,6 +245,8 @@ xmms_service_handle (xmms_object_t *obj, xmms_ipc_msg_t *msg,
 		xmms_service_return (serv, msg, client, &arg->error);
 		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_SHUTDOWN:
+		arg->retval = xmms_object_cmd_value_none_new ();
+		xmms_service_shutdown (serv, msg, &arg->error);
 		return FALSE;
 	default:
 		XMMS_SERVICE_ERROR (&arg->error, XMMS_ERROR_INVAL,
@@ -545,7 +551,6 @@ xmms_service_unregister (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	XMMS_DBG ("Service unregistered.");
 
 	free (name);
-	return;
 }
 
 /**
@@ -599,8 +604,6 @@ xmms_service_list (xmms_service_t *xmms_service, xmms_object_cmd_arg_t *arg)
 	g_mutex_unlock (xmms_service->mutex);
 
 	arg->retval = xmms_object_cmd_value_list_new (list);
-
-	return;
 }
 
 /**
@@ -638,8 +641,6 @@ xmms_service_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		arg->retval = xmms_object_cmd_value_dict_new (dict);
 		free (name);
 	}
-
-	return;
 }
 
 /**
@@ -665,8 +666,6 @@ xmms_service_method_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	g_mutex_unlock (entry->mutex);
 
 	arg->retval = xmms_object_cmd_value_list_new (list);
-
-	return;
 }
 
 /**
@@ -716,7 +715,6 @@ xmms_service_method_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg
 	}
 
 	free (name);
-	return;
 }
 
 /**
@@ -856,6 +854,37 @@ xmms_service_return (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	g_mutex_unlock (xmms_service->mutex);
 
 	xmms_object_cmd_value_free (arg.retval);
+}
+
+/**
+ * Send shutdown broadcast to service client.
+ */
+static void
+xmms_service_shutdown (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
+                       xmms_error_t *err)
+{
+	gchar *name = NULL;
+	xmms_service_entry_t *entry;
+	xmms_object_cmd_arg_t arg;
+
+	g_return_if_fail (msg);
+
+	if (!(entry = xmms_service_get (xmms_service, msg, &name, err)))
+		return;
+
+	free (name);
+
+	XMMS_DBG ("Shutdown request to (%d)", entry->sc);
+
+	xmms_object_cmd_arg_init (&arg);
+	arg.retval = xmms_object_cmd_value_none_new ();
+	arg.values[0].type = XMMS_OBJECT_CMD_ARG_UINT32;
+	arg.values[0].value.uint32 = entry->sc;
+	arg.values[1].type = XMMS_OBJECT_CMD_ARG_UINT32;
+	arg.values[1].value.uint32 = 0;
+	xmms_object_emit (XMMS_OBJECT (xmms_service),
+	                  XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN,
+	                  &arg);
 }
 
 static xmms_service_entry_t *
