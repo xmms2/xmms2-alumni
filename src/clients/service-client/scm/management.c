@@ -30,8 +30,7 @@
  * Get client name and look it up.
  */
 static config_t *
-lookup_client (xmmsc_result_t *res, GHashTable *clients, gchar **name,
-               xmmsc_service_arg_list_t *err)
+lookup_client (xmmsc_result_t *res, gchar **name, xmmsc_service_arg_list_t *err)
 {
 	config_t *config;
 
@@ -92,22 +91,59 @@ launch_single (config_t *config)
 }
 
 /**
+ * Force a service client to shutdown.
+ */
+static gboolean
+force_shutdown (gpointer data)
+{
+	gchar *name = data;
+	config_t *config;
+
+	if (!(config = g_hash_table_lookup (clients, name)))
+		return FALSE;
+
+	if (kill (config->pid, SIGTERM)) {
+		print_info ("Failed to shutdown service client: %s", strerror (errno));
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+/**
  * Shutdown a single service client.
  */
 static gboolean
-shutdown_single (config_t *config)
+shutdown_single (gchar *client)
 {
-	x_return_val_if_fail (config, FALSE);
+	xmmsc_result_t *result;
+	config_t *config;
+	gchar *name = NULL;
+
+	x_return_val_if_fail (client, FALSE);
+
+	if (!(config = g_hash_table_lookup (clients, client))) {
+		print_info ("Service client (%s) is not installed.", client);
+		return FALSE;
+	}
 
 	if (!config->pid) {
 		print_info ("Service client (%s) is not running.", config->path);
 		return FALSE;
 	}
 
-	if (kill (config->pid, SIGTERM)) {
-		print_info ("Failed to shutdown service client: %s", strerror (errno));
+	if (!g_hash_table_find (config->services, match_registered, &name)) {
+		print_info ("No service is registered from that service client.");
 		return FALSE;
 	}
+	result = xmmsc_service_shutdown (conn, name);
+	xmmsc_result_wait (result);
+	if (xmmsc_result_iserror (result))
+		print_error ("Failed to send shutdown request: %s",
+		             xmmsc_result_get_error (result));
+	xmmsc_result_unref (result);
+
+	g_timeout_add (TIMEOUT, force_shutdown, client);
 
 	return TRUE;
 }
@@ -122,7 +158,6 @@ shutdown_single (config_t *config)
 void
 cb_uninstall (xmmsc_result_t *res, void *data)
 {
-	GHashTable *clients = data;
 	config_t *config;
 	gchar *name = NULL;
 	xmmsc_service_arg_list_t *ret;
@@ -130,8 +165,8 @@ cb_uninstall (xmmsc_result_t *res, void *data)
 
 	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
 
-	if ((config = lookup_client (res, clients, &name, ret))) {
-		if (config->registered && !shutdown_single (config))
+	if ((config = lookup_client (res, &name, ret))) {
+		if (config->pid && !shutdown_single (name))
 			xmmsc_service_error_set (ret, "Failed to shutdown service client.");
 		else if (!remove_config (name))
 			xmmsc_service_error_set (ret, "Failed to uninstall service client.");
@@ -148,7 +183,6 @@ cb_uninstall (xmmsc_result_t *res, void *data)
 void
 cb_change_argv (xmmsc_result_t *res, void *data)
 {
-	GHashTable *clients = data;
 	config_t *config;
 	gchar *name = NULL;
 	gchar *new_argv = NULL;
@@ -157,7 +191,7 @@ cb_change_argv (xmmsc_result_t *res, void *data)
 
 	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
 
-	if ((config = lookup_client (res, clients, &name, ret))) {
+	if ((config = lookup_client (res, &name, ret))) {
 		if (!xmmsc_result_get_dict_entry_string (res, "argv", &new_argv))
 			xmmsc_service_error_set (ret, "New startup arguments not given.");
 		else {
@@ -178,7 +212,6 @@ cb_change_argv (xmmsc_result_t *res, void *data)
 void
 cb_launch (xmmsc_result_t *res, void *data)
 {
-	GHashTable *clients = data;
 	config_t *config;
 	gchar *name = NULL;
 	xmmsc_service_arg_list_t *ret;
@@ -186,8 +219,8 @@ cb_launch (xmmsc_result_t *res, void *data)
 
 	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
 
-	if ((config = lookup_client (res, clients, &name, ret))) {
-		if (config->registered)
+	if ((config = lookup_client (res, &name, ret))) {
+		if (config->pid)
 			xmmsc_service_error_set (ret, "Service client is already running.");
 		else if (!launch_single (config))
 			xmmsc_service_error_set (ret, "Failed to launch service client.");
@@ -204,7 +237,6 @@ cb_launch (xmmsc_result_t *res, void *data)
 void
 cb_shutdown (xmmsc_result_t *res, void *data)
 {
-	GHashTable *clients = data;
 	config_t *config;
 	gchar *name = NULL;
 	xmmsc_service_arg_list_t *ret;
@@ -212,8 +244,8 @@ cb_shutdown (xmmsc_result_t *res, void *data)
 
 	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
 
-	if ((config = lookup_client (res, clients, &name, ret))) {
-		if (config->registered && !shutdown_single (config))
+	if ((config = lookup_client (res, &name, ret))) {
+		if (config->pid && !shutdown_single (name))
 			xmmsc_service_error_set (ret, "Failed to shutdown service client.");
 
 		xmmsc_service_arg_value_set (ret, "ret", &retval);
@@ -228,7 +260,6 @@ cb_shutdown (xmmsc_result_t *res, void *data)
 void
 cb_toggle_autostart (xmmsc_result_t *res, void *data)
 {
-	GHashTable *clients = data;
 	config_t *config;
 	gchar *name = NULL;
 	guint new_auto;
@@ -237,7 +268,7 @@ cb_toggle_autostart (xmmsc_result_t *res, void *data)
 
 	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
 
-	if ((config = lookup_client (res, clients, &name, ret))) {
+	if ((config = lookup_client (res, &name, ret))) {
 		if (!xmmsc_result_get_dict_entry_uint (res, "auto", &new_auto))
 			xmmsc_service_error_set (ret, "New autostart value not given.");
 		else {
@@ -254,7 +285,7 @@ cb_toggle_autostart (xmmsc_result_t *res, void *data)
  * Launch all service clients with autostart set to true.
  */
 gboolean
-launch_all (GHashTable *clients)
+launch_all (void)
 {
 	GList *list = NULL;
 	GList *n;
@@ -274,7 +305,7 @@ launch_all (GHashTable *clients)
  * Shutdown all service clients.
  */
 gboolean
-shutdown_all (GHashTable *clients)
+shutdown_all (void)
 {
 	GList *list = NULL;
 	GList *n;
@@ -282,7 +313,7 @@ shutdown_all (GHashTable *clients)
 	g_hash_table_foreach (clients, match_pid, &list);
 
 	for (n = list; n; n = g_list_next (n)) {
-		if (!shutdown_single ((config_t *)n->data))
+		if (!shutdown_single ((gchar *)n->data))
 			return FALSE;
 	}
 

@@ -29,7 +29,6 @@ typedef struct config_St {
 	gchar *argv;
 	GPid pid;
 	gboolean autostart;
-	gboolean registered;
 	GHashTable *services;
 } config_t;
 
@@ -37,11 +36,12 @@ typedef struct service_St {
 	gchar *desc;
 	guint major;
 	guint minor;
+	gboolean registered;
 	GHashTable *methods;
 } service_t;
 
-GMainLoop *ml;
 xmmsc_connection_t *conn;
+GHashTable *clients;
 
 void print_info (const gchar *fmt, ...);
 void print_error (const gchar *fmt, ...);
