@@ -20,14 +20,14 @@
 
 static gboolean
 register_single (xmmsc_service_t *service, xmmsc_service_method_t *method,
-                 config_t *clients)
+                 void *data)
 {
 	gchar *name = NULL;
 	xmmsc_result_t *result;
 
 	xmmsc_service_method_attribute_get (method, "name", &name);
 
-	result = xmmsc_service_register (conn, service, method, clients);
+	result = xmmsc_service_register (conn, service, method, data);
 	if (xmmsc_result_iserror (result)) {
 		print_error ("Unable to register method (%s): %s", name,
 		             xmmsc_result_get_error (result));
@@ -40,7 +40,7 @@ register_single (xmmsc_service_t *service, xmmsc_service_method_t *method,
 }
 
 static gboolean
-register_all (config_t *clients)
+register_all (void)
 {
 	xmmsc_service_t *service;
 	xmmsc_service_method_t *method;
@@ -56,17 +56,17 @@ register_all (config_t *clients)
 
 	method = xmmsc_service_method_new ("uninstall", "Uninstall a service client",
 	                                   ret, args, cb_uninstall);
-	if (!register_single (service, method, clients))
+	if (!register_single (service, method, NULL))
 		return FALSE;
 	xmmsc_service_method_free (method);
 	method = xmmsc_service_method_new ("launch", "Launch a service client",
 	                                   ret, args, cb_launch);
-	if (!register_single (service, method, clients))
+	if (!register_single (service, method, NULL))
 		return FALSE;
 	xmmsc_service_method_free (method);
 	method = xmmsc_service_method_new ("shutdown", "Shutdown a service client",
 	                                   ret, args, cb_shutdown);
-	if (!register_single (service, method, clients))
+	if (!register_single (service, method, NULL))
 		return FALSE;
 	xmmsc_service_method_free (method);
 	xmmsc_service_args_free (args);
@@ -76,7 +76,7 @@ register_all (config_t *clients)
 	method = xmmsc_service_method_new ("change_argv", "Change the startup"
 	                                   " argument of a service client",
 	                                   ret, args, cb_change_argv);
-	if (!register_single (service, method, clients))
+	if (!register_single (service, method, NULL))
 		return FALSE;
 	xmmsc_service_method_free (method);
 	xmmsc_service_args_free (args);
@@ -86,7 +86,7 @@ register_all (config_t *clients)
 	method = xmmsc_service_method_new ("toggle_autostart", "Toggle the autostart"
 	                                   " property of a service client",
 	                                   ret, args, cb_toggle_autostart);
-	if (!register_single (service, method, clients))
+	if (!register_single (service, method, NULL))
 		return FALSE;
 	xmmsc_service_method_free (method);
 	xmmsc_service_args_free (args);
@@ -100,7 +100,7 @@ register_all (config_t *clients)
 int
 main ()
 {
-	config_t *clients;
+	GMainLoop *ml;
 
 	conn = xmmsc_init ("scm");
 	if (!conn)
@@ -108,7 +108,7 @@ main ()
 	if (!xmmsc_connect (conn, getenv ("XMMS_PATH")))
 		print_error_and_exit ("Unable to connect to server.");
 
-	if (!register_all (clients)) {
+	if (!register_all ()) {
 		xmmsc_unref (conn);
 		return 1;
 	}
