@@ -27,44 +27,6 @@
  */
 
 /**
- * Get client name and look it up.
- */
-static config_t *
-lookup_client (xmmsc_result_t *res, gchar **name, xmmsc_service_arg_list_t *err)
-{
-	config_t *config;
-
-	x_return_null_if_fail (res);
-	x_return_null_if_fail (name);
-	x_return_null_if_fail (err);
-
-	if (!xmmsc_result_get_dict_entry_string (res, "name", name))
-		xmmsc_service_error_set (err, "Service client name not given.");
-	else
-		if (!(config = g_hash_table_lookup (clients, *name)))
-			xmmsc_service_error_set (err, "Service client does not exist"
-			                         " or it is a remote service client.");
-
-	return config;
-}
-
-/**
- * Return and free arg list.
- */
-static void
-return_and_free (xmmsc_result_t *res, xmmsc_service_arg_list_t *ret)
-{
-	xmmsc_result_t *result;
-
-	x_return_if_fail (res);
-	x_return_if_fail (ret);
-
-	result = xmmsc_service_return (conn, res, ret);
-	xmmsc_result_unref (result);
-	xmmsc_service_args_free (ret);
-}
-
-/**
  * Launch a single service client.
  */
 static gboolean

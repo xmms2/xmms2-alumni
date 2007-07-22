@@ -14,14 +14,16 @@
  *  Lesser General Public License for more details.
  */
 
-#ifndef __UTILS_H__
-#define __UTILS_H__
+#ifndef __QUERY_H__
+#define __QUERY_H__
 
 #include "common.h"
 
-void match_auto (gpointer key, gpointer value, gpointer data);
-void match_pid (gpointer key, gpointer value, gpointer data);
-void match_none (gpointer key, gpointer value, gpointer data);
-gboolean match_registered (gpointer key, gpointer value, gpointer data);
+void cb_list_sc_ids (xmmsc_result_t *res, void *data);
+void cb_list_sc (xmmsc_result_t *res, void *data);
+void cb_list_service_ids (xmmsc_result_t *res, void *data);
+void cb_list_service (xmmsc_result_t *res, void *data);
+void cb_list_method_ids (xmmsc_result_t *res, void *data);
+void cb_list_method (xmmsc_result_t *res, void *data);
 
 #endif
