@@ -23,6 +23,7 @@
 
 #include "common.h"
 
+gboolean read_all (void);
 config_t *read_config (const gchar *name);
 gboolean create_config (const gchar *name, const gchar *contents);
 gboolean remove_config (const gchar *name);
