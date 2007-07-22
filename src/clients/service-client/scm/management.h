@@ -19,13 +19,15 @@
 
 #include "common.h"
 
+#define TIMEOUT 30 * 1000		/* In milliseconds */
+
 void cb_uninstall (xmmsc_result_t *res, void *data);
 void cb_change_argv (xmmsc_result_t *res, void *data);
 void cb_launch (xmmsc_result_t *res, void *data);
 void cb_shutdown (xmmsc_result_t *res, void *data);
 void cb_toggle_autostart (xmmsc_result_t *res, void *data);
 
-gboolean launch_all (GHashTable *clients);
-gboolean shutdown_all (GHashTable *clients);
+gboolean launch_all (void);
+gboolean shutdown_all (void);
 
 #endif

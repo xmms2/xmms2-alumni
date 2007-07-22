@@ -36,8 +36,27 @@ void
 match_pid (gpointer key, gpointer value, gpointer data)
 {
 	GList **list = data;
+	gchar *name = key;
 	config_t *config = value;
 
 	if (config->pid)
-		*list = g_list_prepend (*list, config);
+		*list = g_list_prepend (*list, name);
+}
+
+/**
+ * Insert any service name which is registered on the server.
+ */
+gboolean
+match_registered (gpointer key, gpointer value, gpointer data)
+{
+	gchar **n = data;
+	gchar *name = key;
+	service_t *service = value;
+
+	if (service->registered) {
+		*n = name;
+		return TRUE;
+	}
+
+	return FALSE;
 }
