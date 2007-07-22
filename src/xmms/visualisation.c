@@ -36,6 +36,7 @@
 
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include <sys/time.h>
 
 #include "xmmspriv/xmms_visualisation.h"
 #include "xmmspriv/xmms_ipc.h"
@@ -324,11 +325,11 @@ decrement_server (xmmsc_vis_unixshm_t *t) {
 	/* alter semaphore 0 by -1, don't block */
 	struct sembuf op = { 0, -1, IPC_NOWAIT };
 
-	{
+	/*{
 		int a = semctl(t->semid, 0, GETVAL, 0);
 		int b = semctl(t->semid, 1, GETVAL, 0);
-		//printf("DECR | %d, %d | pos %d\n", a, b, t->pos);
-	}
+		printf("DECR | %d, %d | pos %d\n", a, b, t->pos);
+	}*/
 
 	if (semop (t->semid, &op, 1) == -1) {
 		/* TODO: test if it really is EAGAIN */
@@ -346,11 +347,11 @@ increment_client (xmmsc_vis_unixshm_t *t) {
 	/* alter semaphore 1 by 1, no flags */
 	struct sembuf op = { 1, +1, 0 };
 
-	{
+	/*{
 		int a = semctl(t->semid, 0, GETVAL, 0);
 		int b = semctl(t->semid, 1, GETVAL, 0);
-		//printf("INCR | %d, %d | pos %d\n", a, b, t->pos);
-	}
+		printf("INCR | %d, %d | pos %d\n", a, b, t->pos);
+	}*/
 
 	if (semop (t->semid, &op, 1) == -1) {
 		/* there should not occur any error */
@@ -360,10 +361,12 @@ increment_client (xmmsc_vis_unixshm_t *t) {
 
 /* TODO: sick in various ways */
 void
-xmms_visualisation_send_data (xmms_visualisation_t *unused, short l, short r) {
+xmms_visualisation_send_data (xmms_visualisation_t *unused, guint32 latency, short l, short r) {
 	int i;
 	xmmsc_vispacket_t *dest;
+	struct timeval time;
 
+	gettimeofday (&time, NULL);
 	for (i = 0; i < vis->clientc; ++i) {
 		if (vis->clientv[i] && vis->clientv[i]->type == VIS_UNIXSHM) {
 			xmmsc_vis_unixshm_t *t = &vis->clientv[i]->transport.shm;
@@ -372,9 +375,11 @@ xmms_visualisation_send_data (xmms_visualisation_t *unused, short l, short r) {
 			}
 
 			dest = &t->buffer[t->pos];
-			/* TODO: we aren't searching the answer here */
-			dest->timestamp = 42;
+			dest->timestamp[1] = (guint32)(time.tv_usec + latency*1000);
+			dest->timestamp[0] = (guint32)(time.tv_sec + dest->timestamp[1] / 1000000);
+			dest->timestamp[1] %= 1000000;
 			dest->format = vis->clientv[i]->format;
+
 			/* TODO: make this usable ;-) */
 			short* data = (short*)dest->data;
 			data[0] = l;

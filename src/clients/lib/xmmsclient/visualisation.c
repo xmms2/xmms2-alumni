@@ -19,10 +19,12 @@
 #include <string.h>
 #include <assert.h>
 
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "xmmsclient/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient.h"
@@ -250,11 +252,11 @@ decrement_client (xmmsc_vis_unixshm_t *t) {
 	/* alter semaphore 1 by -1, no flags */
 	struct sembuf op = { 1, -1, 0 };
 
-	{
+	/*{
 		int a = semctl(t->semid, 0, GETVAL, 0);
 		int b = semctl(t->semid, 1, GETVAL, 0);
-		//printf("DECR | %d, %d | pos %d\n", a, b, t->pos);
-	}
+		printf("DECR | %d, %d | pos %d\n", a, b, t->pos);
+	}*/
 
 	if (semop (t->semid, &op, 1) == -1) {
 		/* TODO: restart after signals, etc. */
@@ -270,11 +272,11 @@ increment_server (xmmsc_vis_unixshm_t *t) {
 	/* alter semaphore 0 by 1, no flags */
 	struct sembuf op = { 0, +1, 0 };
 
-	{
+	/*{
 		int a = semctl(t->semid, 0, GETVAL, 0);
 		int b = semctl(t->semid, 1, GETVAL, 0);
-		//printf("INCR | %d, %d | pos %d\n", a, b, t->pos);
-	}
+		printf("INCR | %d, %d | pos %d\n", a, b, t->pos);
+	}*/
 
 	if (semop (t->semid, &op, 1) == -1) {
 		/* there should not occur any error */
@@ -290,19 +292,58 @@ int
 xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data) {
 	xmmsc_visualisation_t *v;
 	xmmsc_vispacket_t *src;
+	struct timeval time;
+	struct timespec sleeptime;
+	int sec, usec;
 
 	x_check_conn (c, 0);
 	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", 0);
 
 	if (v->type == VIS_UNIXSHM) {
-		xmmsc_vis_unixshm_t *t = &v->transport.shm;
-		decrement_client (t);
-		src = &t->buffer[t->pos];
-		//printf("timestamp: %d, format: %hd\n", src->timestamp, src->format);
-		/* TODO: make this usable ;-) */
-		memcpy(data, src->data, 2*sizeof(short));
-		t->pos = (t->pos + 1) % t->size;
-		increment_server (t);
+		while (1) {
+			xmmsc_vis_unixshm_t *t = &v->transport.shm;
+			decrement_client (t);
+			gettimeofday (&time, NULL);
+
+			src = &t->buffer[t->pos];
+			sec = (src->timestamp[0] - time.tv_sec);
+			usec = (src->timestamp[1] - time.tv_usec);
+			if (usec < 0) {
+				sec --;
+				usec = 1000000 + usec;
+			}
+			if (sec >= 0) {
+				/* nanosleep has a garantueed granularity of 10 ms. to not sleep too long, we
+				   sleep 10 ms less than intended */
+				if (usec < 10000) {
+					if (sec > 0) {
+						sec--;
+					}
+					usec = 1000000 + usec;
+				} else {
+					usec -= 10000;
+				}
+
+				sleeptime.tv_sec = sec;
+				sleeptime.tv_nsec = usec * 1000;
+				while (nanosleep (&sleeptime, &sleeptime) == -1) {
+					if (errno != EINTR) {
+						break;
+					}
+				};
+				gettimeofday (&time, NULL);
+
+				/* TODO: make this usable ;-) */
+				memcpy (data, src->data, 2*sizeof(short));
+			} else {
+				/* TODO: Handle old chunks properly */
+			}
+			t->pos = (t->pos + 1) % t->size;
+			increment_server (t);
+			if (sec >= 0) {
+				break;
+			}
+		}
 		return 1;
 	} else {
 		return 0;

@@ -20,6 +20,7 @@
  */
 
 #include "xmmspriv/xmms_xform.h"
+#include "xmmspriv/xmms_output.h"
 #include "xmmspriv/xmms_visualisation.h"
 #include "xmms/xmms_log.h"
 
@@ -108,7 +109,7 @@ xmms_vis_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 			if (b[i+1] > r)
 				r = b[i+1];
 		}
-		xmms_visualisation_send_data(NULL, l, r);
+		xmms_visualisation_send_data (NULL, xmms_output_latency(), l, r);
 	}
 
 	return read;

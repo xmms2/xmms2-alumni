@@ -35,18 +35,20 @@ extern "C" {
 /* How many packages are in the shm queue?
 	* one package the server can operate on
 	* one packate the client can operate on
-	* to avoid needing to be in sync, one spare packet */
-#define XMMS_VISPACKET_SHMCOUNT 3
+	* to avoid needing to be in sync, one spare packet
+    * TODO: XXX packets to compensate the latency */
+#define XMMS_VISPACKET_SHMCOUNT 300
 
 /**
  * Package format for vis data, encapsulated by unixshm or udp transport
  */
 
 typedef struct {
-	int timestamp;
-	unsigned short graceleft;
-	unsigned short format;
-	char data[2048];
+	uint32_t timestamp[2];
+	uint16_t graceleft;
+	uint16_t format;
+	/* 512 is what libvisual wants for pcm data (could also be 256) */
+	char data[512*sizeof(uint16_t)*2];
 } xmmsc_vispacket_t;
 
 /**
