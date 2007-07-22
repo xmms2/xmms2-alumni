@@ -145,6 +145,37 @@ write_entry (gpointer key, gpointer value, gpointer udata)
 }
 
 /**
+ * Read all config files.
+ */
+gboolean
+read_all (void)
+{
+	GError *err = NULL;
+	GDir *dir;
+	const gchar *f;
+	config_t *config;
+
+	g_return_val_if_fail (!clients, FALSE);
+
+	clients = g_hash_table_new_full (g_str_hash, g_str_equal,
+	                                 g_free, free_config);
+
+	if (!(dir = g_dir_open (config_dir (), 0, &err))) {
+		print_error ("Unable to read config dir: %s", err->message);
+		return FALSE;
+	}
+
+	while ((f = g_dir_read_name (dir))) {
+		if ((config = read_config (f)))
+			g_hash_table_insert (clients, g_strdup (f), config);
+	}
+
+	g_dir_close (dir);
+
+	return TRUE;
+}
+
+/**
  * Read config file.
  */
 config_t *
