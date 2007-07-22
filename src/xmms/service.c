@@ -513,12 +513,9 @@ xmms_service_unregister (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		                                   xmms_service_matchsc,
 		                                   GUINT_TO_POINTER (client));
 		g_mutex_unlock (xmms_service->mutex);
-		if (ret > 1)
-			xmms_log_error ("Removed more than 1 registry entry, "
-			                "registry corrupted?");
-		else if (ret == 1)
-			XMMS_DBG ("Service client (%d) just vaporized! "
-			          "Removed from registry.", client);
+		if (ret > 0)
+			XMMS_DBG ("Service client (%d) just vaporized!"
+			          " Removed from registry.", client);
 		return;
 	}
 
