@@ -44,6 +44,18 @@ match_pid (gpointer key, gpointer value, gpointer data)
 }
 
 /**
+ * Insert each service client.
+ */
+void
+match_none (gpointer key, gpointer value, gpointer data)
+{
+	GList **list = data;
+	gchar *name = key;
+
+	*list = g_list_prepend (*list, name);
+}
+
+/**
  * Insert any service name which is registered on the server.
  */
 gboolean

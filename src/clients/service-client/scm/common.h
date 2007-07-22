@@ -50,4 +50,12 @@ void print_method (gpointer k, gpointer v, gpointer d);
 void print_service (gpointer k, gpointer v, gpointer d);
 void print_config (gpointer k, gpointer v, gpointer d);
 
+void return_and_free (xmmsc_result_t *res, xmmsc_service_arg_list_t *ret);
+config_t *lookup_client (xmmsc_result_t *res, gchar **name,
+                         xmmsc_service_arg_list_t *err);
+service_t *lookup_service (xmmsc_result_t *res, const config_t *config,
+                           gchar **name, xmmsc_service_arg_list_t *err);
+gchar *lookup_method (xmmsc_result_t *res, const service_t *service,
+                      gchar **name, xmmsc_service_arg_list_t *err);
+
 #endif
