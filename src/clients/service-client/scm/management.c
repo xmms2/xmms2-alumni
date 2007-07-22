@@ -36,7 +36,7 @@ launch_single (config_t *config)
 	gchar *argv[2] = {NULL, NULL};
 
 	x_return_val_if_fail (config, FALSE);
-	x_return_val_if_fail (config->pid, FALSE);
+	x_return_val_if_fail (!config->pid, FALSE);
 
 	argv[0] = config->path;
 	argv[1] = config->argv;

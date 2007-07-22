@@ -200,7 +200,14 @@ main ()
 	if (!xmmsc_connect (conn, getenv ("XMMS_PATH")))
 		print_error_and_exit ("Unable to connect to server.");
 
+	if (!read_all () || !launch_all ()) {
+		g_hash_table_destroy (clients);
+		xmmsc_unref (conn);
+		return 1;
+	}
+
 	if (!register_all ()) {
+		g_hash_table_destroy (clients);
 		xmmsc_unref (conn);
 		return 1;
 	}
@@ -209,6 +216,7 @@ main ()
 	xmmsc_mainloop_gmain_init (conn);
 	g_main_loop_run (ml);
 
+	g_hash_table_destroy (clients);
 	xmmsc_unref (conn);
 
 	return 0;
