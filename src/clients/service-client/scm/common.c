@@ -97,3 +97,87 @@ print_config (gpointer k, gpointer v, gpointer d)
 		print_info ("auto: no");
 	g_hash_table_foreach (conf->services, print_service, NULL);
 }
+
+/**
+ * Return and free arg list.
+ */
+void
+return_and_free (xmmsc_result_t *res, xmmsc_service_arg_list_t *ret)
+{
+	xmmsc_result_t *result;
+
+	x_return_if_fail (res);
+	x_return_if_fail (ret);
+
+	result = xmmsc_service_return (conn, res, ret);
+	xmmsc_result_unref (result);
+	xmmsc_service_args_free (ret);
+}
+
+/**
+ * Get client name and look it up.
+ */
+config_t *
+lookup_client (xmmsc_result_t *res, gchar **name, xmmsc_service_arg_list_t *err)
+{
+	config_t *config = NULL;
+
+	x_return_null_if_fail (res);
+	x_return_null_if_fail (name);
+	x_return_null_if_fail (err);
+
+	if (!xmmsc_result_get_dict_entry_string (res, "client_name", name))
+		xmmsc_service_error_set (err, "Service client name not given.");
+	else
+		if (!(config = g_hash_table_lookup (clients, *name)))
+			xmmsc_service_error_set (err, "Service client does not exist"
+			                         " or it is a remote service client.");
+
+	return config;
+}
+
+/**
+ * Get service name and look it up.
+ */
+service_t *
+lookup_service (xmmsc_result_t *res, const config_t *config, gchar **name,
+                xmmsc_service_arg_list_t *err)
+{
+	service_t *service = NULL;
+
+	x_return_null_if_fail (res);
+	x_return_null_if_fail (config);
+	x_return_null_if_fail (name);
+	x_return_null_if_fail (err);
+
+	if (!xmmsc_result_get_dict_entry_string (res, "service_name", name))
+		xmmsc_service_error_set (err, "Service name not given.");
+	else
+		if (!(service = g_hash_table_lookup (config->services, *name)))
+			xmmsc_service_error_set (err, "Service does not exist");
+
+	return service;
+}
+
+/**
+ * Get method name and look it up.
+ */
+gchar *
+lookup_method (xmmsc_result_t *res, const service_t *service, gchar **name,
+               xmmsc_service_arg_list_t *err)
+{
+	gchar *method = NULL;
+
+	x_return_null_if_fail (res);
+	x_return_null_if_fail (service);
+	x_return_null_if_fail (name);
+	x_return_null_if_fail (err);
+
+	if (!xmmsc_result_get_dict_entry_string (res, "method_name", name))
+		xmmsc_service_error_set (err, "Service method name not given.");
+	else
+		if (!(method = g_hash_table_lookup (service->methods, *name)))
+			xmmsc_service_error_set (err, "Service method does not exist");
+
+	return method;
+}
