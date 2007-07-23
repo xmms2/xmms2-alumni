@@ -349,6 +349,7 @@ xmmsc_service_arg_list_t *xmmsc_service_args_new (uint32_t size, ...);
 void xmmsc_service_free (xmmsc_service_t *service);
 void xmmsc_service_method_free (xmmsc_service_method_t *method);
 void xmmsc_service_args_free (xmmsc_service_arg_list_t *args);
+void xmmsc_service_args_reset (xmmsc_service_arg_list_t *args);
 int xmmsc_service_attribute_get (xmmsc_service_t *service, const char *key,
                                  void *value);
 int xmmsc_service_attribute_set (xmmsc_service_t *service, const char *key,
@@ -373,6 +374,7 @@ int xmmsc_service_arg_value_setnone (xmmsc_service_arg_list_t *arg_list,
                                      const char *key);
 int xmmsc_service_error_set (xmmsc_service_arg_list_t *arg_list,
                              const char *err);
+void xmmsc_service_error_reset (xmmsc_service_arg_list_t *arg_list);
 int xmmsc_service_error_isset (xmmsc_service_arg_list_t *arg_list);
 
 /*
