@@ -52,9 +52,9 @@ register_all (void)
 	                             "A simple service client manager.",
 	                             0, 1);
 
-	args = xmmsc_service_args_new (1, "client_name",
+	args = xmmsc_service_args_new (1, ARG_CLIENT_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING);
-	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	method = xmmsc_service_method_new ("uninstall", "Uninstall a service client",
 	                                   ret, args, cb_uninstall);
@@ -73,9 +73,9 @@ register_all (void)
 	xmmsc_service_method_free (method);
 	xmmsc_service_args_free (args);
 
-	args = xmmsc_service_args_new (1, "client_name",
+	args = xmmsc_service_args_new (1, ARG_CLIENT_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING,
-	                               "argv", XMMSC_SERVICE_ARG_TYPE_STRING);
+	                               ARG_ARGV, XMMSC_SERVICE_ARG_TYPE_STRING);
 	method = xmmsc_service_method_new ("change_argv", "Change the startup"
 	                                   " argument of a service client",
 	                                   ret, args, cb_change_argv);
@@ -84,9 +84,9 @@ register_all (void)
 	xmmsc_service_method_free (method);
 	xmmsc_service_args_free (args);
 
-	args = xmmsc_service_args_new (1, "client_name",
+	args = xmmsc_service_args_new (1, ARG_CLIENT_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING,
-	                               "auto", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	                               ARG_AUTO, XMMSC_SERVICE_ARG_TYPE_UINT32);
 	method = xmmsc_service_method_new ("toggle_autostart", "Toggle the autostart"
 	                                   " property of a service client",
 	                                   ret, args, cb_toggle_autostart);
@@ -104,7 +104,7 @@ register_all (void)
 	                             0, 1);
 
 	args = xmmsc_service_args_new (0);
-	ret = xmmsc_service_args_new (1, "ids", XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
+	ret = xmmsc_service_args_new (1, ARG_IDS, XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
 
 	method = xmmsc_service_method_new ("sc_ids", "List the names of all"
 	                                   " installed service clients",
@@ -114,7 +114,7 @@ register_all (void)
 	xmmsc_service_method_free (method);
 	xmmsc_service_args_free (args);
 
-	args = xmmsc_service_args_new (1, "client_name",
+	args = xmmsc_service_args_new (1, ARG_CLIENT_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING);
 	method = xmmsc_service_method_new ("service_ids", "List the names of"
 	                                   " all services of a service client",
@@ -124,9 +124,9 @@ register_all (void)
 	xmmsc_service_method_free (method);
 	xmmsc_service_args_free (args);
 
-	args = xmmsc_service_args_new (2, "client_name",
+	args = xmmsc_service_args_new (2, ARG_CLIENT_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING,
-	                               "service_name",
+	                               ARG_SERVICE_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING);
 	method = xmmsc_service_method_new ("method_ids", "List the names of"
 	                                   " all methods of a service",
@@ -135,13 +135,23 @@ register_all (void)
 		return FALSE;
 	xmmsc_service_method_free (method);
 	xmmsc_service_args_free (args);
+
+	args = xmmsc_service_args_new (1, ARG_SERVICE_NAME,
+	                               XMMSC_SERVICE_ARG_TYPE_STRING);
+	method = xmmsc_service_method_new ("lookup_client", "Search for all service"
+	                                   " clients which provide a service",
+	                                   ret, args, cb_lookup_client);
+	if (!register_single (service, method, NULL))
+		return FALSE;
+	xmmsc_service_method_free (method);
+	xmmsc_service_args_free (args);
 	xmmsc_service_args_free (ret);
 
-	args = xmmsc_service_args_new (1, "client_name",
+	args = xmmsc_service_args_new (1, ARG_CLIENT_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING);
-	ret = xmmsc_service_args_new (3, "argv", XMMSC_SERVICE_ARG_TYPE_STRING,
-	                              "auto", XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              "services", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	ret = xmmsc_service_args_new (3, ARG_ARGV, XMMSC_SERVICE_ARG_TYPE_STRING,
+	                              ARG_AUTO, XMMSC_SERVICE_ARG_TYPE_UINT32,
+	                              ARG_SERVICES, XMMSC_SERVICE_ARG_TYPE_UINT32);
 	method = xmmsc_service_method_new ("sc", "List details of an installed"
 	                                   " service client",
 	                                   ret, args, cb_list_sc);
@@ -151,15 +161,15 @@ register_all (void)
 	xmmsc_service_args_free (args);
 	xmmsc_service_args_free (ret);
 
-	args = xmmsc_service_args_new (2, "client_name",
+	args = xmmsc_service_args_new (2, ARG_CLIENT_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING,
-	                               "service_name",
+	                               ARG_SERVICE_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING);
-	ret = xmmsc_service_args_new (5, "desc", XMMSC_SERVICE_ARG_TYPE_STRING,
-	                              "major", XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              "minor", XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              "registered", XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              "methods", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	ret = xmmsc_service_args_new (5, ARG_DESC, XMMSC_SERVICE_ARG_TYPE_STRING,
+	                              ARG_MAJOR, XMMSC_SERVICE_ARG_TYPE_UINT32,
+	                              ARG_MINOR, XMMSC_SERVICE_ARG_TYPE_UINT32,
+	                              ARG_REGISTERED, XMMSC_SERVICE_ARG_TYPE_UINT32,
+	                              ARG_METHODS, XMMSC_SERVICE_ARG_TYPE_UINT32);
 	method = xmmsc_service_method_new ("service", "List details of a"
 	                                   " service",
 	                                   ret, args, cb_list_service);
@@ -169,13 +179,13 @@ register_all (void)
 	xmmsc_service_args_free (args);
 	xmmsc_service_args_free (ret);
 
-	args = xmmsc_service_args_new (3, "client_name",
+	args = xmmsc_service_args_new (3, ARG_CLIENT_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING,
-	                               "service_name",
+	                               ARG_SERVICE_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING,
-	                               "method_name",
+	                               ARG_METHOD_NAME,
 	                               XMMSC_SERVICE_ARG_TYPE_STRING);
-	ret = xmmsc_service_args_new (1, "desc", XMMSC_SERVICE_ARG_TYPE_STRING);
+	ret = xmmsc_service_args_new (1, ARG_DESC, XMMSC_SERVICE_ARG_TYPE_STRING);
 	method = xmmsc_service_method_new ("method", "List details of a method",
 	                                   ret, args, cb_list_method);
 	if (!register_single (service, method, NULL))
@@ -189,26 +199,33 @@ register_all (void)
 	return TRUE;
 }
 
+static void
+quit (void)
+{
+	shutdown_all ();
+	g_hash_table_destroy (clients);
+	xmmsc_unref (conn);
+}
+
 int
 main ()
 {
 	GMainLoop *ml;
+	clients = NULL;
 
-	conn = xmmsc_init ("scm");
+	conn = xmmsc_init (SCM_NAME);
 	if (!conn)
 		print_error_and_exit ("Unable to initialize connection.");
 	if (!xmmsc_connect (conn, getenv ("XMMS_PATH")))
 		print_error_and_exit ("Unable to connect to server.");
 
 	if (!read_all () || !launch_all ()) {
-		g_hash_table_destroy (clients);
-		xmmsc_unref (conn);
+		quit ();
 		return 1;
 	}
 
 	if (!register_all ()) {
-		g_hash_table_destroy (clients);
-		xmmsc_unref (conn);
+		quit ();
 		return 1;
 	}
 
@@ -216,8 +233,7 @@ main ()
 	xmmsc_mainloop_gmain_init (conn);
 	g_main_loop_run (ml);
 
-	g_hash_table_destroy (clients);
-	xmmsc_unref (conn);
+	quit ();
 
 	return 0;
 }

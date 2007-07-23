@@ -125,7 +125,7 @@ cb_uninstall (xmmsc_result_t *res, void *data)
 	xmmsc_service_arg_list_t *ret;
 	uint32_t retval = 1;
 
-	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		if (config->pid && !shutdown_single (name))
@@ -133,7 +133,7 @@ cb_uninstall (xmmsc_result_t *res, void *data)
 		else if (!remove_config (name))
 			xmmsc_service_error_set (ret, "Failed to uninstall service client.");
 
-		xmmsc_service_arg_value_set (ret, "ret", &retval);
+		xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
 	}
 
 	return_and_free (res, ret);
@@ -151,17 +151,17 @@ cb_change_argv (xmmsc_result_t *res, void *data)
 	xmmsc_service_arg_list_t *ret;
 	uint32_t retval = 1;
 
-	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
-		if (!xmmsc_result_get_dict_entry_string (res, "argv", &new_argv))
+		if (!xmmsc_result_get_dict_entry_string (res, ARG_ARGV, &new_argv))
 			xmmsc_service_error_set (ret, "New startup arguments not given.");
 		else {
 			if (config->argv)
 				g_free (config->argv);
 			config->argv = g_strdup (new_argv);
 
-			xmmsc_service_arg_value_set (ret, "ret", &retval);
+			xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
 		}
 	}
 
@@ -179,7 +179,7 @@ cb_launch (xmmsc_result_t *res, void *data)
 	xmmsc_service_arg_list_t *ret;
 	uint32_t retval = 1;
 
-	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		if (config->pid)
@@ -187,7 +187,7 @@ cb_launch (xmmsc_result_t *res, void *data)
 		else if (!launch_single (config))
 			xmmsc_service_error_set (ret, "Failed to launch service client.");
 
-		xmmsc_service_arg_value_set (ret, "ret", &retval);
+		xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
 	}
 
 	return_and_free (res, ret);
@@ -204,13 +204,13 @@ cb_shutdown (xmmsc_result_t *res, void *data)
 	xmmsc_service_arg_list_t *ret;
 	uint32_t retval = 1;
 
-	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		if (config->pid && !shutdown_single (name))
 			xmmsc_service_error_set (ret, "Failed to shutdown service client.");
 
-		xmmsc_service_arg_value_set (ret, "ret", &retval);
+		xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
 	}
 
 	return_and_free (res, ret);
@@ -228,15 +228,15 @@ cb_toggle_autostart (xmmsc_result_t *res, void *data)
 	xmmsc_service_arg_list_t *ret;
 	uint32_t retval = 1;
 
-	ret = xmmsc_service_args_new (1, "ret", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
-		if (!xmmsc_result_get_dict_entry_uint (res, "auto", &new_auto))
+		if (!xmmsc_result_get_dict_entry_uint (res, ARG_AUTO, &new_auto))
 			xmmsc_service_error_set (ret, "New autostart value not given.");
 		else {
 			config->autostart = new_auto;
 
-			xmmsc_service_arg_value_set (ret, "ret", &retval);
+			xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
 		}
 	}
 
