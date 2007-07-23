@@ -23,13 +23,11 @@
 void
 cb_list_sc_ids (xmmsc_result_t *res, void *data)
 {
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	gchar **retval;
 	GList *list = NULL;
 	GList *n;
 	gint i;
-
-	ret = xmmsc_service_args_new (1, ARG_IDS, XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
 
 	g_hash_table_foreach (clients, match_none, &list);
 
@@ -40,7 +38,7 @@ cb_list_sc_ids (xmmsc_result_t *res, void *data)
 
 	xmmsc_service_arg_value_set (ret, ARG_IDS, retval);
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 	g_free (retval);
 }
 
@@ -52,12 +50,8 @@ cb_list_sc (xmmsc_result_t *res, void *data)
 {
 	config_t *config;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	guint retval_auto, retval_services;
-
-	ret = xmmsc_service_args_new (3, ARG_ARGV, XMMSC_SERVICE_ARG_TYPE_STRING,
-	                              ARG_AUTO, XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              ARG_SERVICES, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		retval_auto = config->autostart;
@@ -68,7 +62,7 @@ cb_list_sc (xmmsc_result_t *res, void *data)
 		xmmsc_service_arg_value_set (ret, ARG_SERVICES, &retval_services);
 	}
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 }
 
 /**
@@ -79,13 +73,11 @@ cb_list_service_ids (xmmsc_result_t *res, void *data)
 {
 	config_t *config;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	gchar **retval = NULL;
 	GList *list = NULL;
 	GList *n;
 	gint i;
-
-	ret = xmmsc_service_args_new (1, ARG_IDS, XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		g_hash_table_foreach (config->services, match_none, &list);
@@ -98,7 +90,7 @@ cb_list_service_ids (xmmsc_result_t *res, void *data)
 		xmmsc_service_arg_value_set (ret, ARG_IDS, retval);
 	}
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 	g_free (retval);
 }
 
@@ -110,14 +102,8 @@ cb_list_service (xmmsc_result_t *res, void *data)
 {
 	service_t *service;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	guint retval_major, retval_minor, retval_registered, retval_methods;
-
-	ret = xmmsc_service_args_new (5, ARG_DESC, XMMSC_SERVICE_ARG_TYPE_STRING,
-	                              ARG_MAJOR, XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              ARG_MINOR, XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              ARG_REGISTERED, XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              ARG_METHODS, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((service = lookup_service (res,
 	                               lookup_client (res, &name, ret),
@@ -134,7 +120,7 @@ cb_list_service (xmmsc_result_t *res, void *data)
 		xmmsc_service_arg_value_set (ret, ARG_METHODS, &retval_methods);
 	}
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 }
 
 /**
@@ -145,13 +131,11 @@ cb_list_method_ids (xmmsc_result_t *res, void *data)
 {
 	service_t *service;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	gchar **retval = NULL;
 	GList *list = NULL;
 	GList *n;
 	gint i;
-
-	ret = xmmsc_service_args_new (1, ARG_IDS, XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
 
 	if ((service = lookup_service (res,
 	                               lookup_client (res, &name, ret),
@@ -166,7 +150,7 @@ cb_list_method_ids (xmmsc_result_t *res, void *data)
 		xmmsc_service_arg_value_set (ret, ARG_IDS, retval);
 	}
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 	g_free (retval);
 }
 
@@ -178,9 +162,7 @@ cb_list_method (xmmsc_result_t *res, void *data)
 {
 	gchar *method;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret;
-
-	ret = xmmsc_service_args_new (1, ARG_DESC, XMMSC_SERVICE_ARG_TYPE_STRING);
+	xmmsc_service_arg_list_t *ret = data;
 
 	if ((method = lookup_method (res,
 	                             lookup_service (res,
@@ -189,7 +171,7 @@ cb_list_method (xmmsc_result_t *res, void *data)
 	                             &name, ret)))
 		xmmsc_service_arg_value_set (ret, ARG_DESC, method);
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 }
 
 /**
@@ -201,14 +183,12 @@ cb_list_method (xmmsc_result_t *res, void *data)
 void
 cb_lookup_client (xmmsc_result_t *res, void *data)
 {
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	gchar *name = NULL;
 	query_info_t info;
 	gchar **retval = NULL;
 	GList *n;
 	gint i;
-
-	ret = xmmsc_service_args_new (1, ARG_IDS, XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
 
 	if (!xmmsc_result_get_dict_entry_string (res, ARG_SERVICE_NAME, &name))
 		xmmsc_service_error_set (ret, "Service name not given.");
@@ -224,6 +204,6 @@ cb_lookup_client (xmmsc_result_t *res, void *data)
 
 	xmmsc_service_arg_value_set (ret, ARG_IDS, retval);
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 	g_free (retval);
 }

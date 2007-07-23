@@ -122,10 +122,8 @@ cb_uninstall (xmmsc_result_t *res, void *data)
 {
 	config_t *config;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	uint32_t retval = 1;
-
-	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		if (config->pid && !shutdown_single (name))
@@ -136,7 +134,7 @@ cb_uninstall (xmmsc_result_t *res, void *data)
 		xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
 	}
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 }
 
 /**
@@ -148,10 +146,8 @@ cb_change_argv (xmmsc_result_t *res, void *data)
 	config_t *config;
 	gchar *name = NULL;
 	gchar *new_argv = NULL;
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	uint32_t retval = 1;
-
-	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		if (!xmmsc_result_get_dict_entry_string (res, ARG_ARGV, &new_argv))
@@ -165,7 +161,7 @@ cb_change_argv (xmmsc_result_t *res, void *data)
 		}
 	}
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 }
 
 /**
@@ -176,10 +172,8 @@ cb_launch (xmmsc_result_t *res, void *data)
 {
 	config_t *config;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	uint32_t retval = 1;
-
-	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		if (config->pid)
@@ -190,7 +184,7 @@ cb_launch (xmmsc_result_t *res, void *data)
 		xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
 	}
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 }
 
 /**
@@ -201,10 +195,8 @@ cb_shutdown (xmmsc_result_t *res, void *data)
 {
 	config_t *config;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	uint32_t retval = 1;
-
-	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		if (config->pid && !shutdown_single (name))
@@ -213,7 +205,7 @@ cb_shutdown (xmmsc_result_t *res, void *data)
 		xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
 	}
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 }
 
 /**
@@ -225,10 +217,8 @@ cb_toggle_autostart (xmmsc_result_t *res, void *data)
 	config_t *config;
 	gchar *name = NULL;
 	guint new_auto;
-	xmmsc_service_arg_list_t *ret;
+	xmmsc_service_arg_list_t *ret = data;
 	uint32_t retval = 1;
-
-	ret = xmmsc_service_args_new (1, ARG_RET, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		if (!xmmsc_result_get_dict_entry_uint (res, ARG_AUTO, &new_auto))
@@ -240,7 +230,7 @@ cb_toggle_autostart (xmmsc_result_t *res, void *data)
 		}
 	}
 
-	return_and_free (res, ret);
+	return_and_reset (res, ret);
 }
 
 /**

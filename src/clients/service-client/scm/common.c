@@ -100,6 +100,22 @@ print_config (gpointer k, gpointer v, gpointer d)
 }
 
 /**
+ * Return and reset arg list.
+ */
+void
+return_and_reset (xmmsc_result_t *res, xmmsc_service_arg_list_t *ret)
+{
+	xmmsc_result_t *result;
+
+	x_return_if_fail (res);
+	x_return_if_fail (ret);
+
+	result = xmmsc_service_return (conn, res, ret);
+	xmmsc_result_unref (result);
+	xmmsc_service_args_reset (ret);
+}
+
+/**
  * Return and free arg list.
  */
 void
