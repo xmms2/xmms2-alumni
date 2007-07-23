@@ -72,3 +72,17 @@ match_registered (gpointer key, gpointer value, gpointer data)
 
 	return FALSE;
 }
+
+/**
+ * Insert any service client's name which provides the service.
+ */
+void
+match_service (gpointer key, gpointer value, gpointer data)
+{
+	query_info_t *info = data;
+	gchar *name = key;
+	config_t *config = value;
+
+	if (g_hash_table_lookup (config->services, info->target))
+		info->result = g_list_prepend (info->result, name);
+}

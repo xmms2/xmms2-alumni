@@ -25,5 +25,6 @@ void cb_list_service_ids (xmmsc_result_t *res, void *data);
 void cb_list_service (xmmsc_result_t *res, void *data);
 void cb_list_method_ids (xmmsc_result_t *res, void *data);
 void cb_list_method (xmmsc_result_t *res, void *data);
+void cb_lookup_client (xmmsc_result_t *res, void *data);
 
 #endif

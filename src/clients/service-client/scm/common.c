@@ -127,7 +127,7 @@ lookup_client (xmmsc_result_t *res, gchar **name, xmmsc_service_arg_list_t *err)
 	x_return_null_if_fail (name);
 	x_return_null_if_fail (err);
 
-	if (!xmmsc_result_get_dict_entry_string (res, "client_name", name))
+	if (!xmmsc_result_get_dict_entry_string (res, ARG_CLIENT_NAME, name))
 		xmmsc_service_error_set (err, "Service client name not given.");
 	else
 		if (!(config = g_hash_table_lookup (clients, *name)))
@@ -151,7 +151,7 @@ lookup_service (xmmsc_result_t *res, const config_t *config, gchar **name,
 	x_return_null_if_fail (name);
 	x_return_null_if_fail (err);
 
-	if (!xmmsc_result_get_dict_entry_string (res, "service_name", name))
+	if (!xmmsc_result_get_dict_entry_string (res, ARG_SERVICE_NAME, name))
 		xmmsc_service_error_set (err, "Service name not given.");
 	else
 		if (!(service = g_hash_table_lookup (config->services, *name)))
@@ -174,7 +174,7 @@ lookup_method (xmmsc_result_t *res, const service_t *service, gchar **name,
 	x_return_null_if_fail (name);
 	x_return_null_if_fail (err);
 
-	if (!xmmsc_result_get_dict_entry_string (res, "method_name", name))
+	if (!xmmsc_result_get_dict_entry_string (res, ARG_METHOD_NAME, name))
 		xmmsc_service_error_set (err, "Service method name not given.");
 	else
 		if (!(method = g_hash_table_lookup (service->methods, *name)))
