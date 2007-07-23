@@ -29,7 +29,7 @@ cb_list_sc_ids (xmmsc_result_t *res, void *data)
 	GList *n;
 	gint i;
 
-	ret = xmmsc_service_args_new (1, "ids", XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
+	ret = xmmsc_service_args_new (1, ARG_IDS, XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
 
 	g_hash_table_foreach (clients, match_none, &list);
 
@@ -38,7 +38,7 @@ cb_list_sc_ids (xmmsc_result_t *res, void *data)
 		retval[i] = (gchar *)n->data;
 	g_list_free (list);
 
-	xmmsc_service_arg_value_set (ret, "ids", retval);
+	xmmsc_service_arg_value_set (ret, ARG_IDS, retval);
 
 	return_and_free (res, ret);
 	g_free (retval);
@@ -55,17 +55,17 @@ cb_list_sc (xmmsc_result_t *res, void *data)
 	xmmsc_service_arg_list_t *ret;
 	guint retval_auto, retval_services;
 
-	ret = xmmsc_service_args_new (3, "argv", XMMSC_SERVICE_ARG_TYPE_STRING,
-	                              "auto", XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              "services", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	ret = xmmsc_service_args_new (3, ARG_ARGV, XMMSC_SERVICE_ARG_TYPE_STRING,
+	                              ARG_AUTO, XMMSC_SERVICE_ARG_TYPE_UINT32,
+	                              ARG_SERVICES, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		retval_auto = config->autostart;
 		retval_services = g_hash_table_size (config->services);
 
-		xmmsc_service_arg_value_set (ret, "argv", config->argv);
-		xmmsc_service_arg_value_set (ret, "auto", &retval_auto);
-		xmmsc_service_arg_value_set (ret, "services", &retval_services);
+		xmmsc_service_arg_value_set (ret, ARG_ARGV, config->argv);
+		xmmsc_service_arg_value_set (ret, ARG_AUTO, &retval_auto);
+		xmmsc_service_arg_value_set (ret, ARG_SERVICES, &retval_services);
 	}
 
 	return_and_free (res, ret);
@@ -85,7 +85,7 @@ cb_list_service_ids (xmmsc_result_t *res, void *data)
 	GList *n;
 	gint i;
 
-	ret = xmmsc_service_args_new (1, "ids", XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
+	ret = xmmsc_service_args_new (1, ARG_IDS, XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
 
 	if ((config = lookup_client (res, &name, ret))) {
 		g_hash_table_foreach (config->services, match_none, &list);
@@ -95,7 +95,7 @@ cb_list_service_ids (xmmsc_result_t *res, void *data)
 			retval[i] = (gchar *)n->data;
 		g_list_free (list);
 
-		xmmsc_service_arg_value_set (ret, "ids", retval);
+		xmmsc_service_arg_value_set (ret, ARG_IDS, retval);
 	}
 
 	return_and_free (res, ret);
@@ -113,11 +113,11 @@ cb_list_service (xmmsc_result_t *res, void *data)
 	xmmsc_service_arg_list_t *ret;
 	guint retval_major, retval_minor, retval_registered, retval_methods;
 
-	ret = xmmsc_service_args_new (5, "desc", XMMSC_SERVICE_ARG_TYPE_STRING,
-	                              "major", XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              "minor", XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              "registered", XMMSC_SERVICE_ARG_TYPE_UINT32,
-	                              "methods", XMMSC_SERVICE_ARG_TYPE_UINT32);
+	ret = xmmsc_service_args_new (5, ARG_DESC, XMMSC_SERVICE_ARG_TYPE_STRING,
+	                              ARG_MAJOR, XMMSC_SERVICE_ARG_TYPE_UINT32,
+	                              ARG_MINOR, XMMSC_SERVICE_ARG_TYPE_UINT32,
+	                              ARG_REGISTERED, XMMSC_SERVICE_ARG_TYPE_UINT32,
+	                              ARG_METHODS, XMMSC_SERVICE_ARG_TYPE_UINT32);
 
 	if ((service = lookup_service (res,
 	                               lookup_client (res, &name, ret),
@@ -127,11 +127,11 @@ cb_list_service (xmmsc_result_t *res, void *data)
 		retval_registered = service->registered;
 		retval_methods = g_hash_table_size (service->methods);
 
-		xmmsc_service_arg_value_set (ret, "desc", service->desc);
-		xmmsc_service_arg_value_set (ret, "major", &retval_major);
-		xmmsc_service_arg_value_set (ret, "minor", &retval_minor);
-		xmmsc_service_arg_value_set (ret, "registered", &retval_registered);
-		xmmsc_service_arg_value_set (ret, "methods", &retval_methods);
+		xmmsc_service_arg_value_set (ret, ARG_DESC, service->desc);
+		xmmsc_service_arg_value_set (ret, ARG_MAJOR, &retval_major);
+		xmmsc_service_arg_value_set (ret, ARG_MINOR, &retval_minor);
+		xmmsc_service_arg_value_set (ret, ARG_REGISTERED, &retval_registered);
+		xmmsc_service_arg_value_set (ret, ARG_METHODS, &retval_methods);
 	}
 
 	return_and_free (res, ret);
@@ -151,7 +151,7 @@ cb_list_method_ids (xmmsc_result_t *res, void *data)
 	GList *n;
 	gint i;
 
-	ret = xmmsc_service_args_new (1, "ids", XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
+	ret = xmmsc_service_args_new (1, ARG_IDS, XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
 
 	if ((service = lookup_service (res,
 	                               lookup_client (res, &name, ret),
@@ -163,7 +163,7 @@ cb_list_method_ids (xmmsc_result_t *res, void *data)
 			retval[i] = (gchar *)n->data;
 		g_list_free (list);
 
-		xmmsc_service_arg_value_set (ret, "ids", retval);
+		xmmsc_service_arg_value_set (ret, ARG_IDS, retval);
 	}
 
 	return_and_free (res, ret);
@@ -180,14 +180,50 @@ cb_list_method (xmmsc_result_t *res, void *data)
 	gchar *name = NULL;
 	xmmsc_service_arg_list_t *ret;
 
-	ret = xmmsc_service_args_new (1, "desc", XMMSC_SERVICE_ARG_TYPE_STRING);
+	ret = xmmsc_service_args_new (1, ARG_DESC, XMMSC_SERVICE_ARG_TYPE_STRING);
 
 	if ((method = lookup_method (res,
 	                             lookup_service (res,
 	                                             lookup_client (res, &name, ret),
 	                                             &name, ret),
 	                             &name, ret)))
-		xmmsc_service_arg_value_set (ret, "desc", method);
+		xmmsc_service_arg_value_set (ret, ARG_DESC, method);
 
 	return_and_free (res, ret);
+}
+
+/**
+ * Lookup a service client's which provides the given service.
+ *
+ * If more than one service client contains the same service, all matching
+ * service clients' names will be returned.
+ */
+void
+cb_lookup_client (xmmsc_result_t *res, void *data)
+{
+	xmmsc_service_arg_list_t *ret;
+	gchar *name = NULL;
+	query_info_t info;
+	gchar **retval = NULL;
+	GList *n;
+	gint i;
+
+	ret = xmmsc_service_args_new (1, ARG_IDS, XMMSC_SERVICE_ARG_TYPE_STRINGLIST);
+
+	if (!xmmsc_result_get_dict_entry_string (res, ARG_SERVICE_NAME, &name))
+		xmmsc_service_error_set (ret, "Service name not given.");
+	info.target = name;
+	info.result = NULL;
+
+	g_hash_table_foreach (clients, match_service, &info);
+
+	retval = g_new0 (gchar *, g_list_length (info.result));
+	for (i = 0, n = info.result; n; i++, n = g_list_next (n))
+		retval[i] = (gchar *)n->data;
+	g_list_free (info.result);
+
+	xmmsc_service_arg_value_set (ret, ARG_IDS, retval);
+
+	return_and_free (res, ret);
+	g_free (retval);
 }
