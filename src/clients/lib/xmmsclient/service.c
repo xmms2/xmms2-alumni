@@ -518,6 +518,9 @@ xmmsc_service_args_new (uint32_t size, ...)
 void
 xmmsc_service_free (xmmsc_service_t *service)
 {
+	if (!service)
+		return;
+
 	free (service->name);
 	free (service->description);
 	free (service);
@@ -531,6 +534,9 @@ xmmsc_service_free (xmmsc_service_t *service)
 void
 xmmsc_service_method_free (xmmsc_service_method_t *method)
 {
+	if (!method)
+		return;
+
 	free (method->name);
 	free (method->description);
 	free (method);
@@ -544,14 +550,38 @@ xmmsc_service_method_free (xmmsc_service_method_t *method)
 void
 xmmsc_service_args_free (xmmsc_service_arg_list_t *args)
 {
-	uint32_t i = args->size;
+	uint32_t i;
 
+	if (!args)
+		return;
+
+	i = args->size;
 	while (i-- > 0)
 		free (args->args[i].name);
 	if (args->error && args->error_str)
 		free (args->error_str);
 	free (args->args);
 	free (args);
+}
+
+/**
+ * Reset all arguments and error message.
+ *
+ * @param args The #xmmsc_service_arg_list_t list.
+ */
+void
+xmmsc_service_args_reset (xmmsc_service_arg_list_t *args)
+{
+	uint32_t i;
+
+	if (!args)
+		return;
+
+	xmmsc_service_error_reset (args);
+
+	i = args->size;
+	while (i-- > 0)
+		args->args[i].none = 0;
 }
 
 /**
@@ -914,7 +944,7 @@ xmmsc_service_arg_value_setnone (xmmsc_service_arg_list_t *arg_list,
 }
 
 /**
- * Set an error message
+ * Set an error message.
  *
  * @param arg_list The argument list that will contain the error message.
  * @param err The error message willing to set.
@@ -934,6 +964,21 @@ xmmsc_service_error_set (xmmsc_service_arg_list_t *arg_list, const char *err)
 		return 0;
 
 	return 1;
+}
+
+/**
+ * Reset error message.
+ *
+ * @param arg_list The argument list that will contain the error message.
+ */
+void
+xmmsc_service_error_reset (xmmsc_service_arg_list_t *arg_list)
+{
+	x_return_if_fail (arg_list);
+
+	arg_list->error = 0;
+	free (arg_list->error_str);
+	arg_list->error_str = NULL;
 }
 
 /**
