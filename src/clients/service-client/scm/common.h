@@ -24,6 +24,22 @@
 #include <xmmsclient/xmmsclient.h>
 #include <xmmsclient/xmmsclient-glib.h>
 
+#define SCM_NAME "scm"
+
+#define ARG_CLIENT_NAME "client_name"
+#define ARG_SERVICE_NAME "service_name"
+#define ARG_METHOD_NAME "method_name"
+#define ARG_ARGV "argv"
+#define ARG_AUTO "auto"
+#define ARG_SERVICES "services"
+#define ARG_DESC "desc"
+#define ARG_MAJOR "major"
+#define ARG_MINOR "minor"
+#define ARG_REGISTERED "registered"
+#define ARG_METHODS "methods"
+#define ARG_RET "ret"
+#define ARG_IDS "ids"
+
 typedef struct config_St {
 	gchar *path;
 	gchar *argv;
