@@ -9,6 +9,7 @@ def build(bld):
                     config.c
                     management.c
                     query.c
+                    callback.c
                     main.c""".split()
     obj.includes = '. ../../../include'
     obj.uselib_local = 'xmmsclient-glib xmmsclient'
