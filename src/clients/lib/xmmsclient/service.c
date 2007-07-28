@@ -43,41 +43,69 @@ static int xmmsc_service_argument_write (xmms_ipc_msg_t *msg,
                                          xmmsc_service_argument_t *arg);
 
 /**
- * Register a new method.
- *
- * If the service does not exist yet, it will be registered, too.
+ * Register a new service.
  *
  * @param conn The connection to the server.
- * @param service #xmmsc_service_t which the method belongs to.
- * @param method #xmmsc_service_method_t which contains the method's information.
- * @param user_data Optional data to pass to the method.
+ * @param name Service name (will be duplicated).
+ * @param description Service description (will be duplicated).
+ * @param major Service major version.
+ * @param minor Service minor version.
  */
 xmmsc_result_t *
 xmmsc_service_register (xmmsc_connection_t *conn,
-                        xmmsc_service_t *service,
-                        xmmsc_service_method_t *method,
-                        void *user_data)
+                        const char *name, const char *description,
+                        uint32_t major, uint32_t minor)
 {
-	return xmmsc_service_register_full (conn, service, method, user_data, NULL);
+	xmmsc_result_t *res;
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (conn, NULL);
+	x_return_null_if_fail (name);
+	x_return_null_if_fail (description);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_CMD_SERVICE_REGISTER);
+	xmms_ipc_msg_put_string (msg, name);
+	xmms_ipc_msg_put_string (msg, description);
+	xmms_ipc_msg_put_uint32 (msg, major);
+	xmms_ipc_msg_put_uint32 (msg, minor);
+
+	res = xmmsc_send_msg (conn, msg);
+
+	return res;
 }
 
 /**
  * Register a new method.
  *
- * If the service does not exist yet, it will be registered, too.
+ * @param conn The connection to the server.
+ * @param service Service name of which the method belongs to.
+ * @param method #xmmsc_service_method_t which contains the method's information.
+ * @param user_data Optional data to pass to the method.
+ */
+xmmsc_result_t *
+xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service,
+                               xmmsc_service_method_t *method, void *user_data)
+{
+	return xmmsc_service_method_register_full (conn, service, method, user_data,
+	                                           NULL);
+}
+
+/**
+ * Register a new method.
  *
  * @param conn The connection to the server.
- * @param service #xmmsc_service_t which the method belongs to.
+ * @param service Service name of which the method belongs to.
  * @param method #xmmsc_service_method_t which contains the method's information.
  * @param user_data Optional data to pass to the method.
  * @param free_func Optional function that should be called to free user_data.
  */
 xmmsc_result_t *
-xmmsc_service_register_full (xmmsc_connection_t *conn,
-                             xmmsc_service_t *service,
-                             xmmsc_service_method_t *method,
-                             void *user_data,
-                             xmmsc_user_data_free_func_t free_func)
+xmmsc_service_method_register_full (xmmsc_connection_t *conn,
+                                    const char *service,
+                                    xmmsc_service_method_t *method,
+                                    void *user_data,
+                                    xmmsc_user_data_free_func_t free_func)
 {
 	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
@@ -85,34 +113,29 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
 	uint32_t count;
 
 	x_check_conn (conn, NULL);
-	x_api_error_if (!service, "with a NULL service", NULL);
+	x_return_null_if_fail (service);
+	x_return_null_if_fail (method);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_REGISTER);
-	xmms_ipc_msg_put_string (msg, service->name);
-	xmms_ipc_msg_put_string (msg, service->description);
-	xmms_ipc_msg_put_uint32 (msg, service->major_version);
-	xmms_ipc_msg_put_uint32 (msg, service->minor_version);
+	                        XMMS_IPC_CMD_SERVICE_METHOD_REGISTER);
+	xmms_ipc_msg_put_string (msg, service);
+	xmms_ipc_msg_put_string (msg, method->name);
+	xmms_ipc_msg_put_string (msg, method->description);
 
-	if (method) {
-		xmms_ipc_msg_put_string (msg, method->name);
-		xmms_ipc_msg_put_string (msg, method->description);
+	xmms_ipc_msg_put_uint32 (msg, method->ret_list->size);
+	for (count = 0; count < method->ret_list->size; count++) {
+		arg = method->ret_list->args + count;
+		xmms_ipc_msg_put_string (msg, arg->name);
+		xmms_ipc_msg_put_uint32 (msg, arg->type);
+		xmms_ipc_msg_put_int32 (msg, arg->optional);
+	}
 
-		xmms_ipc_msg_put_uint32 (msg, method->ret_list->size);
-		for (count = 0; count < method->ret_list->size; count++) {
-			arg = method->ret_list->args + count;
-			xmms_ipc_msg_put_string (msg, arg->name);
-			xmms_ipc_msg_put_uint32 (msg, arg->type);
-			xmms_ipc_msg_put_int32 (msg, arg->optional);
-		}
-
-		xmms_ipc_msg_put_uint32 (msg, method->arg_list->size);
-		for (count = 0; count < method->arg_list->size; count++) {
-			arg = method->arg_list->args + count;
-			xmms_ipc_msg_put_string (msg, arg->name);
-			xmms_ipc_msg_put_uint32 (msg, arg->type);
-			xmms_ipc_msg_put_uint32 (msg, arg->optional);
-		}
+	xmms_ipc_msg_put_uint32 (msg, method->arg_list->size);
+	for (count = 0; count < method->arg_list->size; count++) {
+		arg = method->arg_list->args + count;
+		xmms_ipc_msg_put_string (msg, arg->name);
+		xmms_ipc_msg_put_uint32 (msg, arg->type);
+		xmms_ipc_msg_put_uint32 (msg, arg->optional);
 	}
 
 	res = xmmsc_send_msg (conn, msg);
@@ -120,10 +143,8 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
 	if (xmmsc_result_iserror (res))
 		return res;
 
-	if (method) {
-		xmmsc_result_restartable (res, XMMS_IPC_SIGNAL_SERVICE);
-		xmmsc_result_notifier_set_full (res, method->func, user_data, free_func);
-	}
+	xmmsc_result_restartable (res, XMMS_IPC_SIGNAL_SERVICE);
+	xmmsc_result_notifier_set_full (res, method->func, user_data, free_func);
 
 	return res;
 }
@@ -146,7 +167,7 @@ xmmsc_service_unregister (xmmsc_connection_t *conn,
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
-	x_api_error_if (!service, "with a NULL service", NULL);
+	x_return_null_if_fail (service);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_UNREGISTER);
@@ -414,37 +435,6 @@ xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c)
 }
 
 /**
- * Create a new #xmmsc_service_t.
- *
- * Caller is responsible for freeing the returned structure using
- * #xmmsc_service_free.
- *
- * @param name Service name (will be duplicated).
- * @param description Service description (will be duplicated).
- * @param major Service major version.
- * @param minor Service minor version.
- * @return The newly created #xmmsc_service_t.
- */
-xmmsc_service_t *
-xmmsc_service_new (const char *name, const char *description,
-                   uint32_t major, uint32_t minor)
-{
-	xmmsc_service_t *ret = NULL;
-
-	if (!name || !description)
-		return NULL;
-
-	ret = x_new0 (xmmsc_service_t, 1);
-
-	ret->name = strdup (name);
-	ret->description = strdup (description);
-	ret->major_version = major;
-	ret->minor_version = minor;
-
-	return ret;
-}
-
-/**
  * Create a new #xmmsc_service_method_t.
  *
  * Caller is responsible for freeing the returned structure using
@@ -511,22 +501,6 @@ xmmsc_service_args_new (uint32_t size, ...)
 }
 
 /**
- * Free the given #xmmsc_service_t.
- *
- * @param service The #xmmsc_service_t list.
- */
-void
-xmmsc_service_free (xmmsc_service_t *service)
-{
-	if (!service)
-		return;
-
-	free (service->name);
-	free (service->description);
-	free (service);
-}
-
-/**
  * Free the given #xmmsc_service_method_t.
  *
  * @param method The #xmmsc_service_method_t list.
@@ -582,72 +556,6 @@ xmmsc_service_args_reset (xmmsc_service_arg_list_t *args)
 	i = args->size;
 	while (i-- > 0)
 		args->args[i].none = 0;
-}
-
-/**
- * Get an attribute of a service.
- *
- * The returned value is owned by the service.
- *
- * @param service The service containing the attribute.
- * @param key The name of the attribute.
- * @param value Pointer to the place where the value should be stored to.
- * @return 1 for success, 0 otherwise.
- */
-int
-xmmsc_service_attribute_get (xmmsc_service_t *service, const char *key,
-                             void *value)
-{
-	x_return_val_if_fail (service, 0);
-	x_return_val_if_fail (key, 0);
-	x_return_val_if_fail (value, 0);
-
-	if (strcasecmp (key, "name") == 0 && service->name)
-		*(char **)value = service->name;
-	else if (strcasecmp (key, "description") == 0 && service->description)
-		*(char **)value = service->description;
-	else if (strcasecmp (key, "major_version") == 0)
-		*(uint32_t *)value = service->major_version;
-	else if (strcasecmp (key, "minor_version") == 0)
-		*(uint32_t *)value = service->minor_version;
-	else if (strcasecmp (key, "count") == 0)
-		*(uint32_t *)value = service->count;
-	else
-		return 0;
-
-	return 1;
-}
-
-/**
- * Set an attribute of a service.
- *
- * @param service The service containing the attribute.
- * @param key The name of the attribute.
- * @param value The new value.
- * @return 1 for success, 0 otherwise.
- */
-int
-xmmsc_service_attribute_set (xmmsc_service_t *service, const char *key,
-                             const void *value)
-{
-	x_return_val_if_fail (service, 0);
-	x_return_val_if_fail (key, 0);
-	x_return_val_if_fail (value, 0);
-
-	if (strcasecmp (key, "name") == 0)
-		service->name = *(char **)value;
-	else if (strcasecmp (key, "description") == 0)
-		service->description = *(char **)value;
-	else if (strcasecmp (key, "major_version") == 0)
-		service->major_version = *(uint32_t *)value;
-	else if (strcasecmp (key, "minor_version") == 0)
-		service->minor_version = *(uint32_t *)value;
-	else if (strcasecmp (key, "count") == 0)
-		service->count = *(uint32_t *)value;
-	else
-		return 0;
-
-	return 1;
 }
 
 /**
