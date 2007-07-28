@@ -97,13 +97,11 @@ static void xmms_service_destroy (xmms_object_t *object);
 static void xmms_service_registry_destroy (gpointer value);
 static void xmms_service_method_destroy (gpointer value);
 
-static gboolean xmms_service_register (xmms_service_t *xmms_service,
-                                       xmms_ipc_msg_t *msg,
-                                       xmms_socket_t client,
-                                       xmms_error_t *err);
+static void xmms_service_register (xmms_service_t *xmms_service,
+                                   xmms_ipc_msg_t *msg, xmms_socket_t client,
+                                   xmms_error_t *err);
 static gboolean xmms_service_method_register (xmms_service_t *xmms_service,
                                               xmms_ipc_msg_t *msg,
-                                              xmms_service_entry_t *entry,
                                               xmms_error_t *err);
 static void xmms_service_unregister (xmms_service_t *xmms_service,
                                      xmms_ipc_msg_t *msg,
@@ -217,7 +215,11 @@ xmms_service_handle (xmms_object_t *obj, xmms_ipc_msg_t *msg,
 	switch (cmdid) {
 	case XMMS_IPC_CMD_SERVICE_REGISTER:
 		arg->retval = xmms_object_cmd_value_none_new ();
-		return xmms_service_register (serv, msg, client, &arg->error);
+		xmms_service_register (serv, msg, client, &arg->error);
+		return FALSE;
+	case XMMS_IPC_CMD_SERVICE_METHOD_REGISTER:
+		arg->retval = xmms_object_cmd_value_none_new ();
+		return xmms_service_method_register (serv, msg, &arg->error);
 	case XMMS_IPC_CMD_SERVICE_UNREGISTER:
 		if (arg) {
 			arg->retval = xmms_object_cmd_value_none_new ();
@@ -363,7 +365,7 @@ xmms_service_method_destroy (gpointer value)
 /**
  * Register a new service
  */
-static gboolean
+static void
 xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
                        xmms_socket_t client, xmms_error_t *err)
 {
@@ -374,31 +376,27 @@ xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	GHashTable *table = NULL;
 	xmms_service_entry_t *entry;
 
-	g_return_val_if_fail (msg, FALSE);
+	g_return_if_fail (msg);
 
 	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No service id given");
 		free (name);
-		return FALSE;
 	}
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 		                    "No service description given");
 		free (name);
 		free (desc);
-		return FALSE;
 	}
 	if (!xmms_ipc_msg_get_uint32 (msg, &major)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No major version given");
 		free (name);
 		free (desc);
-		return FALSE;
 	}
 	if (!xmms_ipc_msg_get_uint32 (msg, &minor)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No minor version given");
 		free (name);
 		free (desc);
-		return FALSE;
 	}
 
 	if ((entry = xmms_service_is_registered (xmms_service, name))) {
@@ -419,8 +417,6 @@ xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		g_hash_table_destroy (table);
 		XMMS_DBG ("New service registered");
 	}
-
-	return xmms_service_method_register (xmms_service, msg, entry, err);
 }
 
 /**
@@ -428,7 +424,7 @@ xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
  */
 static gboolean
 xmms_service_method_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
-                              xmms_service_entry_t *entry, xmms_error_t *err)
+                              xmms_error_t *err)
 {
 	gchar *name = NULL;
 	guint len;
@@ -436,17 +432,25 @@ xmms_service_method_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	GHashTable *rets = NULL;
 	GHashTable *args = NULL;
 	GHashTable *table = NULL;
+	xmms_service_entry_t *entry;
 	xmms_service_method_t *method;
 
-	/**
-	 * It might be the case that service client is only registering a service,
-	 * not a method.  So we don't report an error.
-	 */
+	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No service id given");
+		free (name);
+		return FALSE;
+	}
+	if (!(entry = xmms_service_is_registered (xmms_service, name))) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Service not registered");
+		free (name);
+		return FALSE;
+	}
+	free (name);
+
 	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
 		free (name);
 		return FALSE;
 	}
-
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 		                    "No method description given");

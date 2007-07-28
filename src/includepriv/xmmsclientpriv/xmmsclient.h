@@ -87,19 +87,6 @@ struct xmmsc_service_arg_list_St {
 };
 
 /**
- * @typedef xmmsc_service_t
- *
- * Holds all data of a single service.
- */
-struct xmmsc_service_St {
-	char *name;
-	char *description;
-	uint32_t major_version;
-	uint32_t minor_version;
-	uint32_t count;
-};
-
-/**
  * @typedef xmmsc_service_method_t
  *
  * Holds all data of a single service method.
