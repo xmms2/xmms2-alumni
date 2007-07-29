@@ -75,18 +75,6 @@ struct xmmsc_service_argument_St {
 };
 
 /**
- * @typedef xmmsc_service_arg_list_t
- *
- * Holds an argument list of a method.
- */
-struct xmmsc_service_arg_list_St {
-	uint32_t size;
-	xmmsc_service_argument_t *args;
-	int error;
-	char *error_str;
-};
-
-/**
  * @typedef xmmsc_service_method_t
  *
  * Holds all data of a single service method.
@@ -94,8 +82,10 @@ struct xmmsc_service_arg_list_St {
 struct xmmsc_service_method_St {
 	char *name;
 	char *description;
-	xmmsc_service_arg_list_t *ret_list;
-	xmmsc_service_arg_list_t *arg_list;
+	x_list_t *ret_list;
+	x_list_t *arg_list;
+	int error;
+	char *error_str;
 	xmmsc_result_notifier_t func;
 };
 
