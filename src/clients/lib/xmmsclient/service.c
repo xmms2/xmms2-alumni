@@ -1441,7 +1441,7 @@ dispatch (xmmsc_result_t *res, void *data)
 
 	x_return_if_fail (info);
 
-	info->func (info->conn, info->method, info->udata);
+	info->func (res, info->conn, info->method, info->udata);
 }
 
 /* @} */
