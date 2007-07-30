@@ -346,8 +346,8 @@ int xmmsc_service_method_ret_attribute_set (xmmsc_service_method_t *method, cons
 /*                                         const char *key, void *value); */
 /* int xmmsc_service_method_ret_value_get (xmmsc_service_method_t *method, */
 /*                                         const char *key, void *value); */
-int xmmsc_service_method_arg_value_remove (xmmsc_service_method_t *method, const char *key);
-int xmmsc_service_method_ret_value_remove (xmmsc_service_method_t *method, const char *key);
+int xmmsc_service_method_arg_remove (xmmsc_service_method_t *method, const char *key);
+int xmmsc_service_method_ret_remove (xmmsc_service_method_t *method, const char *key);
 int xmmsc_service_method_error_set (xmmsc_service_method_t *method, const char *err);
 void xmmsc_service_method_error_reset (xmmsc_service_method_t *method);
 int xmmsc_service_method_error_isset (xmmsc_service_method_t *method);
