@@ -51,6 +51,8 @@ static int arg_attribute_get (xmmsc_service_argument_t *arg, const char *key,
                               void *value);
 static int arg_attribute_set (xmmsc_service_argument_t *arg, const char *key,
                               const void *value);
+static void arg_reset (xmmsc_service_method_t *method);
+static void ret_reset (xmmsc_service_method_t *method);
 /* static int arg_value_get (xmmsc_service_argument_t *arg, void *value); */
 static int argument_write (xmms_ipc_msg_t *msg, xmmsc_service_argument_t *arg);
 static int arg_lookup (const void *arg, const void *name);
@@ -311,13 +313,15 @@ xmmsc_service_method_args_list (xmmsc_connection_t *conn, const char *service,
 /**
  * Make service method call.
  *
+ * All argument values will be reset after this call.
+ *
  * @param conn The connection to the server.
  * @param service The id of the service.
  * @param method The #xmmsc_service_method_t structure.
  */
 xmmsc_result_t *
 xmmsc_service_request (xmmsc_connection_t *conn, const char *service,
-                       const xmmsc_service_method_t *method)
+                       xmmsc_service_method_t *method)
 {
 	xmms_ipc_msg_t *msg;
 	xmmsc_result_t *res;
@@ -345,6 +349,8 @@ xmmsc_service_request (xmmsc_connection_t *conn, const char *service,
 		}
 	}
 
+	arg_reset (method);
+
 	res = xmmsc_send_msg (conn, msg);
 	xmmsc_result_restartable (res, XMMS_IPC_SIGNAL_SERVICE);
 
@@ -354,13 +360,15 @@ xmmsc_service_request (xmmsc_connection_t *conn, const char *service,
 /**
  * Return service method request.
  *
+ * All return values will be reset after this call.
+ *
  * @param conn The connection to the server.
  * @param res The result containing the service cookie.
  * @param method The #xmmsc_service_method_t structure.
  */
 xmmsc_result_t *
 xmmsc_service_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
-                      const xmmsc_service_method_t *method)
+                      xmmsc_service_method_t *method)
 {
 	xmms_ipc_msg_t *msg;
 	uint32_t cookie;
@@ -393,6 +401,8 @@ xmmsc_service_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
 				return 0;
 		}
 	}
+
+	ret_reset (method);
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -523,44 +533,6 @@ xmmsc_service_method_free (xmmsc_service_method_t *method)
 }
 
 /**
- * Reset all arguments and error message.
- *
- * @param method The method which contains the arguments.
- */
-void
-xmmsc_service_method_arg_reset (xmmsc_service_method_t *method)
-{
-	x_list_t *n;
-
-	if (!method)
-		return;
-
-	xmmsc_service_method_error_reset (method);
-
-	for (n = method->arg_list; n; n = x_list_next (n))
-		((xmmsc_service_argument_t *)n->data)->none = 0;
-}
-
-/**
- * Reset all return values and error message.
- *
- * @param method The method which contains the return values.
- */
-void
-xmmsc_service_method_ret_reset (xmmsc_service_method_t *method)
-{
-	x_list_t *n;
-
-	if (!method)
-		return;
-
-	xmmsc_service_method_error_reset (method);
-
-	for (n = method->ret_list; n; n = x_list_next (n))
-		((xmmsc_service_argument_t *)n->data)->none = 0;
-}
-
-/**
  * Get an attribute of a method.
  *
  * The returned value is owned by the method.
@@ -641,6 +613,7 @@ xmmsc_service_method_arg_type_add (xmmsc_service_method_t *method,
 
 	arg->name = strdup (name);
 	arg->type = type;
+	arg->none = 1;
 	method->arg_list = x_list_append (method->arg_list, arg);
 
 	return 1;
@@ -669,6 +642,7 @@ xmmsc_service_method_ret_type_add (xmmsc_service_method_t *method,
 
 	arg->name = strdup (name);
 	arg->type = type;
+	arg->none = 1;
 	method->ret_list = x_list_append (method->ret_list, arg);
 
 	return 1;
@@ -697,6 +671,7 @@ xmmsc_service_method_add_arg_uint32 (xmmsc_service_method_t *method,
 	if (arg->type != XMMSC_SERVICE_ARG_TYPE_UINT32)
 		return 0;
 	arg->value.uint32 = value;
+	arg->none = 0;
 
 	return 1;
 }
@@ -724,6 +699,7 @@ xmmsc_service_method_add_arg_int32 (xmmsc_service_method_t *method,
 	if (arg->type != XMMSC_SERVICE_ARG_TYPE_INT32)
 		return 0;
 	arg->value.int32 = value;
+	arg->none = 0;
 
 	return 1;
 }
@@ -751,6 +727,7 @@ xmmsc_service_method_add_arg_string (xmmsc_service_method_t *method,
 	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRING)
 		return 0;
 	arg->value.string = value;
+	arg->none = 0;
 
 	return 1;
 }
@@ -778,6 +755,7 @@ xmmsc_service_method_add_arg_stringlist (xmmsc_service_method_t *method,
 	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRINGLIST)
 		return 0;
 	arg->value.strings = value;
+	arg->none = 0;
 
 	return 1;
 }
@@ -805,6 +783,7 @@ xmmsc_service_method_add_arg_coll (xmmsc_service_method_t *method,
 	if (arg->type != XMMSC_SERVICE_ARG_TYPE_COLL)
 		return 0;
 	arg->value.coll = value;
+	arg->none = 0;
 
 	return 1;
 }
@@ -834,6 +813,7 @@ xmmsc_service_method_add_arg_bin (xmmsc_service_method_t *method,
 		return 0;
 	arg->value.bin = value;
 	arg->len = len;
+	arg->none = 0;
 
 	return 1;
 }
@@ -861,6 +841,7 @@ xmmsc_service_method_add_ret_uint32 (xmmsc_service_method_t *method,
 	if (arg->type != XMMSC_SERVICE_ARG_TYPE_UINT32)
 		return 0;
 	arg->value.uint32 = value;
+	arg->none = 0;
 
 	return 1;
 }
@@ -888,6 +869,7 @@ xmmsc_service_method_add_ret_int32 (xmmsc_service_method_t *method,
 	if (arg->type != XMMSC_SERVICE_ARG_TYPE_INT32)
 		return 0;
 	arg->value.int32 = value;
+	arg->none = 0;
 
 	return 1;
 }
@@ -915,6 +897,7 @@ xmmsc_service_method_add_ret_string (xmmsc_service_method_t *method,
 	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRING)
 		return 0;
 	arg->value.string = value;
+	arg->none = 0;
 
 	return 1;
 }
@@ -942,6 +925,7 @@ xmmsc_service_method_add_ret_stringlist (xmmsc_service_method_t *method,
 	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRINGLIST)
 		return 0;
 	arg->value.strings = value;
+	arg->none = 0;
 
 	return 1;
 }
@@ -969,6 +953,7 @@ xmmsc_service_method_add_ret_coll (xmmsc_service_method_t *method,
 	if (arg->type != XMMSC_SERVICE_ARG_TYPE_COLL)
 		return 0;
 	arg->value.coll = value;
+	arg->none = 0;
 
 	return 1;
 }
@@ -998,6 +983,7 @@ xmmsc_service_method_add_ret_bin (xmmsc_service_method_t *method,
 		return 0;
 	arg->value.bin = value;
 	arg->len = len;
+	arg->none = 0;
 
 	return 1;
 }
@@ -1336,6 +1322,34 @@ arg_attribute_set (xmmsc_service_argument_t *arg, const char *key,
 		return 0;
 
 	return 1;
+}
+
+static void
+arg_reset (xmmsc_service_method_t *method)
+{
+	x_list_t *n;
+
+	if (!method)
+		return;
+
+	xmmsc_service_method_error_reset (method);
+
+	for (n = method->arg_list; n; n = x_list_next (n))
+		((xmmsc_service_argument_t *)n->data)->none = 1;
+}
+
+static void
+ret_reset (xmmsc_service_method_t *method)
+{
+	x_list_t *n;
+
+	if (!method)
+		return;
+
+	xmmsc_service_method_error_reset (method);
+
+	for (n = method->ret_list; n; n = x_list_next (n))
+		((xmmsc_service_argument_t *)n->data)->none = 1;
 }
 
 /* static int */
