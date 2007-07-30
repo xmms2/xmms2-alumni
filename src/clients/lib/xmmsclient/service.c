@@ -214,7 +214,7 @@ xmmsc_service_unregister (xmmsc_connection_t *conn,
  * @param conn The connection to the server.
  */
 xmmsc_result_t *
-xmmsc_service_ids_list (xmmsc_connection_t *conn)
+xmmsc_service_list (xmmsc_connection_t *conn)
 {
 	x_check_conn (conn, NULL);
 
@@ -249,7 +249,7 @@ xmmsc_service_describe (xmmsc_connection_t *conn, const char *service)
  * @param service The id of the service.
  */
 xmmsc_result_t *
-xmmsc_service_method_ids_list (xmmsc_connection_t *conn, const char *service)
+xmmsc_service_method_list (xmmsc_connection_t *conn, const char *service)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -294,8 +294,8 @@ xmmsc_service_method_describe (xmmsc_connection_t *conn, const char *service,
  * @param method The id of the method.
  */
 xmmsc_result_t *
-xmmsc_service_method_args_list (xmmsc_connection_t *conn, const char *service,
-                                const char *method)
+xmmsc_service_method_describe_args (xmmsc_connection_t *conn,
+                                    const char *service, const char *method)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -656,7 +656,7 @@ xmmsc_service_method_ret_type_add (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_arg_uint32 (xmmsc_service_method_t *method,
+xmmsc_service_method_arg_add_uint32 (xmmsc_service_method_t *method,
                                      const char *name, uint32_t value)
 {
 	x_list_t *item;
@@ -684,7 +684,7 @@ xmmsc_service_method_add_arg_uint32 (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_arg_int32 (xmmsc_service_method_t *method,
+xmmsc_service_method_arg_add_int32 (xmmsc_service_method_t *method,
                                     const char *name, int32_t value)
 {
 	x_list_t *item;
@@ -712,7 +712,7 @@ xmmsc_service_method_add_arg_int32 (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_arg_string (xmmsc_service_method_t *method,
+xmmsc_service_method_arg_add_string (xmmsc_service_method_t *method,
                                      const char *name, char *value)
 {
 	x_list_t *item;
@@ -740,7 +740,7 @@ xmmsc_service_method_add_arg_string (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_arg_stringlist (xmmsc_service_method_t *method,
+xmmsc_service_method_arg_add_stringlist (xmmsc_service_method_t *method,
                                          const char *name, char **value)
 {
 	x_list_t *item;
@@ -768,7 +768,7 @@ xmmsc_service_method_add_arg_stringlist (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_arg_coll (xmmsc_service_method_t *method,
+xmmsc_service_method_arg_add_coll (xmmsc_service_method_t *method,
                                    const char *name, xmmsc_coll_t *value)
 {
 	x_list_t *item;
@@ -796,7 +796,7 @@ xmmsc_service_method_add_arg_coll (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_arg_bin (xmmsc_service_method_t *method,
+xmmsc_service_method_arg_add_bin (xmmsc_service_method_t *method,
                                   const char *name, unsigned char *value,
                                   uint32_t len)
 {
@@ -826,7 +826,7 @@ xmmsc_service_method_add_arg_bin (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_ret_uint32 (xmmsc_service_method_t *method,
+xmmsc_service_method_ret_add_uint32 (xmmsc_service_method_t *method,
                                      const char *name, uint32_t value)
 {
 	x_list_t *item;
@@ -854,7 +854,7 @@ xmmsc_service_method_add_ret_uint32 (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_ret_int32 (xmmsc_service_method_t *method,
+xmmsc_service_method_ret_add_int32 (xmmsc_service_method_t *method,
                                     const char *name, int32_t value)
 {
 	x_list_t *item;
@@ -882,7 +882,7 @@ xmmsc_service_method_add_ret_int32 (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_ret_string (xmmsc_service_method_t *method,
+xmmsc_service_method_ret_add_string (xmmsc_service_method_t *method,
                                      const char *name, char *value)
 {
 	x_list_t *item;
@@ -910,7 +910,7 @@ xmmsc_service_method_add_ret_string (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_ret_stringlist (xmmsc_service_method_t *method,
+xmmsc_service_method_ret_add_stringlist (xmmsc_service_method_t *method,
                                          const char *name, char **value)
 {
 	x_list_t *item;
@@ -938,7 +938,7 @@ xmmsc_service_method_add_ret_stringlist (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_ret_coll (xmmsc_service_method_t *method,
+xmmsc_service_method_ret_add_coll (xmmsc_service_method_t *method,
                                    const char *name, xmmsc_coll_t *value)
 {
 	x_list_t *item;
@@ -966,7 +966,7 @@ xmmsc_service_method_add_ret_coll (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_add_ret_bin (xmmsc_service_method_t *method,
+xmmsc_service_method_ret_add_bin (xmmsc_service_method_t *method,
                                   const char *name, unsigned char *value,
                                   uint32_t len)
 {
@@ -1200,7 +1200,7 @@ xmmsc_service_method_ret_attribute_set (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_arg_value_setnone (xmmsc_service_method_t *method,
+xmmsc_service_method_arg_value_remove (xmmsc_service_method_t *method,
                                         const char *key)
 {
 	x_list_t *item;
@@ -1223,7 +1223,7 @@ xmmsc_service_method_arg_value_setnone (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_ret_value_setnone (xmmsc_service_method_t *method,
+xmmsc_service_method_ret_value_remove (xmmsc_service_method_t *method,
                                         const char *key)
 {
 	x_list_t *item;
