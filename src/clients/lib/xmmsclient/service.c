@@ -229,7 +229,7 @@ xmmsc_service_ids_list (xmmsc_connection_t *conn)
  * @param service The id of the service.
  */
 xmmsc_result_t *
-xmmsc_service_list (xmmsc_connection_t *conn, const char *service)
+xmmsc_service_describe (xmmsc_connection_t *conn, const char *service)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -270,8 +270,8 @@ xmmsc_service_method_ids_list (xmmsc_connection_t *conn, const char *service)
  * @param method The id of the method.
  */
 xmmsc_result_t *
-xmmsc_service_method_list (xmmsc_connection_t *conn, const char *service,
-                           const char *method)
+xmmsc_service_method_describe (xmmsc_connection_t *conn, const char *service,
+                               const char *method)
 {
 	xmms_ipc_msg_t *msg;
 
