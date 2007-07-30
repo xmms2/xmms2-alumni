@@ -299,7 +299,7 @@ typedef enum {
 
 typedef struct xmmsc_service_method_St xmmsc_service_method_t;
 typedef struct xmmsc_service_argument_St xmmsc_service_argument_t;
-typedef void (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn, xmmsc_service_method_t *method, void *user_data);
+typedef void (*xmmsc_service_notifier_t) (xmmsc_result_t *res, xmmsc_connection_t *conn, xmmsc_service_method_t *method, void *user_data);
 
 xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn, const char *name, const char *description, uint32_t major, uint32_t minor);
 xmmsc_result_t *xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method, void *user_data, xmmsc_service_notifier_t func);
