@@ -1200,8 +1200,7 @@ xmmsc_service_method_ret_attribute_set (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_arg_value_remove (xmmsc_service_method_t *method,
-                                        const char *key)
+xmmsc_service_method_arg_remove (xmmsc_service_method_t *method, const char *key)
 {
 	x_list_t *item;
 
@@ -1223,8 +1222,7 @@ xmmsc_service_method_arg_value_remove (xmmsc_service_method_t *method,
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_ret_value_remove (xmmsc_service_method_t *method,
-                                        const char *key)
+xmmsc_service_method_ret_remove (xmmsc_service_method_t *method, const char *key)
 {
 	x_list_t *item;
 
