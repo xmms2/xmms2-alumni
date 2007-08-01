@@ -39,18 +39,8 @@
  * @{
  */
 
-typedef struct {
-	xmmsc_connection_t *conn;
-	xmmsc_service_method_t *method;
-	void *udata;
-	xmmsc_service_notifier_t func;
-	xmmsc_user_data_free_func_t free_func;
-} service_method_infos_t;
-
 static int arg_attribute_get (xmmsc_service_argument_t *arg, const char *key,
                               void *value);
-static int arg_attribute_set (xmmsc_service_argument_t *arg, const char *key,
-                              const void *value);
 static void arg_reset (xmmsc_service_method_t *method);
 static void ret_reset (xmmsc_service_method_t *method);
 /* static int arg_value_get (xmmsc_service_argument_t *arg, void *value); */
@@ -98,15 +88,12 @@ xmmsc_service_register (xmmsc_connection_t *conn,
  * @param conn The connection to the server.
  * @param service Service name of which the method belongs to.
  * @param method #xmmsc_service_method_t which contains the method's information. Don't free it manually, it'll be freed automatically when it's no longer needed.
- * @param user_data Optional data to pass to the method.
  */
 xmmsc_result_t *
 xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service,
-                               xmmsc_service_method_t *method, void *user_data,
-                               xmmsc_service_notifier_t func)
+                               xmmsc_service_method_t *method)
 {
-	return xmmsc_service_method_register_full (conn, service, method, user_data,
-	                                           func, NULL);
+	return xmmsc_service_method_register_full (conn, service, method, NULL);
 }
 
 /**
@@ -115,20 +102,16 @@ xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service,
  * @param conn The connection to the server.
  * @param service Service name of which the method belongs to.
  * @param method #xmmsc_service_method_t which contains the method's information. Don't free it manually, it'll be freed automatically when it's no longer needed.
- * @param user_data Optional data to pass to the method.
  * @param free_func Optional function that should be called to free user_data.
  */
 xmmsc_result_t *
 xmmsc_service_method_register_full (xmmsc_connection_t *conn,
                                     const char *service,
                                     xmmsc_service_method_t *method,
-                                    void *user_data,
-                                    xmmsc_service_notifier_t func,
                                     xmmsc_user_data_free_func_t free_func)
 {
 	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
-	service_method_infos_t *info;
 	x_list_t *n;
 	xmmsc_service_argument_t *arg = NULL;
 
@@ -163,15 +146,11 @@ xmmsc_service_method_register_full (xmmsc_connection_t *conn,
 	if (xmmsc_result_iserror (res))
 		return res;
 
-	info = x_new0 (service_method_infos_t, 1);
-	info->conn = conn;
-	info->method = method;
-	info->udata = user_data;
-	info->func = func;
-	info->free_func = free_func;
+	method->conn = conn;
+	method->free_func = free_func;
 
 	xmmsc_result_restartable (res, XMMS_IPC_SIGNAL_SERVICE);
-	xmmsc_result_notifier_set_full (res, dispatch, info, free_infos);
+	xmmsc_result_notifier_set_full (res, dispatch, method, free_infos);
 
 	return res;
 }
@@ -486,7 +465,8 @@ xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c)
  * @return The newly created #xmmsc_service_method_t.
  */
 xmmsc_service_method_t *
-xmmsc_service_method_new (const char *name, const char *description)
+xmmsc_service_method_new (const char *name, const char *description,
+                          xmmsc_service_notifier_t func, void *user_data)
 {
 	xmmsc_service_method_t *ret = NULL;
 
@@ -499,6 +479,9 @@ xmmsc_service_method_new (const char *name, const char *description)
 	ret->description = strdup (description);
 	ret->arg_list = NULL;
 	ret->ret_list = NULL;
+
+	ret->udata = user_data;
+	ret->func = func;
 
 	return ret;
 }
@@ -529,6 +512,9 @@ xmmsc_service_method_free (xmmsc_service_method_t *method)
 	x_list_free (method->ret_list);
 	x_list_free (method->arg_list);
 	free (method->error_str);
+
+	if (method->free_func)
+		method->free_func (method->udata);
 	free (method);
 }
 
@@ -558,32 +544,6 @@ xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
 		return xmmsc_service_method_ret_size (method, (uint32_t *)value);
 	else if (strcasecmp (key, "num_args") == 0)
 		return xmmsc_service_method_arg_size (method, (uint32_t *)value);
-	else
-		return 0;
-
-	return 1;
-}
-
-/**
- * Set an attribute of a method.
- *
- * @param method The method containing the attribute.
- * @param key The name of the attribute.
- * @param value The new value.
- * @return 1 for success, 0 otherwise.
- */
-int
-xmmsc_service_method_attribute_set (xmmsc_service_method_t *method,
-                                    const char *key, const void *value)
-{
-	x_return_val_if_fail (method, 0);
-	x_return_val_if_fail (key, 0);
-	x_return_val_if_fail (value, 0);
-
-	if (strcasecmp (key, "name") == 0)
-		method->name = *(char **)value;
-	else if (strcasecmp (key, "description") == 0)
-		method->description = *(char **)value;
 	else
 		return 0;
 
@@ -1054,35 +1014,6 @@ xmmsc_service_method_arg_attribute_get (xmmsc_service_method_t *method,
 }
 
 /**
- * Set an attribute of an argument.
- *
- * @param method The method which contains the argument list.
- * @param name The name of the argument.
- * @param key The name of the attribute.
- * @param value The new value.
- * @return 1 for success, 0 otherwise.
- */
-int
-xmmsc_service_method_arg_attribute_set (xmmsc_service_method_t *method,
-                                        const char *name, const char *key,
-                                        const void *value)
-{
-	x_list_t *item;
-	xmmsc_service_argument_t *arg;
-
-	x_return_val_if_fail (method, 0);
-	x_return_val_if_fail (name, 0);
-	x_return_val_if_fail (key, 0);
-	x_return_val_if_fail (value, 0);
-
-	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
-		return 0;
-	arg = (xmmsc_service_argument_t *)item->data;
-
-	return arg_attribute_set (arg, key, value);
-}
-
-/**
  * Get an attribute of an argument.
  *
  * @param method The method which contains the return value list.
@@ -1109,35 +1040,6 @@ xmmsc_service_method_ret_attribute_get (xmmsc_service_method_t *method,
 	arg = (xmmsc_service_argument_t *)item->data;
 
 	return arg_attribute_get (arg, key, value);
-}
-
-/**
- * Set an attribute of an argument.
- *
- * @param method The method which contains the return value list.
- * @param name The name of the argument.
- * @param key The name of the attribute.
- * @param value The new value.
- * @return 1 for success, 0 otherwise.
- */
-int
-xmmsc_service_method_ret_attribute_set (xmmsc_service_method_t *method,
-                                        const char *name, const char *key,
-                                        const void *value)
-{
-	x_list_t *item;
-	xmmsc_service_argument_t *arg;
-
-	x_return_val_if_fail (method, 0);
-	x_return_val_if_fail (name, 0);
-	x_return_val_if_fail (key, 0);
-	x_return_val_if_fail (value, 0);
-
-	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
-		return 0;
-	arg = (xmmsc_service_argument_t *)item->data;
-
-	return arg_attribute_set (arg, key, value);
 }
 
 /* /\** */
@@ -1306,22 +1208,6 @@ arg_attribute_get (xmmsc_service_argument_t *arg, const char *key, void *value)
 	return 1;
 }
 
-static int
-arg_attribute_set (xmmsc_service_argument_t *arg, const char *key,
-                   const void *value)
-{
-	if (strcasecmp (key, "type") == 0)
-		arg->type = *(xmmsc_service_arg_type_t *)value;
-	else if (strcasecmp (key, "optional") == 0)
-		arg->optional = *(uint32_t *)value;
-	else if (strcasecmp (key, "none") == 0)
-		arg->none = *(uint32_t *)value;
-	else
-		return 0;
-
-	return 1;
-}
-
 static void
 arg_reset (xmmsc_service_method_t *method)
 {
@@ -1425,23 +1311,19 @@ arg_lookup (const void *arg, const void *name)
 static void
 free_infos (void *data)
 {
-	service_method_infos_t *info = (service_method_infos_t *)data;
+	xmmsc_service_method_t *method = (xmmsc_service_method_t *)data;
 
-	x_return_if_fail (info);
-
-	xmmsc_service_method_free (info->method);
-	info->free_func (info->udata);
-	free (info);
+	xmmsc_service_method_free (method);
 }
 
 static void
 dispatch (xmmsc_result_t *res, void *data)
 {
-	service_method_infos_t *info = (service_method_infos_t *)data;
+	xmmsc_service_method_t *method = (xmmsc_service_method_t *)data;
 
-	x_return_if_fail (info);
+	x_return_if_fail (method);
 
-	info->func (res, info->conn, info->method, info->udata);
+	method->func (method->conn, res, method, method->udata);
 }
 
 /* @} */

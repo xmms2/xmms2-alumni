@@ -299,11 +299,11 @@ typedef enum {
 
 typedef struct xmmsc_service_method_St xmmsc_service_method_t;
 typedef struct xmmsc_service_argument_St xmmsc_service_argument_t;
-typedef void (*xmmsc_service_notifier_t) (xmmsc_result_t *res, xmmsc_connection_t *conn, xmmsc_service_method_t *method, void *user_data);
+typedef void (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn, xmmsc_result_t *res, xmmsc_service_method_t *method, void *user_data);
 
 xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn, const char *name, const char *description, uint32_t major, uint32_t minor);
-xmmsc_result_t *xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method, void *user_data, xmmsc_service_notifier_t func);
-xmmsc_result_t *xmmsc_service_method_register_full (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method, void *user_data, xmmsc_service_notifier_t func, xmmsc_user_data_free_func_t free_func);
+xmmsc_result_t *xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method);
+xmmsc_result_t *xmmsc_service_method_register_full (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method, xmmsc_user_data_free_func_t free_func);
 xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn, const char *service, const char *method);
 xmmsc_result_t *xmmsc_service_list (xmmsc_connection_t *conn);
 xmmsc_result_t *xmmsc_service_describe (xmmsc_connection_t *conn, const char *service);
@@ -318,10 +318,9 @@ xmmsc_result_t *xmmsc_broadcast_service_changed (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_broadcast_service_method_changed (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c);
 
-xmmsc_service_method_t *xmmsc_service_method_new (const char *name, const char *description);
+xmmsc_service_method_t *xmmsc_service_method_new (const char *name, const char *description, xmmsc_service_notifier_t func, void *user_data);
 void xmmsc_service_method_free (xmmsc_service_method_t *method);
 int xmmsc_service_method_attribute_get (xmmsc_service_method_t *method, const char *key, void *value);
-int xmmsc_service_method_attribute_set (xmmsc_service_method_t *method, const char *key, const void *value);
 int xmmsc_service_method_arg_type_add (xmmsc_service_method_t *method, const char *name, xmmsc_service_arg_type_t type);
 int xmmsc_service_method_ret_type_add (xmmsc_service_method_t *method, const char *name, xmmsc_service_arg_type_t type);
 int xmmsc_service_method_arg_add_uint32 (xmmsc_service_method_t *method, const char *name, uint32_t value);
@@ -339,9 +338,7 @@ int xmmsc_service_method_ret_add_bin (xmmsc_service_method_t *method, const char
 int xmmsc_service_method_arg_size (xmmsc_service_method_t *method, uint32_t *size);
 int xmmsc_service_method_ret_size (xmmsc_service_method_t *method, uint32_t *size);
 int xmmsc_service_method_arg_attribute_get (xmmsc_service_method_t *method, const char *name, const char *key, void *value);
-int xmmsc_service_method_arg_attribute_set (xmmsc_service_method_t *method, const char *name, const char *key, const void *value);
 int xmmsc_service_method_ret_attribute_get (xmmsc_service_method_t *method, const char *name, const char *key, void *value);
-int xmmsc_service_method_ret_attribute_set (xmmsc_service_method_t *method, const char *name, const char *key, const void *value);
 /* int xmmsc_service_method_arg_value_get (xmmsc_service_method_t *method, */
 /*                                         const char *key, void *value); */
 /* int xmmsc_service_method_ret_value_get (xmmsc_service_method_t *method, */

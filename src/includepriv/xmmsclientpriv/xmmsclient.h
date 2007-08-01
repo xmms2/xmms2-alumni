@@ -86,6 +86,11 @@ struct xmmsc_service_method_St {
 	x_list_t *arg_list;
 	int error;
 	char *error_str;
+
+	xmmsc_connection_t *conn;
+	void *udata;
+	xmmsc_service_notifier_t func;
+	xmmsc_user_data_free_func_t free_func;
 };
 
 xmmsc_result_t *xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type, uint32_t cookie);
