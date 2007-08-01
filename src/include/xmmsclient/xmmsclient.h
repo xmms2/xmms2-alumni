@@ -374,9 +374,6 @@ int xmmsc_result_get_int (xmmsc_result_t *res, int32_t *r);
 int xmmsc_result_get_uint (xmmsc_result_t *res, uint32_t *r);
 int xmmsc_result_get_string (xmmsc_result_t *res, char **r);
 int xmmsc_result_get_collection (xmmsc_result_t *conn, xmmsc_coll_t **coll);
-int xmmsc_result_get_service (xmmsc_result_t *res,
-                              char **name, char **description,
-                              uint32_t *major, uint32_t *minor, uint32_t *count);
 int xmmsc_result_get_service_method (xmmsc_result_t *res, xmmsc_service_method_t **method);
 int xmmsc_result_get_service_method_arg_types (xmmsc_result_t *res, xmmsc_service_method_t *method);
 int xmmsc_result_get_service_cookie (xmmsc_result_t *res, uint32_t *cookie);

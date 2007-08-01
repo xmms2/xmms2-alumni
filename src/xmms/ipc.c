@@ -291,7 +291,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 		 * Have to register first, otherwise the return message might arrive
 		 * before the broadcast is even registered.
 		 */
-		if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER ||
+		if (cmdid == XMMS_IPC_CMD_SERVICE_METHOD_REGISTER ||
 		    cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
 			g_mutex_lock (client->lock);
 			client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
@@ -301,7 +301,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 		}
 		if (!xmms_service_handle (object, msg, cmdid, client->transport->fd,
 		                          &arg)) {
-			if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER ||
+			if (cmdid == XMMS_IPC_CMD_SERVICE_METHOD_REGISTER ||
 			    cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
 				g_mutex_lock (client->lock);
 				client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
