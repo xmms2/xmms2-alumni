@@ -783,46 +783,12 @@ xmmsc_result_get_collection (xmmsc_result_t *res, xmmsc_coll_t **c)
 }
 
 /**
- * Retrieve a service's information.
- *
- * The elements are owned by the result, and will be freed upon the destruction
- * of the result.
- *
- * @param res The #xmmsc_result_t returned by #xmmsc_service_list.
- * @param service The return service structure.
- * @return 1 for success, 0 otherwise.
- */
-int
-xmmsc_result_get_service (xmmsc_result_t *res, char **name, char **description,
-                          uint32_t *major, uint32_t *minor, uint32_t *count)
-{
-	x_return_val_if_fail (name, 0);
-	x_return_val_if_fail (description, 0);
-	x_return_val_if_fail (major, 0);
-	x_return_val_if_fail (minor, 0);
-	x_return_val_if_fail (count, 0);
-
-	if (!res || res->error != XMMS_ERROR_NONE) {
-		return 0;
-	}
-
-	if (!xmmsc_result_get_dict_entry_string (res, "name", name) ||
-	    !xmmsc_result_get_dict_entry_string (res, "description", description) ||
-	    !xmmsc_result_get_dict_entry_uint (res, "major_version", major) ||
-	    !xmmsc_result_get_dict_entry_uint (res, "minor_version", minor) ||
-	    !xmmsc_result_get_dict_entry_uint (res, "count", count))
-		return 0;
-
-	return 1;
-}
-
-/**
  * Retrieve a method's information.
  *
  * Caller is responsible for freeing the list and all the elements, or simply
  * call the helper function #xmmsc_service_method_free.
  *
- * @param res The #xmmsc_result_t returned by #xmmsc_service_method_list.
+ * @param res The #xmmsc_result_t returned by #xmmsc_service_method_describe.
  * @param method The return method structure.
  * @return 1 for success, 0 otherwise.
  */

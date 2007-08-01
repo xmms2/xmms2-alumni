@@ -1417,9 +1417,9 @@ arg_lookup (const void *arg, const void *name)
 {
 	if (strcasecmp (((const xmmsc_service_argument_t *)arg)->name,
 	                (const char *)name) == 0)
-		return 1;
+		return 0;
 
-	return 0;
+	return 1;
 }
 
 static void
