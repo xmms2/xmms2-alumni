@@ -33,17 +33,30 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
+#include <sys/time.h>
+#include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
-#include <sys/time.h>
+#include <sys/stat.h>
 
 #include "xmmspriv/xmms_visualisation.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmspriv/xmms_sample.h"
 #include "xmms/xmms_object.h"
+#include "xmmspriv/xmms_log.h"
 
 #include "xmmsc/xmmsc_visualisation.h"
+
+#ifdef _SEM_SEMUN_UNDEFINED
+	union semun {
+	   int              val;    /* Value for SETVAL */
+	   struct semid_ds *buf;    /* Buffer for IPC_STAT, IPC_SET */
+	   unsigned short  *array;  /* Array for GETALL, SETALL */
+	   struct seminfo  *__buf;  /* Buffer for IPC_INFO (Linux specific) */
+	};
+#endif
 
 /** @defgroup Visualisation Visualisation
   * @ingroup XMMSServer
@@ -71,6 +84,7 @@ typedef struct {
 
 struct xmms_visualisation_St {
 	xmms_object_t object;
+	xmms_output_t *output;
 
 	int32_t clientc;
 	xmms_vis_client_t **clientv;
@@ -78,14 +92,70 @@ struct xmms_visualisation_St {
 
 static xmms_visualisation_t *vis;
 
-static void xmms_visualisation_destroy (xmms_object_t *object);
-
 XMMS_CMD_DEFINE (query_version, xmms_visualisation_version, xmms_visualisation_t *, UINT32, NONE, NONE);
 XMMS_CMD_DEFINE (registercl, xmms_visualisation_register_client, xmms_visualisation_t *, INT32, NONE, NONE);
-XMMS_CMD_DEFINE3 (init_shm, xmms_visualisation_init_shm, xmms_visualisation_t *, NONE, INT32, INT32, INT32);
+XMMS_CMD_DEFINE (init_shm, xmms_visualisation_init_shm, xmms_visualisation_t *, INT32, INT32, INT32);
 XMMS_CMD_DEFINE3 (property_set, xmms_visualisation_property_set, xmms_visualisation_t *, INT32, INT32, STRING, STRING);
 XMMS_CMD_DEFINE (properties_set, xmms_visualisation_properties_set, xmms_visualisation_t *, INT32, INT32, STRINGLIST);
-XMMS_CMD_DEFINE (shutdown, xmms_visualisation_shutdown, xmms_visualisation_t *, NONE, INT32, NONE);
+XMMS_CMD_DEFINE (shutdown, xmms_visualisation_shutdown_client, xmms_visualisation_t *, NONE, INT32, NONE);
+
+
+int32_t
+create_client() {
+	int32_t id;
+	for (id = 0; id < vis->clientc; ++id) {
+		if (!vis->clientv[id]) {
+			break;
+		}
+	}
+
+	if (id == vis->clientc) {
+		vis->clientc++;
+	}
+
+	vis->clientv = g_renew (xmms_vis_client_t*, vis->clientv, vis->clientc);
+	if (!vis->clientv || (!(vis->clientv[id] = g_new (xmms_vis_client_t, 1)))) {
+		vis->clientc = 0;
+		return -1;
+	}
+
+	xmms_log_info ("Attaching visualisation client %d", id);
+	return id;
+}
+
+xmms_vis_client_t *
+get_client (int32_t id) {
+	if (id < 0 || id >= vis->clientc) {
+		return NULL;
+	}
+
+	return vis->clientv[id];
+}
+
+void
+delete_client (int32_t id) {
+	xmms_vis_client_t *c;
+
+	if (id < 0 || id >= vis->clientc) {
+		return;
+	}
+
+	c = vis->clientv[id];
+	if (c == NULL) {
+		return;
+	}
+
+	if (c->type == VIS_UNIXSHM) {
+		shmdt (c->transport.shm.buffer);
+		semctl (c->transport.shm.semid, 0, IPC_RMID, 0);
+	} else {
+		// TODO: UDP
+	}
+
+	g_free (c);
+	vis->clientv[id] = NULL;
+	xmms_log_info ("Removing visualisation client %d", id);
+}
 
 /**
  * Initialize the Vis module.
@@ -121,11 +191,19 @@ xmms_visualisation_init ()
 
 /**
  * Free all resoures used by visualisation module.
+ * TODO: Fill this in properly, unregister etc!
  */
 
-static void
+void
 xmms_visualisation_destroy (xmms_object_t *object)
 {
+	xmms_visualisation_t *vis = (xmms_visualisation_t *)object;
+
+	xmms_log_debug ("starting cleanup of %d vis clients", vis->clientc);
+	for (; vis->clientc > 0; --vis->clientc) {
+		delete_client (vis->clientc - 1);
+	}
+
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_VISUALISATION);
 }
 
@@ -139,44 +217,11 @@ xmms_visualisation_new ()
 	return vis;
 }
 
-int32_t
-create_client() {
-	int32_t id;
-	for (id = 0; id < vis->clientc; ++id) {
-		if (!vis->clientv[id]) {
-			break;
-		}
-	}
-
-	if (id == vis->clientc) {
-		vis->clientc++;
-	}
-
-	vis->clientv = g_renew (xmms_vis_client_t*, vis->clientv, vis->clientc);
-	if (!vis->clientv || (!(vis->clientv[id] = g_new (xmms_vis_client_t, 1)))) {
-		vis->clientc = 0;
-		return -1;
-	}
-
-	return id;
-}
-
-xmms_vis_client_t *
-get_client (int32_t id) {
-	if (id < 0 || id >= vis->clientc) {
-		return NULL;
-	}
-
-	return vis->clientv[id];
-}
-
 void
-delete_client (int32_t id) {
-	if (id < 0 || id >= vis->clientc) {
-		return;
-	}
-	g_free (vis->clientv[id]);
-	vis->clientv[id] = NULL;
+xmms_visualisation_register_output (xmms_output_t *output)
+{
+	xmms_visualisation_t *vis = xmms_visualisation_new();
+	vis->output = output;
 }
 
 uint32_t
@@ -276,43 +321,57 @@ xmms_visualisation_properties_set (xmms_visualisation_t *vis, int32_t id, GList*
 	return (++c->format);
 }
 
-void
-xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmid, int32_t semid, xmms_error_t *err)
+int32_t
+xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmid, xmms_error_t *err)
 {
+	struct shmid_ds shm_desc;
+	int32_t semid;
 	void *buffer;
+	int size;
 	xmms_vis_client_t *c = get_client(id);
+	union semun semopts;
 
-	x_check_client ();
+	x_check_client (-1);
 
 	/* test the shm */
 	buffer = shmat(shmid, NULL, 0);
 	if (buffer == (void*)-1) {
 		xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "couldn't attach to shared memory");
-		return;
+		return -1;
 	}
+	shmctl (shmid, IPC_STAT, &shm_desc);
+	size = shm_desc.shm_segsz / sizeof (xmmsc_vispacket_t);
+
+	/* setup the semaphore set */
+	semid = semget (IPC_PRIVATE, 2, S_IRWXU + S_IRWXG + S_IRWXO);
+	if (semid == -1) {
+		xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "couldn't create semaphore set");
+		return -1;
+	}
+	/* initially set semaphores - nothing to read, buffersize to write
+	   first semaphore is the server semaphore */
+	semopts.val = size;
+	semctl(semid, 0, SETVAL, semopts);
+	semopts.val = 0;
+	semctl(semid, 1, SETVAL, semopts);
 
 	/* set up client structure */
 	c->type = VIS_UNIXSHM;
 	c->transport.shm.semid = semid;
+	c->transport.shm.shmid = shmid;
 	c->transport.shm.buffer = buffer;
 	/* at the beginning, all slots are free */
-	c->transport.shm.size = semctl(semid, 0, GETVAL);
+	c->transport.shm.size = size;
 	c->transport.shm.pos = 0;
 
-	//printf("SIZE: %d\tT: %d\t S: %d\t TF: %lf \n", c->transport.shm.size, c->prop.type, c->prop.stereo, c->prop.timeframe);
+	//~ printf("SIZE: %d\tT: %d\t S: %d\t TF: %lf \n", c->transport.shm.size, c->prop.type, c->prop.stereo, c->prop.timeframe);
+	xmms_log_info ("Visualisation client %d initialised using Unix SHM", id);
+	return semid;
 }
 
 void
-xmms_visualisation_shutdown (xmms_visualisation_t *vis, int32_t id, xmms_error_t *err)
+xmms_visualisation_shutdown_client (xmms_visualisation_t *vis, int32_t id, xmms_error_t *err)
 {
-	xmms_vis_client_t *c = get_client (id);
-
-	x_check_client ();
-
-	if (c->type == VIS_UNIXSHM) {
-		shmdt (c->transport.shm.buffer);
-	}
-
 	delete_client (id);
 }
 
@@ -331,10 +390,16 @@ decrement_server (xmmsc_vis_unixshm_t *t) {
 		printf("DECR | %d, %d | pos %d\n", a, b, t->pos);
 	}*/
 
-	if (semop (t->semid, &op, 1) == -1) {
-		/* TODO: test if it really is EAGAIN */
-		perror("SKIP");
-		return FALSE;
+	while (semop (t->semid, &op, 1) == -1) {
+		switch (errno) {
+		case EINTR:
+			break;
+		case EAGAIN:
+			return FALSE;
+		default:
+			perror("Skipping visualisation package");
+			return FALSE;
+		}
 	}
 	return TRUE;
 }
@@ -361,15 +426,25 @@ increment_client (xmmsc_vis_unixshm_t *t) {
 
 /* TODO: sick in various ways */
 void
-xmms_visualisation_send_data (xmms_visualisation_t *unused, guint32 latency, short l, short r) {
+xmms_visualisation_send_data (xmms_visualisation_t *vis, short l, short r) {
 	int i;
 	xmmsc_vispacket_t *dest;
 	struct timeval time;
+	guint32 latency = xmms_output_latency (vis->output);
 
 	gettimeofday (&time, NULL);
 	for (i = 0; i < vis->clientc; ++i) {
 		if (vis->clientv[i] && vis->clientv[i]->type == VIS_UNIXSHM) {
+			struct shmid_ds shm_desc;
 			xmmsc_vis_unixshm_t *t = &vis->clientv[i]->transport.shm;
+
+			/* first check if the client is still there */
+			shmctl (t->shmid, IPC_STAT, &shm_desc);
+			if (shm_desc.shm_nattch == 1) {
+				delete_client(i);
+				break;
+			}
+
 			if (!decrement_server (t)) {
 				break;
 			}

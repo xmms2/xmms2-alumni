@@ -95,6 +95,7 @@ typedef enum {
 
 typedef struct {
 	int semid;
+	int shmid;
 	xmmsc_vispacket_t *buffer;
 	int pos, size;
 } xmmsc_vis_unixshm_t;

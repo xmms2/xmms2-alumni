@@ -38,10 +38,8 @@ guint32 xmms_output_playtime (xmms_output_t *output, xmms_error_t *err);
 
 /* returns the current latency: time left in ms until the data currently read
  *                              from the latest xform in the chain will actually be played
- * evil hack: this has to be done the "right way" later on!
- */
-xmms_output_t *evil;
-guint32 xmms_output_latency ();
+  */
+guint32 xmms_output_latency (xmms_output_t *output);
 
 gboolean xmms_output_plugin_switch (xmms_output_t *output, xmms_output_plugin_t *new_plugin);
 

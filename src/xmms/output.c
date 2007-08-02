@@ -29,6 +29,7 @@
 #include "xmmspriv/xmms_sample.h"
 #include "xmmspriv/xmms_medialib.h"
 #include "xmmspriv/xmms_outputplugin.h"
+#include "xmmspriv/xmms_visualisation.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_ipc.h"
 #include "xmms/xmms_object.h"
@@ -434,6 +435,8 @@ xmms_output_filler (void *arg)
 				continue;
 			}
 
+			xmms_visualisation_register_output (output);
+
 			arg = g_new0 (xmms_output_song_changed_arg_t, 1);
 			arg->output = output;
 			arg->chain = chain;
@@ -453,11 +456,6 @@ xmms_output_filler (void *arg)
 			continue;
 		}
 		g_mutex_unlock (output->filler_mutex);
-
-		/*
-		 * TODO: this is really evil..
-		 */
-		evil = output;
 
 		ret = xmms_xform_this_read (chain, buf, sizeof (buf), &err);
 
@@ -746,10 +744,8 @@ xmms_output_playtime (xmms_output_t *output, xmms_error_t *error)
  *                              from the latest xform in the chain will actually be played
  */
 guint32
-xmms_output_latency ()
+xmms_output_latency (xmms_output_t *output)
 {
-	xmms_output_t *output = evil;
-
 	guint ret = 0;
 	guint buffersize = 0;
 

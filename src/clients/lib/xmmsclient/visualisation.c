@@ -32,15 +32,6 @@
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsc_visualisation.h"
 
-#ifdef _SEM_SEMUN_UNDEFINED
-	union semun {
-	   int              val;    /* Value for SETVAL */
-	   struct semid_ds *buf;    /* Buffer for IPC_STAT, IPC_SET */
-	   unsigned short  *array;  /* Array for GETALL, SETALL */
-	   struct seminfo  *__buf;  /* Buffer for IPC_INFO (Linux specific) */
-	};
-#endif
-
 /**
  * @defgroup Visualisation Visualisation
  * @ingroup XMMSClient
@@ -122,9 +113,8 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 	xmms_ipc_msg_t *msg;
 	xmmsc_result_t *res;
 	xmmsc_visualisation_t *v;
-	union semun semopts;
 
-	int32_t shmid, semid;
+	int32_t shmid;
 
 	/* we can't transmit 64 bit int yet, but it could be that shmget() gives one */
 	x_api_error_if (sizeof(int) != sizeof(int32_t), "on yet unsupported 64 bit machine", NULL);
@@ -138,24 +128,15 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 	/* prepare unixshm + semaphores */
 	  /* following means everyone on the system could inject wrong vis data ;) */
 	shmid = shmget (IPC_PRIVATE, sizeof (xmmsc_vispacket_t) * XMMS_VISPACKET_SHMCOUNT, S_IRWXU + S_IRWXG + S_IRWXO);
-	semid = semget (IPC_PRIVATE, 2, S_IRWXU + S_IRWXG + S_IRWXO);
-	if (shmid == -1 || semid == -1) {
-		c->error = strdup("Couldn't create the shared memory and semaphore set!");
+	if (shmid == -1) {
+		c->error = strdup("Couldn't create the shared memory!");
 		return NULL;
 	}
-
-	/* initially set semaphores - nothing to read, buffersize to write
-	   first semaphore is the server semaphore */
-	semopts.val = XMMS_VISPACKET_SHMCOUNT;
-	semctl(semid, 0, SETVAL, semopts);
-	semopts.val = 0;
-	semctl(semid, 1, SETVAL, semopts);
 
 	/* send packet */
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_INIT_SHM);
 	xmms_ipc_msg_put_int32 (msg, v->id);
 	xmms_ipc_msg_put_int32 (msg, shmid);
-	xmms_ipc_msg_put_int32 (msg, semid);
 	res = xmmsc_send_msg (c, msg);
 
 	/* find out if it worked */
@@ -163,9 +144,9 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 	if (!xmmsc_result_iserror (res)) {
 		v->type = VIS_UNIXSHM;
 		v->transport.shm.buffer = shmat(shmid, NULL, SHM_RDONLY);
-		v->transport.shm.semid = semid;
 		v->transport.shm.size = XMMS_VISPACKET_SHMCOUNT;
 		v->transport.shm.pos = 0;
+		xmmsc_result_get_int (res, &v->transport.shm.semid);
 	} else {
 		/* try udp here */
 	}
@@ -236,7 +217,6 @@ xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int vv)
 	/* detach from shm, close socket.. */
 	if (v->type == VIS_UNIXSHM) {
 		shmdt(v->transport.shm.buffer);
-		semctl(v->transport.shm.semid, 0, IPC_RMID, 0);
 	}
 
 	free(v);
@@ -247,7 +227,7 @@ xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int vv)
 /**
  * Decrements the client's semaphor (to read the next available chunk)
  */
-void
+int
 decrement_client (xmmsc_vis_unixshm_t *t) {
 	/* alter semaphore 1 by -1, no flags */
 	struct sembuf op = { 1, -1, 0 };
@@ -258,10 +238,17 @@ decrement_client (xmmsc_vis_unixshm_t *t) {
 		printf("DECR | %d, %d | pos %d\n", a, b, t->pos);
 	}*/
 
-	if (semop (t->semid, &op, 1) == -1) {
-		/* TODO: restart after signals, etc. */
-		perror("");
+	while (semop (t->semid, &op, 1) == -1) {
+		switch (errno) {
+		case EINVAL:
+		case EIDRM:
+			return 0;
+		case EINTR:
+			break;
+		default: perror ("Unexpected semaphore problem");
+		}
 	}
+	return 1;
 }
 
 /**
@@ -280,7 +267,6 @@ increment_server (xmmsc_vis_unixshm_t *t) {
 
 	if (semop (t->semid, &op, 1) == -1) {
 		/* there should not occur any error */
-		perror("");
 	}
 }
 
@@ -289,12 +275,13 @@ increment_server (xmmsc_vis_unixshm_t *t) {
  */
 
 int
-xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data) {
+xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data, int drawtime, int blocking) {
 	xmmsc_visualisation_t *v;
 	xmmsc_vispacket_t *src;
 	struct timeval time;
 	struct timespec sleeptime;
 	int sec, usec;
+	int old;
 
 	x_check_conn (c, 0);
 	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", 0);
@@ -302,51 +289,66 @@ xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data) {
 	if (v->type == VIS_UNIXSHM) {
 		while (1) {
 			xmmsc_vis_unixshm_t *t = &v->transport.shm;
-			decrement_client (t);
-			gettimeofday (&time, NULL);
+			if (!blocking) {
+				/* test first */
+				int v = semctl(t->semid, 1, GETVAL, 0);
+				if (v == -1) {
+					return -1;
+				}
+				if (v == 0) {
+					return 1;
+				}
+			}
+			if (!decrement_client (t)) {
+				return -1;
+			}
 
 			src = &t->buffer[t->pos];
-			sec = (src->timestamp[0] - time.tv_sec);
-			usec = (src->timestamp[1] - time.tv_usec);
-			if (usec < 0) {
-				sec --;
-				usec = 1000000 + usec;
-			}
-			if (sec >= 0) {
-				/* nanosleep has a garantueed granularity of 10 ms. to not sleep too long, we
-				   sleep 10 ms less than intended */
-				if (usec < 10000) {
-					if (sec > 0) {
-						sec--;
-					}
-					usec = 1000000 + usec;
-				} else {
-					usec -= 10000;
-				}
 
-				sleeptime.tv_sec = sec;
-				sleeptime.tv_nsec = usec * 1000;
-				while (nanosleep (&sleeptime, &sleeptime) == -1) {
-					if (errno != EINTR) {
-						break;
-					}
-				};
+			if (drawtime >= 0) {
 				gettimeofday (&time, NULL);
+				sec = (src->timestamp[0] - time.tv_sec);
+				usec = (src->timestamp[1] - time.tv_usec);
+				if (usec < 0) {
+					sec --;
+					usec = 1000000 + usec;
+				}
+				if (sec >= 0) {
+					old = 0;
+					/* nanosleep has a garantueed granularity of 10 ms.
+					   to not sleep too long, we sleep 10 ms less than intended */
+					if (usec < (10000 + drawtime * 1000)) {
+						if (sec > 0) {
+							sec--;
+						}
+						usec = 1000000 + usec;
+					} else {
+						usec -= (10000 + drawtime * 1000);
+					}
 
+					sleeptime.tv_sec = sec;
+					sleeptime.tv_nsec = usec * 1000;
+					while (nanosleep (&sleeptime, &sleeptime) == -1) {
+						if (errno != EINTR) {
+							break;
+						}
+					};
+				} else {
+					old = 1;
+				}
+			}
+			if (!old) {
 				/* TODO: make this usable ;-) */
 				memcpy (data, src->data, 2*sizeof(short));
-			} else {
-				/* TODO: Handle old chunks properly */
 			}
 			t->pos = (t->pos + 1) % t->size;
 			increment_server (t);
-			if (sec >= 0) {
-				break;
+			if (!old) {
+				return 0;
 			}
 		}
-		return 1;
 	} else {
-		return 0;
+		return -1;
 	}
 }
 

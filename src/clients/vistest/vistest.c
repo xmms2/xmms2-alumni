@@ -31,25 +31,9 @@
 #include <xmmsclient/xmmsclient.h>
 #include "xmmsclient/xmmsclient-glib.h"
 
+static GMainLoop *mainloop;
 static xmmsc_connection_t *connection;
 static int vis;
-
-void
-quit (void *data)
-{
-	xmmsc_visualisation_shutdown (connection, vis);
-	puts ("\nbye cruel world!");
-	exit (EXIT_SUCCESS);
-}
-
-void
-quit2 (int sig)
-{
-	xmmsc_visualisation_shutdown (connection, vis);
-	puts("");
-	exit (EXIT_SUCCESS);
-}
-
 
 static char* config[] = {
 	"type", "pcm",
@@ -60,28 +44,80 @@ static char* config[] = {
 };
 
 short data[2];
+char buf[38+38];
+int i, w;
+
+void draw () {
+	w = (int)(((double)data[0] / (double)SHRT_MAX) * 36.0);
+	for (i = 0; i < 36 - w; ++i) {
+		switch (buf[i]) {
+			case '#':
+				buf[i] = '*';
+				break;
+			case '*':
+				buf[i] = '+';
+				break;
+			case '+':
+				buf[i] = '-';
+				break;
+			default:
+				buf[i] = ' ';
+		}
+	}
+	for (i = 36 - w; i < 36; ++i)
+		buf[i] = '#';
+
+	buf[36] = buf[37] = ' ';
+
+	w = 38 + (int)(((double)data[0] / (double)SHRT_MAX) * 36.0);
+	for (i = 38; i < w; ++i)
+		buf[i] = '#';
+	for (i = w; i < 38+38; ++i) {
+		switch (buf[i]) {
+			case '#':
+				buf[i] = '*';
+				break;
+			case '*':
+				buf[i] = '+';
+				break;
+			case '+':
+				buf[i] = '-';
+				break;
+			default:
+				buf[i] = ' ';
+		}
+	}
+	fputs(buf, stdout);
+	putchar('\r');
+	fflush(stdout);
+	return 1;
+}
+
+gboolean draw_gtk (gpointer stuff)
+{
+	int ret = xmmsc_visualisation_chunk_get (connection, vis, &data, 0, 0);
+	if (ret == 0) {
+		draw ();
+	}
+	return (ret >= 0);
+}
+
+void shutdown_gtk (gpointer stuff)
+{
+	g_main_loop_quit (mainloop);
+}
 
 int
 main (int argc, char **argv)
 {
-	gchar *path;
-
+	gchar *path = getenv ("XMMS_PATH");
 	connection = xmmsc_init ("XMMS2-VISTEST");
 
-	if(!connection){
-		printf ("bad\n");
-		return 1;
-	}
-
-	path = getenv ("XMMS_PATH");
-	if (!xmmsc_connect (connection, path)){
+	if (!connection || !xmmsc_connect (connection, path)){
 		printf ("couldn't connect to xmms2d: %s\n",
 			xmmsc_get_last_error(connection));
 		return 1;
 	}
-
-	xmmsc_disconnect_callback_set (connection, quit, NULL);
-	signal(SIGINT, quit2);
 
 	uint32_t version;
 	xmmsc_result_t *res = xmmsc_visualisation_version (connection);
@@ -106,7 +142,7 @@ main (int argc, char **argv)
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {
 		puts (xmmsc_result_get_error (res));
-		exit(EXIT_FAILURE);
+		exit (EXIT_FAILURE);
 	}
 	xmmsc_result_unref (res);
 
@@ -114,61 +150,22 @@ main (int argc, char **argv)
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {
 		puts (xmmsc_result_get_error (res));
-		exit(EXIT_FAILURE);
+		exit (EXIT_FAILURE);
 	}
 	xmmsc_result_unref (res);
 
-//	xmmsc_mainloop_gmain_init (connection);
-//	g_main_loop_run (mainloop);
+	/* using GTK mainloop */
+	mainloop = g_main_loop_new (NULL, FALSE);
+	xmmsc_mainloop_gmain_init (connection);
+	g_timeout_add_full (G_PRIORITY_DEFAULT, 20, draw_gtk, NULL, shutdown_gtk);
+	g_main_loop_run (mainloop);
 
-	char buf[38+38];
-	int i, w;
-	while (xmmsc_visualisation_chunk_get (connection, vis, &data)) {
-		w = (int)(((double)data[0] / (double)SHRT_MAX) * 36.0);
-		for (i = 0; i < 36 - w; ++i) {
-			switch (buf[i]) {
-				case '#':
-					buf[i] = '*';
-					break;
-				case '*':
-					buf[i] = '+';
-					break;
-				case '+':
-					buf[i] = '-';
-					break;
-				default:
-					buf[i] = ' ';
-			}
-		}
-		for (i = 36 - w; i < 36; ++i)
-			buf[i] = '#';
-
-		buf[36] = buf[37] = ' ';
-
-		w = 38 + (int)(((double)data[0] / (double)SHRT_MAX) * 36.0);
-		for (i = 38; i < w; ++i)
-			buf[i] = '#';
-		for (i = w; i < 38+38; ++i) {
-			switch (buf[i]) {
-				case '#':
-					buf[i] = '*';
-					break;
-				case '*':
-					buf[i] = '+';
-					break;
-				case '+':
-					buf[i] = '-';
-					break;
-				default:
-					buf[i] = ' ';
-			}
-		}
-		fputs(buf, stdout);
-		putchar('\r');
-		fflush(stdout);
+	/* not using GTK mainloop */
+	while (xmmsc_visualisation_chunk_get (connection, vis, &data, 0, 1) > -1) {
+		draw ();
 	}
-	puts ("");
 
+	putchar ('\n');
 	res = xmmsc_visualisation_shutdown (connection, vis);
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {

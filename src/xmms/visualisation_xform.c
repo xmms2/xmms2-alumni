@@ -76,6 +76,8 @@ xmms_vis_init (xmms_xform_t *xform)
 
 	xmms_xform_outdata_type_copy (xform);
 
+	xmms_xform_private_data_set (xform, xmms_visualisation_new ());
+
 	XMMS_DBG ("Visualisation hook initialized successfully!");
 
 	return TRUE;
@@ -91,9 +93,13 @@ static gint
 xmms_vis_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
               xmms_error_t *error)
 {
+	xmms_visualisation_t *vis;
 	gint read, chan;
 
 	g_return_val_if_fail (xform, -1);
+
+	vis = xmms_xform_private_data_get (xform);
+	g_return_val_if_fail (vis, -1);
 
 	read = xmms_xform_read (xform, buf, len, error);
 	chan = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
@@ -109,7 +115,7 @@ xmms_vis_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 			if (b[i+1] > r)
 				r = b[i+1];
 		}
-		xmms_visualisation_send_data (NULL, xmms_output_latency(), l, r);
+		xmms_visualisation_send_data (vis, l, r);
 	}
 
 	return read;
