@@ -20,7 +20,7 @@ def build(bld):
                  xqueue.c
                  visualisation.c""".split()
     obj.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes'
-    obj.uselib = 'socket'
+    obj.uselib = 'socket m'
     obj.vnum = '3.0.0'
     tool.add_install_flag(bld, obj)
 
