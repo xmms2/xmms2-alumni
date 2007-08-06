@@ -1139,6 +1139,23 @@ xmmsc_service_method_ret_remove (xmmsc_service_method_t *method, const char *key
 }
 
 /**
+ * Get error message.
+ *
+ * @param method The method which contains the error message.
+ * @return The error message.
+ */
+const char *
+xmmsc_service_method_error_get (xmmsc_service_methot_t *method)
+{
+	x_return_val_if_fail (method, 0);
+
+	if (method->error && method->error_str)
+		return method->error_str;
+
+	return NULL;
+}
+
+/**
  * Set an error message.
  *
  * @param method The method which you want to set the error message to.
