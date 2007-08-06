@@ -21,13 +21,18 @@
 
 #define TIMEOUT 30 * 1000		/* In milliseconds */
 
-void cb_uninstall (xmmsc_result_t *res, void *data);
-void cb_change_argv (xmmsc_result_t *res, void *data);
-void cb_launch (xmmsc_result_t *res, void *data);
-void cb_shutdown (xmmsc_result_t *res, void *data);
-void cb_toggle_autostart (xmmsc_result_t *res, void *data);
+void cb_uninstall (xmmsc_connection_t *conn, xmmsc_result_t *res,
+                   xmmsc_service_method_t *method, void *data);
+void cb_change_argv (xmmsc_connection_t *conn, xmmsc_result_t *res,
+                     xmmsc_service_method_t *method, void *data);
+void cb_launch (xmmsc_connection_t *conn, xmmsc_result_t *res,
+                xmmsc_service_method_t *method, void *data);
+void cb_shutdown (xmmsc_connection_t *conn, xmmsc_result_t *res,
+                  xmmsc_service_method_t *method, void *data);
+void cb_toggle_autostart (xmmsc_connection_t *conn, xmmsc_result_t *res,
+                          xmmsc_service_method_t *method, void *data);
 
 gboolean launch_all (void);
-gboolean shutdown_all (void);
+gboolean shutdown_all (xmmsc_connection_t *conn);
 
 #endif

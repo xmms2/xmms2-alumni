@@ -76,7 +76,7 @@ force_shutdown (gpointer data)
  * Shutdown a single service client.
  */
 static gboolean
-shutdown_single (gchar *client)
+shutdown_single (xmmsc_connection_t *conn, gchar *client)
 {
 	xmmsc_result_t *result;
 	config_t *config;
@@ -118,119 +118,151 @@ shutdown_single (gchar *client)
  * Remove the corresponding config file.
  */
 void
-cb_uninstall (xmmsc_result_t *res, void *data)
+cb_uninstall (xmmsc_connection_t *conn, xmmsc_result_t *res,
+              xmmsc_service_method_t *method, void *data)
 {
 	config_t *config;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret = data;
-	uint32_t retval = 1;
 
-	if ((config = lookup_client (res, &name, ret))) {
-		if (config->pid && !shutdown_single (name))
-			xmmsc_service_error_set (ret, "Failed to shutdown service client.");
-		else if (!remove_config (name))
-			xmmsc_service_error_set (ret, "Failed to uninstall service client.");
-
-		xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
+	if (xmmsc_result_iserror (res)) {
+		print_error ("Error entering cb_uninstall: %s",
+		             xmmsc_result_get_error (res));
+		return;
 	}
 
-	return_and_reset (res, ret);
+	if ((config = lookup_client (res, &name, method))) {
+		if (config->pid && !shutdown_single (conn, name))
+			xmmsc_service_method_error_set (method, "Failed to shutdown service"
+			                                " client.");
+		else if (!remove_config (name))
+			xmmsc_service_method_error_set (method, "Failed to uninstall service"
+			                                " client.");
+
+		xmmsc_service_method_ret_add_uint32 (method, ARG_RET, 1);
+	}
+
+	method_return (conn, res, method);
 }
 
 /**
  * Change startup argument passed to the service client.
  */
 void
-cb_change_argv (xmmsc_result_t *res, void *data)
+cb_change_argv (xmmsc_connection_t *conn, xmmsc_result_t *res,
+                xmmsc_service_method_t *method, void *data)
 {
 	config_t *config;
 	gchar *name = NULL;
 	gchar *new_argv = NULL;
-	xmmsc_service_arg_list_t *ret = data;
-	uint32_t retval = 1;
 
-	if ((config = lookup_client (res, &name, ret))) {
+	if (xmmsc_result_iserror (res)) {
+		print_error ("Error entering cb_change_argv: %s",
+		             xmmsc_result_get_error (res));
+		return;
+	}
+
+	if ((config = lookup_client (res, &name, method))) {
 		if (!xmmsc_result_get_dict_entry_string (res, ARG_ARGV, &new_argv))
-			xmmsc_service_error_set (ret, "New startup arguments not given.");
+			xmmsc_service_method_error_set (method,
+			                                "New startup arguments not given.");
 		else {
 			if (config->argv)
 				g_free (config->argv);
 			config->argv = g_strdup (new_argv);
 
-			xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
+			xmmsc_service_method_ret_add_uint32 (method, ARG_RET, 1);
 		}
 	}
 
-	return_and_reset (res, ret);
+	method_return (conn, res, method);
 }
 
 /**
  * Start a service client.
  */
 void
-cb_launch (xmmsc_result_t *res, void *data)
+cb_launch (xmmsc_connection_t *conn, xmmsc_result_t *res,
+           xmmsc_service_method_t *method, void *data)
 {
 	config_t *config;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret = data;
-	uint32_t retval = 1;
 
-	if ((config = lookup_client (res, &name, ret))) {
-		if (config->pid)
-			xmmsc_service_error_set (ret, "Service client is already running.");
-		else if (!launch_single (config))
-			xmmsc_service_error_set (ret, "Failed to launch service client.");
-
-		xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
+	if (xmmsc_result_iserror (res)) {
+		print_error ("Error entering cb_launch: %s",
+		             xmmsc_result_get_error (res));
+		return;
 	}
 
-	return_and_reset (res, ret);
+	if ((config = lookup_client (res, &name, method))) {
+		if (config->pid)
+			xmmsc_service_method_error_set (method, "Service client is already"
+			                                " running.");
+		else if (!launch_single (config))
+			xmmsc_service_method_error_set (method,
+			                                "Failed to launch service client.");
+
+		xmmsc_service_method_ret_add_uint32 (method, ARG_RET, 1);
+	}
+
+	method_return (conn, res, method);
 }
 
 /**
  * Shutdown a service client.
  */
 void
-cb_shutdown (xmmsc_result_t *res, void *data)
+cb_shutdown (xmmsc_connection_t *conn, xmmsc_result_t *res,
+             xmmsc_service_method_t *method, void *data)
 {
 	config_t *config;
 	gchar *name = NULL;
-	xmmsc_service_arg_list_t *ret = data;
-	uint32_t retval = 1;
 
-	if ((config = lookup_client (res, &name, ret))) {
-		if (config->pid && !shutdown_single (name))
-			xmmsc_service_error_set (ret, "Failed to shutdown service client.");
-
-		xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
+	if (xmmsc_result_iserror (res)) {
+		print_error ("Error entering cb_shutdown: %s",
+		             xmmsc_result_get_error (res));
+		return;
 	}
 
-	return_and_reset (res, ret);
+	if ((config = lookup_client (res, &name, method))) {
+		if (config->pid && !shutdown_single (conn, name))
+			xmmsc_service_method_error_set (method, "Failed to shutdown service"
+			                                " client.");
+
+		xmmsc_service_method_ret_add_uint32 (method, ARG_RET, 1);
+	}
+
+	method_return (conn, res, method);
 }
 
 /**
  * Toggle a service client's autostart.
  */
 void
-cb_toggle_autostart (xmmsc_result_t *res, void *data)
+cb_toggle_autostart (xmmsc_connection_t *conn, xmmsc_result_t *res,
+                     xmmsc_service_method_t *method, void *data)
 {
 	config_t *config;
 	gchar *name = NULL;
 	guint new_auto;
-	xmmsc_service_arg_list_t *ret = data;
-	uint32_t retval = 1;
 
-	if ((config = lookup_client (res, &name, ret))) {
+	if (xmmsc_result_iserror (res)) {
+		print_error ("Error entering cb_toggle_autostart: %s",
+		             xmmsc_result_get_error (res));
+		return;
+	}
+
+	if ((config = lookup_client (res, &name, method))) {
 		if (!xmmsc_result_get_dict_entry_uint (res, ARG_AUTO, &new_auto))
-			xmmsc_service_error_set (ret, "New autostart value not given.");
+			xmmsc_service_method_error_set (method,
+			                                "New autostart value not given.");
 		else {
 			config->autostart = new_auto;
 
-			xmmsc_service_arg_value_set (ret, ARG_RET, &retval);
+			xmmsc_service_method_ret_add_uint32 (method, ARG_RET, 1);
 		}
 	}
 
-	return_and_reset (res, ret);
+	method_return (conn, res, method);
 }
 
 /**
@@ -257,7 +289,7 @@ launch_all (void)
  * Shutdown all service clients.
  */
 gboolean
-shutdown_all (void)
+shutdown_all (xmmsc_connection_t *conn)
 {
 	GList *list = NULL;
 	GList *n;
@@ -265,7 +297,7 @@ shutdown_all (void)
 	g_hash_table_foreach (clients, match_pid, &list);
 
 	for (n = list; n; n = g_list_next (n)) {
-		if (!shutdown_single ((gchar *)n->data))
+		if (!shutdown_single (conn, (gchar *)n->data))
 			return FALSE;
 	}
 
