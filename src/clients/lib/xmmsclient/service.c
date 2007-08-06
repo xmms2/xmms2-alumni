@@ -39,8 +39,9 @@
  * @{
  */
 
-static int arg_attribute_get (xmmsc_service_argument_t *arg, const char *key,
-                              void *value);
+static int arg_attribute_get (xmmsc_service_argument_t *arg,
+                              xmmsc_service_arg_type_t *type, uint32_t *optional,
+                              uint32_t *none);
 static void arg_reset (xmmsc_service_method_t *method);
 static void ret_reset (xmmsc_service_method_t *method);
 /* static int arg_value_get (xmmsc_service_argument_t *arg, void *value); */
@@ -524,30 +525,22 @@ xmmsc_service_method_free (xmmsc_service_method_t *method)
  * The returned value is owned by the method.
  *
  * @param method The method containing the attribute.
- * @param key The name of the attribute.
- * @param value Pointer to the place where the value should be stored to.
+ * @param name The returned name of the method.
+ * @param description The returned description of the method.
  * @return 1 for success, 0 otherwise.
  */
 int
 xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
-                                    const char *key, void *value)
+                                    char **name, char **description)
 {
 	x_return_val_if_fail (method, 0);
-	x_return_val_if_fail (key, 0);
-	x_return_val_if_fail (value, 0);
 
-	if (strcasecmp (key, "name") == 0 && method->name)
-		*(char **)value = method->name;
-	else if (strcasecmp (key, "description") == 0 && method->description)
-		*(char **)value = method->description;
-	else if (strcasecmp (key, "num_rets") == 0)
-		return xmmsc_service_method_ret_size (method, (uint32_t *)value);
-	else if (strcasecmp (key, "num_args") == 0)
-		return xmmsc_service_method_arg_size (method, (uint32_t *)value);
-	else
-		return 0;
+	if (name && method->name)
+		*name = method->name;
+	if (description && method->description)
+		*description = method->description;
 
-	return 1;
+	return !name && !description ? 0 : 1;
 }
 
 /**
@@ -989,28 +982,28 @@ xmmsc_service_method_ret_size (xmmsc_service_method_t *method, uint32_t *size)
  *
  * @param method The method which contains the argument list.
  * @param name The name of the argument.
- * @param key The name of the attribute.
- * @param value The new value.
+ * @param type The returned type of the argument.
+ * @param optional The returned optionality of the argument.
+ * @param none The returned value of the none field of the argument.
  * @return 1 for success, 0 otherwise.
  */
 int
 xmmsc_service_method_arg_attribute_get (xmmsc_service_method_t *method,
-                                        const char *name, const char *key,
-                                        void *value)
+                                        const char *name,
+                                        xmmsc_service_arg_type_t *type,
+                                        uint32_t *optional, uint32_t *none)
 {
 	x_list_t *item;
 	xmmsc_service_argument_t *arg;
 
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (name, 0);
-	x_return_val_if_fail (key, 0);
-	x_return_val_if_fail (value, 0);
 
 	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
 		return 0;
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	return arg_attribute_get (arg, key, value);
+	return arg_attribute_get (arg, type, optional, none);
 }
 
 /**
@@ -1018,28 +1011,28 @@ xmmsc_service_method_arg_attribute_get (xmmsc_service_method_t *method,
  *
  * @param method The method which contains the return value list.
  * @param name The name of the argument.
- * @param key The name of the attribute.
- * @param value The new value.
+ * @param type The returned type of the argument.
+ * @param optional The returned optionality of the argument.
+ * @param none The returned value of the none field of the argument.
  * @return 1 for success, 0 otherwise.
  */
 int
 xmmsc_service_method_ret_attribute_get (xmmsc_service_method_t *method,
-                                        const char *name, const char *key,
-                                        void *value)
+                                        const char *name,
+                                        xmmsc_service_arg_type_t *type,
+                                        uint32_t *optional, uint32_t *none)
 {
 	x_list_t *item;
 	xmmsc_service_argument_t *arg;
 
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (name, 0);
-	x_return_val_if_fail (key, 0);
-	x_return_val_if_fail (value, 0);
 
 	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
 		return 0;
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	return arg_attribute_get (arg, key, value);
+	return arg_attribute_get (arg, type, optional, none);
 }
 
 /* /\** */
@@ -1098,18 +1091,19 @@ xmmsc_service_method_ret_attribute_get (xmmsc_service_method_t *method,
  * Set an argument value to none.
  *
  * @param method The method which contains the argument.
- * @param key The name of the argument.
+ * @param name The name of the argument.
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_arg_remove (xmmsc_service_method_t *method, const char *key)
+xmmsc_service_method_arg_remove (xmmsc_service_method_t *method,
+                                 const char *name)
 {
 	x_list_t *item;
 
 	x_return_val_if_fail (method, 0);
-	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (name, 0);
 
-	if (!(item = x_list_find_custom (method->arg_list, key, arg_lookup)))
+	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
 		return 0;
 	((xmmsc_service_argument_t *)item->data)->none = 1;
 
@@ -1120,18 +1114,19 @@ xmmsc_service_method_arg_remove (xmmsc_service_method_t *method, const char *key
  * Set a return argument value to none.
  *
  * @param method The method which contains the return argument.
- * @param key The name of the argument.
+ * @param name The name of the argument.
  * @return 1 for success, 0 otherwise.
  */
 int
-xmmsc_service_method_ret_remove (xmmsc_service_method_t *method, const char *key)
+xmmsc_service_method_ret_remove (xmmsc_service_method_t *method,
+                                 const char *name)
 {
 	x_list_t *item;
 
 	x_return_val_if_fail (method, 0);
-	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (name, 0);
 
-	if (!(item = x_list_find_custom (method->ret_list, key, arg_lookup)))
+	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
 		return 0;
 	((xmmsc_service_argument_t *)item->data)->none = 1;
 
@@ -1145,7 +1140,7 @@ xmmsc_service_method_ret_remove (xmmsc_service_method_t *method, const char *key
  * @return The error message.
  */
 const char *
-xmmsc_service_method_error_get (xmmsc_service_methot_t *method)
+xmmsc_service_method_error_get (xmmsc_service_method_t *method)
 {
 	x_return_val_if_fail (method, 0);
 
@@ -1211,18 +1206,17 @@ xmmsc_service_method_error_isset (xmmsc_service_method_t *method)
  * @internal
  */
 static int
-arg_attribute_get (xmmsc_service_argument_t *arg, const char *key, void *value)
+arg_attribute_get (xmmsc_service_argument_t *arg, xmmsc_service_arg_type_t *type,
+                   uint32_t *optional, uint32_t *none)
 {
-	if (strcasecmp (key, "type") == 0)
-		*(xmmsc_service_arg_type_t *)value = arg->type;
-	else if (strcasecmp (key, "optional") == 0)
-		*(uint32_t *)value = arg->optional;
-	else if (strcasecmp (key, "none") == 0)
-		*(uint32_t *)value = arg->none;
-	else
-		return 0;
+	if (type)
+		*type = arg->type;
+	if (optional)
+		*optional = arg->optional;
+	if (none)
+		*none = arg->none;
 
-	return 1;
+	return !type && !optional && !none ? 0 : 1;
 }
 
 static void
