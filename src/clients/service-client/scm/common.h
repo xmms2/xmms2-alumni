@@ -56,23 +56,22 @@ typedef struct service_St {
 	GHashTable *methods;
 } service_t;
 
-xmmsc_connection_t *conn;
 GHashTable *clients;
 
 void print_info (const gchar *fmt, ...);
 void print_error (const gchar *fmt, ...);
-void print_error_and_exit (const gchar *fmt, ...);
+void print_error_and_exit (xmmsc_connection_t *conn, const gchar *fmt, ...);
 void print_method (gpointer k, gpointer v, gpointer d);
 void print_service (gpointer k, gpointer v, gpointer d);
 void print_config (gpointer k, gpointer v, gpointer d);
 
-void return_and_free (xmmsc_result_t *res, xmmsc_service_arg_list_t *ret);
-void return_and_reset (xmmsc_result_t *res, xmmsc_service_arg_list_t *ret);
+void method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
+                    xmmsc_service_method_t *method);
 config_t *lookup_client (xmmsc_result_t *res, gchar **name,
-                         xmmsc_service_arg_list_t *err);
+                         xmmsc_service_method_t *method);
 service_t *lookup_service (xmmsc_result_t *res, const config_t *config,
-                           gchar **name, xmmsc_service_arg_list_t *err);
+                           gchar **name, xmmsc_service_method_t *method);
 gchar *lookup_method (xmmsc_result_t *res, const service_t *service,
-                      gchar **name, xmmsc_service_arg_list_t *err);
+                      gchar **name, xmmsc_service_method_t *method);
 
 #endif
