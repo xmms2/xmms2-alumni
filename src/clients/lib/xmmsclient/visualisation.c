@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 
 #include <sys/time.h>
 #include <sys/types.h>
@@ -29,6 +30,7 @@
 #include "xmmsclient/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient.h"
 
+#include "xmmsc/xmmsc_ipc_transport.h"
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsc_visualisation.h"
 
@@ -104,6 +106,78 @@ xmmsc_visualisation_init (xmmsc_connection_t *c) {
 	return c->visc-1;
 }
 
+int
+setup_udp (xmmsc_visualisation_t *v, xmmsc_connection_t *c, int32_t port) {
+	int socknum;
+	struct addrinfo hints;
+	struct addrinfo *result, *rp;
+	int i, cnt;
+	double lag;
+	struct timeval time;
+	char buf[sizeof (int32_t) + 2 * sizeof (double)];
+	double *dbuf = (double*)(&buf[sizeof (int32_t)]);
+	double diff = 0.0;
+	int diffc = 0;
+	char *host;
+	char portstr[10];
+	sprintf (portstr, "%d", port);
+
+	memset (&hints, 0, sizeof (hints));
+	hints.ai_family	= AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = 0;
+	hints.ai_protocol = 0;
+
+	host = xmms_ipc_hostname (c->path);
+	if (!host) {
+		host = strdup ("localhost");
+	}
+
+	if (getaddrinfo (host, portstr, &hints, &result) != 0)
+	{
+		c->error = strdup("Couldn't setup socket!");
+		return 0;
+	}
+	free (host);
+
+	for (rp = result; rp != NULL; rp = rp->ai_next) {
+		if ((socknum = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol)) == -1) {
+			continue;
+		}
+		if (connect (socknum, rp->ai_addr, rp->ai_addrlen) != -1) {
+			break;
+		} else {
+			close (socknum);
+		}
+	}
+	if (rp == NULL) {
+		c->error = strdup("Could not connect!");
+		return 0;
+	}
+	freeaddrinfo (result);
+
+	gettimeofday (&time, NULL);
+	memcpy (&buf, &v->id, sizeof (v->id));
+	dbuf[0] = tv2d (&time);
+	for (i = 0; i < 10; ++i) {
+		send (socknum, buf, sizeof (buf) - sizeof (double), MSG_NOSIGNAL);
+	}
+	do { /* TODO: Handle lost packages! */
+		cnt = recv (socknum, buf, sizeof (buf), 0);
+		if (cnt == sizeof (buf)) {
+			gettimeofday (&time, NULL);
+			lag = (tv2d (&time) - dbuf[0]) / 2.0;
+			diffc++;
+			diff += dbuf[1] - lag;
+		}
+	} while (cnt > 0 && diffc < 10);
+	diff /= (double)diffc;
+//	printf("diff: %f\n", diff);
+	v->transport.udp.socket = socknum;
+	v->transport.udp.timediff = diff;
+	return 1;
+}
+
 /**
  * Initializes a new visualisation connection
  */
@@ -147,14 +221,34 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 		v->transport.shm.size = XMMS_VISPACKET_SHMCOUNT;
 		v->transport.shm.pos = 0;
 		xmmsc_result_get_int (res, &v->transport.shm.semid);
+		/* In either case, mark the shared memory segment to be destroyed.
+		   The segment will only actually be destroyed after the last process detaches it. */
+		shmctl(shmid, IPC_RMID, NULL);
 	} else {
+		/* see above */
+		shmctl(shmid, IPC_RMID, NULL);
+
 		/* try udp here */
+		/* send packet */
+		xmmsc_result_unref (res);
+		msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_INIT_UDP);
+		xmms_ipc_msg_put_int32 (msg, v->id);
+		res = xmmsc_send_msg (c, msg);
+		xmmsc_result_wait (res);
+		if (!xmmsc_result_iserror (res)) {
+			int port;
+			v->type = VIS_UDP;
+			xmmsc_result_get_int (res, &port);
+			if (!setup_udp (v, c, port)) {
+				// error occured
+				return NULL;
+			}
+		} else {
+			msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_SHUTDOWN);
+			xmms_ipc_msg_put_int32 (msg, v->id);
+			xmmsc_send_msg (c, msg);
+		}
 	}
-
-	/* In either case, mark the shared memory segment to be destroyed.
-	   The segment will only actually be destroyed after the last process detaches it. */
-	shmctl(shmid, IPC_RMID, NULL);
-
 	return res;
 }
 
@@ -216,7 +310,7 @@ xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int vv)
 
 	/* detach from shm, close socket.. */
 	if (v->type == VIS_UNIXSHM) {
-		shmdt(v->transport.shm.buffer);
+		shmdt (v->transport.shm.buffer);
 	}
 
 	free(v);
@@ -270,8 +364,67 @@ increment_server (xmmsc_vis_unixshm_t *t) {
 	}
 }
 
+int
+package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vispacket_t **dest) {
+	if (v->type == VIS_UNIXSHM) {
+		xmmsc_vis_unixshm_t *t = &v->transport.shm;
+		if (!blocking) {
+			/* test first */
+			int v = semctl(t->semid, 1, GETVAL, 0);
+			if (v == -1) {
+				return -1;
+			}
+			if (v == 0) {
+				return 1;
+			}
+		}
+		if (!decrement_client (t)) {
+			return -1;
+		}
+		*dest = &t->buffer[t->pos];
+		return 0;
+	}
+	if (v->type == VIS_UDP) {
+		int cnt;
+		xmmsc_vispacket_t *buf;
+		xmmsc_vis_udp_t *t = &v->transport.udp;
+		*dest = malloc (sizeof (xmmsc_vispacket_t));
+		buf = *dest;
+
+		if (blocking) {
+			cnt = recv (t->socket, buf, sizeof (xmmsc_vispacket_t), 0);
+		} else {
+			cnt = recv (t->socket, buf, sizeof (xmmsc_vispacket_t), MSG_DONTWAIT);
+			if (cnt == -1 && errno == EAGAIN) {
+				return 1;
+			}
+		}
+		/* TODO: make this usable */
+		if (cnt == sizeof (xmmsc_vispacket_t)) {
+			buf->timestamp += t->timediff;
+			return 0;
+		} else if (cnt > -1) {
+			return 1;
+		} else {
+			return -1;
+		}
+	}
+	return -1;
+}
+
+void
+package_read_finish (xmmsc_visualisation_t *v, int blocking, xmmsc_vispacket_t *dest) {
+	if (v->type == VIS_UNIXSHM) {
+		xmmsc_vis_unixshm_t *t = &v->transport.shm;
+		t->pos = (t->pos + 1) % t->size;
+		increment_server (t);
+	} else if (v->type == VIS_UDP) {
+		free (dest);
+	}
+}
+
 /**
- * Fetches the next available data chunk (blocking)
+ * Fetches the next available data chunk
  */
 
 int
@@ -279,76 +432,47 @@ xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data, int dr
 	xmmsc_visualisation_t *v;
 	xmmsc_vispacket_t *src;
 	struct timeval time;
+	double diff;
 	struct timespec sleeptime;
-	int sec, usec;
 	int old;
+	int ret;
 
 	x_check_conn (c, 0);
 	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", 0);
 
-	if (v->type == VIS_UNIXSHM) {
-		while (1) {
-			xmmsc_vis_unixshm_t *t = &v->transport.shm;
-			if (!blocking) {
-				/* test first */
-				int v = semctl(t->semid, 1, GETVAL, 0);
-				if (v == -1) {
-					return -1;
-				}
-				if (v == 0) {
-					return 1;
-				}
-			}
-			if (!decrement_client (t)) {
-				return -1;
-			}
+	while (1) {
+		ret = package_read_start (v, blocking, &src);
+		if (ret != 0) {
+			return ret;
+		}
 
-			src = &t->buffer[t->pos];
-
-			if (drawtime >= 0) {
-				gettimeofday (&time, NULL);
-				sec = (src->timestamp[0] - time.tv_sec);
-				usec = (src->timestamp[1] - time.tv_usec);
-				if (usec < 0) {
-					sec --;
-					usec = 1000000 + usec;
-				}
-				if (sec >= 0) {
-					old = 0;
-					/* nanosleep has a garantueed granularity of 10 ms.
-					   to not sleep too long, we sleep 10 ms less than intended */
-					if (usec < (10000 + drawtime * 1000)) {
-						if (sec > 0) {
-							sec--;
-						}
-						usec = 1000000 + usec;
-					} else {
-						usec -= (10000 + drawtime * 1000);
+		if (drawtime >= 0) {
+			gettimeofday (&time, NULL);
+			diff = src->timestamp - tv2d (&time);
+			if (diff >= 0) {
+				old = 0;
+				/* nanosleep has a garantueed granularity of 10 ms.
+				   to not sleep too long, we sleep 10 ms less than intended */
+				diff -= (drawtime + 10) * 0.001;
+				sleeptime.tv_sec = diff;
+				sleeptime.tv_nsec = fmod (diff, 1.0) * 1000000000;
+				while (nanosleep (&sleeptime, &sleeptime) == -1) {
+					if (errno != EINTR) {
+						break;
 					}
-
-					sleeptime.tv_sec = sec;
-					sleeptime.tv_nsec = usec * 1000;
-					while (nanosleep (&sleeptime, &sleeptime) == -1) {
-						if (errno != EINTR) {
-							break;
-						}
-					};
-				} else {
-					old = 1;
-				}
-			}
-			if (!old) {
-				/* TODO: make this usable ;-) */
-				memcpy (data, src->data, 2*sizeof(short));
-			}
-			t->pos = (t->pos + 1) % t->size;
-			increment_server (t);
-			if (!old) {
-				return 0;
+				};
+			} else {
+				old = 1;
 			}
 		}
-	} else {
-		return -1;
+		if (!old) {
+			/* TODO: make this usable ;-) */
+			memcpy (data, src->data, 2*sizeof(short));
+		}
+		package_read_finish (v, blocking, src);
+		if (!old) {
+			return 0;
+		}
 	}
 }
 

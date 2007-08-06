@@ -41,6 +41,12 @@
 #include <sys/sem.h>
 #include <sys/stat.h>
 
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "xmmspriv/xmms_visualisation.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmspriv/xmms_sample.h"
@@ -85,16 +91,20 @@ typedef struct {
 struct xmms_visualisation_St {
 	xmms_object_t object;
 	xmms_output_t *output;
+	int socket;
+	GIOChannel* socketio;
 
 	int32_t clientc;
 	xmms_vis_client_t **clientv;
 };
 
+/* TODO: handle singleton state properly */
 static xmms_visualisation_t *vis;
 
 XMMS_CMD_DEFINE (query_version, xmms_visualisation_version, xmms_visualisation_t *, UINT32, NONE, NONE);
 XMMS_CMD_DEFINE (registercl, xmms_visualisation_register_client, xmms_visualisation_t *, INT32, NONE, NONE);
 XMMS_CMD_DEFINE (init_shm, xmms_visualisation_init_shm, xmms_visualisation_t *, INT32, INT32, INT32);
+XMMS_CMD_DEFINE (init_udp, xmms_visualisation_init_udp, xmms_visualisation_t *, INT32, INT32, NONE);
 XMMS_CMD_DEFINE3 (property_set, xmms_visualisation_property_set, xmms_visualisation_t *, INT32, INT32, STRING, STRING);
 XMMS_CMD_DEFINE (properties_set, xmms_visualisation_properties_set, xmms_visualisation_t *, INT32, INT32, STRINGLIST);
 XMMS_CMD_DEFINE (shutdown, xmms_visualisation_shutdown_client, xmms_visualisation_t *, NONE, INT32, NONE);
@@ -177,6 +187,9 @@ xmms_visualisation_init ()
 					 XMMS_IPC_CMD_VISUALISATION_INIT_SHM,
 					 XMMS_CMD_FUNC (init_shm));
 	xmms_object_cmd_add (XMMS_OBJECT (vis),
+					 XMMS_IPC_CMD_VISUALISATION_INIT_UDP,
+					 XMMS_CMD_FUNC (init_udp));
+	xmms_object_cmd_add (XMMS_OBJECT (vis),
 					 XMMS_IPC_CMD_VISUALISATION_PROPERTY,
 					 XMMS_CMD_FUNC (property_set));
 	xmms_object_cmd_add (XMMS_OBJECT (vis),
@@ -185,6 +198,8 @@ xmms_visualisation_init ()
 	xmms_object_cmd_add (XMMS_OBJECT (vis),
 					 XMMS_IPC_CMD_VISUALISATION_SHUTDOWN,
 					 XMMS_CMD_FUNC (shutdown));
+
+	vis->socket = -1;
 
 	//xmms_plugin_load (&xmms_builtin_visualisation, NULL);
 }
@@ -204,6 +219,11 @@ xmms_visualisation_destroy (xmms_object_t *object)
 		delete_client (vis->clientc - 1);
 	}
 
+	if (vis->socket != -1) {
+		// it seems there is no way to remove the watch?
+		g_io_channel_shutdown (vis->socketio, FALSE, NULL);
+		close (vis->socket);
+	}
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_VISUALISATION);
 }
 
@@ -333,6 +353,11 @@ xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmi
 
 	x_check_client (-1);
 
+	/* MR. DEBUG */
+	//	xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "lame, more lame, shm!");
+	//	return -1;
+
+
 	/* test the shm */
 	buffer = shmat(shmid, NULL, 0);
 	if (buffer == (void*)-1) {
@@ -367,6 +392,102 @@ xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmi
 	//~ printf("SIZE: %d\tT: %d\t S: %d\t TF: %lf \n", c->transport.shm.size, c->prop.type, c->prop.stereo, c->prop.timeframe);
 	xmms_log_info ("Visualisation client %d initialised using Unix SHM", id);
 	return semid;
+}
+
+gboolean
+udpwatcher (GIOChannel *src, GIOCondition cond, xmms_visualisation_t *vis)
+{
+	struct sockaddr_in6 from;
+	socklen_t sl = sizeof (from);
+	char adrb[INET6_ADDRSTRLEN];
+	char buf[sizeof (int32_t) + 2 * sizeof (double)];
+
+	if (recvfrom (vis->socket, buf, sizeof (buf), 0, (struct sockaddr *)&from, &sl) == (sizeof (buf) - sizeof (double))) {
+		struct timeval time;
+		int32_t id = *(int*)buf;
+		double *dbuf = (double*)(&buf[sizeof (int32_t)]);
+		xmms_vis_client_t *c = get_client(id);
+
+		if (!c || c->type != VIS_UDP) {
+			return TRUE;
+		}
+
+		/* save client address according to id */
+//		printf ("Sender: %s:%d, %d\n", inet_ntop(AF_INET6, &from.sin6_addr, adrb, INET6_ADDRSTRLEN), from.sin6_port, id);
+		memcpy (&c->transport.udp.addr, &from, sizeof (from));
+		c->transport.udp.socket = 1;
+
+		/* give pong */
+		gettimeofday (&time, NULL);
+		dbuf[1] = dbuf[0] - tv2d (&time);
+		sendto (vis->socket, buf, sizeof (buf), MSG_NOSIGNAL, (struct sockaddr *)&from, sl);
+	} else {
+		xmms_log_error ("Received invalid UDP package from %s:%d", inet_ntop(AF_INET6, &from.sin6_addr, adrb, INET6_ADDRSTRLEN), from.sin6_port);
+	}
+	return TRUE;
+}
+
+int32_t
+xmms_visualisation_init_udp (xmms_visualisation_t *vis, int32_t id, xmms_error_t *err)
+{
+	// TODO: we need the currently used port, not only the default one! */
+	int32_t port = XMMS_DEFAULT_TCP_PORT;
+	xmms_vis_client_t *c = get_client(id);
+
+	x_check_client (-1);
+
+	// setup socket if needed
+	if (vis->socket == -1) {
+		struct addrinfo hints;
+		struct addrinfo *result, *rp;
+		int s;
+
+		memset (&hints, 0, sizeof (hints));
+		hints.ai_family	= AF_UNSPEC;
+		hints.ai_socktype = SOCK_DGRAM;
+		hints.ai_flags = AI_PASSIVE;
+		hints.ai_protocol = 0;
+
+		if ((s = getaddrinfo (NULL, G_STRINGIFY (XMMS_DEFAULT_TCP_PORT), &hints, &result)) != 0)
+		{
+			xmms_log_fatal ("Could not setup socket! getaddrinfo: %s", gai_strerror (s));
+			xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "Could not setup socket!");
+			return -1;
+		}
+
+		for (rp = result; rp != NULL; rp = rp->ai_next) {
+			if ((vis->socket = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol)) == -1) {
+				continue;
+			}
+			if (bind (vis->socket, rp->ai_addr, rp->ai_addrlen) != -1) {
+				break;
+			} else {
+				close (vis->socket);
+			}
+		}
+		if (rp == NULL) {
+			xmms_log_fatal ("Could not bind socket!");
+			xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "Could not bind socket!");
+			freeaddrinfo (result);
+			return -1;
+		}
+		freeaddrinfo (result);
+
+		// register into mainloop:
+		vis->socketio = g_io_channel_unix_new (vis->socket);
+		g_io_channel_set_encoding (vis->socketio, NULL, NULL);
+		g_io_channel_set_buffered (vis->socketio, FALSE);
+		g_io_add_watch (vis->socketio, G_IO_IN, (GIOFunc) udpwatcher, vis);
+	}
+
+	/* set up client structure */
+	c->type = VIS_UDP;
+	memset (&c->transport.udp.addr, 0, sizeof (c->transport.udp.addr));
+	c->transport.udp.socket = 0;
+
+	xmms_log_info ("Visualisation client %d initialised using UDP", id);
+	// return socketport
+	return port;
 }
 
 void
@@ -424,6 +545,54 @@ increment_client (xmmsc_vis_unixshm_t *t) {
 	}
 }
 
+gboolean
+package_write_start (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vispacket_t **dest) {
+	if (c->type == VIS_UNIXSHM) {
+		struct shmid_ds shm_desc;
+		xmmsc_vis_unixshm_t *t = &c->transport.shm;
+
+		/* first check if the client is still there */
+		shmctl (t->shmid, IPC_STAT, &shm_desc);
+		if (shm_desc.shm_nattch == 1) {
+			delete_client(id);
+			return FALSE;
+		}
+
+		if (!decrement_server (t)) {
+			return FALSE;
+		}
+
+		*dest = &t->buffer[t->pos];
+		return TRUE;
+	}
+	if (c->type == VIS_UDP) {
+		/* first check if the client is still there -> grace! */
+		// TODO
+
+		if (c->transport.udp.socket == 0) {
+			return FALSE;
+		}
+		/* TODO: use size instead! */
+		*dest = g_new (xmmsc_vispacket_t, 1);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void
+package_write_finish (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vispacket_t *dest) {
+	if (c->type == VIS_UNIXSHM) {
+		xmmsc_vis_unixshm_t *t = &c->transport.shm;
+		t->pos = (t->pos + 1) % t->size;
+		increment_client (t);
+	}
+	if (c->type == VIS_UDP) {
+		socklen_t sl = sizeof (c->transport.udp.addr);
+		sendto (vis->socket, dest, sizeof (xmmsc_vispacket_t), MSG_NOSIGNAL, (struct sockaddr *)&c->transport.udp.addr, sl);
+		g_free (dest);
+	}
+}
+
 /* TODO: sick in various ways */
 void
 xmms_visualisation_send_data (xmms_visualisation_t *vis, short l, short r) {
@@ -434,25 +603,12 @@ xmms_visualisation_send_data (xmms_visualisation_t *vis, short l, short r) {
 
 	gettimeofday (&time, NULL);
 	for (i = 0; i < vis->clientc; ++i) {
-		if (vis->clientv[i] && vis->clientv[i]->type == VIS_UNIXSHM) {
-			struct shmid_ds shm_desc;
-			xmmsc_vis_unixshm_t *t = &vis->clientv[i]->transport.shm;
-
-			/* first check if the client is still there */
-			shmctl (t->shmid, IPC_STAT, &shm_desc);
-			if (shm_desc.shm_nattch == 1) {
-				delete_client(i);
-				break;
+		if (vis->clientv[i]) {
+			if (!package_write_start (i, vis->clientv[i], 4, &dest)) {
+				continue;
 			}
 
-			if (!decrement_server (t)) {
-				break;
-			}
-
-			dest = &t->buffer[t->pos];
-			dest->timestamp[1] = (guint32)(time.tv_usec + latency*1000);
-			dest->timestamp[0] = (guint32)(time.tv_sec + dest->timestamp[1] / 1000000);
-			dest->timestamp[1] %= 1000000;
+			dest->timestamp = tv2d (&time) + latency * 0.001;
 			dest->format = vis->clientv[i]->format;
 
 			/* TODO: make this usable ;-) */
@@ -460,8 +616,7 @@ xmms_visualisation_send_data (xmms_visualisation_t *vis, short l, short r) {
 			data[0] = l;
 			data[1] = r;
 
-			t->pos = (t->pos + 1) % t->size;
-			increment_client (t);
+			package_write_finish (i, vis->clientv[i], 4, dest);
 		}
 	}
 }

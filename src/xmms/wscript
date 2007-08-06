@@ -83,6 +83,7 @@ def configure(conf):
     test.libs = ['m']
     test.mandatory = 1
     test.run()
+    conf.check_library2("m", uselib='m', mandatory=1)
 
     # Detect the type of stat call used
 

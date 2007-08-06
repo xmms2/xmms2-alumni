@@ -90,7 +90,6 @@ void draw () {
 	fputs(buf, stdout);
 	putchar('\r');
 	fflush(stdout);
-	return 1;
 }
 
 gboolean draw_gtk (gpointer stuff)

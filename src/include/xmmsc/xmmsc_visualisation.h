@@ -36,7 +36,7 @@ extern "C" {
 	* one package the server can operate on
 	* one packate the client can operate on
 	* to avoid needing to be in sync, one spare packet
-    * TODO: XXX packets to compensate the latency */
+    * XXX packets to compensate the latency (TODO: find a good value) */
 #define XMMS_VISPACKET_SHMCOUNT 300
 
 /**
@@ -44,7 +44,7 @@ extern "C" {
  */
 
 typedef struct {
-	uint32_t timestamp[2];
+	double timestamp;
 	uint16_t graceleft;
 	uint16_t format;
 	/* 512 is what libvisual wants for pcm data (could also be 256) */
@@ -105,9 +105,19 @@ typedef struct {
  */
 
 typedef struct {
-	// socket, etc.
+	// client, used by the server
+	struct sockaddr_in6 addr;
+	// file descriptor, used by the client
+	int socket;
+	// watch adjustment, used by the client
+	double timediff;
 } xmmsc_vis_udp_t;
 
+inline double
+tv2d (struct timeval *t)
+{
+	return t->tv_sec + t->tv_usec / 1000000.0;
+}
 
 #ifdef __cplusplus
 }
