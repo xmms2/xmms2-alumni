@@ -26,6 +26,9 @@
 extern "C" {
 #endif
 
+#include <sys/time.h>
+#include <sys/types.h>
+
 /* Note that features should only be added to the packet data, _not_
    removed. The packet's format should stay downwardly compatible.
    The client only tests if the server's version is equal or greater
@@ -36,7 +39,7 @@ extern "C" {
 	* one package the server can operate on
 	* one packate the client can operate on
 	* to avoid needing to be in sync, one spare packet
-    * TODO: XXX packets to compensate the latency */
+    * XXX packets to compensate the latency (TODO: find a good value) */
 #define XMMS_VISPACKET_SHMCOUNT 300
 
 /**
@@ -44,12 +47,33 @@ extern "C" {
  */
 
 typedef struct {
-	uint32_t timestamp[2];
-	uint16_t graceleft;
+	int32_t timestamp[2];
 	uint16_t format;
 	/* 512 is what libvisual wants for pcm data (could also be 256) */
 	char data[512*sizeof(uint16_t)*2];
-} xmmsc_vispacket_t;
+} xmmsc_vischunk_t;
+
+/**
+ * UDP package format to deliver a vis chunk
+ */
+
+typedef struct {
+	char type; /* = 'V' */;
+	uint16_t grace;
+	xmmsc_vischunk_t data;
+	/* DON'T put anything after data */
+} xmmsc_vis_udp_data_t;
+
+/**
+ * UDP package format to synchronize time
+ */
+
+typedef struct {
+	char type; /* = 'T' */
+	int32_t id;
+	int32_t clientstamp[2];
+	int32_t serverstamp[2];
+} xmmsc_vis_udp_timing_t;
 
 /**
  * Possible data modes
@@ -96,7 +120,7 @@ typedef enum {
 typedef struct {
 	int semid;
 	int shmid;
-	xmmsc_vispacket_t *buffer;
+	xmmsc_vischunk_t *buffer;
 	int pos, size;
 } xmmsc_vis_unixshm_t;
 
@@ -105,9 +129,43 @@ typedef struct {
  */
 
 typedef struct {
-	// socket, etc.
+	// client address, used by server
+	struct sockaddr_storage addr;
+	// file descriptors, used by the client
+	int socket[2];
+	// watch adjustment, used by the client
+	double timediff;
+	// grace value (lifetime of the client without pong)
+	int grace;
 } xmmsc_vis_udp_t;
 
+inline double
+ts2tv (struct timeval *t)
+{
+	return t->tv_sec + t->tv_usec / 1000000.0;
+}
+
+inline double
+net2tv (int32_t* s)
+{
+	return (int32_t)(ntohl (s[0])) + (int32_t)(ntohl (s[1])) / 1000000.0;
+}
+
+inline void
+tv2net (int32_t* d, double t)
+{
+	double s, u;
+	u = modf (t, &s);
+	d[0] = htonl ((int32_t)s);
+	d[1] = htonl ((int32_t)(u * 1000000.0));
+}
+
+inline void
+ts2net (int32_t* d, struct timeval *t)
+{
+	d[0] = htonl ((int32_t)t->tv_sec);
+	d[1] = htonl ((int32_t)t->tv_usec);
+}
 
 #ifdef __cplusplus
 }

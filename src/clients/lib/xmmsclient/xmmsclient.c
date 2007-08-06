@@ -162,21 +162,19 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 	xmmsc_ipc_t *ipc;
 	xmmsc_result_t *result;
 
-	char path[PATH_MAX];
-
 	x_api_error_if (!c, "with a NULL connection", false);
 
 	if (!ipcpath) {
-		if (!xmms_default_ipcpath_get (path, PATH_MAX)) {
+		if (!xmms_default_ipcpath_get (c->path, PATH_MAX)) {
 			return false;
 		}
 	} else {
-		snprintf (path, sizeof (path), "%s", ipcpath);
+		snprintf (c->path, sizeof (c->path), "%s", ipcpath);
 	}
 
 	ipc = xmmsc_ipc_init ();
 
-	if (!xmmsc_ipc_connect (ipc, path)) {
+	if (!xmmsc_ipc_connect (ipc, c->path)) {
 		c->error = strdup ("xmms2d is not running.");
 		return false;
 	}
