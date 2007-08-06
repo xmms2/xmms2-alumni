@@ -55,6 +55,8 @@ struct xmmsc_connection_St {
     /** data array for visualisation connections */
     int visc;
     xmmsc_visualisation_t **visv;
+	/* we need to hold the connection path to get the hostname */
+	char path[PATH_MAX];
 };
 
 xmmsc_result_t *xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type, uint32_t cookie);
