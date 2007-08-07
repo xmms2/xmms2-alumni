@@ -11,6 +11,7 @@ c_map["int"] = "int"
 c_map["uint"] = "unsigned int"
 c_map["string"] = "char *"
 c_map["enum"] = "unsigned int"
+c_map["stringlist"] = "char **"
 
 #dictionary mapping of types to xmms_ipc_msg types
 msg_map = {}
@@ -45,6 +46,10 @@ def get_args(node):
 	    argstring = argstring + ", " + c_map[type] + " " + name
 
     return argstring
+
+#returns the c_map equivalent of a list type
+def trans_list(basenode):
+    return basenode.childNodes[1].nodeName + "list";
 
 #add a method's include to a big include header
 def add_cmdsheader(node):
@@ -322,8 +327,14 @@ def do_objects(objects):
 		    #add to the methodmap
 		    methodmap[node.getAttribute("name")].add(method)
 		    retval = method.getElementsByTagName("retval")
+
+		    retvalstr = retval[0].childNodes[1].childNodes[1].nodeName;
+
+		    #if we're dealing with a list...
+		    if retvalstr == "list":
+			retvalstr = trans_list(retval[0].childNodes[1].childNodes[1])
 		    hfile.write("\t%s " % \
-			    c_map[retval[0].childNodes[1].childNodes[1].nodeName])
+			    c_map[retvalstr])
 
 		    #figure out how to write the arguments
                     argstring = "xmms_%s_t *obj" % node.getAttribute("name")
@@ -380,8 +391,14 @@ def do_objects(objects):
 	    #higher-level method declarations
 	    for method in methods:
 		retval = method.getElementsByTagName("retval")
+
+		retvalstr = retval[0].childNodes[1].childNodes[1].nodeName
+
+		if retvalstr == "list":
+		    retvalstr = trans_list(retval[0].childNodes[1].childNodes[1])
+
 		xmmsclientfile.write("%s " % \
-		    (c_map[retval[0].childNodes[1].childNodes[1].nodeName]))
+		    (c_map[retvalstr]))
 
 		#figure out how to write the arguments
 		argstring = "xmmsc_connection_t *c"
