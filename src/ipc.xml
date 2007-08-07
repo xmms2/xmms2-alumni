@@ -61,7 +61,6 @@
 			</type>
 		</prop>
 
-		<!--
 		<method name="list">
 			<retval>
 				<type>
@@ -71,7 +70,6 @@
 				</type>
 			</retval>
 		</method>
-		-->
 
 		<method name="create">
 			<arg name="name">
