@@ -109,6 +109,8 @@ void shutdown_gtk (gpointer stuff)
 int
 main (int argc, char **argv)
 {
+	uint32_t version;
+	xmmsc_result_t *res;
 	gchar *path = getenv ("XMMS_PATH");
 	connection = xmmsc_init ("XMMS2-VISTEST");
 
@@ -118,8 +120,7 @@ main (int argc, char **argv)
 		return 1;
 	}
 
-	uint32_t version;
-	xmmsc_result_t *res = xmmsc_visualisation_version (connection);
+	res = xmmsc_visualisation_version (connection);
 	xmmsc_result_wait (res);
 
 	if (xmmsc_result_iserror (res)) {

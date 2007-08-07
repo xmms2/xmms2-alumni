@@ -35,8 +35,6 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include <sys/time.h>
-#include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/stat.h>
@@ -397,15 +395,13 @@ xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmi
 gboolean
 udpwatcher (GIOChannel *src, GIOCondition cond, xmms_visualisation_t *vis)
 {
-	struct sockaddr_in6 from;
+	struct sockaddr_storage from;
 	socklen_t sl = sizeof (from);
-	char adrb[INET6_ADDRSTRLEN];
-	char buf[sizeof (int32_t) + 2 * sizeof (double)];
+	int32_t buf[1 + 2 + 2];
 
-	if (recvfrom (vis->socket, buf, sizeof (buf), 0, (struct sockaddr *)&from, &sl) == (sizeof (buf) - sizeof (double))) {
+	if (recvfrom (vis->socket, buf, sizeof (buf), 0, (struct sockaddr *)&from, &sl) == (sizeof (buf))) {
 		struct timeval time;
-		int32_t id = *(int*)buf;
-		double *dbuf = (double*)(&buf[sizeof (int32_t)]);
+		int32_t id = ntohl (buf[0]);
 		xmms_vis_client_t *c = get_client(id);
 
 		if (!c || c->type != VIS_UDP) {
@@ -413,16 +409,27 @@ udpwatcher (GIOChannel *src, GIOCondition cond, xmms_visualisation_t *vis)
 		}
 
 		/* save client address according to id */
-//		printf ("Sender: %s:%d, %d\n", inet_ntop(AF_INET6, &from.sin6_addr, adrb, INET6_ADDRSTRLEN), from.sin6_port, id);
+		/* debug code starts
+		char adrb[INET6_ADDRSTRLEN];
+		struct sockaddr_in6 *a = (struct sockaddr_in6 *)&from;
+		printf ("Sender: %s:%d, %d\n", inet_ntop (AF_INET6, &a->sin6_addr,
+		        adrb, INET6_ADDRSTRLEN), a->sin6_port, id);
+		debug code ends */
 		memcpy (&c->transport.udp.addr, &from, sizeof (from));
 		c->transport.udp.socket = 1;
+		c->transport.udp.grace = 1000;
 
 		/* give pong */
 		gettimeofday (&time, NULL);
-		dbuf[1] = dbuf[0] - tv2d (&time);
-		sendto (vis->socket, buf, sizeof (buf), MSG_NOSIGNAL, (struct sockaddr *)&from, sl);
+		tv2net (&buf[3], ts2tv (&time) - net2tv (&buf[1]));
+		sendto (vis->socket, buf, sizeof (buf), 0, (struct sockaddr *)&from, sl);
+
+		/* new debug:
+		printf ("Timings: local %f, remote %f, diff %f\n", ts2tv (&time), net2tv (&buf[1]), net2tv (&buf[1]) - ts2tv (&time));
+		 ends */
+
 	} else {
-		xmms_log_error ("Received invalid UDP package from %s:%d", inet_ntop(AF_INET6, &from.sin6_addr, adrb, INET6_ADDRSTRLEN), from.sin6_port);
+		xmms_log_error ("Received invalid UDP package!");
 	}
 	return TRUE;
 }
@@ -456,7 +463,7 @@ xmms_visualisation_init_udp (xmms_visualisation_t *vis, int32_t id, xmms_error_t
 		}
 
 		for (rp = result; rp != NULL; rp = rp->ai_next) {
-			if ((vis->socket = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol)) == -1) {
+			if ((vis->socket = socket (rp->ai_family, rp->ai_socktype, rp->ai_protocol)) == -1) {
 				continue;
 			}
 			if (bind (vis->socket, rp->ai_addr, rp->ai_addrlen) != -1) {
@@ -588,7 +595,13 @@ package_write_finish (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vispacke
 	}
 	if (c->type == VIS_UDP) {
 		socklen_t sl = sizeof (c->transport.udp.addr);
-		sendto (vis->socket, dest, sizeof (xmmsc_vispacket_t), MSG_NOSIGNAL, (struct sockaddr *)&c->transport.udp.addr, sl);
+		/* debug code starts
+		char adrb[INET6_ADDRSTRLEN];
+		struct sockaddr_in6 *a = (struct sockaddr_in6 *)&c->transport.udp.addr;
+		printf ("Destination: %s:%d, %d\n", inet_ntop (AF_INET6, &a->sin6_addr,
+		        adrb, INET6_ADDRSTRLEN), a->sin6_port, id);
+		 debug code ends */
+		sendto (vis->socket, dest, sizeof (xmmsc_vispacket_t), 0, (struct sockaddr *)&c->transport.udp.addr, sl);
 		g_free (dest);
 	}
 }
@@ -608,13 +621,13 @@ xmms_visualisation_send_data (xmms_visualisation_t *vis, short l, short r) {
 				continue;
 			}
 
-			dest->timestamp = tv2d (&time) + latency * 0.001;
-			dest->format = vis->clientv[i]->format;
+			tv2net (dest->timestamp, ts2tv (&time) + latency * 0.001);
+			dest->format = htonl (vis->clientv[i]->format);
 
 			/* TODO: make this usable ;-) */
 			short* data = (short*)dest->data;
-			data[0] = l;
-			data[1] = r;
+			data[0] = htons (l);
+			data[1] = htons (r);
 
 			package_write_finish (i, vis->clientv[i], 4, dest);
 		}

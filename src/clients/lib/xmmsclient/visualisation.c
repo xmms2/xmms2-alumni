@@ -20,12 +20,9 @@
 #include <assert.h>
 #include <math.h>
 
-#include <sys/time.h>
-#include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/stat.h>
-#include <time.h>
 
 #include "xmmsclient/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient.h"
@@ -114,8 +111,8 @@ setup_udp (xmmsc_visualisation_t *v, xmmsc_connection_t *c, int32_t port) {
 	int i, cnt;
 	double lag;
 	struct timeval time;
-	char buf[sizeof (int32_t) + 2 * sizeof (double)];
-	double *dbuf = (double*)(&buf[sizeof (int32_t)]);
+	// first is id, next four describe time
+	int32_t buf[1 + 2 + 2];
 	double diff = 0.0;
 	int diffc = 0;
 	char *host;
@@ -157,22 +154,24 @@ setup_udp (xmmsc_visualisation_t *v, xmmsc_connection_t *c, int32_t port) {
 	freeaddrinfo (result);
 
 	gettimeofday (&time, NULL);
-	memcpy (&buf, &v->id, sizeof (v->id));
-	dbuf[0] = tv2d (&time);
+	buf[0] = htonl (v->id);
+	ts2net (&buf[1], &time);
 	for (i = 0; i < 10; ++i) {
-		send (socknum, buf, sizeof (buf) - sizeof (double), MSG_NOSIGNAL);
+		send (socknum, buf, sizeof (buf), 0);
 	}
 	do { /* TODO: Handle lost packages! */
 		cnt = recv (socknum, buf, sizeof (buf), 0);
 		if (cnt == sizeof (buf)) {
 			gettimeofday (&time, NULL);
-			lag = (tv2d (&time) - dbuf[0]) / 2.0;
+			lag = (ts2tv (&time) - net2tv (&buf[1])) / 2.0;
 			diffc++;
-			diff += dbuf[1] - lag;
+			diff += net2tv (&buf[3]) - lag;
+			/* debug output
+			printf("server diff: %f \t old timestamp: %f, new timestamp %f\n", net2tv (&buf[3]), net2tv (&buf[1]), ts2tv (&time));
+			 end of debug */
 		}
 	} while (cnt > 0 && diffc < 10);
 	diff /= (double)diffc;
-//	printf("diff: %f\n", diff);
 	v->transport.udp.socket = socknum;
 	v->transport.udp.timediff = diff;
 	return 1;
@@ -401,7 +400,10 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vispacket_t **
 		}
 		/* TODO: make this usable */
 		if (cnt == sizeof (xmmsc_vispacket_t)) {
-			buf->timestamp += t->timediff;
+			/* this is nasty */
+			double interim = net2tv (buf->timestamp);
+			interim -= t->timediff;
+			tv2net (buf->timestamp, interim);
 			return 0;
 		} else if (cnt > -1) {
 			return 1;
@@ -448,14 +450,15 @@ xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data, int dr
 
 		if (drawtime >= 0) {
 			gettimeofday (&time, NULL);
-			diff = src->timestamp - tv2d (&time);
+			diff = net2tv (src->timestamp) - ts2tv (&time);
 			if (diff >= 0) {
+				double dontcare;
 				old = 0;
 				/* nanosleep has a garantueed granularity of 10 ms.
 				   to not sleep too long, we sleep 10 ms less than intended */
 				diff -= (drawtime + 10) * 0.001;
 				sleeptime.tv_sec = diff;
-				sleeptime.tv_nsec = fmod (diff, 1.0) * 1000000000;
+				sleeptime.tv_nsec = modf (diff, &dontcare) * 1000000000;
 				while (nanosleep (&sleeptime, &sleeptime) == -1) {
 					if (errno != EINTR) {
 						break;
@@ -467,7 +470,10 @@ xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data, int dr
 		}
 		if (!old) {
 			/* TODO: make this usable ;-) */
-			memcpy (data, src->data, 2*sizeof(short));
+			short *source = (short*)src->data;
+			short *dest = (short*)data;
+			dest[0] = ntohs (source[0]);
+			dest[1] = ntohs (source[1]);
 		}
 		package_read_finish (v, blocking, src);
 		if (!old) {
