@@ -916,6 +916,7 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 	cmds->output_stop = xmms_output_stop;
 	cmds->output_pause = xmms_output_pause;
 	cmds->output_status = NULL;
+	cmds->output_kill = xmms_output_xform_kill;
 
 	xmms_output_cmds_register (cmds);
 
