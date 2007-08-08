@@ -126,7 +126,7 @@
 		<method name="set_pos_rel">
 			<arg name="pos">
 				<type>
-					<uint />
+					<int />
 				</type>
 			</arg>
 			<retval>
