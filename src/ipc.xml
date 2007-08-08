@@ -197,6 +197,14 @@
 			</retval>
 		</method>
 
+		<method name="kill">
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
 	</object>
 
 </ipc>
