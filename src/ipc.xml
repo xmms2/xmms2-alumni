@@ -123,6 +123,32 @@
 			</retval>
 		</method>
 
+		<method name="set_pos">
+			<arg name="pos">
+				<type>
+					<uint />
+				</type>
+			</arg>
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
+		<method name="set_pos_rel">
+			<arg name="pos">
+				<type>
+					<uint />
+				</type>
+			</arg>
+			<retval>
+				<type>
+					<none />
+				</type>
+			</retval>
+		</method>
+
 	</object>
 
 	<object name="playback" type="client">
