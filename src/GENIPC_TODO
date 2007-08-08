@@ -2,11 +2,6 @@ List of things TODO(in rough order)
 
 * Let the server commands return values to the clientlib
 
-* Figure out why my test clientlib keeps disconnection after sending a single
-* request. If I can't figure it out in a reasonable amount of time I will just
-* convert the regular clientlib so as to not spend too much time on throwaway
-* code.
-
 * Test the server side using the stripped clientlib in my tree (see above)
 
 * Handle lists of complex types correctly/generate the correct code(right now
