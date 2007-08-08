@@ -270,9 +270,9 @@ def do_objects(objects):
 
 		#header guard
 		hfile.write("#ifndef __XMMS_%s_CMD_H__\n" % \
-			node.getAttribute("name"))
+			node.getAttribute("name").upper())
 		hfile.write("#define __XMMS_%s_CMD_H__\n\n" % \
-			node.getAttribute("name"))
+			node.getAttribute("name").upper())
 
 		hfile.write("typedef struct xmms_%s_St xmms_%s_t;\n" % \
 			(node.getAttribute("name"),node.getAttribute("name")))
