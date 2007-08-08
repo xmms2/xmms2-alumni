@@ -101,6 +101,7 @@ xmms_playlist_cmds_t *xmms_ipc_get_playlist_cmds(void)
 	return playlist_cmds;
 }
 
+/* Adds a command structure so we know how to handle them. */
 void
 xmms_ipc_add_cmds (gpointer *cmds, guint type)
 {
@@ -176,8 +177,10 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 			if (xmms_ipc_msg_read_transport (client->read_msg, client->transport, &disconnect)) {
 				xmms_ipc_msg_t *msg = client->read_msg;
 				client->read_msg = NULL;
-//				process_msg (client, client->ipc, msg);
+
+				/* Found in ipc_msg_gen.c */
 				process_msg (client->ipc, msg);
+
 				xmms_ipc_msg_destroy (msg);
 			} else {
 				break;
