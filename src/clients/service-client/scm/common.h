@@ -26,6 +26,9 @@
 
 #define SCM_NAME "scm"
 
+#define SERVICE_MANAGEMENT "scm_management"
+#define SERVICE_QUERY "scm_query"
+
 #define ARG_CLIENT_NAME "client_name"
 #define ARG_SERVICE_NAME "service_name"
 #define ARG_METHOD_NAME "method_name"
@@ -40,7 +43,7 @@
 #define ARG_RET "ret"
 #define ARG_IDS "ids"
 
-typedef struct config_St {
+typedef struct {
 	gchar *path;
 	gchar *argv;
 	GPid pid;
@@ -48,13 +51,18 @@ typedef struct config_St {
 	GHashTable *services;
 } config_t;
 
-typedef struct service_St {
+typedef struct {
 	gchar *desc;
 	guint major;
 	guint minor;
 	gboolean registered;
 	GHashTable *methods;
 } service_t;
+
+typedef struct {
+	gchar *desc;
+	gboolean registered;
+} method_t;
 
 GHashTable *clients;
 
@@ -71,7 +79,7 @@ config_t *lookup_client (xmmsc_result_t *res, gchar **name,
                          xmmsc_service_method_t *method);
 service_t *lookup_service (xmmsc_result_t *res, const config_t *config,
                            gchar **name, xmmsc_service_method_t *method);
-gchar *lookup_method (xmmsc_result_t *res, const service_t *service,
+method_t *lookup_method (xmmsc_result_t *res, const service_t *service,
                       gchar **name, xmmsc_service_method_t *method);
 
 #endif

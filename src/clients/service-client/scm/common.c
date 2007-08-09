@@ -67,10 +67,12 @@ void
 print_method (gpointer k, gpointer v, gpointer d)
 {
 	gchar *name = k;
-	gchar *desc = v;
+	method_t *method = v;
 
 	print_info ("\t\t%s", name);
-	print_info ("\t\tdesc: %s", desc);
+	print_info ("\t\tdesc: %s", method->desc);
+	if (method->registered)
+		print_info ("\t\tregistered");
 }
 
 void
@@ -82,6 +84,8 @@ print_service (gpointer k, gpointer v, gpointer d)
 	print_info ("\t%s", name);
 	print_info ("\tdesc: %s\n\tmajor: %d\n\tminor: %d", serv->desc, serv->major,
 	            serv->minor);
+	if (serv->registered)
+		print_info ("\tregistered");
 	g_hash_table_foreach (serv->methods, print_method, NULL);
 }
 
@@ -166,11 +170,11 @@ lookup_service (xmmsc_result_t *res, const config_t *config, gchar **name,
 /**
  * Get method name and look it up.
  */
-gchar *
+method_t *
 lookup_method (xmmsc_result_t *res, const service_t *service, gchar **name,
                xmmsc_service_method_t *method)
 {
-	gchar *method_name = NULL;
+	method_t *ret;
 
 	x_return_null_if_fail (res);
 	x_return_null_if_fail (service);
@@ -181,9 +185,9 @@ lookup_method (xmmsc_result_t *res, const service_t *service, gchar **name,
 		xmmsc_service_method_error_set (method,
 		                                "Service method name not given.");
 	else
-		if (!(method_name = g_hash_table_lookup (service->methods, *name)))
+		if (!(ret = g_hash_table_lookup (service->methods, *name)))
 			xmmsc_service_method_error_set (method,
 			                                "Service method does not exist");
 
-	return method_name;
+	return ret;
 }

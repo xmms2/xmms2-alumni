@@ -45,16 +45,14 @@ register_single (xmmsc_connection_t *conn, const gchar *service,
 static gboolean
 register_all (xmmsc_connection_t *conn)
 {
-	char service_man[] = "scm_management";
-	char service_que[] = "scm_query";
 	xmmsc_service_method_t *method;
 	xmmsc_result_t *result;
 
-	result = xmmsc_service_register (conn, service_man,
+	result = xmmsc_service_register (conn, SERVICE_MANAGEMENT,
 	                                 "A simple service client manager.",
 	                                 0, 1);
 	if (xmmsc_result_iserror (result)) {
-		print_error ("Unable to register service (%s): %s", service_man,
+		print_error ("Unable to register service (%s): %s", SERVICE_MANAGEMENT,
 		             xmmsc_result_get_error (result));
 		xmmsc_result_unref (result);
 		return FALSE;
@@ -71,7 +69,7 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_man, method, NULL))
+	if (!register_single (conn, SERVICE_MANAGEMENT, method, NULL))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("launch", "Launch a service client",
@@ -84,7 +82,7 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_man, method, NULL))
+	if (!register_single (conn, SERVICE_MANAGEMENT, method, NULL))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("shutdown", "Shutdown a service client",
@@ -97,7 +95,7 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_man, method, NULL))
+	if (!register_single (conn, SERVICE_MANAGEMENT, method, NULL))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("change_argv", "Change the startup"
@@ -113,7 +111,7 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_man, method, NULL))
+	if (!register_single (conn, SERVICE_MANAGEMENT, method, NULL))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("toggle_autostart", "Toggle the autostart"
@@ -129,15 +127,15 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_man, method, NULL))
+	if (!register_single (conn, SERVICE_MANAGEMENT, method, NULL))
 		return FALSE;
 
 	/* Query methods */
-	result = xmmsc_service_register (conn, service_que, "Query information from"
-	                                 " service client manager.",
+	result = xmmsc_service_register (conn, SERVICE_QUERY, "Query information"
+	                                 " from service client manager.",
 	                                 0, 1);
 	if (xmmsc_result_iserror (result)) {
-		print_error ("Unable to register service (%s): %s", service_que,
+		print_error ("Unable to register service (%s): %s", SERVICE_QUERY,
 		             xmmsc_result_get_error (result));
 		xmmsc_result_unref (result);
 		return FALSE;
@@ -153,7 +151,7 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_que, method, NULL))
+	if (!register_single (conn, SERVICE_QUERY, method, NULL))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("service_ids", "List the names of"
@@ -167,7 +165,7 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_que, method, NULL))
+	if (!register_single (conn, SERVICE_QUERY, method, NULL))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("method_ids", "List the names of"
@@ -183,7 +181,7 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_que, method, NULL))
+	if (!register_single (conn, SERVICE_QUERY, method, NULL))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("lookup_client", "Search for all service"
@@ -197,7 +195,7 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_que, method, NULL))
+	if (!register_single (conn, SERVICE_QUERY, method, NULL))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("sc", "List details of an installed"
@@ -215,7 +213,7 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_que, method, NULL))
+	if (!register_single (conn, SERVICE_QUERY, method, NULL))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("service", "List details of a"
@@ -239,7 +237,7 @@ register_all (xmmsc_connection_t *conn)
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_que, method, NULL))
+	if (!register_single (conn, SERVICE_QUERY, method, NULL))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("method", "List details of a method",
@@ -251,12 +249,14 @@ register_all (xmmsc_connection_t *conn)
 	    !xmmsc_service_method_arg_type_add (method, ARG_METHOD_NAME,
 	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_DESC,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	    !xmmsc_service_method_ret_type_add (method, ARG_REGISTERED,
+	                                        XMMSC_SERVICE_ARG_TYPE_UINT32)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
 	}
-	if (!register_single (conn, service_que, method, NULL))
+	if (!register_single (conn, SERVICE_QUERY, method, NULL))
 		return FALSE;
 
 	return TRUE;
@@ -274,9 +274,9 @@ subscribe_broadcasts (xmmsc_connection_t *conn, GMainLoop *ml)
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_quit, cb_quit, ml);
 
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_service_changed,
-	                   cb_service_changed, NULL);
+	                   cb_service_changed, conn);
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_service_method_changed,
-	                   cb_method_changed, NULL);
+	                   cb_method_changed, conn);
 
 	return TRUE;
 }

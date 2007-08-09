@@ -48,10 +48,11 @@ parse_service (service_t **service, gchar **split, gint *i)
 {
 	gchar *stripped;
 	gchar **s;
+	method_t *method;
 
 	*service = g_new0 (service_t, 1);
 	(*service)->methods = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                                             g_free, g_free);
+	                                             g_free, free_method);
 
 	for ((*i)++; split && split[*i]; (*i)++) {
 		stripped = g_strstrip (split[*i]);
@@ -68,9 +69,12 @@ parse_service (service_t **service, gchar **split, gint *i)
 				(*service)->major = g_ascii_strtoull (s[1], NULL, 10);
 			else if (g_strcasecmp (s[0], "minor") == 0)
 				(*service)->minor = g_ascii_strtoull (s[1], NULL, 10);
-			else
+			else {
+				method = g_new0 (method_t, 1);
+				method->desc = g_strdup (s[1]);
 				g_hash_table_insert ((*service)->methods, g_strdup (s[0]),
-				                     g_strdup (s[1]));
+				                     method);
+			}
 		}
 		g_strfreev (s);
 	}
@@ -335,5 +339,19 @@ free_service (gpointer v)
 		g_free (service->desc);
 		g_hash_table_destroy (service->methods);
 		g_free (service);
+	}
+}
+
+/**
+ * Free the method structure created by parse_service().
+ */
+void
+free_method (gpointer v)
+{
+	method_t *method = v;
+
+	if (method) {
+		g_free (method->desc);
+		g_free (method);
 	}
 }
