@@ -94,7 +94,7 @@ shutdown_single (xmmsc_connection_t *conn, gchar *client)
 		return FALSE;
 	}
 
-	if (!g_hash_table_find (config->services, match_registered, &name)) {
+	if (!g_hash_table_find (config->services, match_service_registered, &name)) {
 		print_info ("No service is registered from that service client.");
 		return FALSE;
 	}

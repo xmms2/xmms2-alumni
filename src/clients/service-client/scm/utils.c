@@ -59,13 +59,31 @@ match_none (gpointer key, gpointer value, gpointer data)
  * Insert any service name which is registered on the server.
  */
 gboolean
-match_registered (gpointer key, gpointer value, gpointer data)
+match_service_registered (gpointer key, gpointer value, gpointer data)
 {
 	gchar **n = data;
 	gchar *name = key;
 	service_t *service = value;
 
 	if (service->registered) {
+		*n = name;
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+/**
+ * Insert any method name which is registered on the server.
+ */
+gboolean
+match_method_registered (gpointer key, gpointer value, gpointer data)
+{
+	gchar **n = data;
+	gchar *name = key;
+	method_t *method = value;
+
+	if (method->registered) {
 		*n = name;
 		return TRUE;
 	}
@@ -85,4 +103,34 @@ match_service (gpointer key, gpointer value, gpointer data)
 
 	if (g_hash_table_lookup (config->services, info->target))
 		info->result = g_list_prepend (info->result, name);
+}
+
+/**
+ * Insert any service which is registered.
+ */
+void
+match_registered_service (gpointer key, gpointer value, gpointer data)
+{
+	query_info_t *info = data;
+	config_t *config = value;
+	service_t *service;
+
+	if ((service = g_hash_table_lookup (config->services, info->target)) &&
+	    service->registered)
+		info->result = g_list_prepend (info->result, service);
+}
+
+/**
+ * Insert any service which is not registered.
+ */
+void
+match_unregistered_service (gpointer key, gpointer value, gpointer data)
+{
+	query_info_t *info = data;
+	config_t *config = value;
+	service_t *service;
+
+	if ((service = g_hash_table_lookup (config->services, info->target)) &&
+	    !service->registered)
+		info->result = g_list_prepend (info->result, service);
 }

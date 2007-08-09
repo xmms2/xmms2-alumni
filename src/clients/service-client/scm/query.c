@@ -185,7 +185,7 @@ void
 cb_list_method (xmmsc_connection_t *conn, xmmsc_result_t *res,
                 xmmsc_service_method_t *method, void *data)
 {
-	gchar *method_name;
+	method_t *ret;
 	gchar *name = NULL;
 
 	if (xmmsc_result_iserror (res)) {
@@ -194,13 +194,15 @@ cb_list_method (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return;
 	}
 
-	if ((method_name = lookup_method (res,
-	                                  lookup_service (res,
-	                                                  lookup_client (res, &name,
-	                                                                 method),
-	                                                  &name, method),
-	                                   &name, method)))
-		xmmsc_service_method_ret_add_string (method, ARG_DESC, method_name);
+	if ((ret = lookup_method (res,
+	                          lookup_service (res,
+	                                          lookup_client (res, &name, method),
+	                                          &name, method),
+	                          &name, method))) {
+		xmmsc_service_method_ret_add_string (method, ARG_DESC, ret->desc);
+		xmmsc_service_method_ret_add_uint32 (method, ARG_REGISTERED,
+		                                     ret->registered);
+	}
 
 	method_return (conn, res, method);
 }
