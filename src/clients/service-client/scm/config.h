@@ -29,5 +29,6 @@ gboolean create_config (const gchar *name, const gchar *contents);
 gboolean remove_config (const gchar *name);
 void free_config (gpointer v);
 void free_service (gpointer v);
+void free_method (gpointer v);
 
 #endif
