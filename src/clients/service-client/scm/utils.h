@@ -27,7 +27,10 @@ typedef struct query_info_St {
 void match_auto (gpointer key, gpointer value, gpointer data);
 void match_pid (gpointer key, gpointer value, gpointer data);
 void match_none (gpointer key, gpointer value, gpointer data);
-gboolean match_registered (gpointer key, gpointer value, gpointer data);
+gboolean match_service_registered (gpointer key, gpointer value, gpointer data);
+gboolean match_method_registered (gpointer key, gpointer value, gpointer data);
 void match_service (gpointer key, gpointer value, gpointer data);
+void match_registered_service (gpointer key, gpointer value, gpointer data);
+void match_unregistered_service (gpointer key, gpointer value, gpointer data);
 
 #endif
