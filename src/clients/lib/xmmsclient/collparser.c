@@ -73,7 +73,6 @@ static xmmsc_coll_token_t *coll_parse_idseq (xmmsc_coll_token_t *tokens, xmmsc_c
 static xmmsc_coll_token_t *coll_parse_posseq (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret);
 static xmmsc_coll_token_t *coll_parse_operation (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret);
 static xmmsc_coll_token_t *coll_parse_unaryop (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret);
-static xmmsc_coll_token_t *coll_parse_binaryop (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret);
 static xmmsc_coll_token_t *coll_parse_notop (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret);
 static xmmsc_coll_token_t *coll_parse_andop (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret);
 static xmmsc_coll_token_t *coll_parse_orop (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret);
@@ -111,9 +110,8 @@ static char *string_intadd (char *number, int delta);
  * STRVAL    := STRING | PATTERN
  * POSSEQ    := INTVAL
  * IDSEQ     := TOKEN_SYMBOL_ID INTVAL
- * OPERATION := UNAOP | BINOP
+ * OPERATION := ANDOP
  * UNAOP     := TOKEN_OPSET_NOT EXPR | TOKEN_REFERENCE STRING
- * BINOP     := ANDOP
  * ANDOP     := OROP ANDOP | OROP TOKEN_OPSET_AND ANDOP | OROP
  * OROP      := EXPR TOKEN_OPSET_OR OROP | EXPR
  * FILTER    := UNAFILTER | BINFILTER | STRVAL
@@ -362,9 +360,18 @@ xmmsc_coll_default_parse_tokens (const char *str, const char **newpos)
 xmmsc_coll_t *
 xmmsc_coll_default_parse_build (xmmsc_coll_token_t *tokens)
 {
+	xmmsc_coll_token_t *tk;
 	xmmsc_coll_t *coll;
+
 	coll_parse_prepare (tokens);
-	coll_parse_operation (tokens, &coll);
+	tk = coll_parse_operation (tokens, &coll);
+
+	/* Failed to parse the whole string! */
+	if (tk && coll) {
+		xmmsc_coll_unref (coll);
+		coll = NULL;
+	}
+
 	return coll;
 }
 
@@ -655,14 +662,7 @@ coll_parse_posseq (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret)
 static xmmsc_coll_token_t *
 coll_parse_operation (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret)
 {
-	xmmsc_coll_t *coll;
-	xmmsc_coll_token_t *pos;
-
-	PARSER_TRY (coll_parse_unaryop);
-	PARSER_TRY (coll_parse_binaryop);
-
-	*ret = NULL;
-	return tokens;
+	return coll_parse_andop (tokens, ret);
 }
 
 static xmmsc_coll_token_t *
@@ -674,14 +674,8 @@ coll_parse_unaryop (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret)
 	PARSER_TRY (coll_parse_notop);
 	PARSER_TRY (coll_parse_reference);
 
-	*ret = coll;
-	return pos;
-}
-
-static xmmsc_coll_token_t *
-coll_parse_binaryop (xmmsc_coll_token_t *tokens, xmmsc_coll_t **ret)
-{
-	return coll_parse_andop (tokens, ret);
+	*ret = NULL;
+	return tokens;
 }
 
 static xmmsc_coll_token_t *
@@ -737,7 +731,6 @@ coll_parse_andop_append (xmmsc_coll_token_t *tokens, xmmsc_coll_t *operator,
 		tk = coll_next_token (tk);
 	}
 
-
 	if (!operator) {
 		operator = xmmsc_coll_new (XMMS_COLLECTION_TYPE_INTERSECTION);
 		xmmsc_coll_add_operand (operator, first);
@@ -747,13 +740,6 @@ coll_parse_andop_append (xmmsc_coll_token_t *tokens, xmmsc_coll_t *operator,
 		if (tmp == NULL) {
 			xmmsc_coll_remove_operand (operator, first);
 			xmmsc_coll_unref (operator);
-
-			/* oops, the rest misparsed, let's give up!  */
-			if (tk != NULL) {
-				xmmsc_coll_unref (first);
-				first = NULL;
-			}
-
 			*ret = first;
 		}
 		else {
@@ -763,14 +749,7 @@ coll_parse_andop_append (xmmsc_coll_token_t *tokens, xmmsc_coll_t *operator,
 	else {
 		xmmsc_coll_add_operand (operator, first);
 		tk = coll_parse_andop_append (tk, operator, &tmp);
-
-		/* oops, the rest misparsed, let's give up!  */
-		if (tmp == NULL && tk != NULL) {
-			xmmsc_coll_unref (first);
-			*ret = NULL;
-		} else {
-			*ret = operator;
-		}
+		*ret = operator;
 	}
 
 	/* tk = coll_parse_andop_append (tk, operator, ret); */
@@ -1105,7 +1084,7 @@ string_substr (char *start, char *end)
 static char *
 string_intadd (char *number, int delta)
 {
-	int n, len, size;
+	int n, len;
 	char *endptr;
 	char *buf;
 
@@ -1118,7 +1097,7 @@ string_intadd (char *number, int delta)
 
 	n += delta;
 	len = strlen (number) + 1;
-	buf = x_new0 (char, size + 1);
+	buf = x_new0 (char, len + 1);
 	snprintf (buf, len, "%d", n);
 
 	return buf;

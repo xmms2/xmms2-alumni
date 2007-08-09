@@ -1,5 +1,6 @@
-import sys,os
+import os
 import Params
+from Params import g_platform
 
 def build(bld):
     pass
@@ -28,7 +29,7 @@ def configure(conf):
     if prio == -1:
         Params.warning("No output plugin found, this is bad")
     defs['XMMS_OUTPUT_DEFAULT'] = name
-    if sys.platform == 'darwin':
+    if g_platform == 'darwin':
         defs["USERCONFDIR"] = 'Library/xmms2'
         defs["USERCACHEDIR"] = 'Library/xmms2/logs'
     else:
@@ -39,6 +40,10 @@ def configure(conf):
     conf.env['XMMS_DEFS'] = defs
     conf.env['PLUGINDIR'] = defs['PKGLIBDIR']
     conf.env['PKGCONFIGDIR'] = os.path.join(conf.env["PREFIX"], "lib", "pkgconfig")
+
+    # The plugin path in Windows should be relative, not absolute
+    if g_platform == 'win32':
+        defs['PKGLIBDIR'] = 'Plugins/'
 
     for i in defs:
         conf.add_define(i, defs[i])
