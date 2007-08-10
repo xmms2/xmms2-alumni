@@ -43,12 +43,13 @@ typedef struct xmms_service_entry_St {
 	guint major_version;
 	guint minor_version;
 
+	GHashTable *methods;
+
 	/* Service client fd */
 	xmms_socket_t sc;
 
 	GMutex *mutex;
-	guint count;
-	GHashTable *methods;
+	xmms_service_t *service_obj;
 } xmms_service_entry_t;
 
 /**
@@ -64,6 +65,9 @@ typedef struct xmms_service_method_St {
 
 	GHashTable *rets;
 	GHashTable *args;
+
+	gchar *service_name;
+	xmms_service_t *service_obj;
 } xmms_service_method_t;
 
 /**
@@ -84,11 +88,14 @@ typedef struct xmms_service_argument_St {
 /**
  * Functions
  */
-static xmms_service_entry_t *xmms_service_entry_new (gchar *name,
+static xmms_service_entry_t *xmms_service_entry_new (xmms_service_t *obj,
+                                                     gchar *name,
                                                      gchar *description,
                                                      guint major, guint minor,
                                                      xmms_socket_t client);
-static xmms_service_method_t *xmms_service_method_new (gchar *name,
+static xmms_service_method_t *xmms_service_method_new (xmms_service_t *obj,
+                                                       gchar *service,
+                                                       gchar *name,
                                                        gchar *description,
                                                        guint cookie,
                                                        GHashTable *rets,
@@ -172,7 +179,7 @@ xmms_service_init(void)
 
 	ret = xmms_object_new (xmms_service_t, xmms_service_destroy);
 	ret->mutex = g_mutex_new ();
-	ret->registry = g_hash_table_new_full (g_str_hash, g_str_equal, free,
+	ret->registry = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
 										   xmms_service_registry_destroy);
 	ret->clients = g_hash_table_new_full (g_direct_hash, g_direct_equal,
 	                                      NULL, g_free);
@@ -258,8 +265,8 @@ xmms_service_handle (xmms_object_t *obj, xmms_ipc_msg_t *msg,
 }
 
 static xmms_service_entry_t *
-xmms_service_entry_new (gchar *name, gchar *description, guint major,
-                        guint minor, xmms_socket_t client)
+xmms_service_entry_new (xmms_service_t *obj, gchar *name, gchar *description,
+                        guint major, guint minor, xmms_socket_t client)
 {
 	xmms_service_entry_t *entry;
 
@@ -274,18 +281,19 @@ xmms_service_entry_new (gchar *name, gchar *description, guint major,
 	entry->description = description;
 	entry->major_version = major;
 	entry->minor_version = minor;
-	entry->count = 0;
 	entry->sc = client;
 	entry->mutex = g_mutex_new ();
-	entry->methods = g_hash_table_new_full (g_str_hash, g_str_equal, free,
+	entry->methods = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
 	                                        xmms_service_method_destroy);
+	entry->service_obj = obj;
 
 	return entry;
 }
 
 static xmms_service_method_t *
-xmms_service_method_new (gchar *name, gchar *description, guint cookie,
-                         GHashTable *rets, GHashTable *args)
+xmms_service_method_new (xmms_service_t *obj, gchar *service, gchar *name,
+                         gchar *description, guint cookie, GHashTable *rets,
+                         GHashTable *args)
 {
 	xmms_service_method_t *method;
 
@@ -302,6 +310,8 @@ xmms_service_method_new (gchar *name, gchar *description, guint cookie,
 	method->cookie = cookie;
 	method->rets = rets;
 	method->args = args;
+	method->service_name = service;
+	method->service_obj = obj;
 
 	return method;
 }
@@ -334,14 +344,24 @@ static void
 xmms_service_registry_destroy (gpointer value)
 {
 	xmms_service_entry_t *val = (xmms_service_entry_t *)value;
+	GHashTable *table = NULL;
 
 	g_return_if_fail (val);
 
+	g_hash_table_destroy (val->methods);
+
+	table = xmms_service_changed_msg_new (val->name, NULL,
+	                                      XMMS_SERVICE_CHANGED_UNREGISTER);
+	xmms_object_emit_f (XMMS_OBJECT (val->service_obj),
+	                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
+	                    XMMS_OBJECT_CMD_ARG_DICT,
+	                    table);
+	g_hash_table_destroy (table);
+
+	free (val->name);
 	free (val->description);
 
 	g_mutex_free (val->mutex);
-
-	g_hash_table_destroy (val->methods);
 }
 
 /**
@@ -351,9 +371,19 @@ static void
 xmms_service_method_destroy (gpointer value)
 {
 	xmms_service_method_t *val = (xmms_service_method_t *)value;
+	GHashTable *table = NULL;
 
 	g_return_if_fail (val);
 
+	table = xmms_service_changed_msg_new (val->service_name, val->name,
+	                                      XMMS_SERVICE_CHANGED_UNREGISTER);
+	xmms_object_emit_f (XMMS_OBJECT (val->service_obj),
+	                    XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED,
+	                    XMMS_OBJECT_CMD_ARG_DICT,
+	                    table);
+	g_hash_table_destroy (table);
+
+	free (val->name);
 	free (val->description);
 
 	g_mutex_free (val->mutex);
@@ -403,7 +433,8 @@ xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		free (name);
 		free (desc);
 	} else {
-		entry = xmms_service_entry_new (name, desc, major, minor, client);
+		entry = xmms_service_entry_new (xmms_service, name, desc, major, minor,
+		                                client);
 		g_mutex_lock (xmms_service->mutex);
 		g_hash_table_insert (xmms_service->registry, name, entry);
 		g_mutex_unlock (xmms_service->mutex);
@@ -480,10 +511,9 @@ xmms_service_method_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		return FALSE;
 	}
 
-	method = xmms_service_method_new (name, desc, xmms_ipc_msg_get_cookie (msg),
-	                                  rets, args);
+	method = xmms_service_method_new (xmms_service, entry->name, name, desc,
+	                                  xmms_ipc_msg_get_cookie (msg), rets, args);
 	g_mutex_lock (entry->mutex);
-	entry->count++;
 	g_hash_table_insert (entry->methods, name, method);
 	table = xmms_service_changed_msg_new (entry->name, method->name,
 	                                      XMMS_SERVICE_CHANGED_REGISTER);
@@ -507,7 +537,6 @@ xmms_service_unregister (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
                          xmms_socket_t client, xmms_error_t *err)
 {
 	gchar *name = NULL;
-	GHashTable *table = NULL;
 	xmms_service_entry_t *entry;
 
 	if (!msg) {
@@ -539,14 +568,6 @@ xmms_service_unregister (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 			XMMS_SERVICE_ERROR (err, XMMS_ERROR_GENERIC,
 			                    "Failed to remove service");
 		g_mutex_unlock (xmms_service->mutex);
-
-		table = xmms_service_changed_msg_new (name, NULL,
-		                                      XMMS_SERVICE_CHANGED_UNREGISTER);
-		xmms_object_emit_f (XMMS_OBJECT (xmms_service),
-		                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
-		                    XMMS_OBJECT_CMD_ARG_DICT,
-		                    table);
-		g_hash_table_destroy (table);
 	}
 
 	XMMS_DBG ("Service unregistered.");
@@ -564,7 +585,6 @@ xmms_service_method_unregister (xmms_service_t *xmms_service,
                                 xmms_error_t *err)
 {
 	gchar *name = NULL;
-	GHashTable *table = NULL;
 	gboolean ret = FALSE;
 
 	if (xmms_service_method_get (msg, entry, &name, err)) {
@@ -572,18 +592,10 @@ xmms_service_method_unregister (xmms_service_t *xmms_service,
 		if (!g_hash_table_remove (entry->methods, name)) {
 			XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Invalid method name!");
 			ret = TRUE;
-		} else {
-			ret = --(entry->count) == 0 ? FALSE : TRUE;
-			table = xmms_service_changed_msg_new (entry->name, name,
-			                                      XMMS_SERVICE_CHANGED_UNREGISTER);
-		}
+		} else
+			ret = g_hash_table_size (entry->methods) == 0 ? FALSE : TRUE;
 		g_mutex_unlock (entry->mutex);
 
-		xmms_object_emit_f (XMMS_OBJECT (xmms_service),
-		                    XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED,
-		                    XMMS_OBJECT_CMD_ARG_DICT,
-		                    table);
-		g_hash_table_destroy (table);
 		XMMS_DBG ("Method unregistered.");
 	}
 
@@ -635,7 +647,7 @@ xmms_service_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		g_hash_table_insert (dict, "major_version", val);
 		val = xmms_object_cmd_value_uint_new (entry->minor_version);
 		g_hash_table_insert (dict, "minor_version", val);
-		val = xmms_object_cmd_value_uint_new (entry->count);
+		val = xmms_object_cmd_value_uint_new (g_hash_table_size (entry->methods));
 		g_hash_table_insert (dict, "count", val);
 		g_mutex_unlock (entry->mutex);
 
