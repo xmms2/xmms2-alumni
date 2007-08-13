@@ -21,11 +21,17 @@
  *
  */
 
-#define x_check_client(ret) \
+/* never call a fetch without a guaranteed release following! */
+#define x_fetch_client(id) \
+	g_mutex_lock (vis->clientlock); \
+	c = get_client (id); \
 	if (!c) { \
 		xmms_error_set (err, XMMS_ERROR_INVAL, "invalid server-side identifier provided"); \
-		return ret; \
+		g_mutex_unlock (vis->clientlock); \
+		return -1; \
 	}
+#define x_release_client() \
+	g_mutex_unlock (vis->clientlock);
 
 
 #include <math.h>
@@ -90,8 +96,9 @@ struct xmms_visualisation_St {
 	xmms_object_t object;
 	xmms_output_t *output;
 	int socket;
-	GIOChannel* socketio;
+	GIOChannel *socketio;
 
+	GMutex *clientlock;
 	int32_t clientc;
 	xmms_vis_client_t **clientv;
 };
@@ -107,10 +114,11 @@ XMMS_CMD_DEFINE3 (property_set, xmms_visualisation_property_set, xmms_visualisat
 XMMS_CMD_DEFINE (properties_set, xmms_visualisation_properties_set, xmms_visualisation_t *, INT32, INT32, STRINGLIST);
 XMMS_CMD_DEFINE (shutdown, xmms_visualisation_shutdown_client, xmms_visualisation_t *, NONE, INT32, NONE);
 
-
+/* create an uninitialised vis client. don't use this method without mutex! */
 int32_t
 create_client() {
 	int32_t id;
+
 	for (id = 0; id < vis->clientc; ++id) {
 		if (!vis->clientv[id]) {
 			break;
@@ -124,10 +132,10 @@ create_client() {
 	vis->clientv = g_renew (xmms_vis_client_t*, vis->clientv, vis->clientc);
 	if (!vis->clientv || (!(vis->clientv[id] = g_new (xmms_vis_client_t, 1)))) {
 		vis->clientc = 0;
-		return -1;
+		id = -1;
 	}
 
-	xmms_log_info ("Attaching visualisation client %d", id);
+	xmms_log_info ("Attached visualisation client %d", id);
 	return id;
 }
 
@@ -140,6 +148,7 @@ get_client (int32_t id) {
 	return vis->clientv[id];
 }
 
+/* delete a vis client. don't use this method without mutex! */
 void
 delete_client (int32_t id) {
 	xmms_vis_client_t *c;
@@ -157,12 +166,13 @@ delete_client (int32_t id) {
 		shmdt (c->transport.shm.buffer);
 		semctl (c->transport.shm.semid, 0, IPC_RMID, 0);
 	} else {
-		// TODO: UDP
+		// TODO: UDP issue killer packet?
 	}
 
 	g_free (c);
 	vis->clientv[id] = NULL;
-	xmms_log_info ("Removing visualisation client %d", id);
+
+	xmms_log_info ("Removed visualisation client %d", id);
 }
 
 /**
@@ -172,6 +182,7 @@ void
 xmms_visualisation_init ()
 {
 	vis = xmms_object_new (xmms_visualisation_t, xmms_visualisation_destroy);
+	vis->clientlock = g_mutex_new ();
 	vis->clientc = 0;
 
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_VISUALISATION, XMMS_OBJECT (vis));
@@ -212,6 +223,8 @@ xmms_visualisation_destroy (xmms_object_t *object)
 {
 	xmms_visualisation_t *vis = (xmms_visualisation_t *)object;
 
+	/* TODO: assure that the xform is already dead! */
+	g_mutex_free (vis->clientlock);
 	xmms_log_debug ("starting cleanup of %d vis clients", vis->clientc);
 	for (; vis->clientc > 0; --vis->clientc) {
 		delete_client (vis->clientc - 1);
@@ -287,18 +300,18 @@ xmms_visualisation_register_client (xmms_visualisation_t *vis, xmms_error_t *err
 	int32_t id;
 	xmms_vis_client_t *c;
 
-	id = create_client();
+	g_mutex_lock (vis->clientlock);
+	id = create_client ();
 	if (id < 0) {
 		xmms_error_set (err, XMMS_ERROR_OOM, "could not allocate dataset");
-		return -1;
+	} else {
+		/* do necessary initialisations here */
+		c = get_client (id);
+		c->type = VIS_NONE;
+		c->format = 0;
+		properties_init(&c->prop);
 	}
-
-	/* do necessary initialisations here */
-	c = get_client(id);
-	c->format = 0;
-	c->type = VIS_NONE;
-	properties_init(&c->prop);
-
+	g_mutex_unlock (vis->clientlock);
 	return id;
 }
 
@@ -306,14 +319,16 @@ xmms_visualisation_register_client (xmms_visualisation_t *vis, xmms_error_t *err
 int32_t
 xmms_visualisation_property_set (xmms_visualisation_t *vis, int32_t id, gchar* key, gchar* value, xmms_error_t *err)
 {
-	xmms_vis_client_t *c = get_client(id);
+	xmms_vis_client_t *c;
 
-	x_check_client (-1);
+	x_fetch_client (id);
 
 	if (!property_set (&c->prop, key, value)) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "property could not be set!");
 	}
-	/* TODO: propagate new format to xform! */
+	/* TODO: propagate new format to xform! ORLY? */
+
+	x_release_client ();
 
 	/* the format identifier (between client and server) changes. so the client can recognize the first packet
 	   which is built using the new format according to the newly set property */
@@ -324,9 +339,9 @@ int32_t
 xmms_visualisation_properties_set (xmms_visualisation_t *vis, int32_t id, GList* prop, xmms_error_t *err)
 {
 	GList* n;
-	xmms_vis_client_t *c = get_client(id);
+	xmms_vis_client_t *c;
 
-	x_check_client (-1);
+	x_fetch_client (id);
 
 	for (n = prop; n; n = n->next) {
 		if (!property_set (&c->prop, (gchar*)n->data, (gchar*)n->next->data)) {
@@ -335,6 +350,8 @@ xmms_visualisation_properties_set (xmms_visualisation_t *vis, int32_t id, GList*
 		n = n->next;
 	}
 	/* TODO: propagate new format to xform! */
+
+	x_release_client ();
 
 	return (++c->format);
 }
@@ -346,29 +363,32 @@ xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmi
 	int32_t semid;
 	void *buffer;
 	int size;
-	xmms_vis_client_t *c = get_client(id);
+	xmms_vis_client_t *c;
 	union semun semopts;
 
-	x_check_client (-1);
+	x_fetch_client (id);
 
 	/* MR. DEBUG */
-	//	xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "lame, more lame, shm!");
-	//	return -1;
+	/*	xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "lame, more lame, shm!");
+		x_release_client ();
+		return -1; */
 
 
 	/* test the shm */
 	buffer = shmat(shmid, NULL, 0);
 	if (buffer == (void*)-1) {
 		xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "couldn't attach to shared memory");
+		x_release_client ();
 		return -1;
 	}
 	shmctl (shmid, IPC_STAT, &shm_desc);
-	size = shm_desc.shm_segsz / sizeof (xmmsc_vispacket_t);
+	size = shm_desc.shm_segsz / sizeof (xmmsc_vischunk_t);
 
 	/* setup the semaphore set */
 	semid = semget (IPC_PRIVATE, 2, S_IRWXU + S_IRWXG + S_IRWXO);
 	if (semid == -1) {
 		xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "couldn't create semaphore set");
+		x_release_client ();
 		return -1;
 	}
 	/* initially set semaphores - nothing to read, buffersize to write
@@ -387,6 +407,7 @@ xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int32_t shmi
 	c->transport.shm.size = size;
 	c->transport.shm.pos = 0;
 
+	x_release_client ();
 	//~ printf("SIZE: %d\tT: %d\t S: %d\t TF: %lf \n", c->transport.shm.size, c->prop.type, c->prop.stereo, c->prop.timeframe);
 	xmms_log_info ("Visualisation client %d initialised using Unix SHM", id);
 	return semid;
@@ -397,39 +418,57 @@ udpwatcher (GIOChannel *src, GIOCondition cond, xmms_visualisation_t *vis)
 {
 	struct sockaddr_storage from;
 	socklen_t sl = sizeof (from);
-	int32_t buf[1 + 2 + 2];
+	xmmsc_vis_udp_data_t buf;
 
-	if (recvfrom (vis->socket, buf, sizeof (buf), 0, (struct sockaddr *)&from, &sl) == (sizeof (buf))) {
-		struct timeval time;
-		int32_t id = ntohl (buf[0]);
-		xmms_vis_client_t *c = get_client(id);
+	if (recvfrom (vis->socket, &buf, sizeof (buf), 0, (struct sockaddr *)&from, &sl) > 0) {
+		if (buf.type == 'H') {
+			xmms_vis_client_t *c;
+			xmmsc_vis_udp_timing_t *content = (xmmsc_vis_udp_timing_t*)&buf;
+			int32_t id = ntohl (content->id);
 
-		if (!c || c->type != VIS_UDP) {
-			return TRUE;
+			/* debug code starts
+			char adrb[INET6_ADDRSTRLEN];
+			struct sockaddr_in6 *a = (struct sockaddr_in6 *)&from;
+			printf ("Client address: %s:%d, %d\n", inet_ntop (AF_INET6, &a->sin6_addr,
+					adrb, INET6_ADDRSTRLEN), a->sin6_port, id);
+			 debug code ends */
+			g_mutex_lock (vis->clientlock);
+			c = get_client (id);
+			if (!c || c->type != VIS_UDP) {
+				g_mutex_unlock (vis->clientlock);
+				return TRUE;
+			}
+			/* save client address according to id */
+			memcpy (&c->transport.udp.addr, &from, sizeof (from));
+			c->transport.udp.socket[0] = 1;
+			c->transport.udp.grace = 500;
+			g_mutex_unlock (vis->clientlock);
+		} else if (buf.type == 'T') {
+			struct timeval time;
+			xmms_vis_client_t *c;
+			xmmsc_vis_udp_timing_t *content = (xmmsc_vis_udp_timing_t*)&buf;
+			int32_t id = ntohl (content->id);
+
+			g_mutex_lock (vis->clientlock);
+			c = get_client (id);
+			if (!c || c->type != VIS_UDP) {
+				g_mutex_unlock (vis->clientlock);
+				return TRUE;
+			}
+			c->transport.udp.grace = 500;
+			g_mutex_unlock (vis->clientlock);
+
+			/* give pong */
+			gettimeofday (&time, NULL);
+			tv2net (content->serverstamp, ts2tv (&time) - net2tv (content->clientstamp));
+			sendto (vis->socket, content, sizeof (xmmsc_vis_udp_timing_t), 0, (struct sockaddr *)&from, sl);
+
+			/* new debug:
+			printf ("Timings: local %f, remote %f, diff %f\n", ts2tv (&time), net2tv (&buf[1]), net2tv (&buf[1]) - ts2tv (&time));
+			 ends */
+		} else {
+			xmms_log_error ("Received invalid UDP package!");
 		}
-
-		/* save client address according to id */
-		/* debug code starts
-		char adrb[INET6_ADDRSTRLEN];
-		struct sockaddr_in6 *a = (struct sockaddr_in6 *)&from;
-		printf ("Sender: %s:%d, %d\n", inet_ntop (AF_INET6, &a->sin6_addr,
-		        adrb, INET6_ADDRSTRLEN), a->sin6_port, id);
-		debug code ends */
-		memcpy (&c->transport.udp.addr, &from, sizeof (from));
-		c->transport.udp.socket = 1;
-		c->transport.udp.grace = 1000;
-
-		/* give pong */
-		gettimeofday (&time, NULL);
-		tv2net (&buf[3], ts2tv (&time) - net2tv (&buf[1]));
-		sendto (vis->socket, buf, sizeof (buf), 0, (struct sockaddr *)&from, sl);
-
-		/* new debug:
-		printf ("Timings: local %f, remote %f, diff %f\n", ts2tv (&time), net2tv (&buf[1]), net2tv (&buf[1]) - ts2tv (&time));
-		 ends */
-
-	} else {
-		xmms_log_error ("Received invalid UDP package!");
 	}
 	return TRUE;
 }
@@ -439,9 +478,7 @@ xmms_visualisation_init_udp (xmms_visualisation_t *vis, int32_t id, xmms_error_t
 {
 	// TODO: we need the currently used port, not only the default one! */
 	int32_t port = XMMS_DEFAULT_TCP_PORT;
-	xmms_vis_client_t *c = get_client(id);
-
-	x_check_client (-1);
+	xmms_vis_client_t *c;
 
 	// setup socket if needed
 	if (vis->socket == -1) {
@@ -488,9 +525,11 @@ xmms_visualisation_init_udp (xmms_visualisation_t *vis, int32_t id, xmms_error_t
 	}
 
 	/* set up client structure */
+	x_fetch_client (id);
 	c->type = VIS_UDP;
 	memset (&c->transport.udp.addr, 0, sizeof (c->transport.udp.addr));
-	c->transport.udp.socket = 0;
+	c->transport.udp.socket[0] = 0;
+	x_release_client ();
 
 	xmms_log_info ("Visualisation client %d initialised using UDP", id);
 	// return socketport
@@ -500,7 +539,9 @@ xmms_visualisation_init_udp (xmms_visualisation_t *vis, int32_t id, xmms_error_t
 void
 xmms_visualisation_shutdown_client (xmms_visualisation_t *vis, int32_t id, xmms_error_t *err)
 {
+	g_mutex_lock (vis->clientlock);
 	delete_client (id);
+	g_mutex_unlock (vis->clientlock);
 }
 
 
@@ -553,7 +594,7 @@ increment_client (xmmsc_vis_unixshm_t *t) {
 }
 
 gboolean
-package_write_start (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vispacket_t **dest) {
+package_write_start (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vischunk_t **dest) {
 	if (c->type == VIS_UNIXSHM) {
 		struct shmid_ds shm_desc;
 		xmmsc_vis_unixshm_t *t = &c->transport.shm;
@@ -573,21 +614,27 @@ package_write_start (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vispacket
 		return TRUE;
 	}
 	if (c->type == VIS_UDP) {
-		/* first check if the client is still there -> grace! */
-		// TODO
+		/* first check if the client is still there */
+		if (c->transport.udp.grace == 0) {
+			delete_client(id);
+			return FALSE;
+		}
 
 		if (c->transport.udp.socket == 0) {
 			return FALSE;
 		}
 		/* TODO: use size instead! */
-		*dest = g_new (xmmsc_vispacket_t, 1);
+		xmmsc_vis_udp_data_t *packet = g_new (xmmsc_vis_udp_data_t, 1);
+		packet->type = 'V';
+		packet->grace = --c->transport.udp.grace;
+		*dest = &packet->data;
 		return TRUE;
 	}
 	return FALSE;
 }
 
 void
-package_write_finish (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vispacket_t *dest) {
+package_write_finish (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vischunk_t *dest) {
 	if (c->type == VIS_UNIXSHM) {
 		xmmsc_vis_unixshm_t *t = &c->transport.shm;
 		t->pos = (t->pos + 1) % t->size;
@@ -601,8 +648,14 @@ package_write_finish (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vispacke
 		printf ("Destination: %s:%d, %d\n", inet_ntop (AF_INET6, &a->sin6_addr,
 		        adrb, INET6_ADDRSTRLEN), a->sin6_port, id);
 		 debug code ends */
-		sendto (vis->socket, dest, sizeof (xmmsc_vispacket_t), 0, (struct sockaddr *)&c->transport.udp.addr, sl);
-		g_free (dest);
+		/* nasty trick that won't get through code review */
+		int offset[2];
+		xmmsc_vis_udp_data_t *packet = 0;
+		offset[0] = ((int)&packet->data - (int)packet);
+		packet = (xmmsc_vis_udp_data_t*)((char*)dest - offset[0]);
+		offset[1] = ((int)&packet->data.data - (int)&packet->data);
+		sendto (vis->socket, packet, offset[0] + offset[1] + size, 0, (struct sockaddr *)&c->transport.udp.addr, sl);
+		g_free (packet);
 	}
 }
 
@@ -610,11 +663,12 @@ package_write_finish (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vispacke
 void
 xmms_visualisation_send_data (xmms_visualisation_t *vis, short l, short r) {
 	int i;
-	xmmsc_vispacket_t *dest;
+	xmmsc_vischunk_t *dest;
 	struct timeval time;
 	guint32 latency = xmms_output_latency (vis->output);
 
 	gettimeofday (&time, NULL);
+	g_mutex_lock (vis->clientlock);
 	for (i = 0; i < vis->clientc; ++i) {
 		if (vis->clientv[i]) {
 			if (!package_write_start (i, vis->clientv[i], 4, &dest)) {
@@ -632,6 +686,7 @@ xmms_visualisation_send_data (xmms_visualisation_t *vis, short l, short r) {
 			package_write_finish (i, vis->clientv[i], 4, dest);
 		}
 	}
+	g_mutex_unlock (vis->clientlock);
 }
 
 //~ static void output_spectrum (xmms_visualisation_t *vis, guint32 pos)

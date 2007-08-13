@@ -48,11 +48,32 @@ extern "C" {
 
 typedef struct {
 	int32_t timestamp[2];
-	uint16_t graceleft;
 	uint16_t format;
 	/* 512 is what libvisual wants for pcm data (could also be 256) */
 	char data[512*sizeof(uint16_t)*2];
-} xmmsc_vispacket_t;
+} xmmsc_vischunk_t;
+
+/**
+ * UDP package format to deliver a vis chunk
+ */
+
+typedef struct {
+	char type; /* = 'V' */;
+	uint16_t grace;
+	xmmsc_vischunk_t data;
+	/* DON'T put anything after data */
+} xmmsc_vis_udp_data_t;
+
+/**
+ * UDP package format to synchronize time
+ */
+
+typedef struct {
+	char type; /* = 'T' */
+	int32_t id;
+	int32_t clientstamp[2];
+	int32_t serverstamp[2];
+} xmmsc_vis_udp_timing_t;
 
 /**
  * Possible data modes
@@ -99,7 +120,7 @@ typedef enum {
 typedef struct {
 	int semid;
 	int shmid;
-	xmmsc_vispacket_t *buffer;
+	xmmsc_vischunk_t *buffer;
 	int pos, size;
 } xmmsc_vis_unixshm_t;
 
@@ -108,10 +129,10 @@ typedef struct {
  */
 
 typedef struct {
-	// client, used by the server
+	// client address, used by server
 	struct sockaddr_storage addr;
-	// file descriptor, used by the client
-	int socket;
+	// file descriptors, used by the client
+	int socket[2];
 	// watch adjustment, used by the client
 	double timediff;
 	// grace value (lifetime of the client without pong)

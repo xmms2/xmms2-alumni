@@ -23,6 +23,7 @@
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "xmmsclient/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient.h"
@@ -103,18 +104,44 @@ xmmsc_visualisation_init (xmmsc_connection_t *c) {
 	return c->visc-1;
 }
 
-int
-setup_udp (xmmsc_visualisation_t *v, xmmsc_connection_t *c, int32_t port) {
-	int socknum;
-	struct addrinfo hints;
-	struct addrinfo *result, *rp;
-	int i, cnt;
+double
+udp_timediff (int32_t id, int socket) {
+	int i;
 	double lag;
 	struct timeval time;
-	// first is id, next four describe time
-	int32_t buf[1 + 2 + 2];
+	xmmsc_vis_udp_data_t buf;
+	xmmsc_vis_udp_timing_t *content = (xmmsc_vis_udp_timing_t*)&buf;
 	double diff = 0.0;
 	int diffc = 0;
+
+	gettimeofday (&time, NULL);
+	content->type = 'T';
+	content->id = htonl (id);
+	ts2net (content->clientstamp, &time);
+	/* TODO: handle lost packages! */
+	for (i = 0; i < 10; ++i) {
+		send (socket, content, sizeof (xmmsc_vis_udp_timing_t), 0);
+	}
+	do {
+		if (recv (socket, &buf, sizeof (buf), 0) > 0 && buf.type == 'T') {
+			gettimeofday (&time, NULL);
+			lag = (ts2tv (&time) - net2tv (content->clientstamp)) / 2.0;
+			diffc++;
+			diff += net2tv (content->serverstamp) - lag;
+			/* debug output
+			printf("server diff: %f \t old timestamp: %f, new timestamp %f\n",
+			       net2tv (content->serverstamp), net2tv (content->clientstamp), ts2tv (&time));
+			 end of debug */
+		}
+	} while (diffc < 10);
+
+	return diff / (double)diffc;
+}
+
+int
+setup_udp (xmmsc_visualisation_t *v, xmmsc_connection_t *c, int32_t port) {
+	struct addrinfo hints;
+	struct addrinfo *result, *rp;
 	char *host;
 	char portstr[10];
 	sprintf (portstr, "%d", port);
@@ -138,13 +165,16 @@ setup_udp (xmmsc_visualisation_t *v, xmmsc_connection_t *c, int32_t port) {
 	free (host);
 
 	for (rp = result; rp != NULL; rp = rp->ai_next) {
-		if ((socknum = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol)) == -1) {
+		if ((v->transport.udp.socket[0] = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol)) == -1) {
 			continue;
 		}
-		if (connect (socknum, rp->ai_addr, rp->ai_addrlen) != -1) {
+		if (connect (v->transport.udp.socket[0], rp->ai_addr, rp->ai_addrlen) != -1) {
+			/* init fallback socket for timing stuff */
+			v->transport.udp.socket[1] = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+			connect (v->transport.udp.socket[1], rp->ai_addr, rp->ai_addrlen);
 			break;
 		} else {
-			close (socknum);
+			close (v->transport.udp.socket[0]);
 		}
 	}
 	if (rp == NULL) {
@@ -152,28 +182,13 @@ setup_udp (xmmsc_visualisation_t *v, xmmsc_connection_t *c, int32_t port) {
 		return 0;
 	}
 	freeaddrinfo (result);
-
-	gettimeofday (&time, NULL);
-	buf[0] = htonl (v->id);
-	ts2net (&buf[1], &time);
-	for (i = 0; i < 10; ++i) {
-		send (socknum, buf, sizeof (buf), 0);
-	}
-	do { /* TODO: Handle lost packages! */
-		cnt = recv (socknum, buf, sizeof (buf), 0);
-		if (cnt == sizeof (buf)) {
-			gettimeofday (&time, NULL);
-			lag = (ts2tv (&time) - net2tv (&buf[1])) / 2.0;
-			diffc++;
-			diff += net2tv (&buf[3]) - lag;
-			/* debug output
-			printf("server diff: %f \t old timestamp: %f, new timestamp %f\n", net2tv (&buf[3]), net2tv (&buf[1]), ts2tv (&time));
-			 end of debug */
-		}
-	} while (cnt > 0 && diffc < 10);
-	diff /= (double)diffc;
-	v->transport.udp.socket = socknum;
-	v->transport.udp.timediff = diff;
+	/* TODO: do this properly! */
+	xmmsc_vis_udp_timing_t content;
+	content.type = 'H';
+	content.id = htonl (v->id);
+	send (v->transport.udp.socket[0], &content, sizeof (xmmsc_vis_udp_timing_t), 0);
+	v->transport.udp.timediff = udp_timediff (v->id, v->transport.udp.socket[1]);
+//	printf ("diff: %f\n", v->transport.udp.timediff);
 	return 1;
 }
 
@@ -200,7 +215,7 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 
 	/* prepare unixshm + semaphores */
 	  /* following means everyone on the system could inject wrong vis data ;) */
-	shmid = shmget (IPC_PRIVATE, sizeof (xmmsc_vispacket_t) * XMMS_VISPACKET_SHMCOUNT, S_IRWXU + S_IRWXG + S_IRWXO);
+	shmid = shmget (IPC_PRIVATE, sizeof (xmmsc_vischunk_t) * XMMS_VISPACKET_SHMCOUNT, S_IRWXU + S_IRWXG + S_IRWXO);
 	if (shmid == -1) {
 		c->error = strdup("Couldn't create the shared memory!");
 		return NULL;
@@ -311,6 +326,10 @@ xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int vv)
 	if (v->type == VIS_UNIXSHM) {
 		shmdt (v->transport.shm.buffer);
 	}
+	if (v->type == VIS_UDP) {
+		close (v->transport.udp.socket[0]);
+		close (v->transport.udp.socket[1]);
+	}
 
 	free(v);
 	c->visv[vv] = NULL;
@@ -364,7 +383,7 @@ increment_server (xmmsc_vis_unixshm_t *t) {
 }
 
 int
-package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vispacket_t **dest) {
+package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t **dest) {
 	if (v->type == VIS_UNIXSHM) {
 		xmmsc_vis_unixshm_t *t = &v->transport.shm;
 		if (!blocking) {
@@ -385,25 +404,32 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vispacket_t **
 	}
 	if (v->type == VIS_UDP) {
 		int cnt;
-		xmmsc_vispacket_t *buf;
 		xmmsc_vis_udp_t *t = &v->transport.udp;
-		*dest = malloc (sizeof (xmmsc_vispacket_t));
-		buf = *dest;
+		xmmsc_vis_udp_data_t *packet = malloc (sizeof (xmmsc_vis_udp_data_t));
+		*dest = &packet->data;
 
 		if (blocking) {
-			cnt = recv (t->socket, buf, sizeof (xmmsc_vispacket_t), 0);
-		} else {
-			cnt = recv (t->socket, buf, sizeof (xmmsc_vispacket_t), MSG_DONTWAIT);
-			if (cnt == -1 && errno == EAGAIN) {
-				return 1;
-			}
+			blocking = MSG_DONTWAIT;
 		}
-		/* TODO: make this usable */
-		if (cnt == sizeof (xmmsc_vispacket_t)) {
+		cnt = recv (t->socket[0], packet, sizeof (xmmsc_vis_udp_data_t), blocking);
+		if (cnt == -1 && errno == EAGAIN) {
+			return 1;
+		}
+		if (cnt > 0 && packet->type == 'V') {
+			if (packet->grace < 100) {
+				if (t->grace != 0) {
+					puts ("resync");
+					t->grace = 0;
+					/* use second socket here, so vis packets don't get lost */
+					t->timediff = udp_timediff (v->id, t->socket[1]);
+				}
+			} else {
+				t->grace = packet->grace;
+			}
 			/* this is nasty */
-			double interim = net2tv (buf->timestamp);
+			double interim = net2tv (packet->data.timestamp);
 			interim -= t->timediff;
-			tv2net (buf->timestamp, interim);
+			tv2net (packet->data.timestamp, interim);
 			return 0;
 		} else if (cnt > -1) {
 			return 1;
@@ -415,13 +441,16 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vispacket_t **
 }
 
 void
-package_read_finish (xmmsc_visualisation_t *v, int blocking, xmmsc_vispacket_t *dest) {
+package_read_finish (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t *dest) {
 	if (v->type == VIS_UNIXSHM) {
 		xmmsc_vis_unixshm_t *t = &v->transport.shm;
 		t->pos = (t->pos + 1) % t->size;
 		increment_server (t);
 	} else if (v->type == VIS_UDP) {
-		free (dest);
+		xmmsc_vis_udp_data_t *packet = 0;
+		int offset = ((int)&packet->data - (int)packet);
+		packet = (xmmsc_vis_udp_data_t*)((char*)dest - offset);
+		free (packet);
 	}
 }
 
@@ -432,7 +461,7 @@ package_read_finish (xmmsc_visualisation_t *v, int blocking, xmmsc_vispacket_t *
 int
 xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data, int drawtime, int blocking) {
 	xmmsc_visualisation_t *v;
-	xmmsc_vispacket_t *src;
+	xmmsc_vischunk_t *src;
 	struct timeval time;
 	double diff;
 	struct timespec sleeptime;
