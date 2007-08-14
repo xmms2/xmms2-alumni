@@ -47,6 +47,17 @@ def get_args(node):
 
     return argstring
 
+def get_retval(method):
+    retval = method.getElementsByTagName("retval")
+
+    retvalstr = retval[0].childNodes[1].childNodes[1].nodeName;
+
+    #if we're dealing with a list...
+    if retvalstr == "list":
+	retvalstr = trans_list(retval[0].childNodes[1].childNodes[1])
+
+    return retvalstr;
+
 #returns the c_map equivalent of a list type
 def trans_list(basenode):
     return basenode.childNodes[1].nodeName + "list";
@@ -326,13 +337,9 @@ def do_objects(objects):
 		for method in methods:
 		    #add to the methodmap
 		    methodmap[node.getAttribute("name")].add(method)
-		    retval = method.getElementsByTagName("retval")
 
-		    retvalstr = retval[0].childNodes[1].childNodes[1].nodeName;
+		    retvalstr = get_retval(method)
 
-		    #if we're dealing with a list...
-		    if retvalstr == "list":
-			retvalstr = trans_list(retval[0].childNodes[1].childNodes[1])
 		    hfile.write("\t%s " % \
 			    c_map[retvalstr])
 
@@ -390,12 +397,8 @@ def do_objects(objects):
 
 	    #higher-level method declarations
 	    for method in methods:
-		retval = method.getElementsByTagName("retval")
 
-		retvalstr = retval[0].childNodes[1].childNodes[1].nodeName
-
-		if retvalstr == "list":
-		    retvalstr = trans_list(retval[0].childNodes[1].childNodes[1])
+		retvalstr = get_retval(method)
 
 		xmmsclientfile.write("%s " % \
 		    (c_map[retvalstr]))
