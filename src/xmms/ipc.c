@@ -17,10 +17,10 @@
 #include <glib.h>
 
 #include "xmms/xmms_log.h"
-#include "xmmspriv/xmms_ipc.h"
-#include "xmmsc/xmmsc_ipc_msg.h"
-#include "xmmspriv/xmms_cmds.h"
 #include "xmmsclient/xmmsclient.h"
+#include "xmmsc/xmmsc_ipc_msg.h"
+#include "xmmspriv/xmms_ipc.h"
+#include "xmmspriv/xmms_cmds.h"
 
 /**
   * @defgroup IPC IPC
@@ -335,7 +335,7 @@ on_config_ipcsocket_change (xmms_object_t *object, gconstpointer data, gpointer 
  * Put a message in the queue awaiting to be sent to the client.
  * Should hold client->lock.
  */
-static gboolean
+gboolean
 xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 {
 	gboolean queue_empty;
