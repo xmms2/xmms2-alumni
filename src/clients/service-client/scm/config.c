@@ -23,24 +23,6 @@
  */
 
 /**
- * Get the config file dir.
- */
-static const gchar *
-config_dir ()
-{
-	static gchar userconf[PATH_MAX];
-	static gchar *dir = NULL;
-
-	if (!dir) {
-		xmmsc_userconfdir_get (userconf, PATH_MAX);
-		dir = g_build_path (G_DIR_SEPARATOR_S, userconf,
-		                    "service_clients", NULL);
-	}
-
-	return dir;
-}
-
-/**
  * Parse service section.
  */
 static void
@@ -146,6 +128,24 @@ write_entry (gpointer key, gpointer value, gpointer udata)
 	fwrite (entry, strlen (entry), 1, fp);
 
 	g_free (entry);
+}
+
+/**
+ * Get the config file dir.
+ */
+const gchar *
+config_dir (void)
+{
+	static gchar userconf[PATH_MAX];
+	static gchar *dir = NULL;
+
+	if (!dir) {
+		xmmsc_userconfdir_get (userconf, PATH_MAX);
+		dir = g_build_path (G_DIR_SEPARATOR_S, userconf,
+		                    "service_clients", NULL);
+	}
+
+	return dir;
 }
 
 /**
@@ -322,6 +322,8 @@ free_config (gpointer v)
 	if (config) {
 		g_free (config->path);
 		g_free (config->argv);
+		if (config->pid)
+			g_spawn_close_pid (config->pid);
 		g_hash_table_destroy (config->services);
 		g_free (config);
 	}
