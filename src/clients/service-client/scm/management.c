@@ -15,6 +15,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <signal.h>
 #include <errno.h>
 
@@ -27,32 +28,6 @@
  */
 
 /**
- * Launch a single service client.
- */
-static gboolean
-launch_single (config_t *config)
-{
-	GError *err = NULL;
-	gchar *argv[2] = {NULL, NULL};
-
-	x_return_val_if_fail (config, FALSE);
-	x_return_val_if_fail (!config->pid, FALSE);
-
-	argv[0] = config->path;
-	argv[1] = config->argv;
-	if (g_file_test (config->path, G_FILE_TEST_IS_EXECUTABLE)) {
-		if (!g_spawn_async (g_get_home_dir (),
-		                    argv, NULL, 0,
-		                    NULL, NULL, &config->pid, &err)) {
-			print_info ("Failed to launch client (%s)", config->path);
-			return FALSE;
-		}
-	}
-
-	return TRUE;
-}
-
-/**
  * Force a service client to shutdown.
  */
 static gboolean
@@ -60,54 +35,33 @@ force_shutdown (gpointer data)
 {
 	gchar *name = data;
 	config_t *config;
+	int status = 0;
 
 	if (!(config = g_hash_table_lookup (clients, name)))
 		return FALSE;
+
+	if (waitpid (config->pid, &status,
+	             WNOHANG | WUNTRACED | WCONTINUED) == config->pid &&
+	    (WIFEXITED (status) || WIFSIGNALED (status) || WIFSTOPPED (status))) {
+		g_spawn_close_pid (config->pid);
+		return FALSE;
+	}
 
 	if (kill (config->pid, SIGTERM)) {
 		print_info ("Failed to shutdown service client: %s", strerror (errno));
 		return TRUE;
 	}
+	g_spawn_close_pid (config->pid);
 
 	return FALSE;
 }
 
-/**
- * Shutdown a single service client.
- */
-static gboolean
-shutdown_single (xmmsc_connection_t *conn, gchar *client)
+static void
+timeout_kill (gpointer key, gpointer value, gpointer data)
 {
-	xmmsc_result_t *result;
-	config_t *config;
-	gchar *name = NULL;
+	gchar *name = key;
 
-	x_return_val_if_fail (client, FALSE);
-
-	if (!(config = g_hash_table_lookup (clients, client))) {
-		print_info ("Service client (%s) is not installed.", client);
-		return FALSE;
-	}
-
-	if (!config->pid) {
-		print_info ("Service client (%s) is not running.", config->path);
-		return FALSE;
-	}
-
-	if (!g_hash_table_find (config->services, match_service_registered, &name)) {
-		print_info ("No service is registered from that service client.");
-		return FALSE;
-	}
-	result = xmmsc_service_shutdown (conn, name);
-	xmmsc_result_wait (result);
-	if (xmmsc_result_iserror (result))
-		print_error ("Failed to send shutdown request: %s",
-		             xmmsc_result_get_error (result));
-	xmmsc_result_unref (result);
-
-	g_timeout_add (TIMEOUT, force_shutdown, client);
-
-	return TRUE;
+	g_timeout_add (TIMEOUT, force_shutdown, name);
 }
 
 /**
@@ -266,6 +220,70 @@ cb_toggle_autostart (xmmsc_connection_t *conn, xmmsc_result_t *res,
 }
 
 /**
+ * Launch a single service client.
+ */
+gboolean
+launch_single (config_t *config)
+{
+	GError *err = NULL;
+	gchar *argv[2] = {NULL, NULL};
+
+	x_return_val_if_fail (config, FALSE);
+	x_return_val_if_fail (!config->pid, FALSE);
+
+	argv[0] = config->path;
+	argv[1] = config->argv;
+	if (g_file_test (config->path, G_FILE_TEST_IS_EXECUTABLE)) {
+		if (!g_spawn_async (g_get_home_dir (),
+		                    argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
+		                    NULL, NULL, &config->pid, &err)) {
+			print_info ("Failed to launch client (%s)", config->path);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+/**
+ * Shutdown a single service client.
+ */
+gboolean
+shutdown_single (xmmsc_connection_t *conn, gchar *client)
+{
+	xmmsc_result_t *result;
+	config_t *config;
+	gchar *name = NULL;
+
+	x_return_val_if_fail (client, FALSE);
+
+	if (!(config = g_hash_table_lookup (clients, client))) {
+		print_info ("Service client (%s) is not installed.", client);
+		return FALSE;
+	}
+
+	if (!config->pid) {
+		print_info ("Service client (%s) is not running.", config->path);
+		return FALSE;
+	}
+
+	if (!g_hash_table_find (config->services, match_service_registered, &name)) {
+		print_info ("No service is registered from that service client.");
+		return FALSE;
+	}
+	result = xmmsc_service_shutdown (conn, name);
+	xmmsc_result_wait (result);
+	if (xmmsc_result_iserror (result))
+		print_error ("Failed to send shutdown request: %s",
+		             xmmsc_result_get_error (result));
+	xmmsc_result_unref (result);
+
+	g_timeout_add (TIMEOUT, force_shutdown, client);
+
+	return TRUE;
+}
+
+/**
  * Launch all service clients with autostart set to true.
  */
 gboolean
@@ -303,4 +321,14 @@ shutdown_all (xmmsc_connection_t *conn)
 
 	g_list_free (list);
 	return TRUE;
+}
+
+/**
+ * Shutdown all local service clients if they are still running after #TIMEOUT
+ * seconds after the server shut down.
+ */
+void
+kill_all (void)
+{
+	g_hash_table_foreach (clients, timeout_kill, NULL);
 }

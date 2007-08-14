@@ -32,7 +32,10 @@ void cb_shutdown (xmmsc_connection_t *conn, xmmsc_result_t *res,
 void cb_toggle_autostart (xmmsc_connection_t *conn, xmmsc_result_t *res,
                           xmmsc_service_method_t *method, void *data);
 
+gboolean launch_single (config_t *config);
+gboolean shutdown_single (xmmsc_connection_t *conn, gchar *client);
 gboolean launch_all (void);
 gboolean shutdown_all (xmmsc_connection_t *conn);
+void kill_all (void);
 
 #endif
