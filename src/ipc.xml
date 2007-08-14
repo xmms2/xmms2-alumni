@@ -22,6 +22,11 @@
 		<prop name="CLEAR" />
 	</enum>
 
+	<enum name="message">
+		<prop name="REPLY" />
+		<prop name="ERROR" />
+	</enum>
+
 	<object name="main" type="both">
 		<method name="hello">
 			<arg name="protocolver">
