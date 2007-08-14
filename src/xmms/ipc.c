@@ -84,8 +84,6 @@ static struct xmms_ipc_object_pool_t *ipc_object_pool = NULL;
 
 static void xmms_ipc_client_destroy (xmms_ipc_client_t *client);
 
-static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
-
 xmms_main_cmds_t *xmms_ipc_get_main_cmds (void)
 {
 	return main_cmds;

@@ -8,7 +8,6 @@ typedef enum {
 } xmms_ipc_client_status_t;
 
 typedef struct xmms_ipc_St xmms_ipc_t;
-typedef struct xmms_ipc_client_St xmms_ipc_client_t;
 
 xmms_ipc_t *xmms_ipc_init (void);
 void xmms_ipc_shutdown (void);
@@ -17,6 +16,10 @@ gboolean xmms_ipc_setup_server (const gchar *path);
 gboolean xmms_ipc_setup_with_gmain (xmms_ipc_t *ipc);
 
 gboolean xmms_ipc_has_pending (guint signalid);
+
+typedef struct xmms_ipc_client_St xmms_ipc_client_t;
+
+static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
 
 GList *xmms_ipc_get_cmds();
 void xmms_ipc_add_cmds(gpointer *cmds, guint type);
