@@ -57,7 +57,7 @@ struct xmms_ipc_St {
 /**
  * A IPC client representation.
  */
-typedef struct xmms_ipc_client_St {
+struct xmms_ipc_client_St {
 	GThread *thread;
 
 	GMainLoop *ml;
@@ -74,7 +74,7 @@ typedef struct xmms_ipc_client_St {
 
 	/** Messages waiting to be written */
 	GQueue *out_msg;
-} xmms_ipc_client_t;
+};
 
 static GMutex *ipc_servers_lock;
 static GList *ipc_servers = NULL;
@@ -179,7 +179,7 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 				client->read_msg = NULL;
 
 				/* Found in ipc_msg_gen.c */
-				process_msg (client->ipc, msg);
+				process_msg (client, client->ipc, msg);
 
 				xmms_ipc_msg_destroy (msg);
 			} else {

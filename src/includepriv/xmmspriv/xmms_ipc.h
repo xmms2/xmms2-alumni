@@ -8,6 +8,7 @@ typedef enum {
 } xmms_ipc_client_status_t;
 
 typedef struct xmms_ipc_St xmms_ipc_t;
+typedef struct xmms_ipc_client_St xmms_ipc_client_t;
 
 xmms_ipc_t *xmms_ipc_init (void);
 void xmms_ipc_shutdown (void);
