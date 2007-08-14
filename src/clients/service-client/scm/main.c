@@ -14,6 +14,9 @@
  *  Lesser General Public License for more details.
  */
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include "common.h"
 #include "config.h"
 #include "management.h"
@@ -262,16 +265,30 @@ register_all (xmmsc_connection_t *conn)
 	return TRUE;
 }
 
-static void
-cb_quit (xmmsc_result_t *res, void *data)
+static gboolean
+timeout_quit (void *data)
 {
-	g_main_loop_quit ((GMainLoop *) data);
+	if (waitpid (-1, NULL, WNOHANG | WUNTRACED | WCONTINUED) == -1) {
+		if (errno == ECHILD) {
+			g_main_loop_quit ((GMainLoop *)data);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+static void
+cb_quit (void *data)
+{
+	kill_all ();
+	g_timeout_add (TIMEOUT / 5, timeout_quit, data);
 }
 
 static gboolean
 subscribe_broadcasts (xmmsc_connection_t *conn, GMainLoop *ml)
 {
-	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_quit, cb_quit, ml);
+	xmmsc_disconnect_callback_set (conn, cb_quit, ml);
 
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_service_changed,
 	                   cb_service_changed, conn);
@@ -282,18 +299,19 @@ subscribe_broadcasts (xmmsc_connection_t *conn, GMainLoop *ml)
 }
 
 static void
-quit (xmmsc_connection_t *conn)
+quit (xmmsc_connection_t *conn, GIOChannel *gio)
 {
-	shutdown_all (conn);
+	shutdown_monitor (gio);
 	g_hash_table_destroy (clients);
 	xmmsc_unref (conn);
 }
 
 int
-main ()
+main (void)
 {
 	xmmsc_connection_t *conn;
 	GMainLoop *ml;
+	GIOChannel *gio;
 	clients = NULL;
 
 	conn = xmmsc_init (SCM_NAME);
@@ -305,24 +323,29 @@ main ()
 	ml = g_main_loop_new (NULL, FALSE);
 
 	if (!subscribe_broadcasts (conn, ml)) {
-		quit (conn);
+		quit (conn, NULL);
 		return 1;
 	}
 
 	if (!read_all () || !launch_all ()) {
-		quit (conn);
+		quit (conn, NULL);
 		return 1;
 	}
 
 	if (!register_all (conn)) {
-		quit (conn);
+		quit (conn, NULL);
+		return 1;
+	}
+
+	if (!(gio = start_monitor (conn))) {
+		quit (conn, NULL);
 		return 1;
 	}
 
 	xmmsc_mainloop_gmain_init (conn);
 	g_main_loop_run (ml);
 
-	quit (conn);
+	quit (conn, gio);
 
 	return 0;
 }

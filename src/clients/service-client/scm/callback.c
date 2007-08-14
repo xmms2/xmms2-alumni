@@ -65,7 +65,7 @@ update_service_infos (xmmsc_result_t *res, void *data)
 static void
 update_method_infos (xmmsc_result_t *res, void *data)
 {
-	gchar **method = (gchar **)data;
+	method_t *method = (method_t *)data;
 	gchar *desc;
 
 	if (!method) {
@@ -84,8 +84,8 @@ update_method_infos (xmmsc_result_t *res, void *data)
 		return;
 	}
 
-	g_free (*method);
-	*method = g_strdup (desc);
+	g_free (method->desc);
+	method->desc = g_strdup (desc);
 }
 
 /**
@@ -237,7 +237,7 @@ cb_method_changed (xmmsc_result_t *res, void *data)
 			return;
 		}
 
-		xmmsc_result_notifier_set (result, update_method_infos, &method);
+		xmmsc_result_notifier_set (result, update_method_infos, method);
 		xmmsc_result_unref (result);
 		break;
 	case XMMS_SERVICE_CHANGED_UNREGISTER:

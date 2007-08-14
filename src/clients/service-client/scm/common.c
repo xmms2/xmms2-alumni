@@ -97,6 +97,7 @@ print_config (gpointer k, gpointer v, gpointer d)
 
 	print_info ("%s", name);
 	print_info ("path: %s\nargv: %s", conf->path, conf->argv);
+	print_info ("Pid: %d", conf->pid);
 	if (conf->autostart)
 		print_info ("auto: yes");
 	else

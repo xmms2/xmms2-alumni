@@ -14,22 +14,19 @@
  *  Lesser General Public License for more details.
  */
 
-#ifndef __CONFIG_H__
-#define __CONFIG_H__
+#ifndef __MONITOR_H__
+#define __MONITOR_H__
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
+#include "xmms_configuration.h"
 #include "common.h"
+#include "config.h"
 
-const gchar *config_dir (void);
-gboolean read_all (void);
-config_t *read_config (const gchar *name);
-gboolean create_config (const gchar *name, const gchar *contents);
-gboolean remove_config (const gchar *name);
-void free_config (gpointer v);
-void free_service (gpointer v);
-void free_method (gpointer v);
+#ifdef INOTIFY
+#include "inotify.h"
+#include "inotify-syscalls.h"
+#endif
+
+GIOChannel *start_monitor (xmmsc_connection_t *conn);
+void shutdown_monitor (GIOChannel *gio);
 
 #endif
