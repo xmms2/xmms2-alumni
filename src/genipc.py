@@ -4,6 +4,10 @@ import string
 import xml.dom.minidom
 import sets
 
+#######################
+#Here all the basic setup is done, defining of
+#basic types, etc.
+
 #dictionary mapping of types in the xml to C types
 c_map = {}
 c_map["none"] = "void"
@@ -13,11 +17,22 @@ c_map["string"] = "char *"
 c_map["enum"] = "unsigned int"
 c_map["stringlist"] = "char **"
 
+#dictionary mapping for internal types used in the server, but not
+#exposed to the outside. Mostly this is needed because the server uses GLib
+#for lots of things but we can't expose that to the outside.
+#Which is also why its basically equivalent to c_map,
+#just a few things need to be changed.
+c_map_internal = c_map.copy();
+c_map_internal["stringlist"] = "GList *"
+
 #dictionary mapping of types to xmms_ipc_msg types
 msg_map = {}
 msg_map["int"] = "int32"
 msg_map["uint"] = "uint32"
 msg_map["string"] = "string"
+#this is going to be implemented via propdict later, but for now
+#this lets us compile
+msg_map["stringlist"] = "uint32"
 
 global_idnum = -1
 
@@ -28,6 +43,7 @@ objectlist = set()
 methodmap = {}
 
 cfile = open("genipc_out/ipc_cmds.c","w+")
+###################
 
 def get_nextid():
     global global_idnum
@@ -109,7 +125,12 @@ def start_deser():
 
 #write the deserialize function for a specific ipc method
 def output_deserialize_server(obj,method):
-    ipcmsgdeser.write("void\ndeserialize_call_%s_cmd_%s (xmms_ipc_t *ipc, \
+    #return type
+    retvalstr = get_retval(method);
+
+    ipcmsgdeser.write("%s\n" % c_map_internal[retvalstr])
+
+    ipcmsgdeser.write("deserialize_call_%s_cmd_%s (xmms_ipc_t *ipc, \
 xmms_ipc_msg_t *msg)\n{\n" % (obj.getAttribute("name"),
 			    method.getAttribute("name")))
 
@@ -154,7 +175,7 @@ def start_processmsg():
 
     ipcmsggen.write("\n")
 
-    ipcmsggen.write("void\nprocess_msg (xmms_ipc_t *ipc, \
+    ipcmsggen.write("void\nprocess_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, \
 xmms_ipc_msg_t *msg)\n{\n\n")
 
     #body of func
@@ -175,8 +196,33 @@ def write_processmsg(node):
     for method in methodmap[node.getAttribute("name")]:
         ipcmsggen.write("\t\t\tif ((cmd == XMMSC_%s_METHOD_%s) && (type == 1)) {\n" % \
 		(node.getAttribute("name").upper(),method.getAttribute("name").upper()))
-	ipcmsggen.write("\t\t\t\tdeserialize_call_%s_cmd_%s (ipc, msg);\n" %
-		(node.getAttribute("name"),method.getAttribute("name")))
+
+	#check if we need to store the retval
+	retvalstr = get_retval(method)
+
+	if retvalstr != "none":
+	    #declare a variable to hold the return value and get it
+	    ipcmsggen.write("\t\t\t\t%s retval;\n" % c_map_internal[retvalstr]);
+	    ipcmsggen.write("\t\t\t\txmms_ipc_msg_t *retmsg;\n")
+
+	    ipcmsggen.write("\t\t\t\tretval = deserialize_call_%s_cmd_%s (ipc, msg);\n" %
+		   (node.getAttribute("name"),method.getAttribute("name")))
+
+	    #now send it out
+	    ipcmsggen.write("\t\t\t\tretmsg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_%s, \
+XMMSC_MESSAGE_REPLY);\n\n" % node.getAttribute("name").upper())
+	    ipcmsggen.write("\t\t\t\txmms_ipc_msg_put_%s (retmsg, retval);\n\n" % \
+		    msg_map[retvalstr])
+
+	    #should lock client->lock, but client is an opaque structure at the
+	    #moment
+	    ipcmsggen.write("\t\t\t\txmms_ipc_client_msg_write (client, \
+retmsg);\n")
+
+	else:
+	    ipcmsggen.write("\t\t\t\tdeserialize_call_%s_cmd_%s (ipc, msg);\n" %
+		    (node.getAttribute("name"),method.getAttribute("name")))
+
 	ipcmsggen.write("\t\t\t}\n")
 
 	#output the deserialize function
