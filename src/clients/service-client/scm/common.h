@@ -26,8 +26,8 @@
 
 #define SCM_NAME "scm"
 
-#define SERVICE_MANAGEMENT "scm_management"
-#define SERVICE_QUERY "scm_query"
+#define SERVICE_MANAGEMENT "se.xmms." SCM_NAME ".management"
+#define SERVICE_QUERY "se.xmms." SCM_NAME ".query"
 
 #define ARG_CLIENT_NAME "client_name"
 #define ARG_SERVICE_NAME "service_name"
