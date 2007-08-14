@@ -1,13 +1,7 @@
 List of things TODO(in rough order)
 
-* Let the server commands return values to the clientlib
-
-* Test the server side using the stripped clientlib in my tree - Pretty much
-* done, I need to start the more complex things now.
-
 * Handle lists of complex types correctly/generate the correct code(right now
-* we just skip over them) (Maybe should be before rigerous
-* testing)
+* works for strings, dicts/propdicts are easy to add))
 
 * Figure out how to implement property requests in the server
 
