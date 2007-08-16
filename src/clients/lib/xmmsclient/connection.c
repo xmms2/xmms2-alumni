@@ -83,6 +83,14 @@ xmmsc_connection_get_transport (xmmsc_connection_t *c)
 	return c->trans;
 }
 
+void
+hello_cb (void *data)
+{
+	int *d = (int *)data;
+
+	printf("retval:%d\n",*d);
+}
+
 int
 xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 {
@@ -117,9 +125,13 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 	msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_MAIN, XMMSC_MAIN_METHOD_HELLO);
         xmms_ipc_msg_put_uint32 (msg, 1);
         xmms_ipc_msg_put_uint32 (msg, XMMSC_VERSION);
-        xmms_ipc_msg_put_string (msg, "GENIPC TEST");
+        xmms_ipc_msg_put_string (msg, c->clientname);
         req = xmmsc_request_new (c, msg);
-	req->interval = -500;
+	xmmsc_request_now (req);
+
+	xmmsc_request_set_callback (req, hello_cb);
+
+	xmmsc_request_send (req);
 
         return ret;
 }
