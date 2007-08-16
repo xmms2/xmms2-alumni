@@ -27,7 +27,6 @@ const gchar *config_dir (void);
 gboolean read_all (void);
 config_t *read_config (const gchar *name);
 gboolean create_config (const gchar *name, const gchar *contents);
-gboolean remove_config (const gchar *name);
 void free_config (gpointer v);
 void free_service (gpointer v);
 void free_method (gpointer v);

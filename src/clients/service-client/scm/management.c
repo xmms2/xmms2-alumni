@@ -69,36 +69,6 @@ timeout_kill (gpointer key, gpointer value, gpointer data)
  */
 
 /**
- * Remove the corresponding config file.
- */
-void
-cb_uninstall (xmmsc_connection_t *conn, xmmsc_result_t *res,
-              xmmsc_service_method_t *method, void *data)
-{
-	config_t *config;
-	gchar *name = NULL;
-
-	if (xmmsc_result_iserror (res)) {
-		print_error ("Error entering cb_uninstall: %s",
-		             xmmsc_result_get_error (res));
-		return;
-	}
-
-	if ((config = lookup_client (res, &name, method))) {
-		if (config->pid && !shutdown_single (conn, name))
-			xmmsc_service_method_error_set (method, "Failed to shutdown service"
-			                                " client.");
-		else if (!remove_config (name))
-			xmmsc_service_method_error_set (method, "Failed to uninstall service"
-			                                " client.");
-
-		xmmsc_service_method_ret_add_uint32 (method, ARG_RET, 1);
-	}
-
-	method_return (conn, res, method);
-}
-
-/**
  * Change startup argument passed to the service client.
  */
 void
