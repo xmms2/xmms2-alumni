@@ -58,7 +58,7 @@ struct xmmsc_connection_St {
  *
  * Holds all data about a single service method argument.
  */
-struct xmmsc_service_argument_St {
+typedef struct xmmsc_service_argument_St {
 	char *name;
 	xmmsc_service_arg_type_t type;
 	int32_t optional;
@@ -72,7 +72,7 @@ struct xmmsc_service_argument_St {
 		unsigned char *bin;
 	} value;
 	uint32_t len;
-};
+} xmmsc_service_argument_t;
 
 /**
  * @typedef xmmsc_service_method_t
@@ -106,6 +106,7 @@ xmmsc_result_t *xmmsc_send_signal_msg (xmmsc_connection_t *c, uint32_t signalid)
 char *_xmmsc_medialib_encode_url (const char *url, int narg, const char **args);
 int _xmmsc_medialib_verify_url (const char *url);
 
+int xmmsc_result_get_service_cookie (xmmsc_result_t *res, uint32_t *cookie);
 void xmmsc_result_restartable (xmmsc_result_t *res, uint32_t signalid);
 void xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr);
 

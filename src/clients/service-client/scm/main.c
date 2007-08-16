@@ -22,6 +22,7 @@
 #include "management.h"
 #include "query.h"
 #include "callback.h"
+#include "monitor.h"
 
 static gboolean
 register_single (xmmsc_connection_t *conn, const gchar *service,
@@ -101,8 +102,8 @@ register_all (xmmsc_connection_t *conn)
 	if (!register_single (conn, SERVICE_MANAGEMENT, method, NULL))
 		return FALSE;
 
-	method = xmmsc_service_method_new ("change_argv", "Change the startup"
-	                                   " argument of a service client",
+	method = xmmsc_service_method_new ("change_argv", "Change the command-line"
+	                                   " argument to pass to a service client",
 	                                   cb_change_argv, NULL);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
 	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
@@ -188,7 +189,8 @@ register_all (xmmsc_connection_t *conn)
 		return FALSE;
 
 	method = xmmsc_service_method_new ("lookup_client", "Search for all service"
-	                                   " clients which provide a service",
+	                                   " clients which provide the given"
+	                                   " service",
 	                                   cb_lookup_client, NULL);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_SERVICE_NAME,
 	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
