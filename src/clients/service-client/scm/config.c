@@ -239,6 +239,7 @@ read_config (const gchar *name)
 		fclose (fp);
 
 		config = parse_config (buffer);
+		config->mtime = st.st_mtime;
 
 		g_free (buffer);
 	}

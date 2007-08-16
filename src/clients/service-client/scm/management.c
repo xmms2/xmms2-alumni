@@ -33,35 +33,38 @@
 static gboolean
 force_shutdown (gpointer data)
 {
-	gchar *name = data;
-	config_t *config;
+	GPid pid = GPOINTER_TO_INT (data);
 	int status = 0;
 
-	if (!(config = g_hash_table_lookup (clients, name)))
-		return FALSE;
-
-	if (waitpid (config->pid, &status,
-	             WNOHANG | WUNTRACED | WCONTINUED) == config->pid &&
+	if (waitpid (pid, &status,
+	             WNOHANG | WUNTRACED | WCONTINUED) == pid &&
 	    (WIFEXITED (status) || WIFSIGNALED (status) || WIFSTOPPED (status))) {
-		g_spawn_close_pid (config->pid);
+		g_spawn_close_pid (pid);
 		return FALSE;
 	}
 
-	if (kill (config->pid, SIGTERM)) {
+	if (pid > 0 && kill (pid, SIGTERM)) {
 		print_info ("Failed to shutdown service client: %s", strerror (errno));
 		return TRUE;
 	}
-	g_spawn_close_pid (config->pid);
+	if (waitpid (pid, &status, WNOHANG | WUNTRACED | WCONTINUED) == pid) {
+		g_spawn_close_pid (pid);
+		return FALSE;
+	}
 
-	return FALSE;
+	return TRUE;
 }
 
 static void
 timeout_kill (gpointer key, gpointer value, gpointer data)
 {
 	gchar *name = key;
+	config_t *config;
 
-	g_timeout_add (timeout, force_shutdown, name);
+	if (!(config = g_hash_table_lookup (clients, name)))
+		return;
+
+	g_timeout_add (timeout, force_shutdown, GINT_TO_POINTER (config->pid));
 }
 
 /**
@@ -219,7 +222,7 @@ launch_single (config_t *config)
  * Shutdown a single service client.
  */
 gboolean
-shutdown_single (xmmsc_connection_t *conn, gchar *client)
+shutdown_single (xmmsc_connection_t *conn, const gchar *client)
 {
 	xmmsc_result_t *result;
 	config_t *config;
@@ -248,7 +251,7 @@ shutdown_single (xmmsc_connection_t *conn, gchar *client)
 		             xmmsc_result_get_error (result));
 	xmmsc_result_unref (result);
 
-	g_timeout_add (timeout, force_shutdown, client);
+	g_timeout_add (timeout, force_shutdown, GINT_TO_POINTER (config->pid));
 
 	return TRUE;
 }
