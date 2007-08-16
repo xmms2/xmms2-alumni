@@ -145,7 +145,7 @@ xmms_ipc_msg_t *msg)\n{\n" % (obj.getAttribute("name"),
 	(obj.getAttribute("name"), obj.getAttribute("name")))
 
     #FIXME should check that it exists, if not throw error
-    ipcmsgdeser.write("\tcmds->%s_%s (" % \
+    ipcmsgdeser.write("\treturn cmds->%s_%s (" % \
 	    (obj.getAttribute("name"), method.getAttribute("name")))
 
     #object argument
@@ -213,6 +213,8 @@ def write_processmsg(node):
 XMMSC_MESSAGE_REPLY);\n\n" % node.getAttribute("name").upper())
 	    ipcmsggen.write("\t\t\t\txmms_ipc_msg_put_%s (retmsg, retval);\n\n" % \
 		    msg_map[retvalstr])
+	    ipcmsggen.write("\t\t\t\txmms_ipc_msg_set_cookie (retmsg, \
+xmms_ipc_msg_get_cookie (msg));\n")
 
 	    #should lock client->lock, but client is an opaque structure at the
 	    #moment
