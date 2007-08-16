@@ -46,7 +46,7 @@ int main(void)
 	req->interval = -500;
 	req->type = 0;
 
-	xmmsc_request_send(req);
+	xmmsc_request_send (req);
 
 
 	/*
@@ -59,12 +59,22 @@ int main(void)
 
 	xmmsc_request_send(req);
 	*/
+
+	msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_STATUS);
+	xmms_ipc_msg_put_uint32 (msg, 1);
+	req = xmmsc_request_new (c, msg);
+	xmmsc_request_now (req);
+
+	xmmsc_request_set_callback (req, callback);
+
+	xmmsc_request_send (req);
+
 	return 0;
 }
 
 // Doesn't do anything yet until I get replies going
 void callback(void *data)
 {
-	char *val = (char *)data;
-	printf("ICANHASCHEESEBURGER: %s\n",*val);
+	int *val = (int *)data;
+	printf("ICANHASCHEESEBURGER: %d\n", *val);
 }
