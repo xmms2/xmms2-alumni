@@ -6,7 +6,7 @@
 
 void callback(void *data);
 
-int main(void)
+int main(int argc, char **argv)
 {
 	xmmsc_connection_t *c = xmmsc_init("CHEESEWHIZ");
 	xmmsc_request_t *req;
@@ -15,8 +15,67 @@ int main(void)
 
 	int i;
 
-	if(!xmmsc_connect(c,NULL))
+	if (!xmmsc_connect(c,NULL))
 		return -1;
+
+	if (argc > 1) {
+		if(!strncmp(argv[1],"play") || !strncmp(argv[1],"toggleplay")) {
+			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_START);
+			xmms_ipc_msg_put_uint32 (msg, 1);
+			req = xmmsc_request_new (c, msg);
+			req->interval = -500;
+
+			xmmsc_request_send (req);
+		}
+		else if(!strncmp(argv[1],"stop")) {
+			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_STOP);
+			xmms_ipc_msg_put_uint32 (msg, 1);
+			req = xmmsc_request_new (c, msg);
+			req->interval = -500;
+
+			xmmsc_request_send (req);
+		}
+		else if(!strncmp(argv[1],"pause")) {
+			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_PAUSE);
+			xmms_ipc_msg_put_uint32 (msg, 1);
+			req = xmmsc_request_new (c, msg);
+			req->interval = -500;
+
+			xmmsc_request_send (req);
+		}
+		else if(!strncmp(argv[1],"prev")) {
+			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_PLAYLIST, XMMSC_PLAYLIST_METHOD_SET_POS_REL);
+			xmms_ipc_msg_put_uint32 (msg, 1);
+			xmms_ipc_msg_put_int32 (msg, -1);
+			req = xmmsc_request_new (c, msg);
+			req->interval = -500;
+
+			xmmsc_request_send (req);
+
+			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_KILL);
+			xmms_ipc_msg_put_uint32 (msg, 1);
+			req = xmmsc_request_new (c, msg);
+			req->interval = -500;
+
+			xmmsc_request_send(req);
+		}
+		else if(!strncmp(argv[1],"next")) {
+			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_PLAYLIST, XMMSC_PLAYLIST_METHOD_SET_POS_REL);
+			xmms_ipc_msg_put_uint32 (msg, 1);
+			xmms_ipc_msg_put_int32 (msg, 1);
+			req = xmmsc_request_new (c, msg);
+			req->interval = -500;
+
+			xmmsc_request_send (req);
+
+			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_KILL);
+			xmms_ipc_msg_put_uint32 (msg, 1);
+			req = xmmsc_request_new (c, msg);
+			req->interval = -500;
+
+			xmmsc_request_send(req);
+		}
+	}
 
 	/*
 	//The test clientlib does this for us
@@ -35,18 +94,18 @@ int main(void)
 	xmmsc_request_send(req);
 	*/
 
-	msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_START);
+//	msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_START);
 //	msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_PLAYLIST, XMMSC_PLAYLIST_METHOD_SET_POS_REL);
 	//This say we're sending a command and not a property request
-	xmms_ipc_msg_put_uint32 (msg, 1);
+//	xmms_ipc_msg_put_uint32 (msg, 1);
 	//This say to go back one if the command is SET_POS_REL, otherwise its
 	//ignored for METHOD_START
-	xmms_ipc_msg_put_int32 (msg, -1);
-	req = xmmsc_request_new (c, msg);
-	req->interval = -500;
-	req->type = 0;
+//	xmms_ipc_msg_put_int32 (msg, -1);
+//	req = xmmsc_request_new (c, msg);
+//	req->interval = -500;
+//	req->type = 0;
 
-	xmmsc_request_send (req);
+//	xmmsc_request_send (req);
 
 
 	/*
@@ -75,6 +134,6 @@ int main(void)
 // Doesn't do anything yet until I get replies going
 void callback(void *data)
 {
-	int *val = (int *)data;
-	printf("ICANHASCHEESEBURGER: %d\n", *val);
+	int val = *(int *)data;
+	printf("STATUS: %d\n", val);
 }
