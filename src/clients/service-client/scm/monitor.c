@@ -15,11 +15,44 @@
  */
 
 #include <unistd.h>
+#include <glib/gstdio.h>
 
 #include "monitor.h"
 #include "management.h"
 
+#define ADD 0x00000001
+#define DEL 0x00000002
+#define BOTH (ADD | DEL)
+
+static gboolean quit;
+
+static void
+do_file (xmmsc_connection_t *conn, const gchar *filename, guint mask)
+{
+	config_t *config;
+
+	if (mask & DEL) {
+		if ((config = g_hash_table_lookup (clients, filename)) &&
+			config->pid)
+			shutdown_single (conn, filename);
+		if (!g_hash_table_remove (clients, filename))
+			print_error ("Unable to remove service client %s from the manager",
+			             filename);
+	}
+
+	if (mask & ADD) {
+		if ((config = read_config (filename))) {
+			g_hash_table_insert (clients, g_strdup (filename), config);
+			if (config->autostart)
+				launch_single (config);
+		}
+	}
+}
+
 #ifdef INOTIFY
+#define EVENT_SIZE (sizeof (struct inotify_event))
+#define MAXLEN (256 * (EVENT_SIZE + 16))
+
 static gint
 start_inotify ()
 {
@@ -43,27 +76,20 @@ start_inotify ()
 	return fd;
 }
 
-#else
-static gboolean
-start_poll ()
-{
-	return TRUE;
-}
-#endif
-
-#ifdef INOTIFY
-#define EVENT_SIZE (sizeof (struct inotify_event))
-#define MAXLEN (256 * (EVENT_SIZE + 16))
-
 static gboolean
 handle_inotify (GIOChannel *source, GIOCondition cond, gpointer data)
 {
-	xmmsc_connection_t *conn = data;
 	int fd;
 	int len, i;
 	gchar buf[MAXLEN];
 	struct inotify_event *event;
-	config_t *config;
+	guint mask = 0;
+
+	if (quit) {
+		g_io_channel_shutdown (source, FALSE, NULL);
+		g_io_channel_unref (source);
+		return FALSE;
+	}
 
 	fd = g_io_channel_unix_get_fd (source);
 
@@ -80,71 +106,101 @@ handle_inotify (GIOChannel *source, GIOCondition cond, gpointer data)
 			continue;
 
 		if (event->mask & IN_DELETE || event->mask & IN_MODIFY ||
-		    event->mask & IN_MOVED_FROM) {
-			if ((config = g_hash_table_lookup (clients, event->name)) &&
-			    config->pid)
-				shutdown_single (conn, event->name);
-			if (!g_hash_table_remove (clients, event->name))
-				print_error ("Unable to remove service client %s from the"
-				             " manager", event->name);
-		}
+		    event->mask & IN_MOVED_FROM)
+			mask |= DEL;
 
 		if (event->mask & IN_CREATE || event->mask & IN_MODIFY ||
-		    event->mask & IN_MOVED_TO) {
-			if ((config = read_config (event->name))) {
-				g_hash_table_insert (clients, g_strdup (event->name), config);
-				if (config->autostart)
-					launch_single (config);
-			}
-		}
+		    event->mask & IN_MOVED_TO)
+			mask |= ADD;
 	}
+
+	do_file ((xmmsc_connection_t *)data, event->name, mask);
+
+	return TRUE;
+}
+#endif
+
+static void
+check_file (xmmsc_connection_t *conn, const gchar *filename)
+{
+	config_t *config;
+	guint mask = 0;
+	struct stat buf;
+
+	if (!(config = g_hash_table_lookup (clients, filename)))
+		mask |= ADD;
+	else {
+		if (g_stat (g_build_path (G_DIR_SEPARATOR_S, config_dir (), filename,
+		                          NULL), &buf) < 0) {
+			print_error ("Unable to retreive file attributes");
+			return;
+		}
+
+		if (config->mtime != buf.st_mtime)
+			mask |= BOTH;
+	}
+
+	do_file (conn, filename, mask);
+}
+
+static gboolean
+handle_poll (gpointer data)
+{
+	xmmsc_connection_t *conn = data;
+	GDir *dir;
+	const gchar *filename;
+
+	if (quit)
+		return FALSE;
+
+	dir = g_dir_open (config_dir (), 0, NULL);
+
+	while (dir && (filename = g_dir_read_name (dir)))
+		check_file (conn, filename);
+
+	g_dir_close (dir);
 
 	return TRUE;
 }
 
-#else
-static gboolean
-handle_poll (GIOChannel *source, GIOCondition cond, gpointer data)
-{
-
-}
-#endif
-
-static GIOChannel *
-watch_fd (xmmsc_connection_t *conn, int fd)
-{
-	GIOChannel *gio;
-
-	gio = g_io_channel_unix_new (fd);
-#ifdef INOTIFY
-	g_io_add_watch (gio, G_IO_IN, handle_inotify, conn);
-#else
-	g_io_add_watch (gio, G_IO_IN, handle_poll, NULL);
-#endif
-
-	return gio;
-}
-
-GIOChannel *
+gboolean
 start_monitor (xmmsc_connection_t *conn)
 {
-	int fd;
+	quit = FALSE;
 
 #ifdef INOTIFY
-	if ((fd = start_inotify ()) < 0)
-#else
-	if ((fd = start_poll ()) < 0)
-#endif
-		return NULL;
+	int fd;
+	GIOChannel *gio;
 
-	return watch_fd (conn, fd);
+	if ((fd = start_inotify ()) < 0)
+		return FALSE;
+	gio = g_io_channel_unix_new (fd);
+	g_io_add_watch (gio, G_IO_IN, handle_inotify, conn);
+#else
+	g_timeout_add (period, handle_poll, conn);
+#endif
+
+	return TRUE;
 }
 
 void
-shutdown_monitor (GIOChannel *gio)
+shutdown_monitor (void)
 {
-	if (!gio)
-		return;
+	quit = TRUE;
+}
 
-	g_io_channel_shutdown (gio, FALSE, NULL);
+/**
+ * Manually poll.
+ */
+void
+cb_poll (xmmsc_connection_t *conn, xmmsc_result_t *res,
+         xmmsc_service_method_t *method, void *data)
+{
+	if (xmmsc_result_iserror (res)) {
+		print_error ("Error entering cb_change_argv: %s",
+		             xmmsc_result_get_error (res));
+		return;
+	}
+
+	handle_poll (conn);
 }
