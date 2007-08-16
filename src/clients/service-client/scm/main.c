@@ -272,7 +272,7 @@ cb_quit (void *data)
 {
 	kill_all ();
 	if (timeout_quit (data))
-		g_timeout_add (TIMEOUT / 5, timeout_quit, data);
+		g_timeout_add (timeout / 5, timeout_quit, data);
 }
 
 static gboolean
@@ -291,7 +291,8 @@ subscribe_broadcasts (xmmsc_connection_t *conn, GMainLoop *ml)
 static void
 quit (xmmsc_connection_t *conn, GIOChannel *gio)
 {
-	shutdown_monitor (gio);
+	if (monitor)
+		shutdown_monitor (gio);
 	g_hash_table_destroy (clients);
 	xmmsc_unref (conn);
 }
@@ -302,13 +303,25 @@ main (void)
 	xmmsc_connection_t *conn;
 	GMainLoop *ml;
 	GIOChannel *gio;
+	xmmsc_result_t *res;
 	clients = NULL;
+	monitor = FALSE;
 
 	conn = xmmsc_init (SCM_NAME);
 	if (!conn)
 		print_error_and_exit (conn, "Unable to initialize connection.");
 	if (!xmmsc_connect (conn, getenv ("XMMS_PATH")))
 		print_error_and_exit (conn, "Unable to connect to server.");
+
+	res = xmmsc_configval_register (conn, CONFIGVAL_TIMEOUT, "30000");
+	xmmsc_result_notifier_set (res, cb_configval, conn);
+	xmmsc_result_unref (res);
+	res = xmmsc_configval_register (conn, CONFIGVAL_MONITOR, "no");
+	xmmsc_result_notifier_set (res, cb_configval, conn);
+	xmmsc_result_unref (res);
+	res = xmmsc_broadcast_configval_changed (conn);
+	xmmsc_result_notifier_set (res, cb_configval_changed, NULL);
+	xmmsc_result_unref (res);
 
 	ml = g_main_loop_new (NULL, FALSE);
 
@@ -327,9 +340,11 @@ main (void)
 		return EXIT_FAILURE;
 	}
 
-	if (!(gio = start_monitor (conn))) {
-		quit (conn, NULL);
-		return EXIT_FAILURE;
+	if (monitor) {
+		if (!(gio = start_monitor (conn))) {
+			quit (conn, NULL);
+			return EXIT_FAILURE;
+		}
 	}
 
 	xmmsc_mainloop_gmain_init (conn);

@@ -61,7 +61,7 @@ timeout_kill (gpointer key, gpointer value, gpointer data)
 {
 	gchar *name = key;
 
-	g_timeout_add (TIMEOUT, force_shutdown, name);
+	g_timeout_add (timeout, force_shutdown, name);
 }
 
 /**
@@ -248,7 +248,7 @@ shutdown_single (xmmsc_connection_t *conn, gchar *client)
 		             xmmsc_result_get_error (result));
 	xmmsc_result_unref (result);
 
-	g_timeout_add (TIMEOUT, force_shutdown, client);
+	g_timeout_add (timeout, force_shutdown, client);
 
 	return TRUE;
 }
@@ -294,7 +294,7 @@ shutdown_all (xmmsc_connection_t *conn)
 }
 
 /**
- * Shutdown all local service clients if they are still running after #TIMEOUT
+ * Shutdown all local service clients if they are still running after #timeout
  * seconds after the server shut down.
  */
 void
