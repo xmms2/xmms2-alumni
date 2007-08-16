@@ -298,7 +298,6 @@ typedef enum {
 } xmmsc_service_arg_type_t;
 
 typedef struct xmmsc_service_method_St xmmsc_service_method_t;
-typedef struct xmmsc_service_argument_St xmmsc_service_argument_t;
 typedef void (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn, xmmsc_result_t *res, xmmsc_service_method_t *method, void *user_data);
 
 xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn, const char *name, const char *description, uint32_t major, uint32_t minor);
@@ -375,7 +374,6 @@ int xmmsc_result_get_string (xmmsc_result_t *res, char **r);
 int xmmsc_result_get_collection (xmmsc_result_t *conn, xmmsc_coll_t **coll);
 int xmmsc_result_get_service_method (xmmsc_result_t *res, xmmsc_service_method_t **method);
 int xmmsc_result_get_service_method_arg_types (xmmsc_result_t *res, xmmsc_service_method_t *method);
-int xmmsc_result_get_service_cookie (xmmsc_result_t *res, uint32_t *cookie);
 int xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen);
 
 typedef enum {
