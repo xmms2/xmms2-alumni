@@ -23,6 +23,19 @@
  */
 
 /**
+ * Remove config file.
+ */
+static void
+remove_config (const gchar *name)
+{
+	gchar *file;
+
+	file = g_build_path (G_DIR_SEPARATOR_S, config_dir (), name, NULL);
+
+	g_unlink (file);
+}
+
+/**
  * Parse service section.
  */
 static void
@@ -230,6 +243,12 @@ read_config (const gchar *name)
 		g_free (buffer);
 	}
 
+	if (!g_file_test (config->path, G_FILE_TEST_EXISTS)) {
+		remove_config (name);
+		free_config (config);
+		return NULL;
+	}
+
 	return config;
 }
 
@@ -291,22 +310,6 @@ create_config (const gchar *name, const gchar *contents)
 		            file);
 		return FALSE;
 	}
-
-	return TRUE;
-}
-
-/**
- * Remove config file.
- */
-gboolean
-remove_config (const gchar *name)
-{
-	gchar *file;
-
-	file = g_build_path (G_DIR_SEPARATOR_S, config_dir (), name, NULL);
-
-	if (g_unlink (file))
-		return FALSE;
 
 	return TRUE;
 }

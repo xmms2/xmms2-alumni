@@ -63,19 +63,6 @@ register_all (xmmsc_connection_t *conn)
 	}
 	xmmsc_result_unref (result);
 
-	method = xmmsc_service_method_new ("uninstall", "Uninstall a service client",
-	                                   cb_uninstall, NULL);
-	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
-	    !xmmsc_service_method_ret_type_add (method, ARG_RET,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING)) {
-		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
-		return FALSE;
-	}
-	if (!register_single (conn, SERVICE_MANAGEMENT, method, NULL))
-		return FALSE;
-
 	method = xmmsc_service_method_new ("launch", "Launch a service client",
 	                                   cb_launch, NULL);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
@@ -284,7 +271,8 @@ static void
 cb_quit (void *data)
 {
 	kill_all ();
-	g_timeout_add (TIMEOUT / 5, timeout_quit, data);
+	if (timeout_quit (data))
+		g_timeout_add (TIMEOUT / 5, timeout_quit, data);
 }
 
 static gboolean
@@ -326,22 +314,22 @@ main (void)
 
 	if (!subscribe_broadcasts (conn, ml)) {
 		quit (conn, NULL);
-		return 1;
+		return EXIT_FAILURE;
 	}
 
 	if (!read_all () || !launch_all ()) {
 		quit (conn, NULL);
-		return 1;
+		return EXIT_FAILURE;
 	}
 
 	if (!register_all (conn)) {
 		quit (conn, NULL);
-		return 1;
+		return EXIT_FAILURE;
 	}
 
 	if (!(gio = start_monitor (conn))) {
 		quit (conn, NULL);
-		return 1;
+		return EXIT_FAILURE;
 	}
 
 	xmmsc_mainloop_gmain_init (conn);
@@ -349,5 +337,5 @@ main (void)
 
 	quit (conn, gio);
 
-	return 0;
+	return EXIT_SUCCESS;
 }
