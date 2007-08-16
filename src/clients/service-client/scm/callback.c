@@ -18,6 +18,38 @@
 #include "utils.h"
 
 /**
+ * Update configval.
+ */
+static void
+update_configval (xmmsc_result_t *res, void *data)
+{
+	gchar *name = data;
+	gchar *value;
+
+	if (xmmsc_result_iserror (res)) {
+		print_error ("Error entering update_configval: %s",
+		             xmmsc_result_get_error (res));
+		return;
+	}
+
+	if (!xmmsc_result_get_string (res, &value)) {
+		print_error ("Couldn't get configval from server");
+		return;
+	}
+
+	if (g_strcasecmp (name, "clients." CONFIGVAL_TIMEOUT) == 0)
+		timeout = g_ascii_strtoull (value, NULL, 10);
+	else if (g_strcasecmp (name, "clients." CONFIGVAL_MONITOR) == 0) {
+		if (g_strcasecmp (value, "yes") == 0)
+			monitor = TRUE;
+		else
+			monitor = FALSE;
+	}
+
+	xmmsc_result_unref (res);
+}
+
+/**
  * Update service infos.
  */
 static void
@@ -86,6 +118,59 @@ update_method_infos (xmmsc_result_t *res, void *data)
 
 	g_free (method->desc);
 	method->desc = g_strdup (desc);
+}
+
+/**
+ * Handle configval
+ */
+void
+cb_configval (xmmsc_result_t *res, void *data)
+{
+	xmmsc_connection_t *conn = data;
+	gchar *name;
+	xmmsc_result_t *result;
+
+	if (xmmsc_result_iserror (res)) {
+		print_error ("Error entering cb_configval: %s",
+		             xmmsc_result_get_error (res));
+		return;
+	}
+
+	if (!xmmsc_result_get_string (res, &name)) {
+		print_error ("Couldn't register configval in server");
+		return;
+	}
+
+	result = xmmsc_configval_get (conn, name);
+	xmmsc_result_notifier_set_full (result, update_configval, g_strdup (name),
+	                                g_free);
+	xmmsc_result_unref (result);
+	xmmsc_result_unref (res);
+}
+
+/**
+ * Handle configval changes.
+ */
+void
+cb_configval_changed (xmmsc_result_t *res, void *data)
+{
+	gchar *value;
+
+	if (xmmsc_result_iserror (res)) {
+		print_error ("Error entering cb_configval_changed: %s",
+		             xmmsc_result_get_error (res));
+		return;
+	}
+
+	if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_TIMEOUT, &value))
+		timeout = g_ascii_strtoull (value, NULL, 10);
+	else if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_MONITOR,
+	                                             &value)) {
+		if (g_strcasecmp (value, "yes") == 0)
+			monitor = TRUE;
+		else
+			monitor = FALSE;
+	}
 }
 
 /**
