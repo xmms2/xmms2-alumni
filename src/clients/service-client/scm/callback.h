@@ -19,6 +19,10 @@
 
 #include "common.h"
 
+gboolean monitor;
+
+void cb_configval (xmmsc_result_t *res, void *data);
+void cb_configval_changed (xmmsc_result_t *res, void *data);
 void cb_service_changed (xmmsc_result_t *res, void *data);
 void cb_method_changed (xmmsc_result_t *res, void *data);
 

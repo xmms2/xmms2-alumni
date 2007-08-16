@@ -26,6 +26,9 @@
 
 #define SCM_NAME "scm"
 
+#define CONFIGVAL_TIMEOUT SCM_NAME ".timeout"
+#define CONFIGVAL_MONITOR SCM_NAME ".monitor"
+
 #define SERVICE_MANAGEMENT "se.xmms." SCM_NAME ".management"
 #define SERVICE_QUERY "se.xmms." SCM_NAME ".query"
 
@@ -42,6 +45,8 @@
 #define ARG_METHODS "methods"
 #define ARG_RET "ret"
 #define ARG_IDS "ids"
+
+guint timeout;
 
 typedef struct {
 	gchar *path;
