@@ -522,7 +522,8 @@ xmmsc_service_method_free (xmmsc_service_method_t *method)
 /**
  * Get an attribute of a method.
  *
- * The returned value is owned by the method.
+ * If you do not need any of the attribute, simply pass a NULL.  The returned
+ * value is owned by the method.
  *
  * @param method The method containing the attribute.
  * @param name The returned name of the method.
@@ -980,6 +981,8 @@ xmmsc_service_method_ret_size (xmmsc_service_method_t *method, uint32_t *size)
 /**
  * Get an attribute of an argument.
  *
+ * If you do not need any of the attribute, simply pass a NULL.
+ *
  * @param method The method which contains the argument list.
  * @param name The name of the argument.
  * @param type The returned type of the argument.
@@ -1008,6 +1011,8 @@ xmmsc_service_method_arg_attribute_get (xmmsc_service_method_t *method,
 
 /**
  * Get an attribute of an argument.
+ *
+ * If you do not need any of the attribute, simply pass a NULL.
  *
  * @param method The method which contains the return value list.
  * @param name The name of the argument.
