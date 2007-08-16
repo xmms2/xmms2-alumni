@@ -26,7 +26,9 @@
 #include "inotify-syscalls.h"
 #endif
 
-GIOChannel *start_monitor (xmmsc_connection_t *conn);
-void shutdown_monitor (GIOChannel *gio);
+gboolean start_monitor (xmmsc_connection_t *conn);
+void shutdown_monitor (void);
+void cb_poll (xmmsc_connection_t *conn, xmmsc_result_t *res,
+              xmmsc_service_method_t *method, void *data);
 
 #endif

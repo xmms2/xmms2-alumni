@@ -20,6 +20,7 @@
 #include <glib.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include <xmmsclient/xmmsclient.h>
 #include <xmmsclient/xmmsclient-glib.h>
@@ -31,6 +32,7 @@
 
 #define SERVICE_MANAGEMENT "se.xmms." SCM_NAME ".management"
 #define SERVICE_QUERY "se.xmms." SCM_NAME ".query"
+#define SERVICE_MISC "se.xmms." SCM_NAME ".misc"
 
 #define ARG_CLIENT_NAME "client_name"
 #define ARG_SERVICE_NAME "service_name"
@@ -47,10 +49,12 @@
 #define ARG_IDS "ids"
 
 guint timeout;
+guint period;
 
 typedef struct {
 	gchar *path;
 	gchar *argv;
+	time_t mtime;
 	GPid pid;
 	gboolean autostart;
 	GHashTable *services;

@@ -251,6 +251,23 @@ register_all (xmmsc_connection_t *conn)
 	if (!register_single (conn, SERVICE_QUERY, method, NULL))
 		return FALSE;
 
+	/* Miscellaneous methods */
+	result = xmmsc_service_register (conn, SERVICE_MISC, "Miscellaneous methods",
+	                                 0, 1);
+	if (xmmsc_result_iserror (result)) {
+		print_error ("Unable to register service (%s): %s", SERVICE_MISC,
+		             xmmsc_result_get_error (result));
+		xmmsc_result_unref (result);
+		return FALSE;
+	}
+	xmmsc_result_unref (result);
+
+	method = xmmsc_service_method_new ("poll", "Force the manager to check for"
+	                                   " any changes in config dir",
+	                                   cb_poll, NULL);
+	if (!register_single (conn, SERVICE_MISC, method, NULL))
+		return FALSE;
+
 	return TRUE;
 }
 
@@ -284,15 +301,17 @@ subscribe_broadcasts (xmmsc_connection_t *conn, GMainLoop *ml)
 	                   cb_service_changed, conn);
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_service_method_changed,
 	                   cb_method_changed, conn);
+	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_configval_changed,
+	                   cb_configval_changed, conn);
 
 	return TRUE;
 }
 
 static void
-quit (xmmsc_connection_t *conn, GIOChannel *gio)
+quit (xmmsc_connection_t *conn)
 {
 	if (monitor)
-		shutdown_monitor (gio);
+		shutdown_monitor ();
 	g_hash_table_destroy (clients);
 	xmmsc_unref (conn);
 }
@@ -302,10 +321,10 @@ main (void)
 {
 	xmmsc_connection_t *conn;
 	GMainLoop *ml;
-	GIOChannel *gio;
 	xmmsc_result_t *res;
 	clients = NULL;
 	monitor = FALSE;
+	period = 10000;
 
 	conn = xmmsc_init (SCM_NAME);
 	if (!conn)
@@ -319,30 +338,27 @@ main (void)
 	res = xmmsc_configval_register (conn, CONFIGVAL_MONITOR, "no");
 	xmmsc_result_notifier_set (res, cb_configval, conn);
 	xmmsc_result_unref (res);
-	res = xmmsc_broadcast_configval_changed (conn);
-	xmmsc_result_notifier_set (res, cb_configval_changed, NULL);
-	xmmsc_result_unref (res);
 
 	ml = g_main_loop_new (NULL, FALSE);
 
 	if (!subscribe_broadcasts (conn, ml)) {
-		quit (conn, NULL);
+		quit (conn);
 		return EXIT_FAILURE;
 	}
 
 	if (!read_all () || !launch_all ()) {
-		quit (conn, NULL);
+		quit (conn);
 		return EXIT_FAILURE;
 	}
 
 	if (!register_all (conn)) {
-		quit (conn, NULL);
+		quit (conn);
 		return EXIT_FAILURE;
 	}
 
 	if (monitor) {
-		if (!(gio = start_monitor (conn))) {
-			quit (conn, NULL);
+		if (!start_monitor (conn)) {
+			quit (conn);
 			return EXIT_FAILURE;
 		}
 	}
@@ -350,7 +366,7 @@ main (void)
 	xmmsc_mainloop_gmain_init (conn);
 	g_main_loop_run (ml);
 
-	quit (conn, gio);
+	quit (conn);
 
 	return EXIT_SUCCESS;
 }

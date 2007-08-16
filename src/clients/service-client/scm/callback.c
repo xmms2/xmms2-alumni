@@ -16,14 +16,18 @@
 
 #include "callback.h"
 #include "utils.h"
+#include "monitor.h"
 
 /**
  * Update configval.
+ *
+ * In order to pass conn, I use a nasty tricky way to tell which configval I'm
+ * dealing with.
  */
 static void
 update_configval (xmmsc_result_t *res, void *data)
 {
-	gchar *name = data;
+	xmmsc_connection_t *conn = data;
 	gchar *value;
 
 	if (xmmsc_result_iserror (res)) {
@@ -37,13 +41,20 @@ update_configval (xmmsc_result_t *res, void *data)
 		return;
 	}
 
-	if (g_strcasecmp (name, "clients." CONFIGVAL_TIMEOUT) == 0)
+	if (g_ascii_isdigit (*value))
 		timeout = g_ascii_strtoull (value, NULL, 10);
-	else if (g_strcasecmp (name, "clients." CONFIGVAL_MONITOR) == 0) {
-		if (g_strcasecmp (value, "yes") == 0)
-			monitor = TRUE;
-		else
-			monitor = FALSE;
+	else {
+		if (g_strcasecmp (value, "yes") == 0) {
+			if (!monitor) {
+				monitor = TRUE;
+				start_monitor (conn);
+			}
+		} else {
+			if (monitor) {
+				monitor = FALSE;
+				shutdown_monitor ();
+			}
+		}
 	}
 
 	xmmsc_result_unref (res);
@@ -142,8 +153,7 @@ cb_configval (xmmsc_result_t *res, void *data)
 	}
 
 	result = xmmsc_configval_get (conn, name);
-	xmmsc_result_notifier_set_full (result, update_configval, g_strdup (name),
-	                                g_free);
+	xmmsc_result_notifier_set_full (result, update_configval, conn, NULL);
 	xmmsc_result_unref (result);
 	xmmsc_result_unref (res);
 }
@@ -154,6 +164,7 @@ cb_configval (xmmsc_result_t *res, void *data)
 void
 cb_configval_changed (xmmsc_result_t *res, void *data)
 {
+	xmmsc_connection_t *conn = data;
 	gchar *value;
 
 	if (xmmsc_result_iserror (res)) {
@@ -166,10 +177,17 @@ cb_configval_changed (xmmsc_result_t *res, void *data)
 		timeout = g_ascii_strtoull (value, NULL, 10);
 	else if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_MONITOR,
 	                                             &value)) {
-		if (g_strcasecmp (value, "yes") == 0)
-			monitor = TRUE;
-		else
-			monitor = FALSE;
+		if (g_strcasecmp (value, "yes") == 0) {
+			if (!monitor) {
+				monitor = TRUE;
+				start_monitor (conn);
+			}
+		} else {
+			if (monitor) {
+				monitor = FALSE;
+				shutdown_monitor ();
+			}
+		}
 	}
 }
 
@@ -202,7 +220,8 @@ cb_service_changed (xmmsc_result_t *res, void *data)
 	}
 
 	if (g_strcasecmp (name, SERVICE_MANAGEMENT) == 0 ||
-	    g_strcasecmp (name, SERVICE_QUERY) == 0)
+	    g_strcasecmp (name, SERVICE_QUERY) == 0 ||
+	    g_strcasecmp (name, SERVICE_MISC) == 0)
 		return;
 
 	info.target = name;
@@ -280,7 +299,8 @@ cb_method_changed (xmmsc_result_t *res, void *data)
 	}
 
 	if (g_strcasecmp (service_name, SERVICE_MANAGEMENT) == 0 ||
-	    g_strcasecmp (service_name, SERVICE_QUERY) == 0)
+	    g_strcasecmp (service_name, SERVICE_QUERY) == 0 ||
+	    g_strcasecmp (service_name, SERVICE_MISC) == 0)
 		return;
 
 	info.target = service_name;
