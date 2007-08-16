@@ -71,6 +71,8 @@ xmmsc_request_send (xmmsc_request_t *req)
 		cookie = xmms_ipc_msg_get_cookie (msg);
 
 		if (cookie == xmms_ipc_msg_get_cookie (req->msg)) {
+
+		printf("cookie:%d\n",cookie);
 			xmms_ipc_msg_get_uint32 (msg, &data);
 			if (req->cb)
 				req->cb (&data);
@@ -100,6 +102,7 @@ void xmmsc_request_now (xmmsc_request_t *req)
 {
 	if (!req->type) {
 		xmms_ipc_msg_put_uint32 (req->msg, XMMSC_REQUEST_INTERVAL_NOW);
+		req->interval = XMMSC_REQUEST_INTERVAL_NOW;
 	}
 }
 
