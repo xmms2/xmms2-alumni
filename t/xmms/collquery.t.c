@@ -6,12 +6,13 @@
 #include <stdarg.h>
 #include "xmmspriv/xmms_collection.h"
 #include "xmmspriv/xmms_collquery.h"
+#include "test_helper_configuration.h"
 
 sqlite3 *
 test_collquery_get_db_handle () {
 	sqlite3 *db;
 
-	if (sqlite3_open ("xmms/collquery.db", &db) != SQLITE_OK) {
+	if (sqlite3_open (TEST_DIR "/xmms/collquery.db", &db) != SQLITE_OK) {
 		printf ("# failed to open db: `%s'\n", sqlite3_errmsg (db));
 		exit (EXIT_FAILURE);
 	}
@@ -189,7 +190,7 @@ main (int argc, char **argv) {
 
 	g_thread_init (NULL);
 	xmms_ipc_init ();
-	xmms_config_init ("goofy/home/xmms2d/.config/xmms2/xmms2.conf");
+	xmms_config_init (TEST_INSTALL_DIR "/home/test/.config/xmms2/xmms2.conf");
 	xmms_medialib_init (NULL);
 
 	coll = COLL_MATCH (xmmsc_coll_universe (), "artist", "foo%");

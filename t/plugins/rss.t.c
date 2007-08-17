@@ -1,4 +1,5 @@
 #include "tap.h"
+#include "test_helper_configuration.h"
 #include "xmmspriv/xmms_xform.h"
 #include <glib.h>
 
@@ -99,7 +100,7 @@ main (int argc, char **argv) {
 	xmms_ipc_init ();
 	xmms_config_init ("goofy/home/xmms2d/.config/xmms2/xmms2.conf");
 	xmms_medialib_init (NULL);
-	xmms_plugin_init ("goofy/plugins");
+	xmms_plugin_init (TEST_INSTALL_DIR PLUGIN_DIR);
 
 	result = g_new0 (expected_result_t, 1);
 	result->input_data = "<enclosure url=\"foo\" />";

@@ -3,6 +3,7 @@ package Test::XMMS;
 use strict;
 use warnings;
 use base qw/Test::Builder::Module Exporter/;
+use Cwd;
 use Carp qw/croak/;
 use Scalar::Util qw/blessed/;
 use POSIX qw/SIGINT SIG_BLOCK SIG_UNBLOCK/;
@@ -12,7 +13,6 @@ use File::Spec::Functions qw/splitpath splitdir catdir catfile rel2abs/;
 
 my $xmms_client;
 my $xmms_pid;
-my $goof_dir;
 
 our @EXPORT = qw/coll_ok/;
 
@@ -35,43 +35,12 @@ sub do_fork {
     return $pid;
 }
 
-sub create_goof_plugin_dir {
-    my ($from, $to) = @_;
-
-    $to = catfile($to, 'plugins');
-    mkpath([$to]);
-
-    for my $plugin (glob $from . "/*/libxmms_*.so") {
-        symlink $plugin, catfile($to, basename($plugin));
-    }
-
-    return $to;
-}
-
-my ($top_dir, $build_dir);
-
 BEGIN {
-    my $package = __PACKAGE__;
-    (my $path = $package) =~ s{::}{/}g;
-    $path .= '.pm';
+    $ENV{LD_LIBRARY_PATH} = catdir(qw/_build_ test_install usr local lib/);
 
-    my $module_path = rel2abs($INC{$path});
-
-    my (undef, $directories, undef) = splitpath($module_path);
-
-    $top_dir = catdir($directories, (('..') x 4));
-    $build_dir = catfile($top_dir, qw/_build_ default/);
-
-    $ENV{LD_LIBRARY_PATH} = catdir($build_dir, qw/src clients lib xmmsclient/);
-
+    unshift @INC, catdir(qw/_build_ test_install usr local lib perl 5.8.8/);
     eval "require Audio::XMMSClient";
     Audio::XMMSClient->import;
-
-    $goof_dir = catfile($top_dir, qw/t goofy/);
-}
-
-sub create_std_goof_plugin_dir {
-    create_goof_plugin_dir(catdir($build_dir, qw/src plugins/), $goof_dir);
 }
 
 sub import {
@@ -79,8 +48,8 @@ sub import {
 
     $self->export_to_level( 1, $self, $_ ) foreach @EXPORT;
 
-    my $exec_path = catfile($build_dir, qw/src xmms xmms2d/);
-    my $plugin_path;
+    my $exec_path = rel2abs(catfile(qw/_build_ test_install usr local bin xmms2d/));
+    my $plugin_path = rel2abs(catdir(qw/_build_ test_install usr local lib xmms2/));
     my @extra_args;
 
     while (defined (my $arg = shift @args)) {
@@ -98,10 +67,6 @@ sub import {
         }
     }
 
-    if (!defined $plugin_path) {
-        $plugin_path = create_goof_plugin_dir(catdir($build_dir, qw/src plugins/), $goof_dir);
-    }
-
     my $pid = do_fork();
 
     if (!$pid) {
@@ -109,8 +74,8 @@ sub import {
         open STDOUT, '>/dev/null' or croak("Can't open STDOUT to /dev/null: `$!'");
         open STDERR, '>&STDOUT'   or croak("Can't open STDERR to STDOUT: `$!'");
 
-        $ENV{XDG_CONFIG_HOME} = catdir($goof_dir, qw/home xmms2d .config/);
-        $ENV{XDG_CACHE_HOME}  = catdir($goof_dir, qw/home xmms2d .cache/);
+        $ENV{XDG_CONFIG_HOME} = catdir(cwd(), qw/_build_ test_install home test .config/);
+        $ENV{XDG_CACHE_HOME} = catdir(cwd(), qw/_build_ test_install home test .cache/);
 
         chdir '/';
 

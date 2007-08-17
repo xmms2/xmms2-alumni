@@ -5,7 +5,21 @@ import re
 import glob
 import os
 
-files = ['src/xmms/*.c', 'src/xmms/*/*.c', 'src/plugins/*/*.c', 'src/clients/lib/xmmsclient/*.c', 'src/clients/lib/xmmsclient-glib/*.c', 'src/clients/lib/xmmsclient-cf/*.c', 'src/clients/lib/xmmsclient-ecore/*.c', 'src/lib/*/*.c', 'src/clients/et/*.c', 'src/clients/cli/*.c', 'src/clients/cli/launcher/*.c', 'src/clients/mdns/*/*.c', 'src/client/medialib-updater/*.c']
+files = """
+	src/xmms/*.c
+	src/xmms/*/*.c
+	src/plugins/*/*.c
+	src/clients/lib/xmmsclient/*.c
+	src/clients/lib/xmmsclient-glib/*.c
+	src/clients/lib/xmmsclient-cf/*.c
+	src/clients/lib/xmmsclient-ecore/*.c
+	src/lib/*/*.c
+	src/clients/et/*.c
+	src/clients/cli/*.c
+	src/clients/cli/launcher/*.c
+	src/clients/mdns/*/*.c
+	src/client/medialib-updater/*.c
+	""".split()
 blacklist_patterns = ['src/plugins/equalizer/iir*.c', 'src/clients/mdns/avahi/find-avahi.c']
 todo = ['src/plugins/flac/flac.c', 'src/plugins/ofa/ofa.c']
 
@@ -141,8 +155,6 @@ def check(filename):
 if __name__ == '__main__':
     sources = []
     blacklist = []
-
-    os.chdir('..')
 
     for p in blacklist_patterns:
         blacklist += glob.glob(p)
