@@ -43,14 +43,8 @@ force_shutdown (gpointer data)
 		return FALSE;
 	}
 
-	if (pid > 0 && kill (pid, SIGTERM)) {
+	if (pid > 0 && kill (pid, SIGTERM))
 		print_info ("Failed to shutdown service client: %s", strerror (errno));
-		return TRUE;
-	}
-	if (waitpid (pid, &status, WNOHANG | WUNTRACED | WCONTINUED) == pid) {
-		g_spawn_close_pid (pid);
-		return FALSE;
-	}
 
 	return TRUE;
 }
