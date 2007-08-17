@@ -94,8 +94,8 @@ def write_deserialization(file,args):
 	    name = arg.getAttribute("name")
 
 	    #var declarations
-	    ipcmsgdeser.write("\t%s %s;\n" % (c_map[type], name))
-	    ipcmsgdeser.write("\n")
+	    file.write("\t%s %s;\n" % (c_map[type], name))
+	    file.write("\n")
 
 	for arg in args:
 	    type = arg.getElementsByTagName("type")
@@ -103,12 +103,12 @@ def write_deserialization(file,args):
 	    name = arg.getAttribute("name")
 
 	    if type != "string":
-		    ipcmsgdeser.write("\txmms_ipc_msg_get_%s (msg, &%s);\n" % \
+		    file.write("\txmms_ipc_msg_get_%s (msg, &%s);\n" % \
 			(msg_map[type], name))
 	    elif type == "string":
 		    #FIXME should probably be a realloc() loop or somesuch FIXME
-		    ipcmsgdeser.write("\t%s = malloc(1000);\n" % name)
-		    ipcmsgdeser.write("\txmms_ipc_msg_get_%s (msg, %s, 1000);\n" % \
+		    file.write("\t%s = malloc(1000);\n" % name)
+		    file.write("\txmms_ipc_msg_get_%s (msg, %s, 1000);\n" % \
 			(msg_map[type], name))
 	file.write("\n")
 
