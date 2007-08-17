@@ -188,7 +188,7 @@ xmms_ipc_msg_t *msg)\n{\n\n")
     ipcmsggen.write("\tswitch (obj) {\n")
 
 #output the processmsg code for an object
-def write_processmsg(node):
+def write_processmsg(node, req = False):
     ipcmsggen.write("\t\tcase XMMSC_IPC_OBJECT_%s:\n" % \
 	    node.getAttribute("name").upper())
     #output code that deserializes the arguments to the command, finds the
@@ -200,7 +200,8 @@ def write_processmsg(node):
 	#check if we need to store the retval
 	retvalstr = get_retval(method)
 
-	if retvalstr != "none":
+	#if there is a return value and we're not outputing process_req clientside
+	if retvalstr != "none" and not req:
 	    #declare a variable to hold the return value and get it
 	    ipcmsggen.write("\t\t\t\t%s retval;\n" % c_map_internal[retvalstr]);
 	    ipcmsggen.write("\t\t\t\txmms_ipc_msg_t *retmsg;\n")
@@ -216,12 +217,12 @@ XMMSC_MESSAGE_REPLY);\n\n" % node.getAttribute("name").upper())
 	    ipcmsggen.write("\t\t\t\txmms_ipc_msg_set_cookie (retmsg, \
 xmms_ipc_msg_get_cookie (msg));\n")
 
-	    #should lock client->lock, but client is an opaque structure at the
+	    #FIXME should lock client->lock, but client is an opaque structure at the
 	    #moment
 	    ipcmsggen.write("\t\t\t\txmms_ipc_client_msg_write (client, \
 retmsg);\n")
 
-	else:
+	elif not req:
 	    ipcmsggen.write("\t\t\t\tdeserialize_call_%s_cmd_%s (ipc, msg);\n" %
 		    (node.getAttribute("name"),method.getAttribute("name")))
 
