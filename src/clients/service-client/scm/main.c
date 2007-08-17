@@ -324,7 +324,7 @@ main (void)
 	xmmsc_result_t *res;
 	clients = NULL;
 	monitor = FALSE;
-	period = 10000;
+	period = 10 * 1000;
 
 	conn = xmmsc_init (SCM_NAME);
 	if (!conn)
@@ -332,7 +332,7 @@ main (void)
 	if (!xmmsc_connect (conn, getenv ("XMMS_PATH")))
 		print_error_and_exit (conn, "Unable to connect to server.");
 
-	res = xmmsc_configval_register (conn, CONFIGVAL_TIMEOUT, "30000");
+	res = xmmsc_configval_register (conn, CONFIGVAL_TIMEOUT, "10000");
 	xmmsc_result_notifier_set (res, cb_configval, conn);
 	xmmsc_result_unref (res);
 	res = xmmsc_configval_register (conn, CONFIGVAL_MONITOR, "no");
