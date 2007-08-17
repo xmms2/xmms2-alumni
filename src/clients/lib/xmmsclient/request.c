@@ -70,13 +70,8 @@ xmmsc_request_send (xmmsc_request_t *req)
 		}
 		cookie = xmms_ipc_msg_get_cookie (msg);
 
-		printf("received cookie: %d\n",cookie);
-		printf("my cookie: %d\n",xmms_ipc_msg_get_cookie (req->msg));
-
 		if (cookie == xmms_ipc_msg_get_cookie (req->msg)) {
-			xmms_ipc_msg_get_uint32 (msg, &data);
-			if (req->cb)
-				req->cb (&data);
+			process_req (req,msg);
 		}
 
 	}

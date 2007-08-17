@@ -8,6 +8,8 @@ def build(bld):
 		connection.c
                 ipc.c
 		request.c
+		ipc_req_gen.c
+		ipc_req_deserialize.c
 		""".split()
     obj.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes'
     obj.uselib = 'socket'
