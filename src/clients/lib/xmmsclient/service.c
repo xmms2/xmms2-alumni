@@ -463,6 +463,7 @@ xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c)
  * @param name Method name (will be duplicated).
  * @param description Method description (will be duplicated).
  * @param func Callback function.
+ * @param user_data User data to pass to func.
  * @return The newly created #xmmsc_service_method_t.
  */
 xmmsc_service_method_t *
