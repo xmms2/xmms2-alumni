@@ -310,6 +310,7 @@ xmms_playlist_init (void)
 	cmds->playlist_load = xmms_playlist_load;
 	cmds->playlist_set_pos = xmms_playlist_set_current_position;
 	cmds->playlist_set_pos_rel = xmms_playlist_set_current_position_rel;
+	cmds->playlist_shuffle = xmms_playlist_shuffle;
 
 	xmms_playlist_cmds_register (cmds);
 
