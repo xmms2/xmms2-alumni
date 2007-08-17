@@ -94,6 +94,15 @@ int main(int argc, char **argv)
 
 			xmmsc_request_send(req);
 		}
+		else if(!strncmp(argv[1],"shuffle")) {
+			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_PLAYLIST, XMMSC_PLAYLIST_METHOD_SHUFFLE);
+			xmms_ipc_msg_put_uint32 (msg, 1);
+			xmms_ipc_msg_put_string (msg, "_active");
+			req = xmmsc_request_new (c, msg);
+			req->interval = -500;
+
+			xmmsc_request_send(req);
+		}
 	}
 
 	/*
