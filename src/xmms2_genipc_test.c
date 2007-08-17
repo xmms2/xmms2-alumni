@@ -6,6 +6,8 @@
 
 void callback(void *data);
 
+int status;
+
 int main(int argc, char **argv)
 {
 	xmmsc_connection_t *c = xmmsc_init("CHEESEWHIZ");
@@ -17,15 +19,32 @@ int main(int argc, char **argv)
 
 	if (!xmmsc_connect(c,NULL))
 		return -1;
+	msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_STATUS);
+	xmms_ipc_msg_put_uint32 (msg, 1);
+	req = xmmsc_request_new (c, msg);
+	xmmsc_request_now (req);
+
+	xmmsc_request_set_callback (req, callback);
+
+	xmmsc_request_send (req);
 
 	if (argc > 1) {
 		if(!strncmp(argv[1],"play") || !strncmp(argv[1],"toggleplay")) {
-			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_START);
-			xmms_ipc_msg_put_uint32 (msg, 1);
-			req = xmmsc_request_new (c, msg);
-			req->interval = -500;
+			if(status == 1) {
+				msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_PAUSE);
+				xmms_ipc_msg_put_uint32 (msg, 1);
+				req = xmmsc_request_new (c, msg);
 
-			xmmsc_request_send (req);
+				xmmsc_request_send (req);
+			}
+			else {
+				msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_START);
+				xmms_ipc_msg_put_uint32 (msg, 1);
+				req = xmmsc_request_new (c, msg);
+				req->interval = -500;
+
+				xmmsc_request_send (req);
+			}
 		}
 		else if(!strncmp(argv[1],"stop")) {
 			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_STOP);
@@ -119,14 +138,14 @@ int main(int argc, char **argv)
 	xmmsc_request_send(req);
 	*/
 
-	msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_STATUS);
-	xmms_ipc_msg_put_uint32 (msg, 1);
-	req = xmmsc_request_new (c, msg);
-	xmmsc_request_now (req);
+//	msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_STATUS);
+//	xmms_ipc_msg_put_uint32 (msg, 1);
+//	req = xmmsc_request_new (c, msg);
+//	xmmsc_request_now (req);
 
-	xmmsc_request_set_callback (req, callback);
+//	xmmsc_request_set_callback (req, callback);
 
-	xmmsc_request_send (req);
+//	xmmsc_request_send (req);
 
 	return 0;
 }
@@ -135,5 +154,6 @@ int main(int argc, char **argv)
 void callback(void *data)
 {
 	int val = *(int *)data;
-	printf("STATUS: %d\n", val);
+//	printf("STATUS: %d\n", val);
+	status = val;
 }
