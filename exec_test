@@ -2,12 +2,15 @@
 
 use strict;
 use warnings;
+use File::Spec::Functions qw/catdir rel2abs/;
 
 my $test = $ARGV[0];
 
+sub src_to_bld { "_build_/default/t/$_[0]" }
+
 my %exec_for = (
         (map {
-            $_ => [$^X, qw{-I helpers/lib}, $_],
+            (src_to_bld($_) => [$^X, qw{-I t/helpers/lib}, src_to_bld($_)]),
         } qw{
             xmms/bindata.t
             clients/lib/xmmsclient/collparser.t
@@ -17,9 +20,11 @@ my %exec_for = (
             clients/lib/perl/result.t
         }),
         (map {
-            $_ => [qw{python}, $_],
+            (src_to_bld($_) => [qw{python}, src_to_bld($_)]),
         } qw{src/indentcheck.t}),
 );
+
+$ENV{LD_LIBRARY_PATH} = rel2abs(catdir(qw/_build_ test_install usr local lib/));
 
 if (exists $exec_for{$test}) {
     exec @{ $exec_for{$test} };

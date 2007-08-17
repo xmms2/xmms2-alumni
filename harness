@@ -37,22 +37,24 @@ my @tests = @ARGV || find_tests($FindBin::Bin);
 $harness->runtests(@tests);
 
 sub find_tests {
-    return qw{
-        plugins/xml.t
-        plugins/rss.t
-        plugins/xspf.t
-        plugins/nulstripper.t
-        xmms/bindata.t
-        xmms/config.t
-        xmms/collquery.t
-        lib/xmmsipc/parse_url.t
-        lib/xmmsutils/unix.t
-        clients/lib/xmmsclient/collparser.t
-        clients/lib/perl/class_api.t
-        clients/lib/perl/refcnt.t
-        clients/lib/perl/collections.t
-        clients/lib/perl/result.t
-        src/indentcheck.t
-    };
+    return
+        map  { "_build_/default/t/$_" }
+        qw{
+            plugins/xml.t
+            plugins/rss.t
+            plugins/xspf.t
+            plugins/nulstripper.t
+            xmms/bindata.t
+            xmms/config.t
+            xmms/collquery.t
+            lib/xmmsipc/parse_url.t
+            lib/xmmsutils/unix.t
+            clients/lib/xmmsclient/collparser.t
+            clients/lib/perl/class_api.t
+            clients/lib/perl/refcnt.t
+            clients/lib/perl/collections.t
+            clients/lib/perl/result.t
+            src/indentcheck.t
+        };
 # broken under TAP::Parser: lib/xmmsipc/client_server.t
 }
