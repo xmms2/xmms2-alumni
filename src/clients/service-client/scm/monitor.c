@@ -30,11 +30,11 @@ static void
 do_file (xmmsc_connection_t *conn, const gchar *filename, guint mask)
 {
 	config_t *config;
+	GPid pid;
 
 	if (mask & DEL) {
-		if ((config = g_hash_table_lookup (clients, filename)) &&
-			config->pid)
-			shutdown_single (conn, filename);
+		if ((config = g_hash_table_lookup (clients, filename)))
+			pid = config->pid;
 		if (!g_hash_table_remove (clients, filename))
 			print_error ("Unable to remove service client %s from the manager",
 			             filename);
@@ -43,8 +43,10 @@ do_file (xmmsc_connection_t *conn, const gchar *filename, guint mask)
 	if (mask & ADD) {
 		if ((config = read_config (filename))) {
 			g_hash_table_insert (clients, g_strdup (filename), config);
-			if (config->autostart)
+			if (!pid && config->autostart)
 				launch_single (config);
+			else
+				config->pid = pid;
 		}
 	}
 }
