@@ -1,0 +1,161 @@
+import os, atexit, sys
+import Params, Build
+
+def build(bld):
+    def setup_sandbox_environment(bld):
+        test_install_stamp = 'test_install_stamp'
+
+        if not os.path.exists(test_install_stamp):
+            try:
+                file(test_install_stamp, 'w+')
+                os.execv(os.path.abspath(sys.argv[0]), [sys.argv[0], 'install', '-v', '--destdir=' + os.path.join(bld.m_bdir, 'test_install')])
+            except:
+                pass
+
+        os.unlink(test_install_stamp)
+
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'lib/xmmsutils/unix.t'
+    obj.source = 'lib/xmmsutils/unix.t.c'
+    obj.includes = 'include ../src/include'
+    obj.uselib_local = 'xmmsutils'
+    obj.install_var = 0
+
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'lib/xmmsipc/parse_url.t'
+    obj.source = 'lib/xmmsipc/parse_url.t.c'
+    obj.includes = 'include ../src/lib/xmmsipc'
+    obj.uselib_local = 'xmmsipc'
+    obj.install_var = 0
+
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'lib/xmmsipc/client_server.t'
+    obj.source = 'lib/xmmsipc/client_server.t.c'
+    obj.includes = 'include ../src/include'
+    obj.uselib_local = 'xmmsipc xmmssocket'
+    obj.install_var = 0
+
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'xmms/collquery.t'
+    obj.source = 'xmms/collquery.t.c'
+    obj.includes = 'include ../src/include'
+    obj.uselib = 'glib2 sqlite3'
+    obj.uselib_local = 'xmms2core xmmstypes xmmsipc xmmsutils xmmssocket'
+    obj.install_var = 0
+
+    obj = bld.create_obj('cc', 'staticlib')
+    obj.target = 'test_helper'
+    obj.source = 'helpers/test_xmms.c'
+    obj.includes = '../src/include'
+    obj.install_var = 0
+
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'xmms/config.t'
+    obj.source = 'xmms/config.t.c'
+    obj.includes = 'include helpers ../src/include'
+    obj.uselib_local = 'xmmsclient test_helper'
+    obj.install_var = 0
+
+    obj = bld.create_obj('cc', 'plugin')
+    obj.target = 'xmms_korv'
+    obj.source = 'helpers/plugins/korv.c'
+    obj.includes = '../src/include'
+    obj.uselib = 'glib2'
+    obj.uselib_local = 'xmms2core'
+    obj.install_var = 'TEST_PLUGIN_DIR'
+
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'plugins/nulstripper.t'
+    obj.source = 'plugins/nulstripper.t.c'
+    obj.includes = 'include ../src/include'
+    obj.uselib = 'glib2'
+    obj.uselib_local = 'xmms2core xmmstypes xmmsipc xmmsutils xmmssocket'
+    obj.install_var = 0
+
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'plugins/xml.t'
+    obj.source = 'plugins/xml.t.c'
+    obj.includes = 'include ../src/include'
+    obj.uselib = 'glib2'
+    obj.uselib_local = 'xmms2core xmmstypes xmmsipc xmmsutils xmmssocket'
+    obj.install_var = 0
+
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'plugins/xspf.t'
+    obj.source = 'plugins/xspf.t.c'
+    obj.includes = 'include ../src/include'
+    obj.uselib = 'glib2'
+    obj.uselib_local = 'xmms2core xmmstypes xmmsipc xmmsutils xmmssocket'
+    obj.install_var = 0
+
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'plugins/rss.t'
+    obj.source = 'plugins/rss.t.c'
+    obj.includes = 'include ../src/include'
+    obj.uselib = 'glib2'
+    obj.uselib_local = 'xmms2core xmmstypes xmmsipc xmmsutils xmmssocket'
+    obj.install_var = 0
+
+    obj = bld.create_obj('copy')
+    obj.source = 'xmms/bindata.t'
+    obj.target = 'xmms'
+    obj.install_var = 0
+
+    obj = bld.create_obj('copy')
+    obj.source = 'clients/lib/xmmsclient/collparser.t'
+    obj.target = 'clients/lib/xmmsclient'
+    obj.install_var = 0
+
+    obj = bld.create_obj('copy')
+    obj.source = 'src/indentcheck.t'
+    obj.target = 'src'
+    obj.install_var = 0
+
+    obj = bld.create_obj('copy')
+    obj.source = 'clients/lib/perl/result.t'
+    obj.target = 'clients/lib/perl'
+    obj.install_var = 0
+
+    obj = bld.create_obj('copy')
+    obj.source = 'clients/lib/perl/refcnt.t'
+    obj.target = 'clients/lib/perl'
+    obj.install_var = 0
+
+    obj = bld.create_obj('copy')
+    obj.source = 'clients/lib/perl/collections.t'
+    obj.target = 'clients/lib/perl'
+    obj.install_var = 0
+
+    obj = bld.create_obj('copy')
+    obj.source = 'clients/lib/perl/class_api.t'
+    obj.target = 'clients/lib/perl'
+    obj.install_var = 0
+
+    atexit.register(setup_sandbox_environment, bld)
+
+def configure(conf):
+    if not Params.g_options.enable_tests:
+        return False
+
+    defs = {}
+
+    defs['SRC_DIR'] = os.getcwd()
+    defs['BLD_DIR'] = conf.m_blddir
+    defs['BIN_DIR'] = conf.env['program_INST_DIR']
+    defs['PREFIX'] = conf.env['PREFIX']
+    defs['PLUGIN_DIR'] = os.path.join(conf.env['PREFIX'], 'lib', 'xmms2')
+    defs['TEST_DIR'] = os.path.join(os.getcwd(), 't')
+    defs['TEST_INSTALL_DIR'] = os.path.join(os.getcwd(), conf.m_blddir, 'test_install')
+
+    #TODO: don't mess with xmms_configuration.h
+    for i in defs:
+        conf.add_define(i, defs[i])
+
+    conf.env['TEST_PLUGIN_DIR'] = os.path.join(defs['TEST_INSTALL_DIR'], defs['PLUGIN_DIR'])
+
+    conf.write_config_header('test_helper_configuration.h')
+
+    return True
+
+def set_options(opt):
+    opt.add_option('--with-tests', type="int", dest="enable_tests")

@@ -58,7 +58,8 @@ optional_subdirs = ["src/clients/cli",
                     "src/clients/lib/xmmsclient++-glib",
                     "src/clients/lib/python",
                     "src/clients/lib/perl",
-                    "src/clients/lib/ruby"]
+                    "src/clients/lib/ruby",
+                    "t"]
 
 all_optionals = sets.Set([os.path.basename(o) for o in optional_subdirs])
 all_plugins = sets.Set([p for p in os.listdir("src/plugins")
@@ -278,7 +279,7 @@ def configure(conf):
     conf.env['NEWEST_WSCRIPT_SUBDIR'] = newest
 
     [conf.sub_config(s) for s in subdirs]
-    
+
     _output_summary(enabled_plugins, disabled_plugins, enabled_optionals, disabled_optionals)
 
 
