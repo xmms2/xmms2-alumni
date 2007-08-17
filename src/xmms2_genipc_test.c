@@ -34,6 +34,7 @@ int main(int argc, char **argv)
 				msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_PAUSE);
 				xmms_ipc_msg_put_uint32 (msg, 1);
 				req = xmmsc_request_new (c, msg);
+				req->interval = -500;
 
 				xmmsc_request_send (req);
 			}
@@ -46,7 +47,7 @@ int main(int argc, char **argv)
 				xmmsc_request_send (req);
 			}
 		}
-		else if(!strncmp(argv[1],"stop")) {
+		if(!strncmp(argv[1],"stop")) {
 			msg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_OUTPUT, XMMSC_OUTPUT_METHOD_STOP);
 			xmms_ipc_msg_put_uint32 (msg, 1);
 			req = xmmsc_request_new (c, msg);
