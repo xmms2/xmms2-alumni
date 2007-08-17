@@ -942,6 +942,13 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 	cmds->output_status = xmms_output_status;
 	cmds->output_kill = xmms_output_xform_kill;
 
+	/*
+	 * This should go to some sort of wrapper function
+	 * that can send off signals depending on how the request
+	 * type, etc. This will need support in genipc.py.
+	 */
+	cmds->output_get_playtime = xmms_output_playtime;
+
 	xmms_output_cmds_register (cmds);
 
 	/*

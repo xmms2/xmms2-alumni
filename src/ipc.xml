@@ -183,6 +183,13 @@
 	</object>
 
 	<object name="output" type="server">
+		<prop name="playtime">
+			<readable />
+			<type>
+				<uint />
+			</type>
+		</prop>
+
 		<method name="start">
 			<retval>
 				<type>
