@@ -226,34 +226,27 @@ xmmsc_result_restart (res)
 
 void
 xmmsc_result_notifier_set (res, func, data=NULL)
-		SV *res
+		xmmsc_result_t *res
 		SV *func
 		SV *data
 	PREINIT:
 		PerlXMMSClientCallback *cb = NULL;
 		PerlXMMSClientCallbackParamType param_types[1];
-		xmmsc_result_t *c_res;
 	CODE:
-		c_res = (xmmsc_result_t *)perl_xmmsclient_get_ptr_from_sv (res, "Audio::XMMSClient::Result");
 		param_types[0] = PERL_XMMSCLIENT_CALLBACK_PARAM_TYPE_RESULT;
 
-		cb = perl_xmmsclient_callback_new (func, data, res, 1, param_types);
+		cb = perl_xmmsclient_callback_new (func, data, ST(0), 1, param_types);
 
-		xmmsc_result_notifier_set_full (c_res, perl_xmmsclient_xmmsc_result_notifyer_cb,
+		xmmsc_result_notifier_set_full (res, perl_xmmsclient_xmmsc_result_notifyer_cb,
 		                                cb, (xmmsc_user_data_free_func_t)perl_xmmsclient_callback_destroy);
 
 SV *
 xmmsc_result_wait (res)
-		SV *res
-	PREINIT:
-		xmmsc_result_t *c_res;
+		xmmsc_result_t *res
 	CODE:
-		c_res = (xmmsc_result_t *)perl_xmmsclient_get_ptr_from_sv (res, "Audio::XMMSClient::Result");
-
-		xmmsc_result_wait (c_res);
-
-		SvREFCNT_inc (res); /* TODO: Only do so in non-void context? */
-		RETVAL = res;
+		xmmsc_result_wait (res);
+		SvREFCNT_inc (ST(0)); /* TODO: Only do so in non-void context? */
+		RETVAL = ST(0);
 	OUTPUT:
 		RETVAL
 
