@@ -37,8 +37,7 @@ int32_t xmms_visualisation_init_shm (xmms_visualisation_t *vis, int32_t id, int3
 int32_t xmms_visualisation_init_udp (xmms_visualisation_t *vis, int32_t id, xmms_error_t *err);
 int32_t xmms_visualisation_property_set (xmms_visualisation_t *vis, int32_t id, gchar *key, gchar *value, xmms_error_t *err);
 
-/* TODO: do this right */
-void xmms_visualisation_send_data (xmms_visualisation_t *vis, short l, short r);
+void xmms_visualisation_send_data (xmms_visualisation_t *vis, int channels, int size, int16_t *buf);
 
 int32_t xmms_visualisation_properties_set (xmms_visualisation_t *vis, int32_t id, GList *prop, xmms_error_t *err);
 void xmms_visualisation_shutdown_client (xmms_visualisation_t *vis, int32_t id, xmms_error_t *err);

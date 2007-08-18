@@ -29,7 +29,7 @@
 		xmms_error_set (err, XMMS_ERROR_INVAL, "invalid server-side identifier provided"); \
 		g_mutex_unlock (vis->clientlock); \
 		return -1; \
-	}
+	} while (0);
 #define x_release_client() \
 	g_mutex_unlock (vis->clientlock);
 
@@ -278,6 +278,8 @@ property_set (xmmsc_vis_properties_t *p, gchar* key, gchar* data) {
 			p->type = VIS_PCM;
 		} else if (!g_strcasecmp (data, "fft")) {
 			p->type = VIS_FFT;
+		} else if (!g_strcasecmp (data, "peak")) {
+			p->type = VIS_PEAK;
 		} else {
 			return FALSE;
 		}
@@ -288,7 +290,7 @@ property_set (xmmsc_vis_properties_t *p, gchar* key, gchar* data) {
 		if (p->timeframe == 0.0) {
 			return FALSE;
 		}
-		/* TODO: restart timer */
+		/* TODO: blah */
 	} else {
 		return FALSE;
 	}
@@ -594,7 +596,7 @@ increment_client (xmmsc_vis_unixshm_t *t) {
 }
 
 gboolean
-package_write_start (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vischunk_t **dest) {
+package_write_start (int32_t id, xmms_vis_client_t* c, xmmsc_vischunk_t **dest) {
 	if (c->type == VIS_UNIXSHM) {
 		struct shmid_ds shm_desc;
 		xmmsc_vis_unixshm_t *t = &c->transport.shm;
@@ -623,7 +625,6 @@ package_write_start (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vischunk_
 		if (c->transport.udp.socket == 0) {
 			return FALSE;
 		}
-		/* TODO: use size instead! */
 		xmmsc_vis_udp_data_t *packet = g_new (xmmsc_vis_udp_data_t, 1);
 		packet->type = 'V';
 		packet->grace = --c->transport.udp.grace;
@@ -634,7 +635,7 @@ package_write_start (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vischunk_
 }
 
 void
-package_write_finish (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vischunk_t *dest) {
+package_write_finish (int32_t id, xmms_vis_client_t* c, xmmsc_vischunk_t *dest) {
 	if (c->type == VIS_UNIXSHM) {
 		xmmsc_vis_unixshm_t *t = &c->transport.shm;
 		t->pos = (t->pos + 1) % t->size;
@@ -654,14 +655,68 @@ package_write_finish (int32_t id, xmms_vis_client_t* c, int size, xmmsc_vischunk
 		offset[0] = ((int)&packet->data - (int)packet);
 		packet = (xmmsc_vis_udp_data_t*)((char*)dest - offset[0]);
 		offset[1] = ((int)&packet->data.data - (int)&packet->data);
-		sendto (vis->socket, packet, offset[0] + offset[1] + size, 0, (struct sockaddr *)&c->transport.udp.addr, sl);
+		sendto (vis->socket, packet, offset[0] + offset[1] + dest->size * sizeof(int16_t), 0, (struct sockaddr *)&c->transport.udp.addr, sl);
 		g_free (packet);
 	}
 }
 
+/* you know ... */
+short
+fill_buffer (int16_t *dest, xmmsc_vis_properties_t* prop, int channels, int size, short *src) {
+	int i, j;
+	if (prop->type == VIS_PEAK) {
+		short l = 0, r = 0;
+		for (i = 0; i < size; i += channels) {
+			if (src[i] > 0 && src[i] > l) {
+				l = src[i];
+			}
+			if (src[i] < 0 && -src[i] > l) {
+				l = -src[i];
+			}
+			if (channels > 1) {
+				if (src[i+1] > 0 && src[i+1] > r) {
+					r = src[i+1];
+				}
+				if (src[i+1] < 0 && -src[i+1] > r) {
+					r = -src[i+1];
+				}
+			}
+		}
+		if (channels == 1) {
+			r = l;
+		}
+		if (prop->stereo) {
+			dest[0] = htons (l);
+			dest[1] = htons (r);
+			size = 2;
+		} else {
+			dest[0] = htons ((l + r) / 2);
+			size = 1;
+		}
+	}
+	if (prop->type == VIS_PCM) {
+		for (i = 0, j = 0; i < size; i += channels, j++) {
+			dest[j] = htons (src[i]);
+			if (prop->stereo) {
+				if (channels > 1) {
+					dest[j*2] = htons (src[i+1]);
+				} else {
+					dest[j*2] = htons (src[i]);
+				}
+			}
+		}
+		size /= channels;
+		if (prop->stereo) {
+			size *= 2;
+		}
+	}
+	return size;
+}
+
+
 /* TODO: sick in various ways */
 void
-xmms_visualisation_send_data (xmms_visualisation_t *vis, short l, short r) {
+xmms_visualisation_send_data (xmms_visualisation_t *vis, int channels, int size, short *buf) {
 	int i;
 	xmmsc_vischunk_t *dest;
 	struct timeval time;
@@ -671,194 +726,19 @@ xmms_visualisation_send_data (xmms_visualisation_t *vis, short l, short r) {
 	g_mutex_lock (vis->clientlock);
 	for (i = 0; i < vis->clientc; ++i) {
 		if (vis->clientv[i]) {
-			if (!package_write_start (i, vis->clientv[i], 4, &dest)) {
+			if (!package_write_start (i, vis->clientv[i], &dest)) {
 				continue;
 			}
 
 			tv2net (dest->timestamp, ts2tv (&time) + latency * 0.001);
-			dest->format = htonl (vis->clientv[i]->format);
+			dest->format = htons (vis->clientv[i]->format);
 
-			/* TODO: make this usable ;-) */
-			short* data = (short*)dest->data;
-			data[0] = htons (l);
-			data[1] = htons (r);
+			dest->size = htons (fill_buffer (dest->data, &vis->clientv[i]->prop, channels, size, buf));
 
-			package_write_finish (i, vis->clientv[i], 4, dest);
+			package_write_finish (i, vis->clientv[i], dest);
 		}
 	}
 	g_mutex_unlock (vis->clientlock);
 }
-
-//~ static void output_spectrum (xmms_visualisation_t *vis, guint32 pos)
-//~ {
-	//~ xmms_object_cmd_value_t *data;
-	//~ GList *node = vis->list;
-	//~ int i;
-
-	//~ data = (xmms_object_cmd_value_t *)node->data;
-	//~ data->value.uint32 = xmms_sample_samples_to_ms (vis->format, pos);
-
-	//~ node = g_list_next (node);
-	//~ for (i = 0; i < FFT_LEN / 2; i++) {
-		//~ gfloat tmp = vis->spec[i];
-		//~ data = (xmms_object_cmd_value_t *)node->data;
-
-		//~ if (tmp >= 1.0)
-			//~ data->value.uint32 = INT_MAX;
-		//~ else if (tmp < 0.0)
-			//~ data->value.uint32 = 0;
-		//~ else
-			//~ data->value.uint32 = (guint)(tmp * INT_MAX);
-
-		//~ node = g_list_next (node);
-	//~ }
-
-	//~ xmms_object_emit_f (XMMS_OBJECT (vis),
-	                    //~ XMMS_IPC_SIGNAL_VISUALISATION_DATA,
-	                    //~ XMMS_OBJECT_CMD_ARG_LIST,
-	                    //~ vis->list);
-
-//~ }
-
-//~ /**
- //~ * Calcualte the FFT on the decoded data buffer.
- //~ */
-//~ void
-//~ xmms_visualisation_calc (xmms_visualisation_t *vis, xmms_sample_t *buf, int len, guint32 pos)
-//~ {
-	//~ gint t;
-
-	//~ g_return_if_fail (vis);
-
-	//~ if (vis->format->format != XMMS_SAMPLE_FORMAT_S16)
-		//~ return;
-
-	//~ if (xmms_ipc_has_pending (XMMS_IPC_SIGNAL_VISUALISATION_DATA)) {
-		//~ vis->needed = 20;
-	//~ } else if (vis->needed) {
-		//~ vis->needed--;
-	//~ }
-
-	//~ if (!vis->needed)
-		//~ return;
-
-	//~ if (vis->fft_data) {
-		//~ pos -= vis->fft_data / 4;
-
-		//~ t = MIN (len, (FFT_LEN*4)-vis->fft_data);
-		//~ memcpy (vis->fft_buf + vis->fft_data, buf, t);
-		//~ vis->fft_data += t;
-		//~ len -= t;
-		//~ buf += t;
-		//~ if (vis->fft_data == FFT_LEN*4) {
-			//~ fft ((gint16 *)vis->fft_buf, vis->spec);
-			//~ output_spectrum (vis, pos);
-			//~ vis->fft_data = 0;
-		//~ }
-	//~ }
-
-	//~ while (len > FFT_LEN*4) {
-		//~ fft ((gint16 *)buf, vis->spec);
-		//~ output_spectrum (vis, pos);
-
-		//~ buf += FFT_LEN*4;
-		//~ len -= FFT_LEN*4;
-		//~ pos += FFT_LEN;
-	//~ }
-
-	//~ if (len) {
-		//~ g_return_if_fail (!vis->fft_data);
-		//~ memcpy (vis->fft_buf, buf, len);
-		//~ vis->fft_data = len;
-	//~ }
-//~ }
-
-//~ /**
- //~ * Tell the visualisation what audio format we use
- //~ */
-//~ void
-//~ xmms_visualisation_format_set (xmms_visualisation_t *vis, xmms_audio_format_t *fmt)
-//~ {
-	//~ vis->format = fmt;
-//~ }
-
-//~ static void
-//~ fft (gint16 *samples, gfloat *spec)
-//~ {
-	//~ gint nv2, k, l, j = 0, i;
-	//~ gfloat t_r, t_i;
-	//~ gfloat buf[FFT_LEN][2];
-
-	//~ for (i = 0; i < FFT_LEN; i++){
-		//~ buf[i][0]  = (float) samples[j++];
-		//~ buf[i][0] += (float) samples[j++];
-		//~ buf[i][0] /= (float) (1 << 17);
-		//~ buf[i][0] *= window[i];
-		//~ buf[i][1] = 0.0f;
-	//~ }
-
-	//~ /* reorder... */  /* this is crappy! Go rewrite it using real bitreversing */
-	//~ nv2 = FFT_LEN / 2;
-	//~ j = 1;
-
-	//~ for (i = 1; i < FFT_LEN; i++) {
-		//~ if (i < j) {
-			//~ t_r = buf[i - 1][0];
-			//~ t_i = buf[i - 1][1];
-			//~ buf[i - 1][0] = buf[j - 1][0];
-			//~ buf[i - 1][1] = buf[j - 1][1];
-			//~ buf[j - 1][0] = t_r;
-			//~ buf[j - 1][1] = t_i;
-		//~ }
-
-		//~ k = nv2;
-
-		//~ while (k < j) {
-			//~ j -= k;
-			//~ k /= 2;
-		//~ }
-
-		//~ j += k;
-	//~ }
-
-	//~ /* do fft */
-	//~ for (l = 1; l <= FFT_BITS; l++) {
-		//~ gint le = 1 << l;
-		//~ gint le1 = le / 2;
-		//~ gfloat u_r = 1.0;
-		//~ gfloat u_i = 0.0;
-		//~ gfloat w_r =  cos (M_PI / (float) le1);
-		//~ gfloat w_i = -sin (M_PI / (float) le1);
-
-		//~ for (j = 1; j <= le1; j++) {
-			//~ for (i = j; i <= FFT_LEN; i += le) {
-				//~ gint ip = i + le1;
-
-				//~ t_r = buf[ip - 1][0] * u_r - u_i * buf[ip - 1][1];
-				//~ t_i = buf[ip - 1][1] * u_r + u_i * buf[ip - 1][0];
-
-				//~ buf[ip - 1][0] = buf[i - 1][0] - t_r;
-				//~ buf[ip - 1][1] = buf[i - 1][1] - t_i;
-
-				//~ buf[i - 1][0] =  buf[i - 1][0] + t_r;
-				//~ buf[i - 1][1] =  buf[i - 1][1] + t_i;
-			//~ }
-
-			//~ t_r = u_r * w_r - w_i * u_i;
-			//~ u_i = w_r * u_i + w_i * u_r;
-			//~ u_r = t_r;
-		//~ }
-	//~ }
-
-	//~ /* output abs-value instead */
-	//~ for (i = 0; i < nv2; i++) {
-		//~ spec[i] = hypot (buf[i][0], buf[i][1]);
-	//~ }
-
-	//~ /* correct the scale */
-	//~ spec[0] /= 2;
-	//~ spec[nv2 - 1] /= 2;
-
-//~ }
 
 /** @} */

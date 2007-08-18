@@ -101,21 +101,15 @@ xmms_vis_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 	vis = xmms_xform_private_data_get (xform);
 	g_return_val_if_fail (vis, -1);
 
+	/* perhaps rework this later */
+	if (len > 2048) {
+		len = 2048;
+	}
+
 	read = xmms_xform_read (xform, buf, len, error);
 	chan = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
 	if (read > 0) {
-/*		TODO: do this the right way etc.
-		copy the data, baby! */
-		short l = SHRT_MIN, r = SHRT_MIN;
-		int i;
-		short *b = buf;
-		for (i = 0; i < read/2; i+=2) {
-			if (b[i] > l)
-				l = b[i];
-			if (b[i+1] > r)
-				r = b[i+1];
-		}
-		xmms_visualisation_send_data (vis, l, r);
+		xmms_visualisation_send_data (vis, chan, read / sizeof(short), buf);
 	}
 
 	return read;

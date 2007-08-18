@@ -40,7 +40,7 @@ extern "C" {
 	* one packate the client can operate on
 	* to avoid needing to be in sync, one spare packet
     * XXX packets to compensate the latency (TODO: find a good value) */
-#define XMMS_VISPACKET_SHMCOUNT 300
+#define XMMS_VISPACKET_SHMCOUNT 500
 
 /**
  * Package format for vis data, encapsulated by unixshm or udp transport
@@ -49,8 +49,10 @@ extern "C" {
 typedef struct {
 	int32_t timestamp[2];
 	uint16_t format;
-	/* 512 is what libvisual wants for pcm data (could also be 256) */
-	char data[512*sizeof(uint16_t)*2];
+	uint16_t size;
+	/* 512 is what libvisual wants for pcm data.
+	   we won't deliver more than 512 samples at once. */
+	int16_t data[512*2];
 } xmmsc_vischunk_t;
 
 /**
@@ -81,7 +83,8 @@ typedef struct {
 
 typedef enum {
 	VIS_PCM,
-	VIS_FFT
+	VIS_FFT,
+	VIS_PEAK
 } xmmsc_vis_data_t;
 
 /**
