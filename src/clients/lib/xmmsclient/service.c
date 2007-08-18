@@ -150,7 +150,6 @@ xmmsc_service_method_register_full (xmmsc_connection_t *conn,
 	method->conn = conn;
 	method->free_func = free_func;
 
-	xmmsc_result_restartable (res, XMMS_IPC_SIGNAL_SERVICE);
 	xmmsc_result_notifier_set_full (res, dispatch, method, free_infos);
 
 	return res;
@@ -332,7 +331,6 @@ xmmsc_service_request (xmmsc_connection_t *conn, const char *service,
 	arg_reset (method);
 
 	res = xmmsc_send_msg (conn, msg);
-	xmmsc_result_restartable (res, XMMS_IPC_SIGNAL_SERVICE);
 
 	return res;
 }
