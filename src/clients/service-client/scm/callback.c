@@ -19,15 +19,24 @@
 #include "monitor.h"
 
 /**
+ * Free data.
+ */
+static void
+free_data (void *data)
+{
+	info_t *info = data;
+
+	g_free (info->data);
+	free (info);
+}
+
+/**
  * Update configval.
- *
- * In order to pass conn, I use a nasty tricky way to tell which configval I'm
- * dealing with.
  */
 static void
 update_configval (xmmsc_result_t *res, void *data)
 {
-	xmmsc_connection_t *conn = data;
+	info_t *info = data;
 	gchar *value;
 
 	if (xmmsc_result_iserror (res)) {
@@ -41,13 +50,15 @@ update_configval (xmmsc_result_t *res, void *data)
 		return;
 	}
 
-	if (g_ascii_isdigit (*value))
+	if (g_strcasecmp (info->data, "clients." CONFIGVAL_TIMEOUT) == 0)
 		timeout = g_ascii_strtoull (value, NULL, 10);
+	else if (g_strcasecmp (info->data, "clients." CONFIGVAL_PERIOD) == 0)
+		period = g_ascii_strtoull (value, NULL, 10);
 	else {
 		if (g_strcasecmp (value, "yes") == 0) {
 			if (!monitor) {
 				monitor = TRUE;
-				start_monitor (conn);
+				start_monitor (info->clients);
 			}
 		} else {
 			if (monitor) {
@@ -137,7 +148,7 @@ update_method_infos (xmmsc_result_t *res, void *data)
 void
 cb_configval (xmmsc_result_t *res, void *data)
 {
-	xmmsc_connection_t *conn = data;
+	info_t *info;
 	gchar *name;
 	xmmsc_result_t *result;
 
@@ -152,8 +163,12 @@ cb_configval (xmmsc_result_t *res, void *data)
 		return;
 	}
 
-	result = xmmsc_configval_get (conn, name);
-	xmmsc_result_notifier_set_full (result, update_configval, conn, NULL);
+	info = x_new0 (info_t, 1);
+	info->clients = ((info_t *)data)->clients;
+	info->data = g_strdup (name);
+
+	result = xmmsc_configval_get (((info_t *)data)->conn, name);
+	xmmsc_result_notifier_set_full (result, update_configval, info, free_data);
 	xmmsc_result_unref (result);
 	xmmsc_result_unref (res);
 }
@@ -164,7 +179,6 @@ cb_configval (xmmsc_result_t *res, void *data)
 void
 cb_configval_changed (xmmsc_result_t *res, void *data)
 {
-	xmmsc_connection_t *conn = data;
 	gchar *value;
 
 	if (xmmsc_result_iserror (res)) {
@@ -175,12 +189,14 @@ cb_configval_changed (xmmsc_result_t *res, void *data)
 
 	if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_TIMEOUT, &value))
 		timeout = g_ascii_strtoull (value, NULL, 10);
+	else if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_PERIOD, &value))
+		period = g_ascii_strtoull (value, NULL, 10);
 	else if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_MONITOR,
 	                                             &value)) {
 		if (g_strcasecmp (value, "yes") == 0) {
 			if (!monitor) {
 				monitor = TRUE;
-				start_monitor (conn);
+				start_monitor ((GHashTable *)data);
 			}
 		} else {
 			if (monitor) {
@@ -199,9 +215,8 @@ cb_service_changed (xmmsc_result_t *res, void *data)
 {
 	xmms_service_changed_actions_t type;
 	gchar *name = NULL;
-	xmmsc_connection_t *conn = (xmmsc_connection_t *)data;
+	info_t info;
 	xmmsc_result_t *result;
-	query_info_t info;
 
 	if (xmmsc_result_iserror (res)) {
 		print_error ("Error entering cb_service_changed: %s",
@@ -224,12 +239,14 @@ cb_service_changed (xmmsc_result_t *res, void *data)
 	    g_strcasecmp (name, SERVICE_MISC) == 0)
 		return;
 
-	info.target = name;
-	info.result = NULL;
+	info.conn = ((info_t *)data)->conn;
+	info.clients = ((info_t *)data)->clients;
+	info.data = name;
+	info.ret = NULL;
 
 	switch (type) {
 	case XMMS_SERVICE_CHANGED_REGISTER:
-		result = xmmsc_service_describe (conn, name);
+		result = xmmsc_service_describe (info.conn, name);
 
 		if (xmmsc_result_iserror (res)) {
 			print_error ("Error requesting service details: %s",
@@ -237,22 +254,22 @@ cb_service_changed (xmmsc_result_t *res, void *data)
 			return;
 		}
 
-		g_hash_table_foreach (clients, match_unregistered_service, &info);
-		if (info.result)
-			((service_t *)info.result->data)->registered = TRUE;
+		g_hash_table_foreach (info.clients, match_unregistered_service, &info);
+		if (info.ret)
+			((service_t *)((GList *)info.ret)->data)->registered = TRUE;
 		else {
 			print_error ("Unable to find an unregistered service as: %s", name);
 			return;
 		}
 
 		xmmsc_result_notifier_set (result, update_service_infos,
-		                           info.result->data);
+		                           ((GList *)info.ret)->data);
 		xmmsc_result_unref (result);
 		break;
 	case XMMS_SERVICE_CHANGED_UNREGISTER:
-		g_hash_table_foreach (clients, match_registered_service, &info);
-		if (info.result)
-			((service_t *)info.result->data)->registered = FALSE;
+		g_hash_table_foreach (info.clients, match_registered_service, &info);
+		if (info.ret)
+			((service_t *)((GList *)info.ret)->data)->registered = FALSE;
 		else {
 			print_error ("Unable to find a registered service as: %s", name);
 			return;
@@ -263,8 +280,8 @@ cb_service_changed (xmmsc_result_t *res, void *data)
 		break;
 	}
 
-	if (info.result)
-		g_list_free (info.result);
+	if (info.ret)
+		g_list_free ((GList *)info.ret);
 }
 
 /**
@@ -276,11 +293,10 @@ cb_method_changed (xmmsc_result_t *res, void *data)
 	xmms_service_changed_actions_t type;
 	gchar *service_name = NULL;
 	gchar *method_name = NULL;
-	xmmsc_connection_t *conn = (xmmsc_connection_t *)data;
+	info_t info;
 	xmmsc_result_t *result;
 	service_t *service;
 	method_t *method;
-	query_info_t info;
 
 	if (xmmsc_result_iserror (res)) {
 		print_error ("Error entering cb_service_changed: %s",
@@ -303,12 +319,14 @@ cb_method_changed (xmmsc_result_t *res, void *data)
 	    g_strcasecmp (service_name, SERVICE_MISC) == 0)
 		return;
 
-	info.target = service_name;
-	info.result = NULL;
-	g_hash_table_foreach (clients, match_registered_service, &info);
-	if (info.result) {
-		service = (service_t *)info.result->data;
-		g_list_free (info.result);
+	info.conn = ((info_t *)data)->conn;
+	info.clients = ((info_t *)data)->clients;
+	info.data = service_name;
+	info.ret = NULL;
+	g_hash_table_foreach (info.clients, match_registered_service, &info);
+	if (info.ret) {
+		service = (service_t *)((GList *)info.ret)->data;
+		g_list_free ((GList *)info.ret);
 	} else {
 		print_error ("Unable to find a registered service as: %s", service_name);
 		return;
@@ -326,7 +344,8 @@ cb_method_changed (xmmsc_result_t *res, void *data)
 
 	switch (type) {
 	case XMMS_SERVICE_CHANGED_REGISTER:
-		result = xmmsc_service_method_describe (conn, service_name, method_name);
+		result = xmmsc_service_method_describe (info.conn, service_name,
+		                                        method_name);
 
 		if (xmmsc_result_iserror (res)) {
 			print_error ("Error requesting method details: %s",

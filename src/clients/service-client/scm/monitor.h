@@ -26,7 +26,7 @@
 #include "inotify-syscalls.h"
 #endif
 
-gboolean start_monitor (xmmsc_connection_t *conn);
+gboolean start_monitor (GHashTable *clients);
 void shutdown_monitor (void);
 void cb_poll (xmmsc_connection_t *conn, xmmsc_result_t *res,
               xmmsc_service_method_t *method, void *data);

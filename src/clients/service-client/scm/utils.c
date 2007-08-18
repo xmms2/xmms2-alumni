@@ -97,12 +97,12 @@ match_method_registered (gpointer key, gpointer value, gpointer data)
 void
 match_service (gpointer key, gpointer value, gpointer data)
 {
-	query_info_t *info = data;
+	info_t *info = data;
 	gchar *name = key;
 	config_t *config = value;
 
-	if (g_hash_table_lookup (config->services, info->target))
-		info->result = g_list_prepend (info->result, name);
+	if (g_hash_table_lookup (config->services, (const gchar *)info->data))
+		info->ret = g_list_prepend ((GList *)info->ret, name);
 }
 
 /**
@@ -111,13 +111,14 @@ match_service (gpointer key, gpointer value, gpointer data)
 void
 match_registered_service (gpointer key, gpointer value, gpointer data)
 {
-	query_info_t *info = data;
+	info_t *info = data;
 	config_t *config = value;
 	service_t *service;
 
-	if ((service = g_hash_table_lookup (config->services, info->target)) &&
+	if ((service = g_hash_table_lookup (config->services,
+	                                    (const gchar *)info->data)) &&
 	    service->registered)
-		info->result = g_list_prepend (info->result, service);
+		info->ret = g_list_prepend ((GList *)info->ret, service);
 }
 
 /**
@@ -126,11 +127,12 @@ match_registered_service (gpointer key, gpointer value, gpointer data)
 void
 match_unregistered_service (gpointer key, gpointer value, gpointer data)
 {
-	query_info_t *info = data;
+	info_t *info = data;
 	config_t *config = value;
 	service_t *service;
 
-	if ((service = g_hash_table_lookup (config->services, info->target)) &&
+	if ((service = g_hash_table_lookup (config->services,
+	                                    (const gchar *)info->data)) &&
 	    !service->registered)
-		info->result = g_list_prepend (info->result, service);
+		info->ret = g_list_prepend ((GList *)info->ret, service);
 }
