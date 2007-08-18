@@ -5,6 +5,15 @@
 #include "test_xmms.h"
 #include "test_helper_configuration.h"
 
+#define __TAP_LIB__
+#include "tap.h"
+#undef __TAP_LIB__
+
+static void
+bail_out (void *null) {
+	BAIL_OUT ("got disconnected");
+}
+
 xmmsc_connection_t *
 test_xmms_launch (void) {
 	xmmsc_connection_t *c;
@@ -54,9 +63,10 @@ test_xmms_launch (void) {
 
 	c = xmmsc_init ("Test_XMMS");
 	if (!xmmsc_connect (c, NULL)) {
-		printf ("failed to connect to xmms2d\n");
-		abort ();
+		BAIL_OUT ("failed to connect to xmms2d");
 	}
+
+	xmmsc_disconnect_callback_set (c, bail_out, NULL);
 
 	return c;
 }

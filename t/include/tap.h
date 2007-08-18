@@ -3,11 +3,13 @@
 
 #include <stdio.h>
 
+#ifndef __TAP_LIB__
 int tap_tests_planned = -1;
 int tap_tests_ran = 0;
 int tap_skip_num;
 char *tap_skip_reason;
 char *tap_todo_reason = NULL;
+#endif
 
 #define PLAN_TESTS(x) \
 	tap_tests_planned = x; \
@@ -74,5 +76,11 @@ char *tap_todo_reason = NULL;
 	} else { \
 		SKIP(tap_skip_num, tap_skip_reason); \
 	}
+
+#define BAIL_OUT(msg) \
+	do { \
+		printf ("Bail out!  %s\n", msg); \
+		exit (255); \
+	} while (0);
 
 #endif /* __TAP_H__ */

@@ -57,4 +57,5 @@ sub find_tests {
             src/indentcheck.t
         };
 # broken under TAP::Parser: lib/xmmsipc/client_server.t
+# buggy: xmms/clients.t
 }

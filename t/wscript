@@ -46,13 +46,21 @@ def build(bld):
     obj = bld.create_obj('cc', 'staticlib')
     obj.target = 'test_helper'
     obj.source = 'helpers/test_xmms.c'
-    obj.includes = '../src/include'
+    obj.includes = 'include ../src/include'
     obj.install_var = 0
 
     obj = bld.create_obj('cc', 'program')
     obj.target = 'xmms/config.t'
     obj.source = 'xmms/config.t.c'
     obj.includes = 'include helpers ../src/include'
+    obj.uselib_local = 'xmmsclient test_helper'
+    obj.install_var = 0
+
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'xmms/clients.t'
+    obj.source = 'xmms/clients.t.c'
+    obj.includes = 'include helpers ../src/include'
+    obj.uselib = 'glib2 gthread2'
     obj.uselib_local = 'xmmsclient test_helper'
     obj.install_var = 0
 
