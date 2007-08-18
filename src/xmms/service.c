@@ -857,15 +857,6 @@ xmms_service_return (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	                  XMMS_IPC_SIGNAL_SERVICE,
 	                  &arg);
 
-	g_mutex_lock (xmms_service->mutex);
-	if (!g_hash_table_remove (xmms_service->clients, GUINT_TO_POINTER (id))) {
-		XMMS_SERVICE_ERROR (err, XMMS_ERROR_GENERIC,
-		                    "Failed to remove method call request");
-		g_mutex_unlock (xmms_service->mutex);
-		return;
-	}
-	g_mutex_unlock (xmms_service->mutex);
-
 	xmms_object_cmd_value_free (arg.retval);
 }
 
