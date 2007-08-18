@@ -19,11 +19,6 @@
 
 #include "common.h"
 
-typedef struct query_info_St {
-	gconstpointer target;
-	GList *result;
-} query_info_t;
-
 void match_auto (gpointer key, gpointer value, gpointer data);
 void match_pid (gpointer key, gpointer value, gpointer data);
 void match_none (gpointer key, gpointer value, gpointer data);

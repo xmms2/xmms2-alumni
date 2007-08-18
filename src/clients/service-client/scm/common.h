@@ -28,6 +28,7 @@
 #define SCM_NAME "scm"
 
 #define CONFIGVAL_TIMEOUT SCM_NAME ".timeout"
+#define CONFIGVAL_PERIOD SCM_NAME ".period"
 #define CONFIGVAL_MONITOR SCM_NAME ".monitor"
 
 #define SERVICE_MANAGEMENT "se.xmms." SCM_NAME ".management"
@@ -52,6 +53,14 @@ guint timeout;
 guint period;
 
 typedef struct {
+	xmmsc_connection_t *conn;
+	GMainLoop *ml;
+	GHashTable *clients;
+	gpointer data;
+	gpointer ret;
+} info_t;
+
+typedef struct {
 	gchar *path;
 	gchar *argv;
 	time_t mtime;
@@ -73,18 +82,16 @@ typedef struct {
 	gboolean registered;
 } method_t;
 
-GHashTable *clients;
-
 void print_info (const gchar *fmt, ...);
 void print_error (const gchar *fmt, ...);
-void print_error_and_exit (xmmsc_connection_t *conn, const gchar *fmt, ...);
+void print_error_and_exit (info_t *info, const gchar *fmt, ...);
 void print_method (gpointer k, gpointer v, gpointer d);
 void print_service (gpointer k, gpointer v, gpointer d);
 void print_config (gpointer k, gpointer v, gpointer d);
 
 void method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
                     xmmsc_service_method_t *method);
-config_t *lookup_client (xmmsc_result_t *res, gchar **name,
+config_t *lookup_client (info_t *info, xmmsc_result_t *res,
                          xmmsc_service_method_t *method);
 service_t *lookup_service (xmmsc_result_t *res, const config_t *config,
                            gchar **name, xmmsc_service_method_t *method);

@@ -24,6 +24,7 @@ void
 cb_list_sc_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
                 xmmsc_service_method_t *method, void *data)
 {
+	info_t *info = data;
 	gchar **retval;
 	GList *list = NULL;
 	GList *n;
@@ -35,7 +36,7 @@ cb_list_sc_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return;
 	}
 
-	g_hash_table_foreach (clients, match_none, &list);
+	g_hash_table_foreach (info->clients, match_none, &list);
 
 	retval = g_new0 (gchar *, g_list_length (list));
 	for (i = 0, n = list; n; i++, n = g_list_next (n))
@@ -55,6 +56,7 @@ void
 cb_list_sc (xmmsc_connection_t *conn, xmmsc_result_t *res,
             xmmsc_service_method_t *method, void *data)
 {
+	info_t info;
 	config_t *config;
 	gchar *name = NULL;
 
@@ -64,7 +66,10 @@ cb_list_sc (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return;
 	}
 
-	if ((config = lookup_client (res, &name, method))) {
+	info.clients = (GHashTable *)data;
+	info.ret = &name;
+
+	if ((config = lookup_client (&info, res, method))) {
 		xmmsc_service_method_ret_add_string (method, ARG_ARGV, config->argv);
 		xmmsc_service_method_ret_add_uint32 (method, ARG_AUTO,
 		                                     config->autostart);
@@ -82,6 +87,7 @@ void
 cb_list_service_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
                      xmmsc_service_method_t *method, void *data)
 {
+	info_t info;
 	config_t *config;
 	gchar *name = NULL;
 	gchar **retval = NULL;
@@ -95,7 +101,10 @@ cb_list_service_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return;
 	}
 
-	if ((config = lookup_client (res, &name, method))) {
+	info.clients = (GHashTable *)data;
+	info.ret = &name;
+
+	if ((config = lookup_client (&info, res, method))) {
 		g_hash_table_foreach (config->services, match_none, &list);
 
 		retval = g_new0 (gchar *, g_list_length (list));
@@ -117,6 +126,7 @@ void
 cb_list_service (xmmsc_connection_t *conn, xmmsc_result_t *res,
                  xmmsc_service_method_t *method, void *data)
 {
+	info_t info;
 	service_t *service;
 	gchar *name = NULL;
 
@@ -126,8 +136,11 @@ cb_list_service (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return;
 	}
 
+	info.clients = (GHashTable *)data;
+	info.ret = &name;
+
 	if ((service = lookup_service (res,
-	                               lookup_client (res, &name, method),
+	                               lookup_client (&info, res, method),
 	                               &name, method))) {
 		xmmsc_service_method_ret_add_string (method, ARG_DESC, service->desc);
 		xmmsc_service_method_ret_add_uint32 (method, ARG_MAJOR, service->major);
@@ -148,6 +161,7 @@ void
 cb_list_method_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
                     xmmsc_service_method_t *method, void *data)
 {
+	info_t info;
 	service_t *service;
 	gchar *name = NULL;
 	gchar **retval = NULL;
@@ -161,8 +175,11 @@ cb_list_method_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return;
 	}
 
+	info.clients = (GHashTable *)data;
+	info.ret = &name;
+
 	if ((service = lookup_service (res,
-	                               lookup_client (res, &name, method),
+	                               lookup_client (&info, res, method),
 	                               &name, method))) {
 		g_hash_table_foreach (service->methods, match_none, &list);
 
@@ -185,6 +202,7 @@ void
 cb_list_method (xmmsc_connection_t *conn, xmmsc_result_t *res,
                 xmmsc_service_method_t *method, void *data)
 {
+	info_t info;
 	method_t *ret;
 	gchar *name = NULL;
 
@@ -194,9 +212,12 @@ cb_list_method (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return;
 	}
 
+	info.clients = (GHashTable *)data;
+	info.ret = &name;
+
 	if ((ret = lookup_method (res,
 	                          lookup_service (res,
-	                                          lookup_client (res, &name, method),
+	                                          lookup_client (&info, res, method),
 	                                          &name, method),
 	                          &name, method))) {
 		xmmsc_service_method_ret_add_string (method, ARG_DESC, ret->desc);
@@ -217,8 +238,8 @@ void
 cb_lookup_client (xmmsc_connection_t *conn, xmmsc_result_t *res,
                   xmmsc_service_method_t *method, void *data)
 {
+	info_t info;
 	gchar *name = NULL;
-	query_info_t info;
 	gchar **retval = NULL;
 	GList *n;
 	gint i;
@@ -231,15 +252,15 @@ cb_lookup_client (xmmsc_connection_t *conn, xmmsc_result_t *res,
 
 	if (!xmmsc_result_get_dict_entry_string (res, ARG_SERVICE_NAME, &name))
 		xmmsc_service_method_error_set (method, "Service name not given.");
-	info.target = name;
-	info.result = NULL;
+	info.data = name;
+	info.ret = NULL;
 
-	g_hash_table_foreach (clients, match_service, &info);
+	g_hash_table_foreach ((GHashTable *)data, match_service, &info);
 
-	retval = g_new0 (gchar *, g_list_length (info.result));
-	for (i = 0, n = info.result; n; i++, n = g_list_next (n))
+	retval = g_new0 (gchar *, g_list_length ((GList *)info.ret));
+	for (i = 0, n = (GList *)info.ret; n; i++, n = g_list_next (n))
 		retval[i] = (gchar *)n->data;
-	g_list_free (info.result);
+	g_list_free ((GList *)info.ret);
 
 	xmmsc_service_method_ret_add_stringlist (method, ARG_IDS, retval);
 

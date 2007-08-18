@@ -24,7 +24,7 @@
 #include "common.h"
 
 const gchar *config_dir (void);
-gboolean read_all (void);
+gboolean read_all (info_t *info);
 config_t *read_config (const gchar *name);
 gboolean create_config (const gchar *name, const gchar *contents);
 void free_config (gpointer v);
