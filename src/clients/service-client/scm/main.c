@@ -123,8 +123,8 @@ register_all (info_t *info)
 		return FALSE;
 
 	/* Query methods */
-	result = xmmsc_service_register (info->conn, SERVICE_QUERY, "Query information"
-	                                 " from service client manager.",
+	result = xmmsc_service_register (info->conn, SERVICE_QUERY, "Query"
+	                                 " information from service client manager.",
 	                                 0, 1);
 	if (xmmsc_result_iserror (result)) {
 		print_error ("Unable to register service (%s): %s", SERVICE_QUERY,
@@ -253,7 +253,8 @@ register_all (info_t *info)
 		return FALSE;
 
 	/* Miscellaneous methods */
-	result = xmmsc_service_register (info->conn, SERVICE_MISC, "Miscellaneous methods",
+	result = xmmsc_service_register (info->conn, SERVICE_MISC,
+	                                 "Miscellaneous methods",
 	                                 0, 1);
 	if (xmmsc_result_iserror (result)) {
 		print_error ("Unable to register service (%s): %s", SERVICE_MISC,
