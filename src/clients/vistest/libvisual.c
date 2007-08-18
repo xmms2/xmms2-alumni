@@ -142,9 +142,9 @@ main (int argc, char** argv)
 	v.pluginIsGL = 0;
 
     //init
+	xmms2_init ();
     sdl_init ();
     v_init (argc, argv);
-	xmms2_init ();
 
     //main loop
     uint render_time = 10;
@@ -371,7 +371,7 @@ v_init (int argc, char **argv)
 
 	visual_bin_connect_by_names (v.bin, (char*)v.plugin, 0);
 
-	if (visual_bin_get_depth(v.bin) == VISUAL_VIDEO_DEPTH_GL)
+	if (visual_bin_get_depth (v.bin) == VISUAL_VIDEO_DEPTH_GL)
 	{
 		visual_video_set_depth (v.video, VISUAL_VIDEO_DEPTH_GL);
 		v.pluginIsGL = 1;
@@ -403,38 +403,30 @@ uint
 v_render()
 {
 	/* On depth change */
-	if( visual_bin_depth_changed( v.bin ) )
-	{
-		sdl_lock();
+	if (visual_bin_depth_changed (v.bin)) {
+		sdl_lock ();
 
-		v.pluginIsGL = (visual_bin_get_depth( v.bin ) == VISUAL_VIDEO_DEPTH_GL);
+		v.pluginIsGL = (visual_bin_get_depth (v.bin) == VISUAL_VIDEO_DEPTH_GL);
 
-		sdl_create( screen->w, screen->h );
-		visual_bin_sync( v.bin, 1 );
+		sdl_create (screen->w, screen->h);
+		visual_bin_sync (v.bin, 1);
 
-		sdl_unlock();
+		sdl_unlock ();
 	}
 
-	long ticks = -SDL_GetTicks();
+	long ticks = -SDL_GetTicks ();
 
-	if( v.pluginIsGL )
-	{
-		visual_bin_run( v.bin );
-
-		SDL_GL_SwapBuffers();
-
+	if (v.pluginIsGL) {
+		visual_bin_run (v.bin);
+		SDL_GL_SwapBuffers ();
 	} else {
-
-		sdl_lock();
-
+		sdl_lock ();
 		visual_video_set_buffer (v.video, screen->pixels);
 		visual_bin_run (v.bin);
-
-		sdl_unlock();
+		sdl_unlock ();
 
 		v.pal = visual_bin_get_palette (v.bin);
 		sdl_set_pal ();
-
 		SDL_Flip (screen);
 	}
 

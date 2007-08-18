@@ -267,7 +267,7 @@ void
 properties_init (xmmsc_vis_properties_t *p) {
 	p->type = VIS_PCM;
 	p->stereo = 1;
-	p->timeframe = 0.015;
+	p->pcm_hardwire = 0;
 }
 
 gboolean
@@ -285,6 +285,8 @@ property_set (xmmsc_vis_properties_t *p, gchar* key, gchar* data) {
 		}
 	} else if (!g_strcasecmp (key, "stereo")) {
 		p->stereo = (atoi (data) > 0);
+	} else if (!g_strcasecmp (key, "pcm.hardwire")) {
+		p->pcm_hardwire = (atoi (data) > 0);
 	} else if (!g_strcasecmp (key, "timeframe")) {
 		p->timeframe = g_strtod (data, NULL);
 		if (p->timeframe == 0.0) {
@@ -328,7 +330,6 @@ xmms_visualisation_property_set (xmms_visualisation_t *vis, int32_t id, gchar* k
 	if (!property_set (&c->prop, key, value)) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "property could not be set!");
 	}
-	/* TODO: propagate new format to xform! ORLY? */
 
 	x_release_client ();
 
@@ -696,12 +697,20 @@ fill_buffer (int16_t *dest, xmmsc_vis_properties_t* prop, int channels, int size
 	}
 	if (prop->type == VIS_PCM) {
 		for (i = 0, j = 0; i < size; i += channels, j++) {
-			dest[j] = htons (src[i]);
+			short *l, *r;
+			if (prop->pcm_hardwire) {
+				l = &dest[j*2];
+				r = &dest[j*2 + 1];
+			} else {
+				l = &dest[j];
+				r = &dest[size/channels + j];
+			}
+			*l = htons (src[i]);
 			if (prop->stereo) {
 				if (channels > 1) {
-					dest[j*2] = htons (src[i+1]);
+					*r = htons (src[i+1]);
 				} else {
-					dest[j*2] = htons (src[i]);
+					*r = htons (src[i]);
 				}
 			}
 		}
