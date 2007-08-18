@@ -28,6 +28,18 @@
  */
 
 /**
+ * Check if a shutdown request sent to a service client has failed.
+ */
+static void
+handle_shutdown (xmmsc_result_t *res, void *data)
+{
+	if (xmmsc_result_iserror (res))
+		print_error ("Failed to send shutdown request: %s",
+		             xmmsc_result_get_error (res));
+	xmmsc_result_unref (res);
+}
+
+/**
  * Force a service client to shutdown.
  */
 static gboolean
@@ -256,10 +268,7 @@ shutdown_single (const info_t *info, const gchar *client)
 		return FALSE;
 	}
 	result = xmmsc_service_shutdown (info->conn, name);
-	xmmsc_result_wait (result);
-	if (xmmsc_result_iserror (result))
-		print_error ("Failed to send shutdown request: %s",
-		             xmmsc_result_get_error (result));
+	xmmsc_result_notifier_set (result, handle_shutdown, NULL);
 	xmmsc_result_unref (result);
 
 	g_timeout_add (timeout, force_shutdown, GINT_TO_POINTER (config->pid));
