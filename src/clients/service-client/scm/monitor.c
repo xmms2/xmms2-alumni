@@ -27,7 +27,7 @@
 static gboolean quit;
 
 static void
-do_file (xmmsc_connection_t *conn, const gchar *filename, guint mask)
+do_file (GHashTable *clients, const gchar *filename, guint mask)
 {
 	config_t *config;
 	GPid pid;
@@ -116,14 +116,14 @@ handle_inotify (GIOChannel *source, GIOCondition cond, gpointer data)
 			mask |= ADD;
 	}
 
-	do_file ((xmmsc_connection_t *)data, event->name, mask);
+	do_file ((GHashTable *)data, event->name, mask);
 
 	return TRUE;
 }
 #endif
 
 static void
-check_file (xmmsc_connection_t *conn, const gchar *filename)
+check_file (GHashTable *clients, const gchar *filename)
 {
 	config_t *config;
 	guint mask = 0;
@@ -142,13 +142,13 @@ check_file (xmmsc_connection_t *conn, const gchar *filename)
 			mask |= BOTH;
 	}
 
-	do_file (conn, filename, mask);
+	do_file (clients, filename, mask);
 }
 
 static gboolean
 handle_poll (gpointer data)
 {
-	xmmsc_connection_t *conn = data;
+	GHashTable *clients = data;
 	GDir *dir;
 	const gchar *filename;
 
@@ -158,7 +158,7 @@ handle_poll (gpointer data)
 	dir = g_dir_open (config_dir (), 0, NULL);
 
 	while (dir && (filename = g_dir_read_name (dir)))
-		check_file (conn, filename);
+		check_file (clients, filename);
 
 	g_dir_close (dir);
 
@@ -166,7 +166,7 @@ handle_poll (gpointer data)
 }
 
 gboolean
-start_monitor (xmmsc_connection_t *conn)
+start_monitor (GHashTable *clients)
 {
 	quit = FALSE;
 
@@ -177,9 +177,9 @@ start_monitor (xmmsc_connection_t *conn)
 	if ((fd = start_inotify ()) < 0)
 		return FALSE;
 	gio = g_io_channel_unix_new (fd);
-	g_io_add_watch (gio, G_IO_IN, handle_inotify, conn);
+	g_io_add_watch (gio, G_IO_IN, handle_inotify, clients);
 #else
-	g_timeout_add (period, handle_poll, conn);
+	g_timeout_add (period, handle_poll, clients);
 #endif
 
 	return TRUE;
@@ -204,5 +204,5 @@ cb_poll (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return;
 	}
 
-	handle_poll (conn);
+	handle_poll (data);
 }

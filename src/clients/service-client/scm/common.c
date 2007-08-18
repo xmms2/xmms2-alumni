@@ -43,7 +43,7 @@ print_error (const gchar *fmt, ...)
 }
 
 void
-print_error_and_exit (xmmsc_connection_t *conn, const gchar *fmt, ...)
+print_error_and_exit (info_t *info, const gchar *fmt, ...)
 {
 	gchar buf[1024];
 	va_list ap;
@@ -54,9 +54,9 @@ print_error_and_exit (xmmsc_connection_t *conn, const gchar *fmt, ...)
 
 	g_printerr ("ERROR: %s\n", buf);
 
-	g_hash_table_destroy (clients);
-	if (conn)
-		xmmsc_unref (conn);
+	g_hash_table_destroy (info->clients);
+	if (info->conn)
+		xmmsc_unref (info->conn);
 	exit (EXIT_FAILURE);
 }
 
@@ -125,19 +125,21 @@ method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
  * Get client name and look it up.
  */
 config_t *
-lookup_client (xmmsc_result_t *res, gchar **name, xmmsc_service_method_t *method)
+lookup_client (info_t *info, xmmsc_result_t *res, xmmsc_service_method_t *method)
 {
 	config_t *config = NULL;
 
+	x_return_null_if_fail (info);
 	x_return_null_if_fail (res);
-	x_return_null_if_fail (name);
 	x_return_null_if_fail (method);
 
-	if (!xmmsc_result_get_dict_entry_string (res, ARG_CLIENT_NAME, name))
+	if (!xmmsc_result_get_dict_entry_string (res, ARG_CLIENT_NAME,
+	                                         (gchar **)info->ret))
 		xmmsc_service_method_error_set (method,
 		                                "Service client name not given.");
 	else
-		if (!(config = g_hash_table_lookup (clients, *name)))
+		if (!(config = g_hash_table_lookup (info->clients,
+		                                    *((gchar **)info->ret))))
 			xmmsc_service_method_error_set (method,
 			                                "Service client does not exist or it"
 			                                " is a remote service client.");
