@@ -84,6 +84,7 @@ handle_inotify (GIOChannel *source, GIOCondition cond, gpointer data)
 	int fd;
 	int len, i;
 	gchar buf[MAXLEN];
+	gchar *name = NULL;
 	struct inotify_event *event;
 	guint mask = 0;
 
@@ -107,6 +108,12 @@ handle_inotify (GIOChannel *source, GIOCondition cond, gpointer data)
 		if (!event->len)
 			continue;
 
+		if (name && g_strcasecmp (event->name, name) == 0)
+			continue;
+
+		g_free (name);
+		name = g_strdup (event->name);
+
 		if (event->mask & IN_DELETE || event->mask & IN_MODIFY ||
 		    event->mask & IN_MOVED_FROM)
 			mask |= DEL;
@@ -114,9 +121,11 @@ handle_inotify (GIOChannel *source, GIOCondition cond, gpointer data)
 		if (event->mask & IN_CREATE || event->mask & IN_MODIFY ||
 		    event->mask & IN_MOVED_TO)
 			mask |= ADD;
+
+		do_file ((GHashTable *)data, event->name, mask);
 	}
 
-	do_file ((GHashTable *)data, event->name, mask);
+	g_free (name);
 
 	return TRUE;
 }
