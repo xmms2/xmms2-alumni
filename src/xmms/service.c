@@ -385,10 +385,8 @@ xmms_service_method_destroy (gpointer value)
 	                    table);
 	g_hash_table_destroy (table);
 
-	g_mutex_lock (val->service_obj->mutex);
 	g_hash_table_foreach_remove (val->service_obj->clients,
 	                             xmms_service_method_requests_unsubscribe, val);
-	g_mutex_unlock (val->service_obj->mutex);
 
 	free (val->name);
 	free (val->description);
@@ -1176,14 +1174,16 @@ xmms_service_args_parse (xmms_ipc_msg_t *msg, GHashTable *args,
 			for (k = 0; k < size; k++) {
 				gchar *buf;
 				if (!xmms_ipc_msg_get_string_alloc (msg, &buf, &len) ||
-					!(tmp = g_list_prepend (tmp, buf))) {
-					free (buf);
+				    !(val = xmms_object_cmd_value_str_new (buf)) ||
+				    !(tmp = g_list_prepend (tmp, val))) {
+					xmms_object_cmd_value_free (val);
 					while (tmp) {
 						g_free (tmp->data);
 						tmp = g_list_delete_link (tmp, tmp);
 					}
 					goto inval;
 				}
+				free (buf);
 			}
 			tmp = g_list_reverse (tmp);
 			val = xmms_object_cmd_value_list_new (tmp);
