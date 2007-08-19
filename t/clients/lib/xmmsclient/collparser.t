@@ -8,7 +8,6 @@ use FindBin;
 use lib "$FindBin::Bin/../../../helpers/lib";
 
 use Test::XMMS qw/-nostart/;
-use Audio::XMMSClient;
 
 my $coll_ns = 'Audio::XMMSClient::Collection';
 

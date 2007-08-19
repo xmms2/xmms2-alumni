@@ -21,7 +21,7 @@ test_xmms_launch (void) {
 	char *plugin_path;
 	pid_t pid;
 
-	exec_path = TEST_INSTALL_DIR PREFIX BIN_DIR "/xmms2d";
+	exec_path = TEST_INSTALL_DIR PREFIX "/" BIN_DIR "/xmms2d";
 	plugin_path = TEST_INSTALL_DIR PLUGIN_DIR;
 
 	pid = fork ();

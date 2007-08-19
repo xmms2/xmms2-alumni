@@ -163,6 +163,11 @@ def configure(conf):
 
     conf.write_config_header('test_helper_configuration.h')
 
+    handle = file(os.path.join(defs['BLD_DIR'], 'test_config'), 'w+')
+    for i in defs:
+        handle.write(i + '=' + defs[i] + "\n")
+    handle.close()
+
     return True
 
 def set_options(opt):

@@ -4,12 +4,15 @@ use strict;
 use warnings;
 use base qw/Test::Builder::Module Exporter/;
 use Cwd;
+use IO::File;
 use Carp qw/croak/;
 use Scalar::Util qw/blessed/;
 use POSIX qw/SIGINT SIG_BLOCK SIG_UNBLOCK/;
 use File::Path qw/mkpath/;
 use File::Basename qw/basename/;
 use File::Spec::Functions qw/splitpath splitdir catdir catfile rel2abs/;
+
+my %config;
 
 my $xmms_client;
 my $xmms_pid;
@@ -35,10 +38,25 @@ sub do_fork {
     return $pid;
 }
 
-BEGIN {
-    $ENV{LD_LIBRARY_PATH} = catdir(qw/_build_ test_install usr local lib/);
+sub read_config {
+    my $config_file = catfile(qw/_build_ test_config/);
 
-    unshift @INC, catdir(qw/_build_ test_install usr local lib perl 5.8.8/);
+    my $fh = IO::File->new($config_file, 'r')
+        or die $!;
+
+    my $data = do { local $/ = undef; <$fh> };
+
+    %config = $data =~ /^([^=]+)=(.*)$/mg;
+
+    $fh->close;
+}
+
+BEGIN {
+    read_config();
+
+    $ENV{LD_LIBRARY_PATH} = catdir($config{TEST_INSTALL_DIR}, $config{PREFIX}, 'lib');
+
+    unshift @INC, catdir($config{TEST_INSTALL_DIR}, $config{PREFIX}, qw/lib perl 5.8.8/); #FIXME: hardcoded paths
     eval "require Audio::XMMSClient";
     Audio::XMMSClient->import;
 }
@@ -48,8 +66,8 @@ sub import {
 
     $self->export_to_level( 1, $self, $_ ) foreach @EXPORT;
 
-    my $exec_path = rel2abs(catfile(qw/_build_ test_install usr local bin xmms2d/));
-    my $plugin_path = rel2abs(catdir(qw/_build_ test_install usr local lib xmms2/));
+    my $exec_path = rel2abs(catfile($config{TEST_INSTALL_DIR}, $config{PREFIX}, $config{BIN_DIR}, 'xmms2d'));
+    my $plugin_path = rel2abs(catdir($config{TEST_INSTALL_DIR}, $config{PLUGIN_DIR}));
     my @extra_args;
 
     while (defined (my $arg = shift @args)) {
@@ -74,8 +92,8 @@ sub import {
         open STDOUT, '>/dev/null' or croak("Can't open STDOUT to /dev/null: `$!'");
         open STDERR, '>&STDOUT'   or croak("Can't open STDERR to STDOUT: `$!'");
 
-        $ENV{XDG_CONFIG_HOME} = catdir(cwd(), qw/_build_ test_install home test .config/);
-        $ENV{XDG_CACHE_HOME} = catdir(cwd(), qw/_build_ test_install home test .cache/);
+        $ENV{XDG_CONFIG_HOME} = catdir(cwd(), $config{TEST_INSTALL_DIR}, qw/home test .config/);
+        $ENV{XDG_CACHE_HOME} = catdir(cwd(), $config{TEST_INSTALL_DIR}, qw/home test .cache/);
 
         chdir '/';
 

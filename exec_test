@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+use IO::File;
 use File::Spec::Functions qw/catdir rel2abs/;
 
 my $test = $ARGV[0];
@@ -24,7 +25,11 @@ my %exec_for = (
         } qw{src/indentcheck.t}),
 );
 
-$ENV{LD_LIBRARY_PATH} = rel2abs(catdir(qw/_build_ test_install usr local lib/));
+my $fh = IO::File->new(catdir(qw/_build_ test_config/), 'r');
+my $data = do { local $/ = undef; <$fh> };
+my %config = $data =~ /^([^=]+)=(.*)$/mg;
+
+$ENV{LD_LIBRARY_PATH} = rel2abs(catdir($config{TEST_INSTALL_DIR}, $config{PREFIX}, 'lib'));
 
 if (exists $exec_for{$test}) {
     exec @{ $exec_for{$test} };

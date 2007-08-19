@@ -79,7 +79,7 @@ char *tap_todo_reason = NULL;
 
 #define BAIL_OUT(msg) \
 	do { \
-		printf ("Bail out!  %s\n", msg); \
+		printf ("screw this!  %s\n", msg); \
 		exit (255); \
 	} while (0);
 
