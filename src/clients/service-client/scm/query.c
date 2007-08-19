@@ -24,7 +24,7 @@ void
 cb_list_sc_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
                 xmmsc_service_method_t *method, void *data)
 {
-	info_t *info = data;
+	GHashTable *clients = data;
 	gchar **retval;
 	GList *list = NULL;
 	GList *n;
@@ -36,7 +36,7 @@ cb_list_sc_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return;
 	}
 
-	g_hash_table_foreach (info->clients, match_none, &list);
+	g_hash_table_foreach (clients, match_none, &list);
 
 	retval = g_new0 (gchar *, g_list_length (list));
 	for (i = 0, n = list; n; i++, n = g_list_next (n))
