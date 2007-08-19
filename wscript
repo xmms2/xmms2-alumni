@@ -24,6 +24,9 @@ import Object
 import Utils
 import Common
 
+# force configure if a wscript with configure section changed
+Params.g_autoconfig=1
+
 VERSION="0.2 DrJekyll+WIP (git commit: %s)" % gittools.get_info_str()
 APPNAME='xmms2'
 
@@ -54,7 +57,7 @@ optional_subdirs = ["src/clients/cli",
                     "src/clients/mdns/dns_sd",
                     "src/clients/mdns/avahi",
                     "src/clients/medialib-updater",
-					"src/clients/vistest",
+                    "src/clients/vistest",
                     "src/clients/lib/xmmsclient-ecore",
                     "src/clients/lib/xmmsclient++",
                     "src/clients/lib/xmmsclient++-glib",
@@ -72,10 +75,7 @@ all_plugins = sets.Set([p for p in os.listdir("src/plugins")
 def build(bld):
     if bld.env_of_name("default")["BUILD_XMMS2D"]:
         subdirs.append("src/xmms")
-
-    newest = max([os.stat(os.path.join(sd, "wscript")).st_mtime for sd in subdirs])
-    if bld.env_of_name('default')['NEWEST_WSCRIPT_SUBDIR'] and newest > bld.env_of_name('default')['NEWEST_WSCRIPT_SUBDIR']:
-        Params.fatal("You need to run waf configure")
+        subdirs.append("src/xmms/visualization")
 
     # Process subfolders
     bld.add_subdirs(subdirs)
@@ -213,7 +213,7 @@ def configure(conf):
     if not Params.g_options.without_xmms2d == True:
         conf.env["BUILD_XMMS2D"] = True
         subdirs.insert(0, "src/xmms")
-    
+
     if Params.g_options.manualdir:
         conf.env["MANDIR"] = Params.g_options.manualdir
     else:
@@ -283,9 +283,6 @@ def configure(conf):
 
     enabled_plugins, disabled_plugins = _configure_plugins(conf)
     enabled_optionals, disabled_optionals = _configure_optionals(conf)
-
-    newest = max([os.stat(os.path.join(sd, "wscript")).st_mtime for sd in subdirs])
-    conf.env['NEWEST_WSCRIPT_SUBDIR'] = newest
 
     [conf.sub_config(s) for s in subdirs]
 
