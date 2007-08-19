@@ -41,6 +41,8 @@ typedef struct xmmsc_result_value_bin_St {
 } xmmsc_result_value_bin_t;
 
 typedef struct xmmsc_result_value_St {
+	int islist;
+
 	union {
 		void *generic;
 		uint32_t uint32;
@@ -51,9 +53,15 @@ typedef struct xmmsc_result_value_St {
 		xmmsc_result_value_bin_t *bin;
 	} value;
 	xmmsc_result_value_type_t type;
+
+	x_list_t *list;
+	x_list_t *current;
 } xmmsc_result_value_t;
 
 static xmmsc_result_value_t *xmmsc_result_parse_value (xmms_ipc_msg_t *msg);
+static void free_list (xmmsc_result_value_t *val);
+static int xmmsc_deserialize_list (xmms_ipc_msg_t *msg,
+                                   xmmsc_result_value_t *val);
 
 struct xmmsc_result_St {
 	xmmsc_connection_t *c;
@@ -341,6 +349,10 @@ xmmsc_result_value_free (void *v)
 {
 	xmmsc_result_value_t *val = v;
 
+	if (val->islist) {
+		val->type = XMMS_OBJECT_CMD_ARG_LIST;
+	}
+
 	switch (val->type) {
 		case XMMS_OBJECT_CMD_ARG_BIN:
 			free (val->value.bin->data);
@@ -351,6 +363,9 @@ xmmsc_result_value_free (void *v)
 			break;
 		case XMMS_OBJECT_CMD_ARG_DICT:
 			free_dict_list (val->value.dict);
+			break;
+		case XMMS_OBJECT_CMD_ARG_LIST:
+			free_list (val);
 			break;
 		case XMMS_OBJECT_CMD_ARG_COLL:
 			xmmsc_coll_unref (val->value.coll);
@@ -1128,6 +1143,137 @@ xmmsc_result_get_dict_entry_collection (xmmsc_result_t *res, const char *key,
 }
 
 /**
+ * Check if the dict entry stores a list.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved.
+ * @return 1 if the dict entry stores a list, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_islist (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST)
+		return 1;
+
+	return 0;
+}
+
+/**
+ * Skip to next entry in list.
+ *
+ * Advance to next list entry. May advance outside of list, so
+ * #xmmsc_result_dict_entry_list_valid should be used to determine if end of
+ * list was reached.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved.
+ * @return 1 on success, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_list_next (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST) {
+		val->current = val->current->next;
+
+		if (val->current) {
+			xmmsc_result_value_t *tmp = val->current->data;
+			val->value.generic = tmp->value.generic;
+			val->type = tmp->type;
+		} else {
+			val->value.generic = NULL;
+			val->type = XMMS_OBJECT_CMD_ARG_NONE;
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Return to first entry in list.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved.
+ * @return 1 on success, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_list_first (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST) {
+		val->current = val->list;
+
+		if (val->current) {
+			xmmsc_result_value_t *tmp = val->current->data;
+			val->value.generic = tmp->value.generic;
+			val->type = tmp->type;
+		} else {
+			val->value.generic = NULL;
+			val->type = XMMS_OBJECT_CMD_ARG_NONE;
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Check if current listnode is inside list boundary.
+ *
+ * When xmmsc_result_dict_entry_list_valid returns 1, there is a list entry
+ * available for access with xmmsc_result_get_dict_entry_{type}.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved
+ * @return 1 if current listnode is inside list boundary, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_list_valid (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST)
+		return !!val->current;
+
+	return 0;
+}
+
+/**
  * Retrieve type associated for specified key in the resultset.
  *
  * @param res a #xmmsc_result_t containing a hashtable.
@@ -1195,6 +1341,9 @@ xmmsc_result_propdict_foreach (xmmsc_result_t *res,
  * Calls specified function for each key/value-pair in the dictionary.
  *
  * void function (const void *key, #xmmsc_result_value_type_t type, const void *value, void *user_data);
+ *
+ * If an entry is a list, only one of the values in the list will be passed to
+ * the given function. This value can be any one in the list.
  *
  * @param res a #xmmsc_result_t containing a dict.
  * @param func function that is called for each key/value-pair
@@ -1560,6 +1709,11 @@ xmmsc_result_parse_value (xmms_ipc_msg_t *msg)
 				goto err;
 			}
 			break;
+		case XMMS_OBJECT_CMD_ARG_LIST:
+			if (!xmmsc_deserialize_list (msg, val)) {
+				goto err;
+			}
+			break;
 		case XMMS_OBJECT_CMD_ARG_COLL:
 			xmms_ipc_msg_get_collection_alloc (msg, &val->value.coll);
 			if (!val->value.coll) {
@@ -1623,6 +1777,45 @@ err:
 	return NULL;
 }
 
+static int
+xmmsc_deserialize_list (xmms_ipc_msg_t *msg, xmmsc_result_value_t *val)
+{
+	uint32_t len, i;
+	xmmsc_result_value_t *tmp;
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &len))
+		return 0;
+
+	for (i = 0; i < len; i ++) {
+		tmp = xmmsc_result_parse_value (msg);
+		if (!tmp)
+			goto err;
+		val->list = x_list_prepend (val->list, tmp);
+	}
+
+	val->list = x_list_reverse (val->list);
+	val->current = val->list;
+	val->islist = 1;
+
+	if (val->current) {
+		tmp = val->current->data;
+		val->value.generic = tmp->value.generic;
+		val->type = tmp->type;
+	} else {
+		val->value.generic = NULL;
+		val->type = XMMS_OBJECT_CMD_ARG_NONE;
+	}
+
+	return 1;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+
+	free_list (val);
+
+	return 0;
+}
+
 static void
 free_dict_list (x_list_t *list)
 {
@@ -1637,6 +1830,15 @@ free_dict_list (x_list_t *list)
 
 		xmmsc_result_value_free (list->data); /* value */
 		list = x_list_delete_link (list, list);
+	}
+}
+
+static void
+free_list (xmmsc_result_value_t *val)
+{
+	while (val->list) {
+		xmmsc_result_value_free (val->list->data);
+		val->list = x_list_delete_link (val->list, val->list);
 	}
 }
 
