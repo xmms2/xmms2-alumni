@@ -1161,10 +1161,8 @@ xmmsc_result_dict_entry_islist (xmmsc_result_t *res, const char *key)
 		return 0;
 
 	val = xmmsc_result_dict_lookup (res, key);
-	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST)
-		return 1;
 
-	return 0;
+	return val->islist;
 }
 
 /**
@@ -1190,7 +1188,7 @@ xmmsc_result_dict_entry_list_next (xmmsc_result_t *res, const char *key)
 		return 0;
 
 	val = xmmsc_result_dict_lookup (res, key);
-	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST) {
+	if (val && val->islist) {
 		val->current = val->current->next;
 
 		if (val->current) {
@@ -1227,7 +1225,7 @@ xmmsc_result_dict_entry_list_first (xmmsc_result_t *res, const char *key)
 		return 0;
 
 	val = xmmsc_result_dict_lookup (res, key);
-	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST) {
+	if (val && val->islist) {
 		val->current = val->list;
 
 		if (val->current) {
@@ -1267,7 +1265,7 @@ xmmsc_result_dict_entry_list_valid (xmmsc_result_t *res, const char *key)
 		return 0;
 
 	val = xmmsc_result_dict_lookup (res, key);
-	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST)
+	if (val && val->islist)
 		return !!val->current;
 
 	return 0;
