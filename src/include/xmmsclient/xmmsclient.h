@@ -405,6 +405,7 @@ typedef enum {
 	XMMSC_RESULT_VALUE_TYPE_INT32 = XMMS_OBJECT_CMD_ARG_INT32,
 	XMMSC_RESULT_VALUE_TYPE_STRING = XMMS_OBJECT_CMD_ARG_STRING,
 	XMMSC_RESULT_VALUE_TYPE_DICT = XMMS_OBJECT_CMD_ARG_DICT,
+	XMMSC_RESULT_VALUE_TYPE_LIST = XMMS_OBJECT_CMD_ARG_LIST,
 	XMMSC_RESULT_VALUE_TYPE_PROPDICT = XMMS_OBJECT_CMD_ARG_PROPDICT,
 	XMMSC_RESULT_VALUE_TYPE_COLL = XMMS_OBJECT_CMD_ARG_COLL,
 	XMMSC_RESULT_VALUE_TYPE_BIN = XMMS_OBJECT_CMD_ARG_BIN
@@ -418,6 +419,10 @@ int xmmsc_result_get_dict_entry_string (xmmsc_result_t *res, const char *key, ch
 int xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *r);
 int xmmsc_result_get_dict_entry_uint (xmmsc_result_t *res, const char *key, uint32_t *r);
 int xmmsc_result_get_dict_entry_collection (xmmsc_result_t *conn, const char *key, xmmsc_coll_t **coll);
+int xmmsc_result_dict_entry_islist (xmmsc_result_t *res, const char *key);
+int xmmsc_result_dict_entry_list_next (xmmsc_result_t *res, const char *key);
+int xmmsc_result_dict_entry_list_first (xmmsc_result_t *res, const char *key);
+int xmmsc_result_dict_entry_list_valid (xmmsc_result_t *res, const char *key);
 int xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func, void *user_data);
 int xmmsc_result_propdict_foreach (xmmsc_result_t *res, xmmsc_propdict_foreach_func func, void *user_data);
 void xmmsc_result_source_preference_set (xmmsc_result_t *res, const char **preference);

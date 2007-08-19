@@ -864,6 +864,137 @@ xmmsc_value_get_dict_entry_collection (xmmsc_value_t *val, const char *key,
 }
 
 /**
+ * Check if the dict entry stores a list.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved.
+ * @return 1 if the dict entry stores a list, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_islist (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST)
+		return 1;
+
+	return 0;
+}
+
+/**
+ * Skip to next entry in list.
+ *
+ * Advance to next list entry. May advance outside of list, so
+ * #xmmsc_result_dict_entry_list_valid should be used to determine if end of
+ * list was reached.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved.
+ * @return 1 on success, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_list_next (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST) {
+		val->current = val->current->next;
+
+		if (val->current) {
+			xmmsc_result_value_t *tmp = val->current->data;
+			val->value.generic = tmp->value.generic;
+			val->type = tmp->type;
+		} else {
+			val->value.generic = NULL;
+			val->type = XMMS_OBJECT_CMD_ARG_NONE;
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Return to first entry in list.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved.
+ * @return 1 on success, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_list_first (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST) {
+		val->current = val->list;
+
+		if (val->current) {
+			xmmsc_result_value_t *tmp = val->current->data;
+			val->value.generic = tmp->value.generic;
+			val->type = tmp->type;
+		} else {
+			val->value.generic = NULL;
+			val->type = XMMS_OBJECT_CMD_ARG_NONE;
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Check if current listnode is inside list boundary.
+ *
+ * When xmmsc_result_dict_entry_list_valid returns 1, there is a list entry
+ * available for access with xmmsc_result_get_dict_entry_{type}.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved
+ * @return 1 if current listnode is inside list boundary, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_list_valid (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->type == XMMSC_RESULT_VALUE_TYPE_LIST)
+		return !!val->current;
+
+	return 0;
+}
+
+/**
  * Retrieve type associated for specified key in the resultset.
  *
  * @param val a #xmmsc_value_t containing a hashtable.
@@ -1287,6 +1418,183 @@ xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type,
 	return res;
 }
 
+static xmmsc_value_t *
+xmmsc_parse_value (xmms_ipc_msg_t *msg)
+{
+	xmmsc_value_t *val;
+	uint32_t len;
+
+	val = xmmsc_value_new ();
+
+	if (!xmms_ipc_msg_get_int32 (msg, (int32_t *)&val->type)) {
+		goto err;
+	}
+
+	switch (val->type) {
+		case XMMSC_VALUE_TYPE_STRING:
+			if (!xmms_ipc_msg_get_string_alloc (msg, &val->value.string, &len)) {
+				goto err;
+			}
+			break;
+		case XMMSC_VALUE_TYPE_UINT32:
+			if (!xmms_ipc_msg_get_uint32 (msg, &val->value.uint32)) {
+				goto err;
+			}
+			break;
+		case XMMSC_VALUE_TYPE_INT32:
+			if (!xmms_ipc_msg_get_int32 (msg, &val->value.int32)) {
+				goto err;
+			}
+			break;
+		case XMMSC_VALUE_TYPE_DICT:
+			val->value.dict = xmmsc_deserialize_dict (msg);
+			if (!val->value.dict) {
+				goto err;
+			}
+			break;
+		case XMMSC_VALUE_TYPE_COLL:
+			xmms_ipc_msg_get_collection_alloc (msg, &val->value.coll);
+			if (!val->value.coll) {
+				goto err;
+			}
+			xmmsc_coll_ref (val->value.coll);
+			break;
+		case XMMSC_VALUE_TYPE_NONE:
+			break;
+		default:
+			goto err;
+			break;
+	}
+
+	return val;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+	free (val);
+	return NULL;
+
+}
+
+static x_list_t *
+xmmsc_deserialize_dict (xmms_ipc_msg_t *msg)
+{
+	unsigned int entries;
+	unsigned int len;
+	x_list_t *n = NULL;
+	char *key;
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &entries)) {
+		return NULL;
+	}
+
+	while (entries--) {
+		xmmsc_value_t *val;
+
+		if (!xmms_ipc_msg_get_string_alloc (msg, &key, &len)) {
+			goto err;
+		}
+
+		val = xmmsc_parse_value (msg);
+		if (!val) {
+			free (key);
+			goto err;
+		}
+
+		n = x_list_prepend (n, key);
+		n = x_list_prepend (n, val);
+	}
+
+	return x_list_reverse (n);
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+
+	free_dict_list (x_list_reverse (n));
+
+	return NULL;
+}
+
+static int
+xmmsc_deserialize_list (xmms_ipc_msg_t *msg, xmmsc_result_value_t *val)
+{
+	uint32_t len, i;
+	xmmsc_result_value_t *tmp;
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &len))
+		return 0;
+
+	for (i = 0; i < len; i ++) {
+		tmp = xmmsc_result_parse_value (msg);
+		if (!tmp)
+			goto err;
+		val->list = x_list_prepend (val->list, tmp);
+	}
+
+	val->list = x_list_reverse (val->list);
+	val->current = val->list;
+	val->islist = 1;
+
+	if (val->current) {
+		tmp = val->current->data;
+		val->value.generic = tmp->value.generic;
+		val->type = tmp->type;
+	} else {
+		val->value.generic = NULL;
+		val->type = XMMS_OBJECT_CMD_ARG_NONE;
+	}
+
+	return 1;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+
+	free_list (val);
+
+	return 0;
+}
+
+static void
+free_dict_list (x_list_t *list)
+{
+	while (list) {
+		free (list->data); /* key */
+		list = x_list_delete_link (list, list);
+
+		/* xmmsc_deserialize_dict guarantees that the list is
+		 * well-formed
+		 */
+		assert (list);
+
+		xmmsc_value_unref ((xmmsc_value_t *) list->data); /* value */
+		list = x_list_delete_link (list, list);
+	}
+}
+
+static void
+free_list (xmmsc_result_value_t *val)
+{
+	while (val->list) {
+		xmmsc_result_value_free (val->list->data);
+		val->list = x_list_delete_link (val->list, val->list);
+	}
+}
+
+static int
+source_match_pattern (const char *source, const char *pattern)
+{
+	int match = 0;
+	int lpos = strlen (pattern) - 1;
+
+	if (strcasecmp (pattern, source) == 0) {
+		match = 1;
+	}
+	else if (lpos >= 0 && pattern[lpos] == '*' &&
+	        (lpos == 0 || strncasecmp (source, pattern, lpos) == 0)) {
+		match = 1;
+	}
+
+	return match;
+}
 
 static xmmsc_result_callback_t *
 xmmsc_result_callback_new (xmmsc_result_notifier_t f, void *udata,
