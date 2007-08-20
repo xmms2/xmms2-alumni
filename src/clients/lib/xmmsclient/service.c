@@ -546,14 +546,17 @@ xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
 /**
  * Push new type to a method's argument list.
  *
+ * @param method The method to push to.
  * @param name The name of the new type.
  * @param type The new type.
+ * @param optional If the argument is optional.
  * @return 1 for success, 0 otherwise.
  */
 int
 xmmsc_service_method_arg_type_add (xmmsc_service_method_t *method,
                                    const char *name,
-                                   xmmsc_service_arg_type_t type)
+                                   xmmsc_service_arg_type_t type,
+                                   int32_t optional)
 {
 	xmmsc_service_argument_t *arg;
 
@@ -566,6 +569,7 @@ xmmsc_service_method_arg_type_add (xmmsc_service_method_t *method,
 
 	arg->name = strdup (name);
 	arg->type = type;
+	arg->optional = optional;
 	arg->none = 1;
 	method->arg_list = x_list_append (method->arg_list, arg);
 
@@ -575,14 +579,17 @@ xmmsc_service_method_arg_type_add (xmmsc_service_method_t *method,
 /**
  * Push new type to a method's return value list.
  *
+ * @param method The method to push to.
  * @param name The name of the new type.
  * @param type The new type.
+ * @param optional If the return value is optional.
  * @return 1 for success, 0 otherwise.
  */
 int
 xmmsc_service_method_ret_type_add (xmmsc_service_method_t *method,
                                    const char *name,
-                                   xmmsc_service_arg_type_t type)
+                                   xmmsc_service_arg_type_t type,
+                                   int32_t optional)
 {
 	xmmsc_service_argument_t *arg;
 
@@ -595,6 +602,7 @@ xmmsc_service_method_ret_type_add (xmmsc_service_method_t *method,
 
 	arg->name = strdup (name);
 	arg->type = type;
+	arg->optional = optional;
 	arg->none = 1;
 	method->ret_list = x_list_append (method->ret_list, arg);
 
