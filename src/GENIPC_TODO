@@ -3,9 +3,13 @@ List of things TODO(in rough order)
 * Handle lists of complex types correctly/generate the correct code(right now
 * works for strings, dicts/propdicts are easy to add))
 
-* Figure out how to implement property requests in the server
+* Figure out how to implement property requests in the server(there is a cheesy
+		* implementation of this right now, I think it will have to be
+		* reworked quite a bit though before it is ready)
 
 * Convert all of the server over to the new cmd handling api
 
 * Clientlib needs to be converted
+
+* Fix all the FIXMEs in genipc.py
 
