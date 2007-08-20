@@ -79,8 +79,10 @@ class ccobj(ccroot.ccroot):
 
 		if env['STATICLIB']:
 			app('LINKFLAGS', env['STATICLIB_MARKER'])
+			app('LINKFLAGS', '-Wl,--start-group')
 			for i in env['STATICLIB']:
 				app('LINKFLAGS', staticlib_st % i)
+			app('LINKFLAGS', '-Wl,--end-group')
 
 		# i doubt that anyone will make a fully static binary anyway
 		if not env['FULLSTATIC']:
