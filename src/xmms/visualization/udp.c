@@ -184,6 +184,6 @@ write_finish_udp (int32_t id, xmmsc_vis_udp_t *t, xmmsc_vischunk_t *dest, int so
 	offset[0] = ((int)&packet->data - (int)packet);
 	packet = (xmmsc_vis_udp_data_t*)((char*)dest - offset[0]);
 	offset[1] = ((int)&packet->data.data - (int)&packet->data);
-	sendto (socket, packet, offset[0] + offset[1] + dest->size * sizeof(int16_t), 0, (struct sockaddr *)&t->addr, sl);
+	sendto (socket, packet, offset[0] + offset[1] + ntohs (dest->size) * sizeof(int16_t), 0, (struct sockaddr *)&t->addr, sl);
 	g_free (packet);
 }
