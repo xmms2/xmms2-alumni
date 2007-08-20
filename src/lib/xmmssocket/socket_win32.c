@@ -25,16 +25,6 @@ int xmms_socket_set_nonblock (xmms_socket_t socket) {
 	return 1;
 
 }
-int xmms_socket_valid (xmms_socket_t socket) {
-	if (socket == INVALID_SOCKET) {
-		return 0;
-	}
-	return 1;
-}
-
-void xmms_socket_close (xmms_socket_t socket) {
-	closesocket (socket);
-}
 
 int xmms_socket_errno () {
 	return WSAGetLastError ();

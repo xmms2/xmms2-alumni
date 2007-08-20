@@ -65,7 +65,7 @@ xmms_ipc_tcp_write (xmms_ipc_transport_t *ipct, char *buffer, int len)
 xmms_ipc_transport_t *
 xmms_ipc_tcp_client_init (const xmms_url_t *url, int ipv6)
 {
-	xmms_socket_t fd = -1;
+	xmms_socket_t fd = XMMS_INVALID_SOCKET;
 	xmms_ipc_transport_t *ipct;
 	struct addrinfo hints;
 	struct addrinfo *addrinfo;
@@ -91,7 +91,7 @@ xmms_ipc_tcp_client_init (const xmms_url_t *url, int ipv6)
 		const char* reuseaddr = (const char*)&_reuseaddr;
 
 		fd = socket (addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
-		if (!xmms_socket_valid (fd)) {
+		if (fd == XMMS_INVALID_SOCKET) {
 			return NULL;
 		}
 
@@ -139,7 +139,7 @@ xmms_ipc_tcp_accept (xmms_ipc_transport_t *transport)
 	socklen = sizeof (sockaddr);
 
 	fd = accept (transport->fd, &sockaddr, &socklen);
-	if (xmms_socket_valid (fd)) {
+	if (fd != XMMS_INVALID_SOCKET) {
 		int _reuseaddr = 1;
 		int _nodelay = 1;
 		const char* reuseaddr = (const char*)&_reuseaddr;
@@ -197,7 +197,7 @@ xmms_ipc_tcp_server_init (const xmms_url_t *url, int ipv6)
 		const char* nodelay = (const char*)&_nodelay;
 
 		fd = socket (addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
-		if (!xmms_socket_valid (fd)) {
+		if (fd == XMMS_INVALID_SOCKET) {
 			return NULL;
 		}
 
