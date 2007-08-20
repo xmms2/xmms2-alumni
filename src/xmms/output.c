@@ -29,7 +29,6 @@
 #include "xmmspriv/xmms_sample.h"
 #include "xmmspriv/xmms_medialib.h"
 #include "xmmspriv/xmms_outputplugin.h"
-#include "xmmspriv/xmms_visualisation.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_ipc.h"
 #include "xmms/xmms_object.h"
@@ -436,8 +435,6 @@ xmms_output_filler (void *arg)
 				continue;
 			}
 
-			xmms_visualisation_register_output (output);
-
 			arg = g_new0 (xmms_output_song_changed_arg_t, 1);
 			arg->output = output;
 			arg->chain = chain;
@@ -753,7 +750,7 @@ xmms_output_latency (xmms_output_t *output)
 	guint buffersize = 0;
 
 	/* data already waiting in the ringbuffer */
-	buffersize += xmms_ringbuf_bytes_used(output->filler_buffer);
+	buffersize += xmms_ringbuf_bytes_used (output->filler_buffer);
 
 	/* latency of the soundcard */
 	buffersize += xmms_output_plugin_method_latency_get (output->plugin, output);

@@ -52,9 +52,9 @@ struct xmmsc_connection_St {
 
 	char *clientname;
 
-    /** data array for visualisation connections */
+    /** data array for visualization connections */
     int visc;
-    xmmsc_visualisation_t **visv;
+    xmmsc_visualization_t **visv;
 	/* we need to hold the connection path to get the hostname */
 	char path[PATH_MAX];
 };

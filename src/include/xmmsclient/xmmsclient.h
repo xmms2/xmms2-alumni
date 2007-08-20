@@ -168,17 +168,17 @@ xmmsc_result_t *xmmsc_signal_mediainfo_reader_unindexed (xmmsc_connection_t *c);
 
 
 /*
- * VISUALISATION **************************************************
+ * VISUALIZATION **************************************************
  */
 
-typedef struct xmmsc_visualisation_St xmmsc_visualisation_t;
+typedef struct xmmsc_visualization_St xmmsc_visualization_t;
 
 /* commands */
-xmmsc_result_t *xmmsc_visualisation_version (xmmsc_connection_t *c);
-int xmmsc_visualisation_init (xmmsc_connection_t *c);
-xmmsc_result_t *xmmsc_visualisation_start (xmmsc_connection_t *c, int v);
-xmmsc_result_t *xmmsc_visualisation_property_set (xmmsc_connection_t *c, int v, const char* key, const char* value);
-xmmsc_result_t *xmmsc_visualisation_properties_set (xmmsc_connection_t *c, int v, const char* prop[]);
+xmmsc_result_t *xmmsc_visualization_version (xmmsc_connection_t *c);
+int xmmsc_visualization_init (xmmsc_connection_t *c);
+xmmsc_result_t *xmmsc_visualization_start (xmmsc_connection_t *c, int v);
+xmmsc_result_t *xmmsc_visualization_property_set (xmmsc_connection_t *c, int v, const char* key, const char* value);
+xmmsc_result_t *xmmsc_visualization_properties_set (xmmsc_connection_t *c, int v, const char** prop);
 
 /*
  * drawtime in milliseconds:
@@ -190,9 +190,9 @@ xmmsc_result_t *xmmsc_visualisation_properties_set (xmmsc_connection_t *c, int v
  * returns size read on success, -1 on failure (server killed!) and 0 if no data is available yet (retry later)
  * Note: the size read can be less than expected (for example, on song end). Check it!
  */
-int xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, short *buffer, int drawtime, int blocking);
+int xmmsc_visualization_chunk_get (xmmsc_connection_t *c, int vv, short *buffer, int drawtime, int blocking);
 
-xmmsc_result_t *xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int v);
+xmmsc_result_t *xmmsc_visualization_shutdown (xmmsc_connection_t *c, int v);
 
 
 /* broadcasts */
