@@ -38,6 +38,7 @@ init_shm (xmms_visualization_t *vis, int32_t id, int32_t shmid, xmms_error_t *er
 	void *buffer;
 	int size;
 	xmms_vis_client_t *c;
+	xmmsc_vis_unixshm_t *t;
 	union semun semopts;
 
 	x_fetch_client (id);
@@ -65,6 +66,7 @@ init_shm (xmms_visualization_t *vis, int32_t id, int32_t shmid, xmms_error_t *er
 		x_release_client ();
 		return -1;
 	}
+
 	/* initially set semaphores - nothing to read, buffersize to write
 	   first semaphore is the server semaphore */
 	semopts.val = size;
@@ -74,12 +76,12 @@ init_shm (xmms_visualization_t *vis, int32_t id, int32_t shmid, xmms_error_t *er
 
 	/* set up client structure */
 	c->type = VIS_UNIXSHM;
-	c->transport.shm.semid = semid;
-	c->transport.shm.shmid = shmid;
-	c->transport.shm.buffer = buffer;
-	/* at the beginning, all slots are free */
-	c->transport.shm.size = size;
-	c->transport.shm.pos = 0;
+	t = &c->transport.shm;
+	t->semid = semid;
+	t->shmid = shmid;
+	t->buffer = buffer;
+	t->size = size;
+	t->pos = 0;
 
 	x_release_client ();
 	//~ printf("SIZE: %d\tT: %d\t S: %d\t TF: %lf \n", c->transport.shm.size, c->prop.type, c->prop.stereo, c->prop.timeframe);
