@@ -201,6 +201,7 @@ xmmsc_visualization_start (xmmsc_connection_t *c, int vv) {
 	xmms_ipc_msg_t *msg;
 	xmmsc_result_t *res;
 	xmmsc_visualization_t *v;
+	xmmsc_vischunk_t *buffer;
 
 	int32_t shmid;
 
@@ -220,6 +221,8 @@ xmmsc_visualization_start (xmmsc_connection_t *c, int vv) {
 		c->error = strdup("Couldn't create the shared memory!");
 		return NULL;
 	}
+	/* attach early, so that the server doesn't think we aren't there */
+	buffer = shmat(shmid, NULL, SHM_RDONLY);
 
 	/* send packet */
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_INIT_SHM);
@@ -231,16 +234,17 @@ xmmsc_visualization_start (xmmsc_connection_t *c, int vv) {
 	xmmsc_result_wait (res);
 	if (!xmmsc_result_iserror (res)) {
 		v->type = VIS_UNIXSHM;
-		v->transport.shm.buffer = shmat(shmid, NULL, SHM_RDONLY);
+		v->transport.shm.buffer = buffer;
 		v->transport.shm.size = XMMS_VISPACKET_SHMCOUNT;
 		v->transport.shm.pos = 0;
 		xmmsc_result_get_int (res, &v->transport.shm.semid);
 		/* In either case, mark the shared memory segment to be destroyed.
 		   The segment will only actually be destroyed after the last process detaches it. */
-		shmctl(shmid, IPC_RMID, NULL);
+		shmctl (shmid, IPC_RMID, NULL);
 	} else {
-		/* see above */
-		shmctl(shmid, IPC_RMID, NULL);
+		/* see above, also detach */
+		shmdt (buffer);
+		shmctl (shmid, IPC_RMID, NULL);
 
 		/* try udp here */
 		/* send packet */
@@ -254,7 +258,7 @@ xmmsc_visualization_start (xmmsc_connection_t *c, int vv) {
 			v->type = VIS_UDP;
 			xmmsc_result_get_int (res, &port);
 			if (!setup_udp (v, c, port)) {
-				// error occured
+				/* error occured, c->error is set by setup_udp, bail out */
 				return NULL;
 			}
 		} else {
