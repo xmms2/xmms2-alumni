@@ -67,9 +67,9 @@ register_all (info_t *info)
 	method = xmmsc_service_method_new ("launch", "Launch a service client",
 	                                   cb_launch, info->clients);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_RET,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
@@ -80,9 +80,9 @@ register_all (info_t *info)
 	method = xmmsc_service_method_new ("shutdown", "Shutdown a service client",
 	                                   cb_shutdown, NULL);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_RET,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
@@ -94,11 +94,11 @@ register_all (info_t *info)
 	                                   " argument to pass to a service client",
 	                                   cb_change_argv, info->clients);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_arg_type_add (method, ARG_ARGV,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_RET,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
@@ -110,11 +110,11 @@ register_all (info_t *info)
 	                                   " property of a service client",
 	                                   cb_toggle_autostart, info->clients);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_arg_type_add (method, ARG_AUTO,
-	                                        XMMSC_SERVICE_ARG_TYPE_UINT32) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_RET,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
@@ -138,7 +138,8 @@ register_all (info_t *info)
 	                                   " installed service clients",
 	                                   cb_list_sc_ids, info->clients);
 	if (!xmmsc_service_method_ret_type_add (method, ARG_IDS,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST,
+	                                        0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
@@ -150,9 +151,10 @@ register_all (info_t *info)
 	                                   " all services of a service client",
 	                                   cb_list_service_ids, info->clients);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_IDS,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST,
+	                                        0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
@@ -164,11 +166,12 @@ register_all (info_t *info)
 	                                   " all methods of a service",
 	                                   cb_list_method_ids, info->clients);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_arg_type_add (method, ARG_SERVICE_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_IDS,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST,
+	                                        0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
@@ -181,9 +184,10 @@ register_all (info_t *info)
 	                                   " service",
 	                                   cb_lookup_client, info->clients);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_SERVICE_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_IDS,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST,
+	                                        0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
@@ -195,13 +199,13 @@ register_all (info_t *info)
 	                                   " service client",
 	                                   cb_list_sc, info->clients);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_ARGV,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_AUTO,
-	                                        XMMSC_SERVICE_ARG_TYPE_UINT32) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_SERVICES,
-	                                        XMMSC_SERVICE_ARG_TYPE_UINT32)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
@@ -213,19 +217,19 @@ register_all (info_t *info)
 	                                   " service",
 	                                   cb_list_service, info->clients);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_arg_type_add (method, ARG_SERVICE_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_DESC,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_MAJOR,
-	                                        XMMSC_SERVICE_ARG_TYPE_UINT32) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_MINOR,
-	                                        XMMSC_SERVICE_ARG_TYPE_UINT32) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_REGISTERED,
-	                                        XMMSC_SERVICE_ARG_TYPE_UINT32) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_METHODS,
-	                                        XMMSC_SERVICE_ARG_TYPE_UINT32)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
@@ -236,15 +240,15 @@ register_all (info_t *info)
 	method = xmmsc_service_method_new ("method", "List details of a method",
 	                                   cb_list_method, info->clients);
 	if (!xmmsc_service_method_arg_type_add (method, ARG_CLIENT_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_arg_type_add (method, ARG_SERVICE_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_arg_type_add (method, ARG_METHOD_NAME,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_DESC,
-	                                        XMMSC_SERVICE_ARG_TYPE_STRING) ||
+	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0) ||
 	    !xmmsc_service_method_ret_type_add (method, ARG_REGISTERED,
-	                                        XMMSC_SERVICE_ARG_TYPE_UINT32)) {
+	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_free (method);
 		return FALSE;
