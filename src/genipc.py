@@ -265,8 +265,13 @@ def write_processmsg(node, req = False):
     #output code that deserializes the arguments to the command, finds the
     #hooks in ipc->cmds, and calls it correctly
     for method in methodmap[node.getAttribute("name")]:
-        outfile.write("\t\t\tif ((cmd == XMMSC_%s_METHOD_%s)) {\n" % \
+	if not req:
+            outfile.write("\t\t\tif ((cmd == XMMSC_%s_METHOD_%s) && type == 1) {\n" % \
 		(node.getAttribute("name").upper(),method.getAttribute("name").upper()))
+
+	elif req:
+		outfile.write("\t\t\tif ((cmd == XMMSC_%s_METHOD_%s)) {\n" % \
+		    (node.getAttribute("name").upper(),method.getAttribute("name").upper()))
 
 	#check if we need to store the retval
 	retvalstr = get_retval(method)
@@ -317,6 +322,40 @@ retmsg);\n")
 
 		output_deserialize_client(node,method)
 
+    #now do the same for properties
+    for prop in propmap[node.getAttribute("name")]:
+	outfile.write("\t\t\tif ((cmd == XMMSC_%s_PROPERTY_%s) && type == 0) {\n" % \
+		(node.getAttribute("name").upper(),prop.getAttribute("name").upper()))
+
+	#check if we need to store the retval
+	retvalstr = prop.getElementsByTagName("type")
+	retvalstr = retvalstr[0].childNodes[1].nodeName
+
+	#if there is a return value and we're not outputing process_req clientside
+	if retvalstr != "none" and not req:
+	    #declare a variable to hold the return value and get it
+	    outfile.write("\t\t\t\t%s retval;\n" % c_map_internal[retvalstr]);
+	    outfile.write("\t\t\t\txmms_ipc_msg_t *retmsg;\n")
+
+	    outfile.write("\t\t\t\tretval = deserialize_call_%s_cmd_%s (ipc, msg);\n" %
+		   (node.getAttribute("name"),prop.getAttribute("name")))
+
+	    #now send it out
+	    outfile.write("\t\t\t\tretmsg = xmms_ipc_msg_new (XMMSC_IPC_OBJECT_%s, \
+XMMSC_MESSAGE_REPLY);\n\n" % node.getAttribute("name").upper())
+	    outfile.write("\t\t\t\txmms_ipc_msg_put_%s (retmsg, retval);\n\n" % \
+		    msg_map[retvalstr])
+	    outfile.write("\t\t\t\txmms_ipc_msg_set_cookie (retmsg, \
+xmms_ipc_msg_get_cookie (msg));\n")
+
+	    output_deserialize_server_prop(node,prop)
+
+	    #FIXME should lock client->lock, but client is an opaque structure at the
+	    #moment
+	    outfile.write("\t\t\t\txmms_ipc_client_msg_write (client, \
+retmsg);\n")
+
+	outfile.write("\t\t\t}\n")
     outfile.write("\t\t\tbreak;\n")
 
 #output code that takes care of xmms_cmd structs
