@@ -21,12 +21,14 @@
 
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_output.h"
-#include "xmmspriv/xmms_visualisation.h"
+#include "xmmspriv/xmms_visualization.h"
 #include "xmms/xmms_log.h"
 
 #include <glib.h>
 #include <stdio.h>
 #include <limits.h>
+
+#include "common.h"
 
 static gboolean xmms_vis_init (xmms_xform_t *xform);
 static void xmms_vis_destroy (xmms_xform_t *xform);
@@ -58,8 +60,6 @@ xmms_vis_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 							  44100,
 							  XMMS_STREAM_TYPE_END);
 
-	xmms_visualisation_init ();
-
 	return TRUE;
 }
 
@@ -76,9 +76,7 @@ xmms_vis_init (xmms_xform_t *xform)
 
 	xmms_xform_outdata_type_copy (xform);
 
-	xmms_xform_private_data_set (xform, xmms_visualisation_new ());
-
-	XMMS_DBG ("Visualisation hook initialized successfully!");
+	XMMS_DBG ("Visualization hook initialized successfully!");
 
 	return TRUE;
 }
@@ -93,13 +91,9 @@ static gint
 xmms_vis_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
               xmms_error_t *error)
 {
-	xmms_visualisation_t *vis;
 	gint read, chan;
 
 	g_return_val_if_fail (xform, -1);
-
-	vis = xmms_xform_private_data_get (xform);
-	g_return_val_if_fail (vis, -1);
 
 	/* perhaps rework this later */
 	if (len > 2048) {
@@ -109,7 +103,7 @@ xmms_vis_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 	read = xmms_xform_read (xform, buf, len, error);
 	chan = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
 	if (read > 0) {
-		xmms_visualisation_send_data (vis, chan, read / sizeof(short), buf);
+		send_data (chan, read / sizeof(short), buf);
 	}
 
 	return read;
@@ -122,10 +116,10 @@ xmms_vis_seek (xmms_xform_t *xform, gint64 offset, xmms_xform_seek_mode_t whence
 }
 
 
-XMMS_XFORM_BUILTIN (visualisation,
-                    "Visualisation hook",
+XMMS_XFORM_BUILTIN (visualization,
+                    "visualization hook",
                     XMMS_VERSION,
-                    "Visualisation hook",
+                    "visualization hook",
                     xmms_vis_plugin_setup);
 
 /** @} */
