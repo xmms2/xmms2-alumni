@@ -298,8 +298,13 @@ def write_processmsg(node, req = False):
     #output code that deserializes the arguments to the command, finds the
     #hooks in ipc->cmds, and calls it correctly
     for method in methodmap[node.getAttribute("name")]:
-        outfile.write("\t\t\tif ((cmd == XMMSC_%s_METHOD_%s)) {\n" % \
+	if not req:
+            outfile.write("\t\t\tif ((cmd == XMMSC_%s_METHOD_%s) && type == 1) {\n" % \
 		(node.getAttribute("name").upper(),method.getAttribute("name").upper()))
+
+	elif req:
+		outfile.write("\t\t\tif ((cmd == XMMSC_%s_METHOD_%s)) {\n" % \
+		    (node.getAttribute("name").upper(),method.getAttribute("name").upper()))
 
 	#check if we need to store the retval
 	retvalstr = get_retval(method)
@@ -352,7 +357,7 @@ retmsg);\n")
 
     #now do the same for properties
     for prop in propmap[node.getAttribute("name")]:
-	outfile.write("\t\t\tif ((cmd == XMMSC_%s_PROPERTY_%s)) {\n" % \
+	outfile.write("\t\t\tif ((cmd == XMMSC_%s_PROPERTY_%s) && type == 0) {\n" % \
 		(node.getAttribute("name").upper(),prop.getAttribute("name").upper()))
 
 	#check if we need to store the retval
