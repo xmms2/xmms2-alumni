@@ -1,0 +1,157 @@
+/*  XMMS2 - X Music Multiplexer System
+ *  Copyright (C) 2003-2007 XMMS2 Team
+ *
+ *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ */
+
+#include <sys/shm.h>
+#include <sys/sem.h>
+#include <sys/stat.h>
+#include <errno.h>
+
+#include "common.h"
+
+#ifdef _SEM_SEMUN_UNDEFINED
+	union semun {
+	   int              val;    /* Value for SETVAL */
+	   struct semid_ds *buf;    /* Buffer for IPC_STAT, IPC_SET */
+	   unsigned short  *array;  /* Array for GETALL, SETALL */
+	   struct seminfo  *__buf;  /* Buffer for IPC_INFO (Linux specific) */
+	};
+#endif
+
+int32_t
+init_shm (xmms_visualization_t *vis, int32_t id, int32_t shmid, xmms_error_t *err)
+{
+	struct shmid_ds shm_desc;
+	int32_t semid;
+	void *buffer;
+	int size;
+	xmms_vis_client_t *c;
+	union semun semopts;
+
+	x_fetch_client (id);
+
+	/* MR. DEBUG */
+	/*	xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "lame, more lame, shm!");
+		x_release_client ();
+		return -1; */
+
+
+	/* test the shm */
+	buffer = shmat(shmid, NULL, 0);
+	if (buffer == (void*)-1) {
+		xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "couldn't attach to shared memory");
+		x_release_client ();
+		return -1;
+	}
+	shmctl (shmid, IPC_STAT, &shm_desc);
+	size = shm_desc.shm_segsz / sizeof (xmmsc_vischunk_t);
+
+	/* setup the semaphore set */
+	semid = semget (IPC_PRIVATE, 2, S_IRWXU + S_IRWXG + S_IRWXO);
+	if (semid == -1) {
+		xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "couldn't create semaphore set");
+		x_release_client ();
+		return -1;
+	}
+	/* initially set semaphores - nothing to read, buffersize to write
+	   first semaphore is the server semaphore */
+	semopts.val = size;
+	semctl(semid, 0, SETVAL, semopts);
+	semopts.val = 0;
+	semctl(semid, 1, SETVAL, semopts);
+
+	/* set up client structure */
+	c->type = VIS_UNIXSHM;
+	c->transport.shm.semid = semid;
+	c->transport.shm.shmid = shmid;
+	c->transport.shm.buffer = buffer;
+	/* at the beginning, all slots are free */
+	c->transport.shm.size = size;
+	c->transport.shm.pos = 0;
+
+	x_release_client ();
+	//~ printf("SIZE: %d\tT: %d\t S: %d\t TF: %lf \n", c->transport.shm.size, c->prop.type, c->prop.stereo, c->prop.timeframe);
+	xmms_log_info ("Visualization client %d initialised using Unix SHM", id);
+	return semid;
+}
+
+void cleanup_shm (xmmsc_vis_unixshm_t *t)
+{
+	shmdt (t->buffer);
+	semctl (t->semid, 0, IPC_RMID, 0);
+}
+
+/**
+ * Decrements the server's semaphor (to write the next chunk)
+ */
+gboolean
+decrement_server (xmmsc_vis_unixshm_t *t) {
+	/* alter semaphore 0 by -1, don't block */
+	struct sembuf op = { 0, -1, IPC_NOWAIT };
+
+	while (semop (t->semid, &op, 1) == -1) {
+		switch (errno) {
+		case EINTR:
+			break;
+		case EAGAIN:
+			return FALSE;
+		default:
+			perror("Skipping visualization package");
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
+
+/**
+ * Increments the client's semaphor (after a chunk was written)
+ */
+void
+increment_client (xmmsc_vis_unixshm_t *t) {
+	/* alter semaphore 1 by 1, no flags */
+	struct sembuf op = { 1, +1, 0 };
+
+	if (semop (t->semid, &op, 1) == -1) {
+		/* there should not occur any error */
+		perror("");
+	}
+}
+
+gboolean
+write_start_shm (int32_t id, xmmsc_vis_unixshm_t *t, xmmsc_vischunk_t **dest)
+{
+	struct shmid_ds shm_desc;
+
+	/* first check if the client is still there */
+	shmctl (t->shmid, IPC_STAT, &shm_desc);
+	if (shm_desc.shm_nattch == 1) {
+		delete_client(id);
+		return FALSE;
+	}
+
+	if (!decrement_server (t)) {
+		return FALSE;
+	}
+
+	*dest = &t->buffer[t->pos];
+	return TRUE;
+}
+
+void
+write_finish_shm (int32_t id, xmmsc_vis_unixshm_t *t, xmmsc_vischunk_t *dest)
+{
+	t->pos = (t->pos + 1) % t->size;
+	increment_client (t);
+}
