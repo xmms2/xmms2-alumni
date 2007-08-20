@@ -38,7 +38,7 @@ char* x_config[] = {
 static void
 xmms2_quit ()
 {
-	xmmsc_visualisation_shutdown (x_connection, x_vis);
+	xmmsc_visualization_shutdown (x_connection, x_vis);
 	if (x_connection) {
 		xmmsc_unref (x_connection);
 	}
@@ -55,15 +55,15 @@ void xmms2_init ()
 		x_exit ("couldn't connect to xmms2d!");
 	}
 
-	x_vis = xmmsc_visualisation_init (x_connection);
-	res = xmmsc_visualisation_properties_set (x_connection, x_vis, x_config);
+	x_vis = xmmsc_visualization_init (x_connection);
+	res = xmmsc_visualization_properties_set (x_connection, x_vis, x_config);
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {
 		x_exit (xmmsc_result_get_error (res));
 	}
 	xmmsc_result_unref (res);
 
-	res = xmmsc_visualisation_start (x_connection, x_vis);
+	res = xmmsc_visualization_start (x_connection, x_vis);
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {
 		x_exit (xmmsc_result_get_error (res));
@@ -151,7 +151,7 @@ main (int argc, char** argv)
 	int samples = 0;
 
     while (samples > -1 && sdl_event_handler()) {
-		samples = xmmsc_visualisation_chunk_get (x_connection, x_vis, v.pcm_data, render_time, 1);
+		samples = xmmsc_visualization_chunk_get (x_connection, x_vis, v.pcm_data, render_time, 1);
 		if (samples == 1024) {
 			render_time = v_render();
 		}

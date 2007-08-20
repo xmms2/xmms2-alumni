@@ -18,8 +18,8 @@ def build(bld):
                  xmmsclient.c
                  xform.c
                  xqueue.c
-                 visualisation.c""".split()
-    obj.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes'
+                 visualization.c""".split()
+    obj.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization'
     obj.uselib = 'socket m'
     obj.vnum = '2.0.0'
     tool.add_install_flag(obj)

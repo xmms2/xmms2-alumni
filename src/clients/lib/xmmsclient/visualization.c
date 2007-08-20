@@ -30,17 +30,17 @@
 
 #include "xmmsc/xmmsc_ipc_transport.h"
 #include "xmmsc/xmmsc_idnumbers.h"
-#include "xmmsc/xmmsc_visualisation.h"
+#include "xmmsc/xmmsc_visualization.h"
 
 /**
- * @defgroup Visualisation Visualisation
+ * @defgroup Visualization Visualization
  * @ingroup XMMSClient
- * @brief This manages the visualisation transfer
+ * @brief This manages the visualization transfer
  *
  * @{
  */
 
-struct xmmsc_visualisation_St {
+struct xmmsc_visualization_St {
 	union {
 		xmmsc_vis_unixshm_t shm;
 		xmmsc_vis_udp_t udp;
@@ -50,7 +50,7 @@ struct xmmsc_visualisation_St {
 	int32_t id;
 };
 
-xmmsc_visualisation_t *
+xmmsc_visualization_t *
 get_dataset(xmmsc_connection_t *c, int vv) {
 	if (vv < 0 || vv >= c->visc)
 		return NULL;
@@ -59,38 +59,38 @@ get_dataset(xmmsc_connection_t *c, int vv) {
 }
 
 /**
- * Querys the visualisation version
+ * Querys the visualization version
  */
 
 xmmsc_result_t *
-xmmsc_visualisation_version (xmmsc_connection_t *c) {
+xmmsc_visualization_version (xmmsc_connection_t *c) {
 	x_check_conn (c, NULL);
 
-	return xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_QUERY_VERSION);
+	return xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_QUERY_VERSION);
 }
 
 /**
- * Initializes a new visualisation dataset
+ * Initializes a new visualization dataset
  */
 
 int
-xmmsc_visualisation_init (xmmsc_connection_t *c) {
+xmmsc_visualization_init (xmmsc_connection_t *c) {
 	xmmsc_result_t *res;
 
 	x_check_conn (c, 0);
 
 	c->visc++;
-	c->visv = realloc (c->visv, sizeof (xmmsc_visualisation_t*) * c->visc);
+	c->visv = realloc (c->visv, sizeof (xmmsc_visualization_t*) * c->visc);
 	if (!c->visv) {
 		x_oom ();
 		c->visc = 0;
 	}
 	if (c->visc > 0) {
 		int vv = c->visc-1;
-		if (!(c->visv[vv] = x_new0 (xmmsc_visualisation_t, 1))) {
+		if (!(c->visv[vv] = x_new0 (xmmsc_visualization_t, 1))) {
 			x_oom ();
 		} else {
-			res = xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_REGISTER);
+			res = xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_REGISTER);
 			xmmsc_result_wait (res);
 			if (xmmsc_result_iserror (res)) {
 				c->error = strdup("Couldn't register to the server!");
@@ -117,7 +117,7 @@ udp_timediff (int32_t id, int socket) {
 	gettimeofday (&time, NULL);
 	content->type = 'T';
 	content->id = htonl (id);
-	ts2net (content->clientstamp, &time);
+	tv2net (content->clientstamp, &time);
 	/* TODO: handle lost packages! */
 	for (i = 0; i < 10; ++i) {
 		send (socket, content, sizeof (xmmsc_vis_udp_timing_t), 0);
@@ -125,12 +125,12 @@ udp_timediff (int32_t id, int socket) {
 	do {
 		if (recv (socket, &buf, sizeof (buf), 0) > 0 && buf.type == 'T') {
 			gettimeofday (&time, NULL);
-			lag = (ts2tv (&time) - net2tv (content->clientstamp)) / 2.0;
+			lag = (tv2ts (&time) - net2ts (content->clientstamp)) / 2.0;
 			diffc++;
-			diff += net2tv (content->serverstamp) - lag;
+			diff += net2ts (content->serverstamp) - lag;
 			/* debug output
 			printf("server diff: %f \t old timestamp: %f, new timestamp %f\n",
-			       net2tv (content->serverstamp), net2tv (content->clientstamp), ts2tv (&time));
+			       net2ts (content->serverstamp), net2ts (content->clientstamp), tv2ts (&time));
 			 end of debug */
 		}
 	} while (diffc < 10);
@@ -139,7 +139,7 @@ udp_timediff (int32_t id, int socket) {
 }
 
 int
-setup_udp (xmmsc_visualisation_t *v, xmmsc_connection_t *c, int32_t port) {
+setup_udp (xmmsc_visualization_t *v, xmmsc_connection_t *c, int32_t port) {
 	struct addrinfo hints;
 	struct addrinfo *result, *rp;
 	char *host;
@@ -193,23 +193,23 @@ setup_udp (xmmsc_visualisation_t *v, xmmsc_connection_t *c, int32_t port) {
 }
 
 /**
- * Initializes a new visualisation connection
+ * Initializes a new visualization connection
  */
 
 xmmsc_result_t *
-xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
+xmmsc_visualization_start (xmmsc_connection_t *c, int vv) {
 	xmms_ipc_msg_t *msg;
 	xmmsc_result_t *res;
-	xmmsc_visualisation_t *v;
+	xmmsc_visualization_t *v;
 
 	int32_t shmid;
 
 	/* we can't transmit 64 bit int yet, but it could be that shmget() gives one */
 	x_api_error_if (sizeof(int) != sizeof(int32_t), "on yet unsupported 64 bit machine", NULL);
 
-	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered/unconnected visualisation dataset", NULL);
+	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered/unconnected visualization dataset", NULL);
 
-	x_api_error_if (!(v->type == VIS_NONE), "with already transmitting visualisation dataset", NULL);
+	x_api_error_if (!(v->type == VIS_NONE), "with already transmitting visualization dataset", NULL);
 
 	x_check_conn (c, NULL);
 
@@ -222,7 +222,7 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 	}
 
 	/* send packet */
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_INIT_SHM);
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_INIT_SHM);
 	xmms_ipc_msg_put_int32 (msg, v->id);
 	xmms_ipc_msg_put_int32 (msg, shmid);
 	res = xmmsc_send_msg (c, msg);
@@ -245,7 +245,7 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 		/* try udp here */
 		/* send packet */
 		xmmsc_result_unref (res);
-		msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_INIT_UDP);
+		msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_INIT_UDP);
 		xmms_ipc_msg_put_int32 (msg, v->id);
 		res = xmmsc_send_msg (c, msg);
 		xmmsc_result_wait (res);
@@ -258,7 +258,7 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
 				return NULL;
 			}
 		} else {
-			msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_SHUTDOWN);
+			msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_SHUTDOWN);
 			xmms_ipc_msg_put_int32 (msg, v->id);
 			xmmsc_send_msg (c, msg);
 		}
@@ -270,16 +270,16 @@ xmmsc_visualisation_start (xmmsc_connection_t *c, int vv) {
  * Deliver one property
  */
 xmmsc_result_t *
-xmmsc_visualisation_property_set (xmmsc_connection_t *c, int vv, const char* key, const char* value)
+xmmsc_visualization_property_set (xmmsc_connection_t *c, int vv, const char* key, const char* value)
 {
 	xmms_ipc_msg_t *msg;
-	xmmsc_visualisation_t *v;
+	xmmsc_visualization_t *v;
 
 	x_check_conn (c, NULL);
 	v = get_dataset(c, vv);
-	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", NULL);
+	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualization dataset", NULL);
 
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_PROPERTY);
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_PROPERTY);
 	xmms_ipc_msg_put_int32 (msg, v->id);
 	//xmms_ipc_msg_put_string (msg, key);
 	//xmms_ipc_msg_put_string (msg, value);
@@ -290,15 +290,15 @@ xmmsc_visualisation_property_set (xmmsc_connection_t *c, int vv, const char* key
  * Deliver some properties
  */
 xmmsc_result_t *
-xmmsc_visualisation_properties_set (xmmsc_connection_t *c, int vv, const char* prop[])
+xmmsc_visualization_properties_set (xmmsc_connection_t *c, int vv, const char* prop[])
 {
 	xmms_ipc_msg_t *msg;
-	xmmsc_visualisation_t *v;
+	xmmsc_visualization_t *v;
 
 	x_check_conn (c, NULL);
-	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", NULL);
+	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualization dataset", NULL);
 
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_PROPERTIES);
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_PROPERTIES);
 	xmms_ipc_msg_put_int32 (msg, v->id);
 	xmms_ipc_msg_put_string_list (msg, prop);
 	return xmmsc_send_msg (c, msg);
@@ -309,16 +309,16 @@ xmmsc_visualisation_properties_set (xmmsc_connection_t *c, int vv, const char* p
  */
 
 xmmsc_result_t *
-xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int vv)
+xmmsc_visualization_shutdown (xmmsc_connection_t *c, int vv)
 {
 	xmms_ipc_msg_t *msg;
 	xmmsc_result_t *res;
-	xmmsc_visualisation_t *v;
+	xmmsc_visualization_t *v;
 
 	x_check_conn (c, NULL);
-	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", NULL);
+	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualization dataset", NULL);
 
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALISATION, XMMS_IPC_CMD_VISUALISATION_SHUTDOWN);
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_SHUTDOWN);
 	xmms_ipc_msg_put_int32 (msg, v->id);
 	res = xmmsc_send_msg (c, msg);
 
@@ -383,7 +383,7 @@ increment_server (xmmsc_vis_unixshm_t *t) {
 }
 
 int
-package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t **dest) {
+package_read_start (xmmsc_visualization_t *v, int blocking, xmmsc_vischunk_t **dest) {
 	if (v->type == VIS_UNIXSHM) {
 		xmmsc_vis_unixshm_t *t = &v->transport.shm;
 		if (!blocking) {
@@ -432,9 +432,9 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t **d
 				t->grace = packet->grace;
 			}
 			/* this is nasty */
-			double interim = net2tv (packet->data.timestamp);
+			double interim = net2ts (packet->data.timestamp);
 			interim -= t->timediff;
-			tv2net (packet->data.timestamp, interim);
+			ts2net (packet->data.timestamp, interim);
 			return 1;
 		} else if (cnt > -1) {
 			free (packet);
@@ -447,7 +447,7 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t **d
 }
 
 void
-package_read_finish (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t *dest) {
+package_read_finish (xmmsc_visualization_t *v, int blocking, xmmsc_vischunk_t *dest) {
 	if (v->type == VIS_UNIXSHM) {
 		xmmsc_vis_unixshm_t *t = &v->transport.shm;
 		t->pos = (t->pos + 1) % t->size;
@@ -465,8 +465,8 @@ package_read_finish (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t *d
  */
 
 int
-xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, short *buffer, int drawtime, int blocking) {
-	xmmsc_visualisation_t *v;
+xmmsc_visualization_chunk_get (xmmsc_connection_t *c, int vv, short *buffer, int drawtime, int blocking) {
+	xmmsc_visualization_t *v;
 	xmmsc_vischunk_t *src;
 	struct timeval time;
 	double diff;
@@ -475,7 +475,7 @@ xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, short *buffer, int
 	int i, ret, size;
 
 	x_check_conn (c, 0);
-	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", 0);
+	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualization dataset", 0);
 
 	while (1) {
 		ret = package_read_start (v, blocking, &src);
@@ -485,7 +485,7 @@ xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, short *buffer, int
 
 		if (drawtime >= 0) {
 			gettimeofday (&time, NULL);
-			diff = net2tv (src->timestamp) - ts2tv (&time);
+			diff = net2ts (src->timestamp) - tv2ts (&time);
 			if (diff >= 0) {
 				double dontcare;
 				old = 0;
