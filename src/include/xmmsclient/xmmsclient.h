@@ -168,8 +168,6 @@ xmmsc_result_t *xmmsc_signal_mediainfo_reader_unindexed (xmmsc_connection_t *c);
  * VISUALIZATION **************************************************
  */
 
-typedef struct xmmsc_visualization_St xmmsc_visualization_t;
-
 /* commands */
 xmmsc_result_t *xmmsc_visualization_version (xmmsc_connection_t *c);
 int xmmsc_visualization_init (xmmsc_connection_t *c);

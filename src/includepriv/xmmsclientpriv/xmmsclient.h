@@ -31,6 +31,10 @@
 #include "xmmsclientpriv/xmmsclient_ipc.h"
 #include "xmmsc/xmmsc_stdint.h"
 
+/* needed by connection_St */
+
+typedef struct xmmsc_visualization_St xmmsc_visualization_t;
+
 /**
  * @typedef xmmsc_connection_t
  *

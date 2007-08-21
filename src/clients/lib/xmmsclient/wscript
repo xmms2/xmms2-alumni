@@ -17,10 +17,9 @@ def build(bld):
                  stats.c
                  xmmsclient.c
                  xform.c
-                 xqueue.c
-                 visualization.c""".split()
-    obj.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization'
-    obj.uselib = 'socket m'
+                 xqueue.c""".split()
+    obj.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization visualizationclient'
+    obj.uselib = 'socket'
     obj.vnum = '3.0.0'
     tool.add_install_flag(bld, obj)
 
