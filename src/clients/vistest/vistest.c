@@ -31,11 +31,11 @@
 #include <xmmsclient/xmmsclient.h>
 #include <xmmsclient/xmmsclient-glib.h>
 
-static GMainLoop *mainloop;
-static xmmsc_connection_t *connection;
-static int vis;
+GMainLoop *mainloop;
+xmmsc_connection_t *connection;
+int vis;
 
-static char* config[] = {
+char* config[] = {
 	"type", "peak",
 	"stereo", "1",
 	NULL
