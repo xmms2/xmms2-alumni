@@ -146,9 +146,12 @@ xmms_service_method_is_registered (xmms_service_entry_t *entry,
                                    const gchar *name);
 static gboolean xmms_service_matchsc (gpointer key, gpointer value,
                                       gpointer data);
-static gboolean xmms_service_method_requests_unsubscribe (gpointer key,
-                                                          gpointer value,
-                                                          gpointer data);
+static gboolean xmms_service_method_request_matchfd (gpointer key,
+                                                     gpointer value,
+                                                     gpointer data);
+static gboolean xmms_service_method_request_matchmethod (gpointer key,
+                                                         gpointer value,
+                                                         gpointer data);
 static void xmms_service_key_insert (gpointer key, gpointer value,
                                      gpointer data);
 static void xmms_service_arg_insert (gpointer key, gpointer value,
@@ -386,7 +389,7 @@ xmms_service_method_destroy (gpointer value)
 	g_hash_table_destroy (table);
 
 	g_hash_table_foreach_remove (val->service_obj->clients,
-	                             xmms_service_method_requests_unsubscribe, val);
+	                             xmms_service_method_request_matchmethod, val);
 
 	free (val->name);
 	free (val->description);
@@ -554,6 +557,14 @@ xmms_service_unregister (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		if (ret > 0)
 			XMMS_DBG ("Service client (%d) just vaporized!"
 			          " Removed from registry.", client);
+
+		g_mutex_lock (xmms_service->mutex);
+		ret = g_hash_table_foreach_remove (xmms_service->clients,
+		                                   xmms_service_method_request_matchfd,
+		                                   GUINT_TO_POINTER (client));
+		g_mutex_unlock (xmms_service->mutex);
+		if (ret > 0)
+			XMMS_DBG ("Requests from client (%d) removed.", client);
 		return;
 	}
 
@@ -929,11 +940,26 @@ xmms_service_matchsc (gpointer key, gpointer value, gpointer data)
 }
 
 /**
- * Remove all requests to a method.
+ * Remove reqeust from a client.
  */
 static gboolean
-xmms_service_method_requests_unsubscribe (gpointer key, gpointer value,
-                                          gpointer data)
+xmms_service_method_request_matchfd (gpointer key, gpointer value, gpointer data)
+{
+	xmms_service_client_t *cli = value;
+	xmms_socket_t fd = GPOINTER_TO_UINT (data);
+
+	if (cli->fd == fd)
+		return TRUE;
+
+	return FALSE;
+}
+
+/**
+ * Remove request to a method.
+ */
+static gboolean
+xmms_service_method_request_matchmethod (gpointer key, gpointer value,
+                                         gpointer data)
 {
 	xmms_service_client_t *cli = value;
 	xmms_service_method_t *method = data;
