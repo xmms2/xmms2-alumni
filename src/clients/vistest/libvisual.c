@@ -35,7 +35,7 @@ char* x_config[] = {
 	NULL
 };
 
-static void
+void
 xmms2_quit ()
 {
 	xmmsc_visualization_shutdown (x_connection, x_vis);
@@ -79,7 +79,7 @@ SDL_Color    pal[256];
 
 void sdl_init();
 int sdl_event_handler();
-static void sdl_quit();
+void sdl_quit();
 
 inline void   sdl_lock() { if( SDL_MUSTLOCK( screen ) == SDL_TRUE ) SDL_LockSurface( screen ); }
 inline void sdl_unlock() { if( SDL_MUSTLOCK( screen ) == SDL_TRUE ) SDL_UnlockSurface( screen ); }
@@ -166,7 +166,7 @@ sdl_init ()
 	atexit (sdl_quit);
 }
 
-static void
+void
 sdl_quit ()
 {
 	//FIXME crashes!
@@ -304,7 +304,7 @@ sdl_event_handler()
 }
 
 
-static int
+int
 v_upload_callback (VisInput* input, VisAudio *audio, void* unused)
 {
 	VisBuffer buf;

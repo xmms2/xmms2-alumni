@@ -62,7 +62,7 @@ void write_finish_udp (int32_t id, xmmsc_vis_udp_t *t, xmmsc_vischunk_t *dest, x
 		xmms_error_set (err, XMMS_ERROR_INVAL, "invalid server-side identifier provided"); \
 		g_mutex_unlock (vis->clientlock); \
 		return -1; \
-	} while (0);
+	}
 #define x_release_client() \
 	g_mutex_unlock (vis->clientlock);
 

@@ -80,7 +80,7 @@ char* x_config[] = {
 	NULL
 };
 
-static void
+void
 xmms2_quit ()
 {
 	xmmsc_visualization_shutdown (x_connection, x_vis);
