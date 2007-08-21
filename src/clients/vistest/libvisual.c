@@ -111,21 +111,17 @@ void v_init (int, char**);
 uint v_render ();
 void v_resize (int, int);
 
-inline void
-v_nextActor ()
+void
+v_cycleActor (int prev)
 {
-	v.plugin = visual_actor_get_next_by_name (v.plugin);
+	v.plugin = (prev ? visual_actor_get_prev_by_name (v.plugin)
+	                 : visual_actor_get_next_by_name (v.plugin));
 	if (!v.plugin) {
-		v.plugin = visual_actor_get_next_by_name (0);
+		v.plugin = (prev ? visual_actor_get_prev_by_name (0)
+						 : visual_actor_get_next_by_name (0));
 	}
-}
-
-inline void
-v_prevActor ()
-{
-	v.plugin = visual_actor_get_prev_by_name( v.plugin );
-	if (!v.plugin) {
-		v.plugin = visual_actor_get_prev_by_name (0);
+	if (!strcmp (v.plugin, "gstreamer") || !strcmp (v.plugin, "gdkpixbuf")) {
+		v_cycleActor (prev);
 	}
 }
 
@@ -227,49 +223,46 @@ sdl_event_handler()
 	SDL_Event event;
 	VisEventQueue *vevent;
 
-	while( SDL_PollEvent( &event ) )
-	{
-		vevent = visual_plugin_get_eventqueue( visual_actor_get_plugin( visual_bin_get_actor( v.bin ) ) );
+	while (SDL_PollEvent (&event)) {
+		vevent = visual_plugin_get_eventqueue (visual_actor_get_plugin (visual_bin_get_actor (v.bin)));
 
-		switch( event.type )
-		{
+		switch (event.type) {
 		case SDL_KEYUP:
-			visual_event_queue_add_keyboard( vevent, (VisKey)event.key.keysym.sym, event.key.keysym.mod, VISUAL_KEY_UP );
+			visual_event_queue_add_keyboard (vevent, (VisKey)event.key.keysym.sym, event.key.keysym.mod, VISUAL_KEY_UP);
 			break;
 
 		case SDL_KEYDOWN:
 			visual_event_queue_add_keyboard (vevent, (VisKey)event.key.keysym.sym, event.key.keysym.mod, VISUAL_KEY_DOWN);
 
-			switch( event.key.keysym.sym )
-			{
+			switch (event.key.keysym.sym) {
 			//PLUGIN CONTROLS
 			case SDLK_F11:
 			case SDLK_TAB:
-				sdl_toggleFullScreen();
+				sdl_toggleFullScreen ();
 				break;
 
 			case SDLK_ESCAPE:
-				if (sdl_isFullScreen()) {
-					sdl_toggleFullScreen();
+				if (sdl_isFullScreen ()) {
+					sdl_toggleFullScreen ();
 				} else {
 					return 0;
 				}
 				break;
 
 			case SDLK_LEFT:
-				v_prevActor();
+				v_cycleActor (1);
 				goto morph;
 
 			case SDLK_RIGHT:
-				v_nextActor();
+				v_cycleActor (0);
 
 			morph:
 				sdl_lock();
-				  visual_bin_set_morph_by_name( v.bin, (char*)"alphablend" );
-				  visual_bin_switch_actor_by_name( v.bin, (char*)v.plugin );
+				  visual_bin_set_morph_by_name (v.bin, (char*)"flash");
+				  visual_bin_switch_actor_by_name (v.bin, (char*)v.plugin);
 				sdl_unlock();
 
-				SDL_WM_SetCaption( v.plugin, 0 );
+				SDL_WM_SetCaption (v.plugin, 0);
 
 				break;
 
@@ -279,7 +272,7 @@ sdl_event_handler()
 			break;
 
 		case SDL_VIDEORESIZE:
-			v_resize( event.resize.w, event.resize.h );
+			v_resize (event.resize.w, event.resize.h);
 			break;
 
 		case SDL_MOUSEMOTION:
@@ -339,6 +332,7 @@ v_init (int argc, char **argv)
 	VisVideoDepth depth;
 
 	visual_init (&argc, &argv);
+	visual_log_set_verboseness (VISUAL_LOG_VERBOSENESS_LOW);
 
 	v.bin    = visual_bin_new ();
 	depth  = visual_video_depth_enum_from_value( 24 );
@@ -389,14 +383,14 @@ v_init (int argc, char **argv)
 		x_exit ("Cannot set input plugin callback");
 	}
 
-	visual_bin_switch_set_style( v.bin, VISUAL_SWITCH_STYLE_MORPH );
-	visual_bin_switch_set_automatic( v.bin, 1 );
-	visual_bin_switch_set_steps( v.bin, 100 );
+	visual_bin_switch_set_style (v.bin, VISUAL_SWITCH_STYLE_DIRECT);
+	/*visual_bin_switch_set_automatic (v.bin, 1);
+	visual_bin_switch_set_steps (v.bin, 10);*/
 
 	visual_bin_realize (v.bin);
 	visual_bin_sync (v.bin, 0);
 
-	printf ("Libvisual version %s; bpp: %d %s\n", visual_get_version(), v.video->bpp, (v.pluginIsGL ? "(GL)\n" : ""));
+	/*printf ("Libvisual version %s; bpp: %d %s\n", visual_get_version(), v.video->bpp, (v.pluginIsGL ? "(GL)\n" : ""));*/
 }
 
 uint
