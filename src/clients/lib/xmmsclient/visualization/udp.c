@@ -17,6 +17,7 @@ udp_timediff (int32_t id, int socket) {
 	for (i = 0; i < 10; ++i) {
 		send (socket, packet, packet_d.size, 0);
 	}
+	printf ("Syncing ");
 	do {
 		if ((recv (socket, packet, packet_d.size, 0) == packet_d.size) && (*packet_d.type == 'T')) {
 			gettimeofday (&time, NULL);
@@ -27,10 +28,12 @@ udp_timediff (int32_t id, int socket) {
 			printf("server diff: %f \t old timestamp: %f, new timestamp %f\n",
 			       net2ts (packet_d.serverstamp), net2ts (packet_d.clientstamp), tv2ts (&time));
 			 end of debug */
+			putchar('.');
 		}
 	} while (diffc < 10);
 	free (packet);
 
+	puts (" done.");
 	return diff / (double)diffc;
 }
 
@@ -148,7 +151,6 @@ read_start_udp (xmmsc_vis_udp_t *t, unsigned int blocking, xmmsc_vischunk_t **de
 		/* resync connection */
 		if (ntohs (*packet_d.grace) < 1000) {
 			if (t->grace != 0) {
-				puts ("resync");
 				t->grace = 0;
 				/* use second socket here, so vis packets don't get lost */
 				t->timediff = udp_timediff (id, t->socket[1]);
