@@ -93,6 +93,8 @@ struct xmmsc_service_method_St {
 	xmmsc_user_data_free_func_t free_func;
 };
 
+void xmmsc_service_method_free (xmmsc_service_method_t *method);
+
 xmmsc_result_t *xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type, uint32_t cookie);
 
 uint32_t xmmsc_result_cookie_get (xmmsc_result_t *result);
