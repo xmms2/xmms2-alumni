@@ -94,7 +94,7 @@ delete_client (int32_t id)
 	if (c->type == VIS_UNIXSHM) {
 		cleanup_shm (&c->transport.shm);
 	} else if (c->type == VIS_UDP) {
-		cleanup_udp (&c->transport.udp);
+		cleanup_udp (&c->transport.udp, vis->socket);
 	}
 
 	g_free (c);
@@ -171,14 +171,14 @@ xmms_visualization_version (xmms_visualization_t *vis, xmms_error_t *err) {
 	return XMMS_VISPACKET_VERSION;
 }
 
-void
+static void
 properties_init (xmmsc_vis_properties_t *p) {
 	p->type = VIS_PCM;
 	p->stereo = 1;
 	p->pcm_hardwire = 0;
 }
 
-gboolean
+static gboolean
 property_set (xmmsc_vis_properties_t *p, gchar* key, gchar* data) {
 
 	if (!g_strcasecmp (key, "type")) {
@@ -287,7 +287,7 @@ xmms_visualization_shutdown_client (xmms_visualization_t *vis, int32_t id, xmms_
 	g_mutex_unlock (vis->clientlock);
 }
 
-gboolean
+static gboolean
 package_write_start (int32_t id, xmms_vis_client_t* c, xmmsc_vischunk_t **dest) {
 	if (c->type == VIS_UNIXSHM) {
 		return write_start_shm (id, &c->transport.shm, dest);
@@ -297,7 +297,7 @@ package_write_start (int32_t id, xmms_vis_client_t* c, xmmsc_vischunk_t **dest) 
 	return FALSE;
 }
 
-void
+static void
 package_write_finish (int32_t id, xmms_vis_client_t* c, xmmsc_vischunk_t *dest) {
 	if (c->type == VIS_UNIXSHM) {
 		write_finish_shm (id, &c->transport.shm, dest);

@@ -98,7 +98,7 @@ void cleanup_shm (xmmsc_vis_unixshm_t *t)
 /**
  * Decrements the server's semaphor (to write the next chunk)
  */
-gboolean
+static gboolean
 decrement_server (xmmsc_vis_unixshm_t *t) {
 	/* alter semaphore 0 by -1, don't block */
 	struct sembuf op = { 0, -1, IPC_NOWAIT };
@@ -120,7 +120,7 @@ decrement_server (xmmsc_vis_unixshm_t *t) {
 /**
  * Increments the client's semaphor (after a chunk was written)
  */
-void
+static void
 increment_client (xmmsc_vis_unixshm_t *t) {
 	/* alter semaphore 1 by 1, no flags */
 	struct sembuf op = { 1, +1, 0 };
