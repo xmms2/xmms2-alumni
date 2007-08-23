@@ -91,6 +91,8 @@ struct xmmsc_service_method_St {
 	void *udata;
 	xmmsc_service_notifier_t func;
 	xmmsc_user_data_free_func_t free_func;
+
+	int ref;
 };
 
 void xmmsc_service_method_free (xmmsc_service_method_t *method);

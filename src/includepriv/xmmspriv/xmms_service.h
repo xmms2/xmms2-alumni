@@ -18,6 +18,7 @@
 #define __XMMS_SERVICE_H__
 
 #include <glib.h>
+#include "xmms/xmms_object.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
 /**
@@ -34,7 +35,48 @@ struct xmms_service_St {
 	GHashTable *clients;
 };
 
-typedef struct xmms_service_St xmms_service_t;
+/**
+ * A single service representation
+ */
+typedef struct xmms_service_entry_St {
+	gchar *name;
+	gchar *description;
+
+	guint major_version;
+	guint minor_version;
+
+	GHashTable *methods;
+
+	/* Service client fd */
+	xmms_socket_t sc;
+
+	GMutex *mutex;
+	xmms_service_t *service_obj;
+} xmms_service_entry_t;
+
+/**
+ * A single method representation
+ */
+struct xmms_service_method_St {
+	gchar *name;
+	gchar *description;
+
+	GMutex *mutex;
+
+	guint cookie;
+
+	GHashTable *rets;
+	GHashTable *args;
+
+	gchar *service_name;
+	xmms_service_t *service_obj;
+};
+
+struct xmms_service_argument_St {
+	gchar *name;
+	xmms_object_cmd_arg_type_t type;
+	gboolean optional;
+};
 
 /**
  * Public functions

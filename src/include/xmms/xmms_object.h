@@ -22,6 +22,7 @@
 
 #include <glib.h>
 #include "xmms/xmms_error.h"
+#include "xmms/xmms_service.h"
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsc_value.h"
 #include "xmmsc/xmmsc_coll.h"

@@ -18,8 +18,9 @@
 #include <string.h>
 
 #include "xmms/xmms_log.h"
-#include "xmmspriv/xmms_ipc.h"
+#include "xmms/xmms_service.h"
 #include "xmmspriv/xmms_service.h"
+#include "xmmspriv/xmms_ipc.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
 
