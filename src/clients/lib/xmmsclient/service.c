@@ -260,31 +260,6 @@ xmmsc_service_method_describe (xmmsc_connection_t *conn, const char *service,
 	                        XMMS_IPC_CMD_SERVICE_METHOD_INFO_LIST);
 	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method);
-	xmms_ipc_msg_put_uint32 (msg, 0);
-
-	return xmmsc_send_msg (conn, msg);
-}
-
-/**
- * List a method's arguments.
- *
- * @param conn The connection to the server.
- * @param service The id of the service.
- * @param method The id of the method.
- */
-xmmsc_result_t *
-xmmsc_service_method_describe_args (xmmsc_connection_t *conn,
-                                    const char *service, const char *method)
-{
-	xmms_ipc_msg_t *msg;
-
-	x_check_conn (conn, NULL);
-
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_METHOD_INFO_LIST);
-	xmms_ipc_msg_put_string (msg, service);
-	xmms_ipc_msg_put_string (msg, method);
-	xmms_ipc_msg_put_uint32 (msg, 1);
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -388,6 +363,9 @@ xmmsc_service_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
 /**
  * Send shutdown broadcast to a service client.
  *
+ * This does not guarantee that the service client will shutdown.  If you need
+ * this guarantee, please consult Service Client Manager.
+ *
  * @param conn The connection to the server.
  * @param service Any service name the service client provides.
  */
@@ -456,7 +434,7 @@ xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c)
  * Create a new #xmmsc_service_method_t.
  *
  * Caller is responsible for freeing the returned structure using
- * #xmmsc_service_method_free.
+ * #xmmsc_service_method_unref.
  *
  * @param name Method name (will be duplicated).
  * @param description Method description (will be duplicated).
@@ -482,6 +460,8 @@ xmmsc_service_method_new (const char *name, const char *description,
 
 	ret->udata = user_data;
 	ret->func = func;
+
+	xmmsc_service_method_ref (ret);
 
 	return ret;
 }
@@ -516,6 +496,37 @@ xmmsc_service_method_free (xmmsc_service_method_t *method)
 	if (method->free_func)
 		method->free_func (method->udata);
 	free (method);
+}
+
+/**
+ * Increase the reference count.
+ *
+ * @param method The method to increase reference count on.
+ */
+void
+xmmsc_service_method_ref (xmmsc_service_method_t *method)
+{
+	x_return_if_fail (method);
+
+	method->ref++;
+}
+
+/**
+ * Decrease the reference count.
+ *
+ * When the count reaches 0, the method will be freed.
+ *
+ * @param method The method to decrease reference count on.
+ */
+void
+xmmsc_service_method_unref (xmmsc_service_method_t *method)
+{
+	x_return_if_fail (method);
+	x_api_error_if (method->ref < 1, "with a freed method",);
+
+	method->ref--;
+	if (method->ref == 0)
+		xmmsc_service_method_free (method);
 }
 
 /**
@@ -1047,58 +1058,6 @@ xmmsc_service_method_ret_attribute_get (xmmsc_service_method_t *method,
 	return arg_attribute_get (arg, type, optional, none);
 }
 
-/* /\** */
-/*  * Get an argument value of a method. */
-/*  * */
-/*  * @param method The method which contains the argument. */
-/*  * @param key The name of the argument. */
-/*  * @param value Pointer to the place where the value will be stored to. */
-/*  * @return 1 for success, 0 otherwise. */
-/*  *\/ */
-/* int */
-/* xmmsc_service_method_arg_value_get (xmmsc_service_method_t *method, */
-/*                                     const char *key, void *value) */
-/* { */
-/* 	x_list_t *item; */
-/* 	xmmsc_service_argument_t *arg; */
-
-/* 	x_return_val_if_fail (method, 0); */
-/* 	x_return_val_if_fail (key, 0); */
-/* 	x_return_val_if_fail (value, 0); */
-
-/* 	if (!(item = x_list_find_custom (method->arg_list, key, arg_lookup))) */
-/* 		return 0; */
-/* 	arg = (xmmsc_service_argument_t *)item->data; */
-
-/* 	return arg_value_get (arg, value); */
-/* } */
-
-/* /\** */
-/*  * Get a return argument's value of a method. */
-/*  * */
-/*  * @param method The method which contains the return argument. */
-/*  * @param key The name of the argument. */
-/*  * @param value Pointer to the place where the value will be stored to. */
-/*  * @return 1 for success, 0 otherwise. */
-/*  *\/ */
-/* int */
-/* xmmsc_service_method_ret_value_get (xmmsc_service_method_t *method, */
-/*                                     const char *key, void *value) */
-/* { */
-/* 	x_list_t *item; */
-/* 	xmmsc_service_argument_t *arg; */
-
-/* 	x_return_val_if_fail (method, 0); */
-/* 	x_return_val_if_fail (key, 0); */
-/* 	x_return_val_if_fail (value, 0); */
-
-/* 	if (!(item = x_list_find_custom (method->ret_list, key, arg_lookup))) */
-/* 		return 0; */
-/* 	arg = (xmmsc_service_argument_t *)item->data; */
-
-/* 	return arg_value_get (arg, value); */
-/* } */
-
 /**
  * Set an argument value to none.
  *
@@ -1259,35 +1218,6 @@ ret_reset (xmmsc_service_method_t *method)
 		((xmmsc_service_argument_t *)n->data)->none = 1;
 }
 
-/* static int */
-/* arg_value_get (xmmsc_service_argument_t *arg, void *value) */
-/* { */
-/* 	switch (arg->type) { */
-/* 	case XMMSC_SERVICE_ARG_TYPE_UINT32: */
-/* 		*(uint32_t *)value = arg->value.uint32; */
-/* 		break; */
-/* 	case XMMSC_SERVICE_ARG_TYPE_INT32: */
-/* 		*(int32_t *)value = arg->value.int32; */
-/* 		break; */
-/* 	case XMMSC_SERVICE_ARG_TYPE_STRING: */
-/* 		*(char **)value = arg->value.string; */
-/* 		break; */
-/* 	case XMMSC_SERVICE_ARG_TYPE_STRINGLIST: */
-/* 		*(char ***)value = arg->value.strings; */
-/* 		break; */
-/* 	case XMMSC_SERVICE_ARG_TYPE_COLL: */
-/* 		*(xmmsc_coll_t **)value = arg->value.coll; */
-/* 		break; */
-/* 	case XMMSC_SERVICE_ARG_TYPE_BIN: */
-/* 		*(unsigned char **)value = arg->value.bin; */
-/* 		break; */
-/* 	default: */
-/* 		return 0; */
-/* 	} */
-
-/* 	return 1; */
-/* } */
-
 static int
 argument_write (xmms_ipc_msg_t *msg, xmmsc_service_argument_t *arg)
 {
@@ -1336,7 +1266,7 @@ free_infos (void *data)
 {
 	xmmsc_service_method_t *method = (xmmsc_service_method_t *)data;
 
-	xmmsc_service_method_free (method);
+	xmmsc_service_method_unref (method);
 }
 
 static void

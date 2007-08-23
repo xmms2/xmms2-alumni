@@ -17,8 +17,9 @@
 #include <glib.h>
 
 #include "xmms/xmms_log.h"
-#include "xmmspriv/xmms_ipc.h"
+#include "xmms/xmms_service.h"
 #include "xmmspriv/xmms_service.h"
+#include "xmmspriv/xmms_ipc.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
 
@@ -186,6 +187,30 @@ xmms_ipc_do_dict (xmms_ipc_msg_t *msg, GHashTable *table)
 }
 
 static void
+put_arg (gpointer key, gpointer value, gpointer data)
+{
+	xmms_service_argument_t *arg = value;
+	xmms_ipc_msg_t *msg = data;
+
+	xmms_ipc_msg_put_string (msg, arg->name);
+	xmms_ipc_msg_put_uint32 (msg, arg->type);
+	xmms_ipc_msg_put_int32 (msg, arg->optional);
+}
+
+static void
+xmms_ipc_do_method (xmms_ipc_msg_t *msg, xmms_service_method_t *method)
+{
+	xmms_ipc_msg_put_string (msg, method->name);
+	xmms_ipc_msg_put_string (msg, method->description);
+
+	xmms_ipc_msg_put_uint32 (msg, g_hash_table_size (method->args));
+	g_hash_table_foreach (method->args, put_arg, msg);
+
+	xmms_ipc_msg_put_uint32 (msg, g_hash_table_size (method->rets));
+	g_hash_table_foreach (method->rets, put_arg, msg);
+}
+
+static void
 xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
 {
 	GList *n;
@@ -219,6 +244,9 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
 			break;
 		case XMMS_OBJECT_CMD_ARG_COLL :
 			xmms_ipc_msg_put_collection (msg, val->value.coll);
+			break;
+		case XMMS_OBJECT_CMD_ARG_METHOD:
+			xmms_ipc_do_method (msg, val->value.method);
 			break;
 		case XMMS_OBJECT_CMD_ARG_NONE:
 			break;

@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "xmms/xmms_log.h"
+#include "xmms/xmms_service.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmspriv/xmms_service.h"
 
@@ -34,43 +35,6 @@
 }
 
 /**
- * A single service representation
- */
-typedef struct xmms_service_entry_St {
-	gchar *name;
-	gchar *description;
-
-	guint major_version;
-	guint minor_version;
-
-	GHashTable *methods;
-
-	/* Service client fd */
-	xmms_socket_t sc;
-
-	GMutex *mutex;
-	xmms_service_t *service_obj;
-} xmms_service_entry_t;
-
-/**
- * A single method representation
- */
-typedef struct xmms_service_method_St {
-	gchar *name;
-	gchar *description;
-
-	GMutex *mutex;
-
-	guint cookie;
-
-	GHashTable *rets;
-	GHashTable *args;
-
-	gchar *service_name;
-	xmms_service_t *service_obj;
-} xmms_service_method_t;
-
-/**
  * @internal
  */
 typedef struct xmms_service_client_St {
@@ -78,12 +42,6 @@ typedef struct xmms_service_client_St {
 	guint cookie;
 	xmms_service_method_t *method;
 } xmms_service_client_t;
-
-typedef struct xmms_service_argument_St {
-	gchar *name;
-	xmms_object_cmd_arg_type_t type;
-	gboolean optional;
-} xmms_service_argument_t;
 
 /**
  * Functions
@@ -153,8 +111,6 @@ static gboolean xmms_service_method_request_matchmethod (gpointer key,
                                                          gpointer value,
                                                          gpointer data);
 static void xmms_service_key_insert (gpointer key, gpointer value,
-                                     gpointer data);
-static void xmms_service_arg_insert (gpointer key, gpointer value,
                                      gpointer data);
 static inline guint xmms_service_next_id (void);
 static xmms_service_entry_t *xmms_service_get (xmms_service_t *xmms_service,
@@ -707,7 +663,6 @@ xmms_service_method_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg
 	gchar *name = NULL;
 	xmms_service_entry_t *entry;
 	xmms_service_method_t *method;
-	guint i;
 
 	g_return_if_fail (msg);
 
@@ -716,32 +671,8 @@ xmms_service_method_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg
 
 	free (name);
 
-	if ((method = xmms_service_method_get (msg, entry, &name, &arg->error))) {
-		if (xmms_ipc_msg_get_uint32 (msg, &i) && i == TRUE) {
-			GList *list = NULL;
-
-			g_mutex_lock (method->mutex);
-			g_hash_table_foreach (method->args, xmms_service_arg_insert, &list);
-			g_mutex_unlock (method->mutex);
-
-			arg->retval = xmms_object_cmd_value_list_new (list);
-		} else {
-			GHashTable *dict = g_hash_table_new_full (g_str_hash,
-													  g_str_equal,
-													  NULL,
-													  xmms_object_cmd_value_free);
-			xmms_object_cmd_value_t *val;
-
-			g_mutex_lock (method->mutex);
-			val = xmms_object_cmd_value_str_new (method->name);
-			g_hash_table_insert (dict, "name", val);
-			val = xmms_object_cmd_value_str_new (method->description);
-			g_hash_table_insert (dict, "description", val);
-			g_mutex_unlock (method->mutex);
-
-			arg->retval = xmms_object_cmd_value_dict_new (dict);
-		}
-	}
+	if ((method = xmms_service_method_get (msg, entry, &name, &arg->error)))
+		arg->retval = xmms_object_cmd_value_method_new (method);
 
 	free (name);
 }
@@ -979,26 +910,6 @@ xmms_service_key_insert (gpointer key, gpointer value, gpointer data)
 	GList **l = data;
 
 	*l = g_list_prepend (*l, xmms_object_cmd_value_str_new (key));
-}
-
-/**
- * Insert xmms_service_argument_t elements into a dict and then put it into a
- * list
- */
-static void
-xmms_service_arg_insert (gpointer key, gpointer value, gpointer data)
-{
-	GList **l = data;
-	xmms_service_argument_t *val = (xmms_service_argument_t *)value;
-	GHashTable *t = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                                       NULL, xmms_object_cmd_value_free);
-
-	g_hash_table_insert (t, "name", xmms_object_cmd_value_str_new (val->name));
-	g_hash_table_insert (t, "type", xmms_object_cmd_value_uint_new (val->type));
-	g_hash_table_insert (t, "optional",
-	                     xmms_object_cmd_value_int_new (val->optional));
-
-	*l = g_list_prepend (*l, xmms_object_cmd_value_dict_new (t));
 }
 
 /**

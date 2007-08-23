@@ -71,7 +71,7 @@ register_all (info_t *info)
 	    !xmmsc_service_method_ret_type_add (method, ARG_RET,
 	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_MANAGEMENT, method, NULL))
@@ -84,7 +84,7 @@ register_all (info_t *info)
 	    !xmmsc_service_method_ret_type_add (method, ARG_RET,
 	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_MANAGEMENT, method, NULL))
@@ -100,7 +100,7 @@ register_all (info_t *info)
 	    !xmmsc_service_method_ret_type_add (method, ARG_RET,
 	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_MANAGEMENT, method, NULL))
@@ -116,7 +116,7 @@ register_all (info_t *info)
 	    !xmmsc_service_method_ret_type_add (method, ARG_RET,
 	                                        XMMSC_SERVICE_ARG_TYPE_STRING, 0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_MANAGEMENT, method, NULL))
@@ -141,7 +141,7 @@ register_all (info_t *info)
 	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST,
 	                                        0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_QUERY, method, NULL))
@@ -156,7 +156,7 @@ register_all (info_t *info)
 	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST,
 	                                        0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_QUERY, method, NULL))
@@ -173,7 +173,7 @@ register_all (info_t *info)
 	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST,
 	                                        0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_QUERY, method, NULL))
@@ -189,7 +189,7 @@ register_all (info_t *info)
 	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST,
 	                                        0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_QUERY, method, NULL))
@@ -207,7 +207,7 @@ register_all (info_t *info)
 	    !xmmsc_service_method_ret_type_add (method, ARG_SERVICES,
 	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_QUERY, method, NULL))
@@ -231,7 +231,7 @@ register_all (info_t *info)
 	    !xmmsc_service_method_ret_type_add (method, ARG_METHODS,
 	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_QUERY, method, NULL))
@@ -250,7 +250,7 @@ register_all (info_t *info)
 	    !xmmsc_service_method_ret_type_add (method, ARG_REGISTERED,
 	                                        XMMSC_SERVICE_ARG_TYPE_UINT32, 0)) {
 		print_error ("Unable to push types");
-		xmmsc_service_method_free (method);
+		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
 	if (!register_single (info, SERVICE_QUERY, method, NULL))

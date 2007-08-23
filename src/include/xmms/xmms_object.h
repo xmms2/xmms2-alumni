@@ -22,6 +22,7 @@
 
 #include <glib.h>
 #include "xmms/xmms_error.h"
+#include "xmms/xmms_service.h"
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsc_coll.h"
 
@@ -59,6 +60,7 @@ typedef struct {
 		GHashTable *dict;
 		GList *list;
 		xmmsc_coll_t *coll;
+		xmms_service_method_t *method;
 		GString *bin;
 	} value;
 	xmms_object_cmd_arg_type_t type;
@@ -72,6 +74,7 @@ xmms_object_cmd_value_t *xmms_object_cmd_value_dict_new (GHashTable *dict);
 xmms_object_cmd_value_t *xmms_object_cmd_value_list_new (GList *list);
 xmms_object_cmd_value_t *xmms_object_cmd_value_propdict_new (GList *list);
 xmms_object_cmd_value_t *xmms_object_cmd_value_coll_new (xmmsc_coll_t *coll);
+xmms_object_cmd_value_t *xmms_object_cmd_value_method_new (xmms_service_method_t *method);
 xmms_object_cmd_value_t *xmms_object_cmd_value_none_new (void);
 xmms_object_cmd_value_t *xmms_object_cmd_value_copy (xmms_object_cmd_value_t *val);
 void xmms_object_cmd_value_free (gpointer val);

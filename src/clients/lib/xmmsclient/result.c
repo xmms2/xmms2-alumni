@@ -33,6 +33,7 @@
 static void xmmsc_result_cleanup_data (xmmsc_result_t *res);
 static void free_dict_list (x_list_t *list);
 static x_list_t *xmmsc_deserialize_dict (xmms_ipc_msg_t *msg);
+static xmmsc_service_method_t *xmmsc_deserialize_method (xmms_ipc_msg_t *msg);
 static int source_match_pattern (char* source, char* pattern);
 
 typedef struct xmmsc_result_value_bin_St {
@@ -97,6 +98,7 @@ struct xmmsc_result_St {
 		char *string;
 		x_list_t *dict;
 		xmmsc_coll_t *coll;
+		xmmsc_service_method_t *method;
 		xmmsc_result_value_bin_t *bin;
 	} data;
 
@@ -417,6 +419,10 @@ xmmsc_result_cleanup_data (xmmsc_result_t *res)
 			xmmsc_coll_unref (res->data.coll);
 			res->data.coll = NULL;
 			break;
+		case XMMS_OBJECT_CMD_ARG_METHOD:
+			xmmsc_service_method_unref (res->data.method);
+			res->data.method = NULL;
+			break;
 	}
 }
 
@@ -522,6 +528,18 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 
 				res->data.coll = coll;
 				xmmsc_coll_ref (res->data.coll);
+			}
+			break;
+
+		case XMMS_OBJECT_CMD_ARG_METHOD:
+			{
+				xmmsc_service_method_t *method;
+
+				method = xmmsc_deserialize_method (msg);
+				if (!method)
+					return false;
+
+				res->data.method = method;
 			}
 			break;
 
@@ -800,8 +818,8 @@ xmmsc_result_get_collection (xmmsc_result_t *res, xmmsc_coll_t **c)
 /**
  * Retrieve a method's information.
  *
- * Caller is responsible for freeing the list and all the elements, or simply
- * call the helper function #xmmsc_service_method_free.
+ * Caller is responsible for freeing the structure by calling the helper
+ * function #xmmsc_service_method_unref.
  *
  * @param res The #xmmsc_result_t returned by #xmmsc_service_method_describe.
  * @param method The return method structure.
@@ -811,86 +829,15 @@ int
 xmmsc_result_get_service_method (xmmsc_result_t *res,
                                  xmmsc_service_method_t **method)
 {
-	char *name = NULL;
-	char *desc = NULL;
-
 	if (!res || res->error != XMMS_ERROR_NONE) {
 		return 0;
 	}
 
-	*method = x_new0 (xmmsc_service_method_t, 1);
-
-	if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
-		free (*method);
-		return 0;
-	}
-	if (!xmmsc_result_get_dict_entry_string (res, "description", &desc)) {
-		free (*method);
-		return 0;
-	}
-	(*method)->name = x_new0 (char, strlen (name) + 1);
-	strcpy ((*method)->name, name);
-	(*method)->description = x_new0 (char, strlen (desc) + 1);
-	strcpy ((*method)->description, desc);
-
-	return 1;
-}
-
-/**
- * Retrieve a method's argument types.
- *
- * Caller is responsible for freeing the list and all the elements by calling
- * the helper function #xmmsc_service_method_free.
- *
- * @param res The #xmmsc_result_t returned by #xmmsc_service_method_args_list.
- * @param method The method which will contain the argument list.
- * @return 1 for success, 0 otherwise.
- */
-int
-xmmsc_result_get_service_method_arg_types (xmmsc_result_t *res,
-                                           xmmsc_service_method_t *method)
-{
-	char *name = NULL;
-	x_list_t *n;
-	xmmsc_service_argument_t *arg;
-
-	if (!res || res->error != XMMS_ERROR_NONE || method->arg_list) {
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_METHOD) {
 		return 0;
 	}
 
-	while (xmmsc_result_list_valid (res)) {
-		arg = x_new0 (xmmsc_service_argument_t, 1);
-
-		if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
-			for (n = method->arg_list; n; n = x_list_next (n)) {
-				free (((xmmsc_service_argument_t *)n->data)->name);
-				free ((xmmsc_service_argument_t *)n->data);
-			}
-			free (method->arg_list);
-			return 0;
-		}
-		if (!xmmsc_result_get_dict_entry_uint (res, "type", &arg->type)) {
-			for (n = method->arg_list; n; n = x_list_next (n)) {
-				free (((xmmsc_service_argument_t *)n->data)->name);
-				free ((xmmsc_service_argument_t *)n->data);
-			}
-			free (method->arg_list);
-			return 0;
-		}
-		if (!xmmsc_result_get_dict_entry_int (res, "optional", &arg->optional)) {
-			for (n = method->arg_list; n; n = x_list_next (n)) {
-				free (((xmmsc_service_argument_t *)n->data)->name);
-				free ((xmmsc_service_argument_t *)n->data);
-			}
-			free (method->arg_list);
-			return 0;
-		}
-		arg->name = strdup (name);
-
-		method->arg_list = x_list_append (method->arg_list, arg);
-
-		xmmsc_result_list_next (res);
-	}
+	*method = res->data.method;
 
 	return 1;
 }
@@ -1812,6 +1759,68 @@ err:
 	free_list (val);
 
 	return 0;
+}
+
+static xmmsc_service_method_t *
+xmmsc_deserialize_method (xmms_ipc_msg_t *msg)
+{
+	uint32_t i;
+	uint32_t type;
+	int32_t opt;
+	unsigned int len;
+	char *name = NULL;
+	char *desc = NULL;
+	xmmsc_service_method_t *method = NULL;
+
+	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len))
+		goto err;
+	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len))
+		goto err;
+
+	method = xmmsc_service_method_new (name, desc, NULL, NULL);
+	free (name);
+	free (desc);
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &i))
+		goto err;
+	for (; i > 0; i--) {
+		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len))
+			goto err;
+		if (!xmms_ipc_msg_get_uint32 (msg, &type))
+			goto err;
+		if (!xmms_ipc_msg_get_int32 (msg, &opt))
+			goto err;
+
+		if (!xmmsc_service_method_arg_type_add (method, name, type, opt))
+			goto err;
+		free (name);
+	}
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &i))
+		goto err;
+	for (; i > 0; i--) {
+		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len))
+			goto err;
+		if (!xmms_ipc_msg_get_uint32 (msg, &type))
+			goto err;
+		if (!xmms_ipc_msg_get_int32 (msg, &opt))
+			goto err;
+
+		if (!xmmsc_service_method_ret_type_add (method, name, type, opt))
+			goto err;
+		free (name);
+	}
+
+	return method;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+
+	free (name);
+	free (desc);
+	xmmsc_service_method_free (method);
+
+	return NULL;
 }
 
 static void
