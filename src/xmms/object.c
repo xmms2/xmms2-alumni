@@ -264,6 +264,16 @@ xmms_object_cmd_value_coll_new (xmmsc_coll_t *coll)
 }
 
 xmms_object_cmd_value_t *
+xmms_object_cmd_value_method_new (xmms_service_method_t *method)
+{
+	xmms_object_cmd_value_t *val;
+	val = g_new0 (xmms_object_cmd_value_t, 1);
+	val->value.method = method;
+	val->type = XMMS_OBJECT_CMD_ARG_METHOD;
+	return val;
+}
+
+xmms_object_cmd_value_t *
 xmms_object_cmd_value_none_new (void)
 {
 	xmms_object_cmd_value_t *val;
@@ -300,6 +310,7 @@ xmms_object_cmd_value_copy (xmms_object_cmd_value_t *val)
 		case XMMS_OBJECT_CMD_ARG_PROPDICT:
 		case XMMS_OBJECT_CMD_ARG_STRINGLIST:
 		case XMMS_OBJECT_CMD_ARG_COLL:
+		case XMMS_OBJECT_CMD_ARG_METHOD:
 			/** Unsupported for now */
 			XMMS_DBG ("Unsupported value passed to value_copy()");
 			break;
@@ -414,6 +425,9 @@ xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
 			break;
 		case XMMS_OBJECT_CMD_ARG_COLL:
 			arg.retval = xmms_object_cmd_value_coll_new ((xmmsc_coll_t *) va_arg (ap, gpointer));
+			break;
+		case XMMS_OBJECT_CMD_ARG_METHOD:
+			arg.retval = xmms_object_cmd_value_method_new ((xmms_service_method_t *) va_arg (ap, gpointer));
 			break;
 		case XMMS_OBJECT_CMD_ARG_NONE:
 			arg.retval = xmms_object_cmd_value_none_new ();
