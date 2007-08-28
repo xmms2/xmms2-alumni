@@ -127,7 +127,7 @@ increment_client (xmmsc_vis_unixshm_t *t) {
 
 	if (semop (t->semid, &op, 1) == -1) {
 		/* there should not occur any error */
-		perror("");
+		g_error ("visualization increment_client: %s\n", strerror (errno));
 	}
 }
 
@@ -137,10 +137,15 @@ write_start_shm (int32_t id, xmmsc_vis_unixshm_t *t, xmmsc_vischunk_t **dest)
 	struct shmid_ds shm_desc;
 
 	/* first check if the client is still there */
-	shmctl (t->shmid, IPC_STAT, &shm_desc);
+	if (shmctl (t->shmid, IPC_STAT, &shm_desc) == -1) {
+		g_error ("Checking SHM attachments failed: %s\n", strerror (errno));
+	}
 	if (shm_desc.shm_nattch == 1) {
 		delete_client(id);
 		return FALSE;
+	}
+	if (shm_desc.shm_nattch != 2) {
+		g_error ("Unbelievable # of SHM attachments: %d\n", shm_desc.shm_nattch);
 	}
 
 	if (!decrement_server (t)) {
