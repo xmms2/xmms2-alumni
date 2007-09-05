@@ -158,7 +158,7 @@ main (int argc, char **argv)
 	g_main_loop_run (mainloop);
 
 	/* not using GTK mainloop */
-	while (xmmsc_visualization_chunk_get (connection, vis, data, 0, 1000) == 2) {
+	while (xmmsc_visualization_chunk_get (connection, vis, data, 0, 1000) != -1) {
 		draw ();
 	}
 

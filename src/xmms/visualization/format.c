@@ -63,7 +63,7 @@ fft (short *samples, gfloat *spec)
 
 		while (k < j) {
 			j -= k;
-			k /= 2;
+			k >>= 1;
 		}
 
 		j += k;
@@ -75,8 +75,8 @@ fft (short *samples, gfloat *spec)
 		gint le1 = le / 2;
 		gfloat u_r = 1.0;
 		gfloat u_i = 0.0;
-		gfloat w_r =  cos (M_PI / (float) le1);
-		gfloat w_i = -sin (M_PI / (float) le1);
+		gfloat w_r =  cosf (M_PI / (float) le1);
+		gfloat w_i = -sinf (M_PI / (float) le1);
 
 		for (j = 1; j <= le1; j++) {
 			for (i = j; i <= FFT_LEN; i += le) {
