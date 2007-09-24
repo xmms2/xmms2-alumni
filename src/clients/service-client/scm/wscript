@@ -1,0 +1,35 @@
+import os, Common
+from Params import g_platform
+
+def build(bld):
+    obj = bld.create_obj('cc', 'program')
+    obj.target = 'xmms2-scm'
+    obj.source = """common.c
+                    utils.c
+                    config.c
+                    management.c
+                    query.c
+                    callback.c
+                    monitor.c
+                    main.c""".split()
+    obj.includes = '. ../../../include'
+    obj.uselib_local = 'xmmsclient-glib xmmsclient'
+    obj.uselib = 'glib2'
+
+    obj = bld.create_obj('subst')
+    obj.source = 'xmms2-scm-launcher.sh.in'
+    obj.dict = {'PRG_PATH': os.path.join(bld.env_of_name('default')['PREFIX'], 'bin')}
+    Common.install_files('SCRIPTDIR', None, 'xmms2-scm-launcher.sh', chmod=0755)
+
+def configure(conf):
+    uname = os.uname()
+    if g_platform.rfind('linux') != -1:
+        version = uname[2]
+        if version:
+            ver = version.split('-')[0].split('.')
+            if int(ver[0]) >= 2 and int(ver[1]) >= 6 and int(ver[2]) >= 13:
+                conf.add_define('INOTIFY', None)
+    return True
+
+def set_options(opt):
+    pass

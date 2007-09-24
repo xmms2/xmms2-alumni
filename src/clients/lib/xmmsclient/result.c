@@ -33,6 +33,7 @@
 static void xmmsc_result_cleanup_data (xmmsc_result_t *res);
 static void free_dict_list (x_list_t *list);
 static x_list_t *xmmsc_deserialize_dict (xmms_ipc_msg_t *msg);
+static xmmsc_service_method_t *xmmsc_deserialize_method (xmms_ipc_msg_t *msg);
 static int source_match_pattern (char* source, char* pattern);
 
 typedef struct xmmsc_result_value_bin_St {
@@ -41,6 +42,8 @@ typedef struct xmmsc_result_value_bin_St {
 } xmmsc_result_value_bin_t;
 
 typedef struct xmmsc_result_value_St {
+	int islist;
+
 	union {
 		void *generic;
 		uint32_t uint32;
@@ -51,9 +54,15 @@ typedef struct xmmsc_result_value_St {
 		xmmsc_result_value_bin_t *bin;
 	} value;
 	xmmsc_result_value_type_t type;
+
+	x_list_t *list;
+	x_list_t *current;
 } xmmsc_result_value_t;
 
 static xmmsc_result_value_t *xmmsc_result_parse_value (xmms_ipc_msg_t *msg);
+static void free_list (xmmsc_result_value_t *val);
+static int xmmsc_deserialize_list (xmms_ipc_msg_t *msg,
+                                   xmmsc_result_value_t *val);
 
 struct xmmsc_result_St {
 	xmmsc_connection_t *c;
@@ -89,6 +98,7 @@ struct xmmsc_result_St {
 		char *string;
 		x_list_t *dict;
 		xmmsc_coll_t *coll;
+		xmmsc_service_method_t *method;
 		xmmsc_result_value_bin_t *bin;
 	} data;
 
@@ -109,7 +119,7 @@ struct xmmsc_result_St {
  * Each command to the server will return a #xmmsc_result_t
  * to the programmer. This object will be used to see the results
  * off the call. It will handle errors and the results.
- * 
+ *
  * results could be used in both sync and async fashions. Here
  * is a sync example:
  * @code
@@ -136,7 +146,7 @@ struct xmmsc_result_St {
  *   xmmsc_result_unref (res);
  *   printf ("current id is: %d", id);
  * }
- * 
+ *
  * int main () {
  *   // Connect blah blah ...
  *   xmmsc_result_t *res;
@@ -291,7 +301,7 @@ xmmsc_result_disconnect (xmmsc_result_t *res)
  *   xmmsc_result_unref (newres);
  *   printf ("current id is: %d", id);
  * }
- * 
+ *
  * int main () {
  *   // Connect blah blah ...
  *   xmmsc_result_t *res;
@@ -341,6 +351,10 @@ xmmsc_result_value_free (void *v)
 {
 	xmmsc_result_value_t *val = v;
 
+	if (val->islist) {
+		val->type = XMMS_OBJECT_CMD_ARG_LIST;
+	}
+
 	switch (val->type) {
 		case XMMS_OBJECT_CMD_ARG_BIN:
 			free (val->value.bin->data);
@@ -351,6 +365,9 @@ xmmsc_result_value_free (void *v)
 			break;
 		case XMMS_OBJECT_CMD_ARG_DICT:
 			free_dict_list (val->value.dict);
+			break;
+		case XMMS_OBJECT_CMD_ARG_LIST:
+			free_list (val);
 			break;
 		case XMMS_OBJECT_CMD_ARG_COLL:
 			xmmsc_coll_unref (val->value.coll);
@@ -401,6 +418,10 @@ xmmsc_result_cleanup_data (xmmsc_result_t *res)
 		case XMMS_OBJECT_CMD_ARG_COLL:
 			xmmsc_coll_unref (res->data.coll);
 			res->data.coll = NULL;
+			break;
+		case XMMS_OBJECT_CMD_ARG_METHOD:
+			xmmsc_service_method_unref (res->data.method);
+			res->data.method = NULL;
 			break;
 	}
 }
@@ -507,6 +528,18 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 
 				res->data.coll = coll;
 				xmmsc_coll_ref (res->data.coll);
+			}
+			break;
+
+		case XMMS_OBJECT_CMD_ARG_METHOD:
+			{
+				xmmsc_service_method_t *method;
+
+				method = xmmsc_deserialize_method (msg);
+				if (!method)
+					return false;
+
+				res->data.method = method;
 			}
 			break;
 
@@ -673,7 +706,7 @@ xmmsc_result_source_preference_get (xmmsc_result_t *res)
 }
 
 /**
- * @defgroup ResultValueRetrieval ResultValueRetrieval 
+ * @defgroup ResultValueRetrieval ResultValueRetrieval
  * @ingroup Result
  * @brief Explains how you can retrive values from a #xmmsc_result_t
  * @{
@@ -783,10 +816,54 @@ xmmsc_result_get_collection (xmmsc_result_t *res, xmmsc_coll_t **c)
 }
 
 /**
+ * Retrieve a method's information.
+ *
+ * Caller is responsible for freeing the structure by calling the helper
+ * function #xmmsc_service_method_unref.
+ *
+ * @param res The #xmmsc_result_t returned by #xmmsc_service_method_describe.
+ * @param method The return method structure.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_result_get_service_method (xmmsc_result_t *res,
+                                 xmmsc_service_method_t **method)
+{
+	if (!res || res->error != XMMS_ERROR_NONE) {
+		return 0;
+	}
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_METHOD) {
+		return 0;
+	}
+
+	*method = res->data.method;
+
+	return 1;
+}
+
+/**
+ * Retrieve service method request cookie.
+ * 
+ * @param res The #xmmsc_result_t containing the cookie.
+ * @param cookie The return cookie.
+ * @return 1 for success, 0 otherwise.
+ */
+int
+xmmsc_result_get_service_cookie (xmmsc_result_t *res, uint32_t *cookie)
+{
+	if (!res || res->error != XMMS_ERROR_NONE) {
+		return 0;
+	}
+
+	return xmmsc_result_get_dict_entry_uint (res, "sc_id", cookie);
+}
+
+/**
  * Retrives binary data from the resultset.
  * @param res a #xmmsc_result_t containing a string.
  * @param r the return data. This data is owned by the result and will be freed when the result is freed.
- * @param rlen the return length of data. 
+ * @param rlen the return length of data.
  * @return 1 upon success otherwise 0
  */
 int
@@ -861,7 +938,7 @@ xmmsc_result_dict_lookup (xmmsc_result_t *res, const char *key)
  * Retrieve integer associated for specified key in the resultset.
  *
  * If the key doesn't exist in the result the returned integer is
- * undefined. 
+ * undefined.
  *
  * @param res a #xmmsc_result_t containing dict list.
  * @param key Key that should be retrieved
@@ -899,7 +976,7 @@ xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *
  * Retrieve unsigned integer associated for specified key in the resultset.
  *
  * If the key doesn't exist in the result the returned integer is
- * undefined. 
+ * undefined.
  *
  * @param res a #xmmsc_result_t containing a hashtable.
  * @param key Key that should be retrieved
@@ -1013,6 +1090,135 @@ xmmsc_result_get_dict_entry_collection (xmmsc_result_t *res, const char *key,
 }
 
 /**
+ * Check if the dict entry stores a list.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved.
+ * @return 1 if the dict entry stores a list, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_islist (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+
+	return val->islist;
+}
+
+/**
+ * Skip to next entry in list.
+ *
+ * Advance to next list entry. May advance outside of list, so
+ * #xmmsc_result_dict_entry_list_valid should be used to determine if end of
+ * list was reached.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved.
+ * @return 1 on success, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_list_next (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->islist) {
+		val->current = val->current->next;
+
+		if (val->current) {
+			xmmsc_result_value_t *tmp = val->current->data;
+			val->value.generic = tmp->value.generic;
+			val->type = tmp->type;
+		} else {
+			val->value.generic = NULL;
+			val->type = XMMS_OBJECT_CMD_ARG_NONE;
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Return to first entry in list.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved.
+ * @return 1 on success, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_list_first (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->islist) {
+		val->current = val->list;
+
+		if (val->current) {
+			xmmsc_result_value_t *tmp = val->current->data;
+			val->value.generic = tmp->value.generic;
+			val->type = tmp->type;
+		} else {
+			val->value.generic = NULL;
+			val->type = XMMS_OBJECT_CMD_ARG_NONE;
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Check if current listnode is inside list boundary.
+ *
+ * When xmmsc_result_dict_entry_list_valid returns 1, there is a list entry
+ * available for access with xmmsc_result_get_dict_entry_{type}.
+ *
+ * @param res a #xmmsc_result_t containing a hashtable.
+ * @param key Key that should be retrieved
+ * @return 1 if current listnode is inside list boundary, 0 otherwise.
+ */
+int
+xmmsc_result_dict_entry_list_valid (xmmsc_result_t *res, const char *key)
+{
+	xmmsc_result_value_t *val;
+	if (!res || res->error != XMMS_ERROR_NONE)
+		return 0;
+
+	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
+	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT)
+		return 0;
+
+	val = xmmsc_result_dict_lookup (res, key);
+	if (val && val->islist)
+		return !!val->current;
+
+	return 0;
+}
+
+/**
  * Retrieve type associated for specified key in the resultset.
  *
  * @param res a #xmmsc_result_t containing a hashtable.
@@ -1078,8 +1284,11 @@ xmmsc_result_propdict_foreach (xmmsc_result_t *res,
  * Iterate over all key/value-pair in the resultset.
  *
  * Calls specified function for each key/value-pair in the dictionary.
- * 
+ *
  * void function (const void *key, #xmmsc_result_value_type_t type, const void *value, void *user_data);
+ *
+ * If an entry is a list, only one of the values in the list will be passed to
+ * the given function. This value can be any one in the list.
  *
  * @param res a #xmmsc_result_t containing a dict.
  * @param func function that is called for each key/value-pair
@@ -1445,6 +1654,11 @@ xmmsc_result_parse_value (xmms_ipc_msg_t *msg)
 				goto err;
 			}
 			break;
+		case XMMS_OBJECT_CMD_ARG_LIST:
+			if (!xmmsc_deserialize_list (msg, val)) {
+				goto err;
+			}
+			break;
 		case XMMS_OBJECT_CMD_ARG_COLL:
 			xmms_ipc_msg_get_collection_alloc (msg, &val->value.coll);
 			if (!val->value.coll) {
@@ -1508,6 +1722,107 @@ err:
 	return NULL;
 }
 
+static int
+xmmsc_deserialize_list (xmms_ipc_msg_t *msg, xmmsc_result_value_t *val)
+{
+	uint32_t len, i;
+	xmmsc_result_value_t *tmp;
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &len))
+		return 0;
+
+	for (i = 0; i < len; i ++) {
+		tmp = xmmsc_result_parse_value (msg);
+		if (!tmp)
+			goto err;
+		val->list = x_list_prepend (val->list, tmp);
+	}
+
+	val->list = x_list_reverse (val->list);
+	val->current = val->list;
+	val->islist = 1;
+
+	if (val->current) {
+		tmp = val->current->data;
+		val->value.generic = tmp->value.generic;
+		val->type = tmp->type;
+	} else {
+		val->value.generic = NULL;
+		val->type = XMMS_OBJECT_CMD_ARG_NONE;
+	}
+
+	return 1;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+
+	free_list (val);
+
+	return 0;
+}
+
+static xmmsc_service_method_t *
+xmmsc_deserialize_method (xmms_ipc_msg_t *msg)
+{
+	uint32_t i;
+	uint32_t type;
+	int32_t opt;
+	unsigned int len;
+	char *name = NULL;
+	char *desc = NULL;
+	xmmsc_service_method_t *method = NULL;
+
+	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len))
+		goto err;
+	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len))
+		goto err;
+
+	method = xmmsc_service_method_new (name, desc, NULL, NULL);
+	free (name);
+	free (desc);
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &i))
+		goto err;
+	for (; i > 0; i--) {
+		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len))
+			goto err;
+		if (!xmms_ipc_msg_get_uint32 (msg, &type))
+			goto err;
+		if (!xmms_ipc_msg_get_int32 (msg, &opt))
+			goto err;
+
+		if (!xmmsc_service_method_arg_type_add (method, name, type, opt))
+			goto err;
+		free (name);
+	}
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &i))
+		goto err;
+	for (; i > 0; i--) {
+		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len))
+			goto err;
+		if (!xmms_ipc_msg_get_uint32 (msg, &type))
+			goto err;
+		if (!xmms_ipc_msg_get_int32 (msg, &opt))
+			goto err;
+
+		if (!xmmsc_service_method_ret_type_add (method, name, type, opt))
+			goto err;
+		free (name);
+	}
+
+	return method;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+
+	free (name);
+	free (desc);
+	xmmsc_service_method_free (method);
+
+	return NULL;
+}
+
 static void
 free_dict_list (x_list_t *list)
 {
@@ -1522,6 +1837,15 @@ free_dict_list (x_list_t *list)
 
 		xmmsc_result_value_free (list->data); /* value */
 		list = x_list_delete_link (list, list);
+	}
+}
+
+static void
+free_list (xmmsc_result_value_t *val)
+{
+	while (val->list) {
+		xmmsc_result_value_free (val->list->data);
+		val->list = x_list_delete_link (val->list, val->list);
 	}
 }
 

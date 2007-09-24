@@ -17,6 +17,8 @@
 #include <glib.h>
 
 #include "xmms/xmms_log.h"
+#include "xmms/xmms_service.h"
+#include "xmmspriv/xmms_service.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
@@ -55,7 +57,7 @@ struct xmms_ipc_St {
 
 
 /**
- * A IPC client representation.
+ * An IPC client representation.
  */
 typedef struct xmms_ipc_client_St {
 	GThread *thread;
@@ -120,8 +122,7 @@ type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_
 				gchar *buf;
 				if (!xmms_ipc_msg_get_string_alloc (msg, &buf, &len) ||
 				    !(arg->values[i].value.list = g_list_prepend (arg->values[i].value.list, buf))) {
-					GList * list = arg->values[i].value.list;
-					while (list) { g_free (list->data); list = g_list_remove (list, list); }
+					g_free (buf);
 					return FALSE;
 				}
 			}
@@ -186,6 +187,30 @@ xmms_ipc_do_dict (xmms_ipc_msg_t *msg, GHashTable *table)
 }
 
 static void
+put_arg (gpointer key, gpointer value, gpointer data)
+{
+	xmms_service_argument_t *arg = value;
+	xmms_ipc_msg_t *msg = data;
+
+	xmms_ipc_msg_put_string (msg, arg->name);
+	xmms_ipc_msg_put_uint32 (msg, arg->type);
+	xmms_ipc_msg_put_int32 (msg, arg->optional);
+}
+
+static void
+xmms_ipc_do_method (xmms_ipc_msg_t *msg, xmms_service_method_t *method)
+{
+	xmms_ipc_msg_put_string (msg, method->name);
+	xmms_ipc_msg_put_string (msg, method->description);
+
+	xmms_ipc_msg_put_uint32 (msg, g_hash_table_size (method->args));
+	g_hash_table_foreach (method->args, put_arg, msg);
+
+	xmms_ipc_msg_put_uint32 (msg, g_hash_table_size (method->rets));
+	g_hash_table_foreach (method->rets, put_arg, msg);
+}
+
+static void
 xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
 {
 	GList *n;
@@ -219,6 +244,9 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
 			break;
 		case XMMS_OBJECT_CMD_ARG_COLL :
 			xmms_ipc_msg_put_collection (msg, val->value.coll);
+			break;
+		case XMMS_OBJECT_CMD_ARG_METHOD:
+			xmms_ipc_do_method (msg, val->value.method);
 			break;
 		case XMMS_OBJECT_CMD_ARG_NONE:
 			break;
@@ -283,6 +311,36 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 
 		g_mutex_unlock (client->lock);
 		return;
+	} else if (objid == XMMS_IPC_OBJECT_SERVICE) {
+		xmms_object_cmd_arg_init (&arg);
+		object = ipc_object_pool->objects[objid];
+
+		/**
+		 * Have to register first, otherwise the return message might arrive
+		 * before the broadcast is even registered.
+		 */
+		if (cmdid == XMMS_IPC_CMD_SERVICE_METHOD_REGISTER ||
+		    cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
+			g_mutex_lock (client->lock);
+			client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
+				g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
+				               GUINT_TO_POINTER (xmms_ipc_msg_get_cookie (msg)));
+			g_mutex_unlock (client->lock);
+		}
+		if (!xmms_service_handle (object, msg, cmdid, client->transport->fd,
+		                          &arg)) {
+			if (cmdid == XMMS_IPC_CMD_SERVICE_METHOD_REGISTER ||
+			    cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
+				g_mutex_lock (client->lock);
+				client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
+					g_list_remove (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
+					               GUINT_TO_POINTER (xmms_ipc_msg_get_cookie (msg)));
+				g_mutex_unlock (client->lock);
+			}
+			goto ret;
+		}
+
+		return;
 	}
 
 	if (objid >= XMMS_IPC_OBJECT_END) {
@@ -322,6 +380,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 	}
 
 	xmms_object_cmd_call (object, cmdid, &arg);
+ret:
 	if (xmms_error_isok (&arg.error)) {
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
 		xmms_ipc_handle_cmd_value (retmsg, arg.retval);
@@ -359,6 +418,7 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
                          gpointer data)
 {
 	xmms_ipc_client_t *client = data;
+	xmms_object_t *object;
 	bool disconnect = FALSE;
 
 	g_return_val_if_fail (client, FALSE);
@@ -387,6 +447,9 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 		}
 		XMMS_DBG ("disconnect was true!");
 		g_main_loop_quit (client->ml);
+		object = ipc_object_pool->objects[XMMS_IPC_OBJECT_SERVICE];
+		xmms_service_handle (object, NULL, XMMS_IPC_CMD_SERVICE_UNREGISTER,
+		                     client->transport->fd, NULL);
 		return FALSE;
 	}
 
@@ -692,9 +755,17 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 {
 	GList *c, *s;
 	guint broadcastid = GPOINTER_TO_UINT (userdata);
+	xmms_object_cmd_arg_t *a = (xmms_object_cmd_arg_t *)arg;
 	xmms_ipc_t *ipc;
 	xmms_ipc_msg_t *msg = NULL;
 	GList *l;
+	guint fd, cookie;
+
+	if (broadcastid == XMMS_IPC_SIGNAL_SERVICE ||
+	    broadcastid == XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN) {
+		fd = a->values[0].value.uint32;
+		cookie = a->values[1].value.uint32;
+	}
 
 	g_mutex_lock (ipc_servers_lock);
 
@@ -704,12 +775,33 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 		for (c = ipc->clients; c; c = g_list_next (c)) {
 			xmms_ipc_client_t *cli = c->data;
 
+			if ((broadcastid == XMMS_IPC_SIGNAL_SERVICE ||
+			     broadcastid == XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN) &&
+			    fd != cli->transport->fd)
+					continue;
 			g_mutex_lock (cli->lock);
 			for (l = cli->broadcasts[broadcastid]; l; l = g_list_next (l)) {
-				msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_BROADCAST);
+				if (broadcastid == XMMS_IPC_SIGNAL_SERVICE &&
+					cookie != GPOINTER_TO_UINT (l->data))
+					continue;
+				if (xmms_error_isok (&a->error)) {
+					msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL,
+					                        XMMS_IPC_CMD_BROADCAST);
+					xmms_ipc_handle_cmd_value (msg, a->retval);
+				} else {
+					msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL,
+					                        XMMS_IPC_CMD_ERROR);
+					xmms_ipc_msg_put_string (msg,
+					                         xmms_error_message_get (&a->error));
+				}
 				xmms_ipc_msg_set_cookie (msg, GPOINTER_TO_UINT (l->data));
-				xmms_ipc_handle_cmd_value (msg, ((xmms_object_cmd_arg_t*)arg)->retval);
 				xmms_ipc_client_msg_write (cli, msg);
+				if (broadcastid == XMMS_IPC_SIGNAL_SERVICE) {
+					g_mutex_unlock (cli->lock);
+					g_mutex_unlock (ipc->mutex_lock);
+					g_mutex_unlock (ipc_servers_lock);
+					return;
+				}
 			}
 			g_mutex_unlock (cli->lock);
 		}

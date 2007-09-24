@@ -53,6 +53,50 @@ struct xmmsc_connection_St {
 	char *clientname;
 };
 
+/**
+ * @typedef xmmsc_service_argument_t
+ *
+ * Holds all data about a single service method argument.
+ */
+typedef struct xmmsc_service_argument_St {
+	char *name;
+	xmmsc_service_arg_type_t type;
+	int32_t optional;
+	uint32_t none;
+	union {
+		uint32_t uint32;
+		int32_t int32;
+		char *string;
+		char **strings;
+		xmmsc_coll_t *coll;
+		unsigned char *bin;
+	} value;
+	uint32_t len;
+} xmmsc_service_argument_t;
+
+/**
+ * @typedef xmmsc_service_method_t
+ *
+ * Holds all data of a single service method.
+ */
+struct xmmsc_service_method_St {
+	char *name;
+	char *description;
+	x_list_t *ret_list;
+	x_list_t *arg_list;
+	int error;
+	char *error_str;
+
+	xmmsc_connection_t *conn;
+	void *udata;
+	xmmsc_service_notifier_t func;
+	xmmsc_user_data_free_func_t free_func;
+
+	int ref;
+};
+
+void xmmsc_service_method_free (xmmsc_service_method_t *method);
+
 xmmsc_result_t *xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type, uint32_t cookie);
 
 uint32_t xmmsc_result_cookie_get (xmmsc_result_t *result);
@@ -65,6 +109,7 @@ xmmsc_result_t *xmmsc_send_signal_msg (xmmsc_connection_t *c, uint32_t signalid)
 char *_xmmsc_medialib_encode_url (const char *url, int narg, const char **args);
 int _xmmsc_medialib_verify_url (const char *url);
 
+int xmmsc_result_get_service_cookie (xmmsc_result_t *res, uint32_t *cookie);
 void xmmsc_result_restartable (xmmsc_result_t *res, uint32_t signalid);
 void xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr);
 

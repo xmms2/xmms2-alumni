@@ -21,6 +21,7 @@
 #include "xmmsc/xmmsc_ipc_msg.h"
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsc_coll.h"
+#include "xmmsc/xmmsc_service.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -282,11 +283,35 @@ xmmsc_result_t *xmmsc_broadcast_collection_changed (xmmsc_connection_t *c);
 	xmmsc_result_unref (res);\
 }
 
+typedef void (*xmmsc_result_notifier_t) (xmmsc_result_t *res, void *user_data);
+
+/*
+ * Service Client
+ */
+typedef void (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn, xmmsc_result_t *res, xmmsc_service_method_t *method, void *user_data);
+
+xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn, const char *name, const char *description, uint32_t major, uint32_t minor);
+xmmsc_result_t *xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method);
+xmmsc_result_t *xmmsc_service_method_register_full (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method, xmmsc_user_data_free_func_t free_func);
+xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn, const char *service, const char *method);
+xmmsc_result_t *xmmsc_service_list (xmmsc_connection_t *conn);
+xmmsc_result_t *xmmsc_service_describe (xmmsc_connection_t *conn, const char *service);
+xmmsc_result_t *xmmsc_service_method_list (xmmsc_connection_t *conn, const char *service);
+xmmsc_result_t *xmmsc_service_method_describe (xmmsc_connection_t *conn, const char *service, const char *method);
+xmmsc_result_t *xmmsc_service_method_describe_args (xmmsc_connection_t *conn, const char *service, const char *method);
+xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method);
+xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn, xmmsc_result_t *res, xmmsc_service_method_t *method);
+xmmsc_result_t *xmmsc_service_shutdown (xmmsc_connection_t *conn, const char *service);
+/* broadcasts */
+xmmsc_result_t *xmmsc_broadcast_service_changed (xmmsc_connection_t *c);
+xmmsc_result_t *xmmsc_broadcast_service_method_changed (xmmsc_connection_t *c);
+xmmsc_result_t *xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c);
+
+xmmsc_service_method_t *xmmsc_service_method_new (const char *name, const char *description, xmmsc_service_notifier_t func, void *user_data);
+
 /*
  * RESULTS
  */
-
-typedef void (*xmmsc_result_notifier_t) (xmmsc_result_t *res, void *user_data);
 
 xmmsc_result_t *xmmsc_result_restart (xmmsc_result_t *res);
 void xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg);
@@ -307,6 +332,7 @@ int xmmsc_result_get_int (xmmsc_result_t *res, int32_t *r);
 int xmmsc_result_get_uint (xmmsc_result_t *res, uint32_t *r);
 int xmmsc_result_get_string (xmmsc_result_t *res, char **r);
 int xmmsc_result_get_collection (xmmsc_result_t *conn, xmmsc_coll_t **coll);
+int xmmsc_result_get_service_method (xmmsc_result_t *res, xmmsc_service_method_t **method);
 int xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen);
 
 typedef enum {
@@ -315,6 +341,7 @@ typedef enum {
 	XMMSC_RESULT_VALUE_TYPE_INT32 = XMMS_OBJECT_CMD_ARG_INT32,
 	XMMSC_RESULT_VALUE_TYPE_STRING = XMMS_OBJECT_CMD_ARG_STRING,
 	XMMSC_RESULT_VALUE_TYPE_DICT = XMMS_OBJECT_CMD_ARG_DICT,
+	XMMSC_RESULT_VALUE_TYPE_LIST = XMMS_OBJECT_CMD_ARG_LIST,
 	XMMSC_RESULT_VALUE_TYPE_PROPDICT = XMMS_OBJECT_CMD_ARG_PROPDICT,
 	XMMSC_RESULT_VALUE_TYPE_COLL = XMMS_OBJECT_CMD_ARG_COLL,
 	XMMSC_RESULT_VALUE_TYPE_BIN = XMMS_OBJECT_CMD_ARG_BIN
@@ -328,6 +355,10 @@ int xmmsc_result_get_dict_entry_string (xmmsc_result_t *res, const char *key, ch
 int xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *r);
 int xmmsc_result_get_dict_entry_uint (xmmsc_result_t *res, const char *key, uint32_t *r);
 int xmmsc_result_get_dict_entry_collection (xmmsc_result_t *conn, const char *key, xmmsc_coll_t **coll);
+int xmmsc_result_dict_entry_islist (xmmsc_result_t *res, const char *key);
+int xmmsc_result_dict_entry_list_next (xmmsc_result_t *res, const char *key);
+int xmmsc_result_dict_entry_list_first (xmmsc_result_t *res, const char *key);
+int xmmsc_result_dict_entry_list_valid (xmmsc_result_t *res, const char *key);
 int xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func, void *user_data);
 int xmmsc_result_propdict_foreach (xmmsc_result_t *res, xmmsc_propdict_foreach_func func, void *user_data);
 void xmmsc_result_source_preference_set (xmmsc_result_t *res, const char **preference);
