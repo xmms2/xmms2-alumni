@@ -94,23 +94,6 @@ xmmsc_result_t *
 xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service,
                                xmmsc_service_method_t *method)
 {
-	return xmmsc_service_method_register_full (conn, service, method, NULL);
-}
-
-/**
- * Register a new method.
- *
- * @param conn The connection to the server.
- * @param service Service name of which the method belongs to.
- * @param method #xmmsc_service_method_t which contains the method's information. Don't free it manually, it'll be freed automatically when it's no longer needed.
- * @param free_func Optional function that should be called to free user_data.
- */
-xmmsc_result_t *
-xmmsc_service_method_register_full (xmmsc_connection_t *conn,
-                                    const char *service,
-                                    xmmsc_service_method_t *method,
-                                    xmmsc_user_data_free_func_t free_func)
-{
 	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
 	x_list_t *n;
@@ -148,7 +131,6 @@ xmmsc_service_method_register_full (xmmsc_connection_t *conn,
 		return res;
 
 	method->conn = conn;
-	method->free_func = free_func;
 
 	xmmsc_result_notifier_set_full (res, dispatch, method, free_infos);
 
@@ -446,6 +428,28 @@ xmmsc_service_method_t *
 xmmsc_service_method_new (const char *name, const char *description,
                           xmmsc_service_notifier_t func, void *user_data)
 {
+	return xmmsc_service_method_new_full (name, description, func,
+	                                      user_data, NULL);
+}
+
+/**
+ * Create a new #xmmsc_service_method_t.
+ *
+ * Caller is responsible for freeing the returned structure using
+ * #xmmsc_service_method_unref.
+ *
+ * @param name Method name (will be duplicated).
+ * @param description Method description (will be duplicated).
+ * @param func Callback function.
+ * @param user_data User data to pass to func.
+ * @param free_func Optional function that should be called to free user_data.
+ * @return The newly created #xmmsc_service_method_t.
+ */
+xmmsc_service_method_t *
+xmmsc_service_method_new_full (const char *name, const char *description,
+                               xmmsc_service_notifier_t func, void *user_data,
+                               xmmsc_user_data_free_func_t free_func)
+{
 	xmmsc_service_method_t *ret = NULL;
 
 	if (!name || !description)
@@ -460,6 +464,7 @@ xmmsc_service_method_new (const char *name, const char *description,
 
 	ret->udata = user_data;
 	ret->func = func;
+	ret->free_func = free_func;
 
 	xmmsc_service_method_ref (ret);
 

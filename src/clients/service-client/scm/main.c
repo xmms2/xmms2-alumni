@@ -26,16 +26,14 @@
 
 static gboolean
 register_single (info_t *info, const gchar *service,
-                 xmmsc_service_method_t *method,
-                 xmmsc_user_data_free_func_t func)
+                 xmmsc_service_method_t *method)
 {
 	gchar *name = NULL;
 	xmmsc_result_t *result;
 
 	xmmsc_service_method_attribute_get (method, &name, NULL);
 
-	result = xmmsc_service_method_register_full (info->conn, service, method,
-	                                             func);
+	result = xmmsc_service_method_register (info->conn, service, method);
 	if (xmmsc_result_iserror (result)) {
 		print_error ("Unable to register method (%s): %s", name,
 		             xmmsc_result_get_error (result));
@@ -74,7 +72,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_MANAGEMENT, method, NULL))
+	if (!register_single (info, SERVICE_MANAGEMENT, method))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("shutdown", "Shutdown a service client",
@@ -87,7 +85,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_MANAGEMENT, method, NULL))
+	if (!register_single (info, SERVICE_MANAGEMENT, method))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("change_argv", "Change the command-line"
@@ -103,7 +101,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_MANAGEMENT, method, NULL))
+	if (!register_single (info, SERVICE_MANAGEMENT, method))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("toggle_autostart", "Toggle the autostart"
@@ -119,7 +117,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_MANAGEMENT, method, NULL))
+	if (!register_single (info, SERVICE_MANAGEMENT, method))
 		return FALSE;
 
 	/* Query methods */
@@ -144,7 +142,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method, NULL))
+	if (!register_single (info, SERVICE_QUERY, method))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("service_ids", "List the names of"
@@ -159,7 +157,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method, NULL))
+	if (!register_single (info, SERVICE_QUERY, method))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("method_ids", "List the names of"
@@ -176,7 +174,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method, NULL))
+	if (!register_single (info, SERVICE_QUERY, method))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("lookup_client", "Search for all service"
@@ -192,7 +190,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method, NULL))
+	if (!register_single (info, SERVICE_QUERY, method))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("sc", "List details of an installed"
@@ -210,7 +208,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method, NULL))
+	if (!register_single (info, SERVICE_QUERY, method))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("service", "List details of a"
@@ -234,7 +232,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method, NULL))
+	if (!register_single (info, SERVICE_QUERY, method))
 		return FALSE;
 
 	method = xmmsc_service_method_new ("method", "List details of a method",
@@ -253,7 +251,7 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method, NULL))
+	if (!register_single (info, SERVICE_QUERY, method))
 		return FALSE;
 
 	/* Miscellaneous methods */
@@ -271,7 +269,7 @@ register_all (info_t *info)
 	method = xmmsc_service_method_new ("poll", "Force the manager to check for"
 	                                   " any changes in config dir",
 	                                   cb_poll, info->clients);
-	if (!register_single (info, SERVICE_MISC, method, NULL))
+	if (!register_single (info, SERVICE_MISC, method))
 		return FALSE;
 
 	return TRUE;
