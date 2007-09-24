@@ -35,8 +35,10 @@
 /* OSX uses the .bundle extension, but g_module_build_path returns .so. */
 #ifdef USE_BUNDLES
 #define get_module_ext(dir) g_build_filename (dir, "*.bundle", NULL)
+#define get_module_path(dir, module) TODO
 #else
 #define get_module_ext(dir) g_module_build_path (dir, "*")
+#define get_module_path g_module_build_path
 #endif
 
 typedef struct {
@@ -48,6 +50,7 @@ typedef struct {
  * Global variables
  */
 static GList *xmms_plugin_list;
+static gchar *xmms_plugin_path = NULL;
 
 /*
  * Function prototypes
@@ -283,8 +286,13 @@ xmms_plugin_add_builtin_plugins (void)
 gboolean
 xmms_plugin_init (gchar *path)
 {
-	if (!path)
+	if (!path) {
 		path = PKGLIBDIR;
+	}
+
+	if (!xmms_plugin_path) {
+		xmms_plugin_path = path;
+	}
 
 	xmms_plugin_scan_directory (path);
 
@@ -393,6 +401,65 @@ xmms_plugin_load (const xmms_plugin_desc_t *desc, GModule *module)
 	return TRUE;
 }
 
+gboolean
+xmms_plugin_unload (xmms_plugin_t *plugin, xmms_error_t *err)
+{
+	GList *l = NULL;
+
+	if (XMMS_OBJECT (plugin)->ref > 1) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "plugin in use - won't unload");
+		return FALSE;
+	}
+
+	if (!plugin->module) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "builtin plugin - won't unload");
+		return FALSE;
+	}
+
+	l = g_list_find (xmms_plugin_list, plugin);
+
+	if (!l) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "plugin not loaded");
+		return FALSE;
+	}
+
+	xmms_plugin_list = g_list_delete_link (xmms_plugin_list, l);
+	xmms_object_unref (plugin);
+
+	return TRUE;
+}
+
+gboolean
+xmms_plugin_load_file (const gchar *path)
+{
+	GModule *module;
+	gpointer sym;
+
+	if (!g_file_test (path, G_FILE_TEST_IS_REGULAR)) {
+		return FALSE;
+	}
+
+	XMMS_DBG ("Trying to load file: %s", path);
+	module = g_module_open (path, 0);
+	if (!module) {
+		xmms_log_error ("Failed to open plugin %s: %s",
+		                path, g_module_error ());
+		return FALSE;
+	}
+
+	if (!g_module_symbol (module, "XMMS_PLUGIN_DESC", &sym)) {
+		xmms_log_error ("%s is not a valid xmms2 plugin", path);
+		return FALSE;
+	}
+
+	if (!xmms_plugin_load ((xmms_plugin_desc_t *)sym, module)) {
+		g_module_close (module);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 /**
  * @internal Scan a particular directory for plugins to load
  * @param[in] dir Absolute path to plugins directory
@@ -406,8 +473,6 @@ xmms_plugin_scan_directory (const gchar *dir)
 	gchar *path;
 	gchar *temp;
 	gchar *pattern;
-	GModule *module;
-	gpointer sym;
 
 	temp = get_module_ext (dir);
 
@@ -425,34 +490,14 @@ xmms_plugin_scan_directory (const gchar *dir)
 
 	while ((name = g_dir_read_name (d))) {
 
-		if (!g_pattern_match_simple (pattern, name))
+		if (!g_pattern_match_simple (pattern, name)) {
 			continue;
+		}
 
 		path = g_build_filename (dir, name, NULL);
-		if (!g_file_test (path, G_FILE_TEST_IS_REGULAR)) {
-			g_free (path);
-			continue;
-		}
-
-		XMMS_DBG ("Trying to load file: %s", path);
-		module = g_module_open (path, 0);
-		if (!module) {
-			xmms_log_error ("Failed to open plugin %s: %s",
-			                path, g_module_error ());
-			g_free (path);
-			continue;
-		}
+		xmms_plugin_load_file (path);
 
 		g_free (path);
-
-		if (!g_module_symbol (module, "XMMS_PLUGIN_DESC", &sym)) {
-			g_module_close (module);
-			continue;
-		}
-
-		if (!xmms_plugin_load ((const xmms_plugin_desc_t *) sym, module)) {
-			g_module_close (module);
-		}
 	}
 
 	g_dir_close (d);
@@ -497,6 +542,108 @@ xmms_plugin_client_list (xmms_object_t *main, guint32 type, xmms_error_t *err)
 	xmms_plugin_list_destroy (l);
 
 	return list;
+}
+
+gchar *
+xmms_plugin_client_load (xmms_object_t *main, const gchar *path, xmms_error_t *err)
+{
+	const char *mod_path;
+	gchar *abs_path;
+	GList *n;
+
+	if (g_path_is_absolute (path)) {
+		abs_path = g_strdup (path);
+	} else {
+		gchar *tmp = g_strconcat ("xmms_", path, NULL);
+		abs_path = get_module_path (xmms_plugin_path, tmp);
+		g_free (tmp);
+	}
+
+	for (n = xmms_plugin_list; n; n = g_list_next (n)) {
+		xmms_plugin_t *plugin = (xmms_plugin_t *)n->data;
+
+		if (!plugin->module) {
+			continue;
+		}
+
+		mod_path = g_module_name (plugin->module);
+
+		if (!strcmp (abs_path, mod_path)) { /* FIXME: use shortname? */
+			xmms_error_set (err, XMMS_ERROR_INVAL, "plugin is already loaded");
+			g_free (abs_path);
+			return NULL;
+		}
+	}
+
+	if (!xmms_plugin_load_file (abs_path)) {
+		g_free (abs_path);
+		xmms_error_set (err, XMMS_ERROR_NOENT, "failed to load plugin");
+		return NULL;
+	}
+
+	return abs_path;
+}
+
+gchar *
+xmms_plugin_client_unload (xmms_object_t *main, const gchar *name, xmms_error_t *err)
+{
+	xmms_plugin_t *plugin = NULL;
+	gchar *ret;
+	GList *l;
+
+	g_return_val_if_fail (name, NULL);
+
+	for (l = xmms_plugin_list; l; l = g_list_next (l)) {
+		xmms_plugin_t *i = (xmms_plugin_t *)l->data;
+
+		if (!g_strcasecmp (i->shortname, name)) {
+			plugin = i;
+			break;
+		}
+	}
+
+	if (!plugin) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "plugin isn't loaded");
+		return NULL;
+	}
+
+	if (!plugin->module) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "plugin is builtin - can't unload");
+		return NULL;
+	}
+
+	ret = g_strdup (g_module_name (plugin->module));
+
+	if (!xmms_plugin_unload (plugin, err)) {
+		g_free (ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+gchar *
+xmms_plugin_client_reload (xmms_object_t *main, const gchar *name, xmms_error_t *err)
+{
+	gchar *path, *new_path;
+
+	path = xmms_plugin_client_unload (main, name, err);
+	if (!path) {
+		return NULL;
+	}
+
+	new_path = xmms_plugin_client_load (main, name, err);
+	if (!new_path) {
+		return NULL;
+	}
+
+	if (!g_str_equal (path, new_path)) {
+		xmms_log_error ("module %s has been reloaded from %s", path, new_path);
+	}
+
+	g_free (path);
+
+	return new_path;
 }
 
 void

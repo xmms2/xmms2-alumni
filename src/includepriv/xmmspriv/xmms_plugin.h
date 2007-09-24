@@ -51,6 +51,9 @@ void xmms_plugin_foreach (xmms_plugin_type_t type, xmms_plugin_foreach_func_t fu
 
 GList *xmms_plugin_list_get (xmms_plugin_type_t type);
 GList *xmms_plugin_client_list (xmms_object_t *, guint32 type, xmms_error_t *err);
+gchar *xmms_plugin_client_load (xmms_object_t *, const gchar *path, xmms_error_t *err);
+gchar *xmms_plugin_client_reload (xmms_object_t *, const gchar *name, xmms_error_t *err);
+gchar *xmms_plugin_client_unload (xmms_object_t *, const gchar *name, xmms_error_t *err);
 void xmms_plugin_list_destroy (GList *list);
 
 xmms_plugin_t *xmms_plugin_find (xmms_plugin_type_t type, const gchar *name);

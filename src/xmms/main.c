@@ -70,6 +70,9 @@ XMMS_CMD_DEFINE (quit, quit, xmms_object_t*, NONE, NONE, NONE);
 XMMS_CMD_DEFINE (hello, hello, xmms_object_t *, UINT32, UINT32, STRING);
 XMMS_CMD_DEFINE (stats, stats, xmms_object_t *, DICT, NONE, NONE);
 XMMS_CMD_DEFINE (plugin_list, xmms_plugin_client_list, xmms_object_t *, LIST, UINT32, NONE);
+XMMS_CMD_DEFINE (plugin_load, xmms_plugin_client_load, xmms_object_t *, STRING, STRING, NONE);
+XMMS_CMD_DEFINE (plugin_unload, xmms_plugin_client_unload, xmms_object_t *, STRING, STRING, NONE);
+XMMS_CMD_DEFINE (plugin_reload, xmms_plugin_client_reload, xmms_object_t *, STRING, STRING, NONE);
 
 /** @defgroup XMMSServer XMMSServer
   * @brief look at this if you want to code inside the server.
@@ -519,6 +522,15 @@ main (int argc, char **argv)
 	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
 	                     XMMS_IPC_CMD_PLUGIN_LIST,
 	                     XMMS_CMD_FUNC (plugin_list));
+	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
+	                     XMMS_IPC_CMD_PLUGIN_LOAD,
+	                     XMMS_CMD_FUNC (plugin_load));
+	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
+	                     XMMS_IPC_CMD_PLUGIN_UNLOAD,
+	                     XMMS_CMD_FUNC (plugin_unload));
+	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
+	                     XMMS_IPC_CMD_PLUGIN_RELOAD,
+	                     XMMS_CMD_FUNC (plugin_reload));
 	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
 	                     XMMS_IPC_CMD_STATS,
 	                     XMMS_CMD_FUNC (stats));
