@@ -75,6 +75,78 @@ cmd_plugin_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 
 void
+cmd_plugin_load (xmmsc_connection_t *conn, gint argc, gchar **argv)
+{
+	xmmsc_result_t *res;
+	gchar *name;
+
+	if (argc < 3) {
+		print_error ("Need to specify plugin to load");
+	}
+
+	res = xmmsc_plugin_load (conn, argv[2]);
+	xmmsc_result_wait (res);
+
+	if (xmmsc_result_iserror (res)) {
+		print_error ("%s", xmmsc_result_get_error (res));
+	}
+
+	xmmsc_result_get_string (res, &name);
+
+	print_info ("%s loaded", name);
+	xmmsc_result_unref (res);
+}
+
+
+void
+cmd_plugin_unload (xmmsc_connection_t *conn, gint argc, gchar **argv)
+{
+	xmmsc_result_t *res;
+	gchar *name;
+
+	if (argc < 3) {
+		print_error ("Need to specify plugin to unload");
+	}
+
+	res = xmmsc_plugin_unload (conn, argv[2]);
+	xmmsc_result_wait (res);
+
+	if (xmmsc_result_iserror (res)) {
+		print_error ("%s", xmmsc_result_get_error (res));
+	}
+
+	xmmsc_result_get_string (res, &name);
+
+	print_info ("%s unloaded", name);
+	xmmsc_result_unref (res);
+}
+
+
+void
+cmd_plugin_reload (xmmsc_connection_t *conn, gint argc, gchar **argv)
+{
+	xmmsc_result_t *res;
+	gchar *name;
+
+	if (argc < 3) {
+		print_error ("Need to specify plugin to reload");
+	}
+
+	res = xmmsc_plugin_reload (conn, argv[2]);
+	xmmsc_result_wait (res);
+
+	if (xmmsc_result_iserror (res)) {
+		print_error ("%s", xmmsc_result_get_error (res));
+	}
+
+	xmmsc_result_get_string (res, &name);
+
+	print_info ("reloaded from %s", name);
+	xmmsc_result_unref (res);
+}
+
+
+void
 cmd_quit (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
