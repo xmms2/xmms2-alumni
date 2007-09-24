@@ -149,25 +149,25 @@ perl_xmmsclient_result_get_value (xmmsc_result_t *res)
 	SV *ret;
 
 	switch (xmmsc_result_get_type (res)) {
-		case XMMS_OBJECT_CMD_ARG_UINT32:
+		case XMMSC_RESULT_VALUE_TYPE_UINT32:
 			ret = perl_xmmsclient_xmmsc_result_get_uint (res);
 			break;
-		case XMMS_OBJECT_CMD_ARG_INT32:
+		case XMMSC_RESULT_VALUE_TYPE_INT32:
 			ret = perl_xmmsclient_xmmsc_result_get_int (res);
 			break;
-		case XMMS_OBJECT_CMD_ARG_STRING:
+		case XMMSC_RESULT_VALUE_TYPE_STRING:
 			ret = perl_xmmsclient_xmmsc_result_get_string (res);
 			break;
-		case XMMS_OBJECT_CMD_ARG_COLL:
+		case XMMSC_RESULT_VALUE_TYPE_COLL:
 			ret = perl_xmmsclient_xmmsc_result_get_coll (res);
 			break;
-		case XMMS_OBJECT_CMD_ARG_BIN:
+		case XMMSC_RESULT_VALUE_TYPE_BIN:
 			ret = perl_xmmsclient_xmmsc_result_get_bin (res);
 			break;
-		case XMMS_OBJECT_CMD_ARG_DICT:
+		case XMMSC_RESULT_VALUE_TYPE_DICT:
 			ret = perl_xmmsclient_xmmsc_result_get_dict (res);
 			break;
-		case XMMS_OBJECT_CMD_ARG_PROPDICT:
+		case XMMSC_RESULT_VALUE_TYPE_PROPDICT:
 			ret = perl_xmmsclient_xmmsc_result_get_propdict (res);
 			break;
 		default:
