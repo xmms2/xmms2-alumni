@@ -122,7 +122,7 @@ perl_xmmsclient_xmmsc_result_get_dict(xmmsc_result_t *res)
 	ret = xmmsc_result_dict_foreach (res, perl_xmmsclient_xmmsc_result_dict_foreach_cb, val);
 
 	if (ret == 0) {
-		croak("Could not fetch dict value");
+		croak ("Could not fetch dict value");
 	}
 
 	return newRV_inc ((SV *)val);
@@ -141,6 +141,26 @@ perl_xmmsclient_xmmsc_result_get_propdict (xmmsc_result_t *res)
 	hv_magic ((HV *)SvRV (hash), (GV *)tie, PERL_MAGIC_tied);
 
 	return hash;
+}
+
+SV *
+perl_xmmsclient_xmmsc_result_get_service_method (xmmsc_result_t *res)
+{
+	SV *sv;
+	int ret;
+	xmmsc_service_method_t *method;
+
+	ret = xmmsc_result_get_service_method (res, &method);
+
+	if (ret == 0) {
+		croak ("Could not fetch method value");
+	}
+
+	xmmsc_service_method_ref (method);
+
+	sv = perl_xmmsclient_new_sv_from_ptr (method, "Audio::XMMSClient::Service::Method");
+
+	return sv;
 }
 
 SV *
@@ -169,6 +189,9 @@ perl_xmmsclient_result_get_value (xmmsc_result_t *res)
 			break;
 		case XMMSC_RESULT_VALUE_TYPE_PROPDICT:
 			ret = perl_xmmsclient_xmmsc_result_get_propdict (res);
+			break;
+		case XMMSC_RESULT_VALUE_TYPE_METHOD:
+			ret = perl_xmmsclient_xmmsc_result_get_service_method (res);
 			break;
 		default:
 			ret = &PL_sv_undef;

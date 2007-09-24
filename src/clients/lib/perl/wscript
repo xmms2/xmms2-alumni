@@ -11,6 +11,7 @@ def build(bld):
                  XMMSClient.xs
                  XMMSClientPlaylist.xs
                  XMMSClientCollection.xs
+                 XMMSClientServiceMethod.xs
                  XMMSClientResult.xs
                  XMMSClientResultPropDict.xs
                  XMMSClientResultPropDictTie.xs

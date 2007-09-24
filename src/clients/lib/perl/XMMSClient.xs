@@ -419,6 +419,7 @@ xmmsc_medialib_add_entry_args (c, url, ...)
 		args = (const char **)malloc (sizeof (char *) * nargs);
 
 		for (i = 2; i < items; i++) {
+			/* FIXME: args[i - 2] */
 			args[i] = SvPV_nolen (ST (i));
 		}
 	C_ARGS:
@@ -1952,6 +1953,52 @@ xmmsc_coll_idlist_from_playlist_file (c, path)
 		const char *path
 
 
+## Service Client
+
+xmmsc_result_t *
+xmmsc_service_list (c)
+		xmmsc_connection_t *c
+
+xmmsc_result_t *
+xmmsc_service_describe (c, service)
+		xmmsc_connection_t *c
+		const char *service
+
+xmmsc_result_t *
+xmmsc_service_method_list (c, service)
+		xmmsc_connection_t *c
+		const char *service
+
+xmmsc_result_t *
+xmmsc_service_method_describe (c, service, method)
+		xmmsc_connection_t *c
+		const char *service
+		const char *method
+
+xmmsc_result_t *
+xmmsc_service_method_describe_args (c, service, method)
+		xmmsc_connection_t *c
+		const char *service
+		const char *method
+
+xmmsc_result_t *
+xmmsc_service_shutdown (c, service)
+		xmmsc_connection_t *c
+		const char *service
+
+xmmsc_result_t *
+xmmsc_broadcast_service_changed (c)
+		xmmsc_connection_t *c
+
+xmmsc_result_t *
+xmmsc_broadcast_service_method_changed (c)
+		xmmsc_connection_t *c
+
+xmmsc_result_t *
+xmmsc_broadcast_service_shutdown (c)
+		xmmsc_connection_t *c
+
+
 ## IO
 
 =head2 io_want_out
@@ -2166,6 +2213,7 @@ BOOT:
 	PERL_UNUSED_VAR (items);
 	PERL_XMMSCLIENT_CALL_BOOT (boot_Audio__XMMSClient__Playlist);
 	PERL_XMMSCLIENT_CALL_BOOT (boot_Audio__XMMSClient__Collection);
+	PERL_XMMSCLIENT_CALL_BOOT (boot_Audio__XMMSClient__Service__Method);
 	PERL_XMMSCLIENT_CALL_BOOT (boot_Audio__XMMSClient__Result);
 	PERL_XMMSCLIENT_CALL_BOOT (boot_Audio__XMMSClient__Result__PropDict);
 	PERL_XMMSCLIENT_CALL_BOOT (boot_Audio__XMMSClient__Result__PropDict__Tie);

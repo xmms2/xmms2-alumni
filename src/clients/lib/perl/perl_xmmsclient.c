@@ -131,13 +131,28 @@ perl_xmmsclient_callback_invoke (PerlXMMSClientCallback *cb, ...) {
 			SV *sv;
 			switch (cb->param_types[i]) {
 				case PERL_XMMSCLIENT_CALLBACK_PARAM_TYPE_CONNECTION:
-				case PERL_XMMSCLIENT_CALLBACK_PARAM_TYPE_RESULT:
-					if (!cb->wrapper) {
-						croak("wrapper == NULL in perl_xmmsclient_callback_invoke");
+					sv = cb->wrapper;
+
+					if (!sv) {
+						xmmsc_connection_t *c = (xmmsc_connection_t *)va_arg (va_args, void *);
+						sv = perl_xmmsclient_new_sv_from_ptr (c, "Audio::XMMSClient");
 					}
 
-					sv = cb->wrapper;
 					break;
+				case PERL_XMMSCLIENT_CALLBACK_PARAM_TYPE_RESULT:
+					sv = cb->wrapper;
+
+					if (!sv) {
+						xmmsc_result_t *res = (xmmsc_result_t *)va_arg (va_args, void *);
+						sv = perl_xmmsclient_new_sv_from_ptr (res, "Audio::XMMSClient::Result");
+					}
+
+					break;
+				case PERL_XMMSCLIENT_CALLBACK_PARAM_TYPE_METHOD:
+					{
+						xmmsc_service_method_t *method = (xmmsc_service_method_t *)va_arg (va_args, void *);
+						sv = perl_xmmsclient_new_sv_from_ptr (method, "Audio::XMMSClient::Method");
+					}
 				case PERL_XMMSCLIENT_CALLBACK_PARAM_TYPE_FLAG:
 					sv = newSViv (va_arg (va_args, int));
 					break;
