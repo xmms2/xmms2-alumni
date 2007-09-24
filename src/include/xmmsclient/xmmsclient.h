@@ -315,7 +315,6 @@ typedef void (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn, xmmsc_result
 
 xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn, const char *name, const char *description, uint32_t major, uint32_t minor);
 xmmsc_result_t *xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method);
-xmmsc_result_t *xmmsc_service_method_register_full (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method, xmmsc_user_data_free_func_t free_func);
 xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn, const char *service, const char *method);
 xmmsc_result_t *xmmsc_service_list (xmmsc_connection_t *conn);
 xmmsc_result_t *xmmsc_service_describe (xmmsc_connection_t *conn, const char *service);
@@ -331,6 +330,7 @@ xmmsc_result_t *xmmsc_broadcast_service_method_changed (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c);
 
 xmmsc_service_method_t *xmmsc_service_method_new (const char *name, const char *description, xmmsc_service_notifier_t func, void *user_data);
+xmmsc_service_method_t *xmmsc_service_method_new_full (const char *name, const char *description, xmmsc_service_notifier_t func, void *user_data, xmmsc_user_data_free_func_t free_func);
 
 /*
  * RESULTS
