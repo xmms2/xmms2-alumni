@@ -578,6 +578,9 @@ xmmsc_service_method_arg_type_add (xmmsc_service_method_t *method,
 
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (name, 0);
+	x_api_error_if (strcmp (name, "sc_id") == 0,
+	                "Sorry, you cannot use \"sc_id\" as the argument name,"
+	                " it is reserved for internal use only.", 0);
 
 	arg = x_new0 (xmmsc_service_argument_t, 1);
 	if (!arg)
