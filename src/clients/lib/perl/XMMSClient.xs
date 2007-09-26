@@ -1956,6 +1956,26 @@ xmmsc_coll_idlist_from_playlist_file (c, path)
 ## Service Client
 
 xmmsc_result_t *
+xmmsc_service_register (c, name, description, major, minor)
+		xmmsc_connection_t *c
+		const char *name
+		const char *description
+		uint32_t major
+		uint32_t minor
+
+xmmsc_result_t *
+xmmsc_service_method_register (c, service, method)
+		xmmsc_connection_t *c
+		const char *service
+		xmmsc_service_method_t *method
+
+xmmsc_result_t *
+xmmsc_service_unregister (c, service, method)
+		xmmsc_connection_t *c
+		const char *service
+		const char *method
+
+xmmsc_result_t *
 xmmsc_service_list (c)
 		xmmsc_connection_t *c
 
@@ -1980,6 +2000,18 @@ xmmsc_service_method_describe_args (c, service, method)
 		xmmsc_connection_t *c
 		const char *service
 		const char *method
+
+xmmsc_result_t *
+xmmsc_service_request (c, service, method)
+		xmmsc_connection_t *c
+		const char *service
+		xmmsc_service_method_t *method
+
+xmmsc_result_t *
+xmmsc_service_return (c, res, method)
+		xmmsc_connection_t *c
+		xmmsc_result_t *res
+		xmmsc_service_method_t *method
 
 xmmsc_result_t *
 xmmsc_service_shutdown (c, service)
