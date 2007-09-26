@@ -34,6 +34,8 @@ xmmsc_service_method_new (class, name, description, func, user_data=NULL)
 		                                        perl_xmmsclient_xmmsc_service_method_notify_cb,
 		                                        cb,
 		                                        (xmmsc_user_data_free_func_t)perl_xmmsclient_callback_destroy);
+	OUTPUT:
+		RETVAL
 
 NO_OUTPUT int
 xmmsc_service_method_attribute_get (xmmsc_service_method_t *method, OUTLIST char *name, OUTLIST char *description)
