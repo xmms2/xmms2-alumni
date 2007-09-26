@@ -151,8 +151,10 @@ perl_xmmsclient_callback_invoke (PerlXMMSClientCallback *cb, ...) {
 				case PERL_XMMSCLIENT_CALLBACK_PARAM_TYPE_METHOD:
 					{
 						xmmsc_service_method_t *method = (xmmsc_service_method_t *)va_arg (va_args, void *);
-						sv = perl_xmmsclient_new_sv_from_ptr (method, "Audio::XMMSClient::Method");
+						sv = perl_xmmsclient_new_sv_from_ptr (method, "Audio::XMMSClient::Service::Method");
 					}
+
+					break;
 				case PERL_XMMSCLIENT_CALLBACK_PARAM_TYPE_FLAG:
 					sv = newSViv (va_arg (va_args, int));
 					break;
