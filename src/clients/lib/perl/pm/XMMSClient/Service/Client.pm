@@ -82,7 +82,7 @@ sub _wrap_method {
         my ($conn, $result, $method) = @_;
 
         if ($result->iserror) {
-            warn $result->get_error;
+            Carp::carp $result->get_error;
             return;
         }
 
@@ -93,24 +93,18 @@ sub _wrap_method {
             @ret = $func->($conn, $args);
         };
 
-        use Data::Dump qw/dump/;
-        dump $args;
-        dump \@ret;
-
         if (my $error = $@) {
             $method->error_set($error);
         }
         else {
             my $i = 0;
-            for my $ret (@{ $data->{ret} || [] }) {
+            for my $ret (@{ $data->{return} || [] }) {
                 my $type     = $ret->{type};
                 my $ret_func = "ret_add_${type}";
 
                 last if $i > $#ret;
 
                 my $value = $ret[$i++];
-
-                warn "$ret_func $ret->{name} $value";
 
                 $method->$ret_func($ret->{name}, $value)
                     if defined $value;
