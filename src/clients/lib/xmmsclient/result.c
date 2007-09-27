@@ -297,7 +297,6 @@ xmmsc_result_disconnect (xmmsc_result_t *res)
  *   xmmsc_result_t *res;
  *   res = xmmsc_signal_playback_playtime (connection);
  *   xmmsc_result_notifier_set (res, handler);
- *   xmmsc_result_unref (res);
  * }
  * @endcode
  * In the above example the handler would be called when the playtime is updated.
