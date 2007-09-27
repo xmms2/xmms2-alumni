@@ -316,6 +316,7 @@ xmmsc_service_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
 	x_check_conn (conn, NULL);
 	x_return_null_if_fail (res);
 	x_return_null_if_fail (method);
+	x_return_null_if_fail (method->ret_list);
 
 	if (!xmmsc_result_get_service_cookie (res, &cookie))
 		return NULL;
