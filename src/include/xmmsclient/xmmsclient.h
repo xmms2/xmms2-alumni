@@ -292,7 +292,7 @@ typedef void (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn, xmmsc_result
 
 xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn, const char *name, const char *description, uint32_t major, uint32_t minor);
 xmmsc_result_t *xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method);
-xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn, const char *service, const char *method);
+xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method);
 xmmsc_result_t *xmmsc_service_list (xmmsc_connection_t *conn);
 xmmsc_result_t *xmmsc_service_describe (xmmsc_connection_t *conn, const char *service);
 xmmsc_result_t *xmmsc_service_method_list (xmmsc_connection_t *conn, const char *service);

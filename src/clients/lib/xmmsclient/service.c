@@ -133,6 +133,7 @@ xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service,
 	method->conn = conn;
 
 	xmmsc_result_notifier_set_full (res, dispatch, method, free_infos);
+	xmmsc_service_method_ref (method);
 
 	return res;
 }
@@ -145,12 +146,12 @@ xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service,
  *
  * @param conn The connection to the server.
  * @param service The name of the service which the method belongs to.
- * @param method The name of the method to be removed.
+ * @param method The method to be removed.
  */
 xmmsc_result_t *
 xmmsc_service_unregister (xmmsc_connection_t *conn,
                           const char *service,
-                          const char *method)
+                          xmmsc_service_method_t *method)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -161,8 +162,10 @@ xmmsc_service_unregister (xmmsc_connection_t *conn,
 	                        XMMS_IPC_CMD_SERVICE_UNREGISTER);
 	xmms_ipc_msg_put_string (msg, service);
 
-	if (method)
-		xmms_ipc_msg_put_string (msg, method);
+	if (method) {
+		xmms_ipc_msg_put_string (msg, method->name);
+		xmmsc_service_method_unref (method);
+	}
 
 	return xmmsc_send_msg (conn, msg);
 }
