@@ -323,6 +323,8 @@ xmms_service_registry_destroy (gpointer value)
 	free (val->description);
 
 	g_mutex_free (val->mutex);
+
+	g_free (val);
 }
 
 /**
@@ -354,6 +356,8 @@ xmms_service_method_destroy (gpointer value)
 
 	g_hash_table_destroy (val->rets);
 	g_hash_table_destroy (val->args);
+
+	g_free (val);
 }
 
 /**
