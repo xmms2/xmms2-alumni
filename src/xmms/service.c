@@ -60,6 +60,7 @@ static xmms_service_method_t *xmms_service_method_new (xmms_service_t *obj,
                                                        GHashTable *args);
 static void xmms_service_destroy (xmms_object_t *object);
 static void xmms_service_registry_destroy (gpointer value);
+static void xmms_service_request_client_destroy (gpointer value);
 static void xmms_service_method_destroy (gpointer value);
 
 static void xmms_service_register (xmms_service_t *xmms_service,
@@ -141,9 +142,9 @@ xmms_service_init(void)
 	ret = xmms_object_new (xmms_service_t, xmms_service_destroy);
 	ret->mutex = g_mutex_new ();
 	ret->registry = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-										   xmms_service_registry_destroy);
-	ret->clients = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-	                                      NULL, g_free);
+	                                       xmms_service_registry_destroy);
+	ret->clients = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+	                                      xmms_service_request_client_destroy);
 
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_SERVICE, XMMS_OBJECT (ret));
 	xmms_ipc_broadcast_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
@@ -323,6 +324,30 @@ xmms_service_registry_destroy (gpointer value)
 	free (val->description);
 
 	g_mutex_free (val->mutex);
+
+	g_free (val);
+}
+
+/**
+ * Send all requesting clients an error message indicating that the service
+ * method has been destroyed.
+ */
+static void
+xmms_service_request_client_destroy (gpointer value)
+{
+	xmms_service_client_t *val = value;
+	xmms_object_cmd_arg_t arg;
+
+	arg.values[0].type = XMMS_OBJECT_CMD_ARG_UINT32;
+	arg.values[0].value.uint32 = val->fd;
+	arg.values[1].type = XMMS_OBJECT_CMD_ARG_UINT32;
+	arg.values[1].value.uint32 = val->cookie;
+
+	xmms_error_set (&arg.error, XMMS_ERROR_GENERIC,
+	                "Service method unregistered.");
+
+	xmms_object_emit (XMMS_OBJECT (val->method->service_obj),
+	                  XMMS_IPC_SIGNAL_SERVICE, &arg);
 
 	g_free (val);
 }
