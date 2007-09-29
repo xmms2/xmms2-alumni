@@ -3,7 +3,7 @@ import Params
 import Common
 
 def build(bld):
-    obj = bld.create_obj("cc", "plugin")
+    obj = bld.create_obj("cc", "shlib")
     obj.target = 'XMMSClient'
     obj.includes = '. ../../../include ../../../includepriv ' + bld.env_of_name('default')["PERL_CORE_INC"]
     obj.source = """
