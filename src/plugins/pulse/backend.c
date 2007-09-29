@@ -146,7 +146,7 @@ xmms_pulse_backend_new(const char *server, const char *name,
 	p = g_new0(xmms_pulse, 1);
 	if (!p)
 		return NULL;
-    
+
 	p->mainloop = pa_threaded_mainloop_new();
 	if (!p->mainloop)
 		goto fail;
@@ -430,13 +430,13 @@ gboolean xmms_pulse_backend_flush(xmms_pulse *p, int *rerror) {
 
 	pa_threaded_mainloop_unlock(p->mainloop);
 	return 0;
-    
+
  unlock_and_fail:
 	if (o) {
 		pa_operation_cancel(o);
 		pa_operation_unref(o);
 	}
-    
+
 	pa_threaded_mainloop_unlock(p->mainloop);
 	return -1;
 }
