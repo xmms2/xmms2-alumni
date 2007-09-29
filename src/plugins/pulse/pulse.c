@@ -85,7 +85,6 @@ static gboolean
 xmms_pulse_new (xmms_output_t *output)
 {
 	xmms_pulse_data_t *data;
-	gint i;
 
 	XMMS_DBG ("Bleh");
 
@@ -174,7 +173,6 @@ xmms_pulse_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 	xmms_sample_format_t xmms_format;
 	gint channels;
 	gint samplerate;
-	gint i;
 
 	g_return_val_if_fail (output, FALSE);
 	data = xmms_output_private_data_get (output);
