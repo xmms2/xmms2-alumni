@@ -68,7 +68,8 @@ cdef extern from "xmmsc/xmmsc_idnumbers.h":
 		XMMS_PLAYLIST_CHANGED_REMOVE,
 		XMMS_PLAYLIST_CHANGED_CLEAR,
 		XMMS_PLAYLIST_CHANGED_MOVE,
-		XMMS_PLAYLIST_CHANGED_SORT
+		XMMS_PLAYLIST_CHANGED_SORT,
+		XMMS_PLAYLIST_CHANGED_UPDATE
 
 	ctypedef enum xmms_plugin_type_t:
 		XMMS_PLUGIN_TYPE_ALL,
@@ -94,6 +95,7 @@ PLAYLIST_CHANGED_REMOVE = XMMS_PLAYLIST_CHANGED_REMOVE
 PLAYLIST_CHANGED_CLEAR = XMMS_PLAYLIST_CHANGED_CLEAR
 PLAYLIST_CHANGED_MOVE = XMMS_PLAYLIST_CHANGED_MOVE
 PLAYLIST_CHANGED_SORT = XMMS_PLAYLIST_CHANGED_SORT
+PLAYLIST_CHANGED_UPDATE = XMMS_PLAYLIST_CHANGED_UPDATE
 
 PLUGIN_TYPE_ALL = XMMS_PLUGIN_TYPE_ALL
 PLUGIN_TYPE_XFORM = XMMS_PLUGIN_TYPE_XFORM
@@ -227,6 +229,7 @@ cdef extern from "xmmsclient/xmmsclient.h":
 
 	xmmsc_result_t *xmmsc_medialib_playlist_load(xmmsc_connection_t *conn, char *name)
 	xmmsc_result_t *xmmsc_medialib_add_entry(xmmsc_connection_t *conn, char *url)
+	xmmsc_result_t *xmmsc_medialib_remove_entry(xmmsc_connection_t *conn, unsigned int id)
 	xmmsc_result_t *xmmsc_medialib_add_entry_encoded(xmmsc_connection_t *conn, char *url)
 	xmmsc_result_t *xmmsc_medialib_get_info(xmmsc_connection_t *, unsigned int id)
 	xmmsc_result_t *xmmsc_medialib_path_import (xmmsc_connection_t *c, char *path)
@@ -822,8 +825,10 @@ cdef class XMMSResult:
 
 	def more_init(self, broadcast = 0):
 		self.broadcast = broadcast
-		Py_INCREF(self)
-		xmmsc_result_notifier_set_full(self.res, ResultNotifier, <void *>self, ResultFreeer)
+		if self.callback:
+			Py_INCREF(self)
+			xmmsc_result_notifier_set_full(self.res, ResultNotifier, <void *>self, ResultFreeer)
+			xmmsc_result_unref(self.res)
 
 	def _cb(self):
 		cdef xmmsc_result_t *r
@@ -2208,6 +2213,21 @@ cdef class XMMS:
 		ret.more_init()
 		return ret
 
+	def medialib_remove_entry(self, id, cb=None):
+		"""
+		Remove an entry from the medialib.
+		@rtype: L{XMMSResult}
+		@return: The result of the operation.
+		"""
+		cdef XMMSResult ret
+
+		ret = XMMSResult(self)
+		ret.callback = cb
+
+		ret.res = xmmsc_medialib_remove_entry(self.conn, id)
+		ret.more_init()
+		return ret
+
 	def medialib_get_info(self, id, cb = None):
 		"""
 		@rtype: L{XMMSResult}(HashTable)
@@ -2457,10 +2477,12 @@ cdef class XMMS:
 			n = XMMS_COLLECTION_NS_PLAYLISTS
 		else:
 			raise ValueError("Bad namespace")
+
+		nam = from_unicode(name)
 		
 		ret = XMMSResult(self)
 		ret.callback = cb
-		ret.res = xmmsc_coll_get(self.conn, name, n)
+		ret.res = xmmsc_coll_get(self.conn, nam, n)
 
 		ret.more_init()
 		return ret
@@ -2503,9 +2525,11 @@ cdef class XMMS:
 		else:
 			raise ValueError("Bad namespace")
 
+		nam = from_unicode(name)
+		
 		ret = XMMSResult(self)
 		ret.callback = cb
-		ret.res = xmmsc_coll_save(self.conn, coll.coll, name, n)
+		ret.res = xmmsc_coll_save(self.conn, coll.coll, nam, n)
 		ret.more_init()
 		return ret
 
@@ -2524,9 +2548,11 @@ cdef class XMMS:
 		else:
 			raise ValueError("Bad namespace")
 		
+		nam = from_unicode(name)
+		
 		ret = XMMSResult(self)
 		ret.callback = cb
-		ret.res = xmmsc_coll_remove(self.conn, name, n)
+		ret.res = xmmsc_coll_remove(self.conn, nam, n)
 
 		ret.more_init()
 		return ret
@@ -2547,9 +2573,12 @@ cdef class XMMS:
 		else:
 			raise ValueError("Bad namespace")
 		
+		oldnam = from_unicode(oldname)
+		newnam = from_unicode(newname)
+		
 		ret = XMMSResult(self)
 		ret.callback = cb
-		ret.res = xmmsc_coll_rename(self.conn, oldname, newname, n)
+		ret.res = xmmsc_coll_rename(self.conn, oldnam, newnam, n)
 
 		ret.more_init()
 		return ret

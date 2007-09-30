@@ -83,6 +83,10 @@ N: Olle Hällnäs
 E: olle@xmms.org
 D: Better seeking in cli.
 
+N: Armando Jagucki
+E: ajagucki@gmail.com
+D: Python bindings improvements
+
 N: Thomas Jollans
 E: thomas@jollans.com
 D: Python bindings improvements
@@ -166,6 +170,11 @@ D: Various fixes. Sorting on integers.
 N: Christopher Rosell
 E: chrippa@evangelion.se
 D: FreeBSD support in cdae plugin.
+
+N: Andrew Ruder
+E: andy@aeruder.net
+W: http://www.aeruder.net
+D: Various fixes
 
 N: Tobias Rundström
 E: tru@xmms.org

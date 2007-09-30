@@ -14,20 +14,34 @@
  *  Lesser General Public License for more details.
  */
 
+/** @file
+ * Miscellaneous internal utility functions.
+ */
 
+#include <stdlib.h>
+#include <string.h>
 
+#include "xmms_configuration.h"
+#include "xmmsc/xmmsc_util.h"
 
-#ifndef _XMMS_EFFECT_H_
-#define _XMMS_EFFECT_H_
+/**
+ * Get the default connection path.
+ *
+ * @param buf A char buffer
+ * @param len The length of buf (PATH_MAX is a good choice)
+ * @return A pointer to buf, or NULL if an error occured.
+ */
+const char *
+xmms_default_ipcpath_get (char *buf, int len)
+{
+	const char *xmmspath;
 
-#include "xmms/xmms_plugin.h"
+	xmmspath = getenv ("XMMS_PATH");
+	if (xmmspath && strlen (xmmspath) < len) {
+		strcpy (buf, xmmspath);
+	} else {
+		return xmms_fallback_ipcpath_get (buf, len);
+	}
 
-typedef struct xmms_effect_St xmms_effect_t;
-
-gpointer xmms_effect_private_data_get (xmms_effect_t *effect);
-void xmms_effect_private_data_set (xmms_effect_t *effect, gpointer data);
-xmms_plugin_t * xmms_effect_plugin_get (xmms_effect_t *effect);
-
-
-#endif
-
+	return buf;
+}
