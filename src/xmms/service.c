@@ -404,43 +404,51 @@ xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No service id given");
 		free (name);
+		return;
 	}
+
 	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 		                    "No service description given");
 		free (name);
 		free (desc);
+		return;
 	}
+
 	if (!xmms_ipc_msg_get_uint32 (msg, &major)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No major version given");
 		free (name);
 		free (desc);
+		return;
 	}
+
 	if (!xmms_ipc_msg_get_uint32 (msg, &minor)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No minor version given");
 		free (name);
 		free (desc);
+		return;
 	}
 
 	if (xmms_service_is_registered (xmms_service, name)) {
 		free (name);
 		free (desc);
-	} else {
-		entry = xmms_service_entry_new (xmms_service, name, desc, major, minor,
-		                                client);
-		g_mutex_lock (xmms_service->mutex);
-		g_hash_table_insert (xmms_service->registry, name, entry);
-		g_mutex_unlock (xmms_service->mutex);
-
-		table = xmms_service_changed_msg_new (entry->name, NULL,
-		                                      XMMS_SERVICE_CHANGED_REGISTER);
-		xmms_object_emit_f (XMMS_OBJECT (xmms_service),
-		                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
-		                    XMMS_OBJECT_CMD_ARG_DICT,
-		                    table);
-		g_hash_table_destroy (table);
-		XMMS_DBG ("New service registered");
+		return;
 	}
+
+	entry = xmms_service_entry_new (xmms_service, name, desc, major, minor,
+	                                client);
+	g_mutex_lock (xmms_service->mutex);
+	g_hash_table_insert (xmms_service->registry, name, entry);
+	g_mutex_unlock (xmms_service->mutex);
+
+	table = xmms_service_changed_msg_new (entry->name, NULL,
+	                                      XMMS_SERVICE_CHANGED_REGISTER);
+	xmms_object_emit_f (XMMS_OBJECT (xmms_service),
+	                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
+	                    XMMS_OBJECT_CMD_ARG_DICT,
+	                    table);
+	g_hash_table_destroy (table);
+	XMMS_DBG ("New service registered");
 }
 
 /**
