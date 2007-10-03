@@ -422,7 +422,7 @@ xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		free (desc);
 	}
 
-	if ((entry = xmms_service_is_registered (xmms_service, name))) {
+	if (xmms_service_is_registered (xmms_service, name)) {
 		free (name);
 		free (desc);
 	} else {
