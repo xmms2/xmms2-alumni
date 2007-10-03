@@ -430,6 +430,8 @@ xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	}
 
 	if (xmms_service_is_registered (xmms_service, name)) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
+		                    "Service already registered");
 		free (name);
 		free (desc);
 		return;
