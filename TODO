@@ -1,0 +1,19 @@
+
+== nycli ==
+* implement all playlist commands
+* don't blindly join tokens before coll_parsing, else loose spaces
+  is it okay if quotes are stripped when argv is parsed?
+* if 'playlist' is entered, show that it has subcommands, somehow
++ implement add and move commands
++ list: allow patterns (still keep correct positions)
+- columns: if missing info, replace by path
+  or: use anders' super-smart parser for everything?
+- callbacks: cleanup the code, redundancy, etc
+. load configuration (file, flags) and use it
+
+
+done:
++ use command return value to resume looping or not
++ implement sub-tries
++ bug: parser fails if first element is a flag!
+- broken quotes in shell interface?

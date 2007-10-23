@@ -1,0 +1,134 @@
+#+TITLE: Collections for XMMS2 v1.1
+#+AUTHOR: Sébastien Cevey
+#+EMAIL: seb@cine7.net
+#+OPTIONS: H:3
+#+COLUMNS: %35Item %10Where %4Prio %4Complexity %5Brainstorm{X} %10Depends
+
+#+PROPERTIES:
+#:Where_ALL: server clientlib bindings client
+#:Prio_ALL: low med high
+#:Complexity_ALL: triv easy med hard arg
+#:Brainstorm_ALL: "[ ]"  "[X]"
+#+END:
+
+* New collection commands
+
+** List all existing properties (keys) of all media in a collection
+   xmmsc_coll_property_list (coll, pattern = NULL)
+  
+   possibly filtered by a pattern (same syntax as Match, i.e. _ and % wildcards).
+?  pattern can be used to only find 'tag.*' properties, for instance.
+?  also want to list sources
+
+** List all values for a list of props in a collection
+   :PROPERTIES:
+   :Brainstorm: [X]
+   :END:
+   xmmsc_coll_property_values (coll, groupby = [])
+
+?  should we have both a fetch and a groupby list (i.e. any sense to fetch fields we don't group by?)
+   allows to remove the groupby argument from query_infos
+?  add start, limit offsets
+
+** Get N random media from a collection
+   xmmsc_coll_random_get (coll, n = 1)
+
+   Needed for client-side party shuffle or anything like that
+
+
+* Querying
+
+** Use functions as select fields (fetch), or matching field (e.g. compare dates, substring)
+   :PROPERTIES:
+   :Brainstorm: [X]
+   :END:
+
+** Aggregate functions:
+   :PROPERTIES:
+   :Brainstorm: [X]
+   :END:
+   - count  (function of "rows")
+   - max, min, avg  (function of "values")
+   - other?
+   - make it generic?
+   - combined with retrieving data, e.g. for each artist, count songs?
+     is that even possible currently?
+
+* Bindings
+
+** Ruby: Collection operators as classes
+
+   See C++ and python bindings.
+
+
+* Concept
+
+** Special "Virtuals" namespace, for
+
+   Examples:
+   - All Media
+   - Current Track
+   - Next Track
+   - Active Playlist
+   * Context(prev = 0, next = 0) ?
+
+   Other namespaces: Tags, ...?
+
+** Support medialists in DAG and queries, add ORDERBY and LIMIT collection operators
+   :PROPERTIES:
+   :Brainstorm: [X]
+   :END:
+
+   keep the nature (set vs list) of the output of an operator in the DAG
+   if filtering a medialist, let it remain a medialist
+   implement Orderby and Limit to change the nature (un/ordered)
+   requires intermediate results internally when querying..
+
+** Handle sources properly [headaches ahead]
+   :PROPERTIES:
+   :Brainstorm: [X]
+   :END:
+
+   use connection-saved sourcelist
+   for values to match?
+   for values to fetch?
+
+
+* Internal Implementation
+
+** Database
+
+*** S4!
+
+*** Optimize query generation
+
+    at least avoid JOINs if not needed (no union), improve those too
+
+*** Auto-sync (optional)  (see [[*Periodic DB-sync service client]])
+
+**** every N updates or after timeout T after last update,
+**** add timer in medialib loop?
+
+** CollParse
+
+*** Virtual path patterns
+
+*** Rewrite (?) more modular, allow plugging symbols/parsing in
+
+    Prototype first (python or ruby)
+    Allow to add state/query-dependent syntax, e.g.:
+    * '_' current track
+    * '+' previous pattern
+
+
+* External tools
+
+** nycli!
+
+** Experiment PartyShuffle as a service client (standard, advanced)
+
+** DB-sync service client (see [[*Auto-sync]])
+
+*** after large updates (wait until they're done)
+*** and/or periodically
+*** configurable
