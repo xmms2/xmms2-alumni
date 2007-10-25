@@ -10,6 +10,12 @@
   or: use anders' super-smart parser for everything?
 - callbacks: cleanup the code, redundancy, etc
 . load configuration (file, flags) and use it
+. make meaning of empty pattern configurable ('+', '_', etc)
+. in inline mode, make history/state optional, and save it per
+  parent-pid (shell) to avoid cross-session state.
+? allow use of pipe between commands:
+   xmms2 search Foo | xmms2 add
+   ls Bar* | xmms2 add
 
 
 done:

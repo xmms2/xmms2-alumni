@@ -11,6 +11,8 @@
 #:Brainstorm_ALL: "[ ]"  "[X]"
 #+END:
 
+# Also link to related issues!
+
 * New collection commands
 
 ** List all existing properties (keys) of all media in a collection
@@ -27,6 +29,7 @@
    xmmsc_coll_property_values (coll, groupby = [])
 
 ?  should we have both a fetch and a groupby list (i.e. any sense to fetch fields we don't group by?)
+?  what happens with Various Artists albums?
    allows to remove the groupby argument from query_infos
 ?  add start, limit offsets
 
@@ -98,7 +101,37 @@
 
 ** Database
 
-*** S4!
+*** S4 (Short String Storage System)!
+    (see [[http://wiki.xmms2.xmms.se/index.php/New_medialib_backend]["New medialib backend" wiki page]])
+
+**** Basic operations:
+     * Insert new media with a hash of properties
+     * Update a media property
+     * Remove a media
+     * List the property keys/values of a media
+     * Find all media by property value:
+       - Exact match
+       - Partial match
+       - Match after operation (e.g. tolower())
+       - Property existence
+     * List property keys/values for an arbitrary set (e.g. list artists)
+     * List existing properties for an arbitrary set
+
+**** Additional features required:
+     * Support sources
+     * Support both sets and ordered lists
+       - Allow conversion of sets to list (sort)
+       - List operations (limit, filter, move, insert)
+     * Advanced functions:
+       - SUBSTR(s, i, l), YEAR(d), LIKE(s, p), CONTAINS(s, c)
+       - 'd - NOW()', 'LEN(s) < 7'
+     * Type-relevant operations (e.g. numeric comparison)
+     * Native support for collection-like structures and queries?
+     * Multiple property values?
+
+**** XMMS2 specific features:
+
+     * Determine whether an album is VA
 
 *** Optimize query generation
 
@@ -106,8 +139,8 @@
 
 *** Auto-sync (optional)  (see [[*Periodic DB-sync service client]])
 
-**** every N updates or after timeout T after last update,
-**** add timer in medialib loop?
+    every N updates or after timeout T after last update.
+    add timer in medialib loop?
 
 ** CollParse
 
@@ -129,6 +162,6 @@
 
 ** DB-sync service client (see [[*Auto-sync]])
 
-*** after large updates (wait until they're done)
-*** and/or periodically
-*** configurable
+   after large updates (wait until they're done)
+   and/or periodically
+   configurable parameters
