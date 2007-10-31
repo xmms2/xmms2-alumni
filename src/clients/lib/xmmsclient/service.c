@@ -636,6 +636,7 @@ xmmsc_service_method_ret_type_add (xmmsc_service_method_t *method,
  * Add value to argument list.
  *
  * @param method The method which contains the argument list.
+ * @param name The name of the argument.
  * @param value The value going to be added.
  * @return 1 for success, 0 otherwise.
  */
@@ -664,6 +665,7 @@ xmmsc_service_method_arg_add_uint32 (xmmsc_service_method_t *method,
  * Add value to argument list.
  *
  * @param method The method which contains the argument list.
+ * @param name The name of the argument.
  * @param value The value going to be added.
  * @return 1 for success, 0 otherwise.
  */
@@ -692,6 +694,7 @@ xmmsc_service_method_arg_add_int32 (xmmsc_service_method_t *method,
  * Add value to argument list.
  *
  * @param method The method which contains the argument list.
+ * @param name The name of the argument.
  * @param value The value going to be added.
  * @return 1 for success, 0 otherwise.
  */
@@ -720,6 +723,7 @@ xmmsc_service_method_arg_add_string (xmmsc_service_method_t *method,
  * Add value to argument list.
  *
  * @param method The method which contains the argument list.
+ * @param name The name of the argument.
  * @param value The value going to be added.
  * @return 1 for success, 0 otherwise.
  */
@@ -748,6 +752,7 @@ xmmsc_service_method_arg_add_stringlist (xmmsc_service_method_t *method,
  * Add value to argument list.
  *
  * @param method The method which contains the argument list.
+ * @param name The name of the argument.
  * @param value The value going to be added.
  * @return 1 for success, 0 otherwise.
  */
@@ -776,7 +781,9 @@ xmmsc_service_method_arg_add_coll (xmmsc_service_method_t *method,
  * Add value to argument list.
  *
  * @param method The method which contains the argument list.
+ * @param name The name of the argument.
  * @param value The value going to be added.
+ * @param len The length of the value in bytes.
  * @return 1 for success, 0 otherwise.
  */
 int
@@ -806,6 +813,7 @@ xmmsc_service_method_arg_add_bin (xmmsc_service_method_t *method,
  * Add value to return value list.
  *
  * @param method The method which contains the return value list.
+ * @param name The name of the return value.
  * @param value The value going to be added.
  * @return 1 for success, 0 otherwise.
  */
@@ -834,6 +842,7 @@ xmmsc_service_method_ret_add_uint32 (xmmsc_service_method_t *method,
  * Add value to return value list.
  *
  * @param method The method which contains the return value list.
+ * @param name The name of the return value.
  * @param value The value going to be added.
  * @return 1 for success, 0 otherwise.
  */
@@ -862,6 +871,7 @@ xmmsc_service_method_ret_add_int32 (xmmsc_service_method_t *method,
  * Add value to return value list.
  *
  * @param method The method which contains the return value list.
+ * @param name The name of the return value.
  * @param value The value going to be added.
  * @return 1 for success, 0 otherwise.
  */
@@ -890,6 +900,7 @@ xmmsc_service_method_ret_add_string (xmmsc_service_method_t *method,
  * Add value to return value list.
  *
  * @param method The method which contains the return value list.
+ * @param name The name of the return value.
  * @param value The value going to be added.
  * @return 1 for success, 0 otherwise.
  */
@@ -918,6 +929,7 @@ xmmsc_service_method_ret_add_stringlist (xmmsc_service_method_t *method,
  * Add value to return value list.
  *
  * @param method The method which contains the return value list.
+ * @param name The name of the return value.
  * @param value The value going to be added.
  * @return 1 for success, 0 otherwise.
  */
@@ -946,7 +958,9 @@ xmmsc_service_method_ret_add_coll (xmmsc_service_method_t *method,
  * Add value to return value list.
  *
  * @param method The method which contains the return value list.
+ * @param name The name of the return value.
  * @param value The value going to be added.
+ * @param len The length of the value in bytes.
  * @return 1 for success, 0 otherwise.
  */
 int
