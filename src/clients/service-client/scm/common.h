@@ -89,8 +89,6 @@ void print_method (gpointer k, gpointer v, gpointer d);
 void print_service (gpointer k, gpointer v, gpointer d);
 void print_config (gpointer k, gpointer v, gpointer d);
 
-void method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
-                    xmmsc_service_method_t *method);
 config_t *lookup_client (info_t *info, xmmsc_result_t *res,
                          xmmsc_service_method_t *method);
 service_t *lookup_service (xmmsc_result_t *res, const config_t *config,

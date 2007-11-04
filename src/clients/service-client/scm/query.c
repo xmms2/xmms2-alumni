@@ -45,7 +45,6 @@ cb_list_sc_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 
 	xmmsc_service_method_ret_add_stringlist (method, ARG_IDS, retval);
 
-	method_return (conn, res, method);
 	g_free (retval);
 }
 
@@ -76,8 +75,6 @@ cb_list_sc (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		xmmsc_service_method_ret_add_uint32 (method, ARG_SERVICES,
 		                                     g_hash_table_size (config->services));
 	}
-
-	method_return (conn, res, method);
 }
 
 /**
@@ -115,7 +112,6 @@ cb_list_service_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		xmmsc_service_method_ret_add_stringlist (method, ARG_IDS, retval);
 	}
 
-	method_return (conn, res, method);
 	g_free (retval);
 }
 
@@ -150,8 +146,6 @@ cb_list_service (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		xmmsc_service_method_ret_add_uint32 (method, ARG_METHODS,
 		                                     g_hash_table_size (service->methods));
 	}
-
-	method_return (conn, res, method);
 }
 
 /**
@@ -191,7 +185,6 @@ cb_list_method_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		xmmsc_service_method_ret_add_stringlist (method, ARG_IDS, retval);
 	}
 
-	method_return (conn, res, method);
 	g_free (retval);
 }
 
@@ -224,8 +217,6 @@ cb_list_method (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		xmmsc_service_method_ret_add_uint32 (method, ARG_REGISTERED,
 		                                     ret->registered);
 	}
-
-	method_return (conn, res, method);
 }
 
 /**
@@ -264,6 +255,5 @@ cb_lookup_client (xmmsc_connection_t *conn, xmmsc_result_t *res,
 
 	xmmsc_service_method_ret_add_stringlist (method, ARG_IDS, retval);
 
-	method_return (conn, res, method);
 	g_free (retval);
 }

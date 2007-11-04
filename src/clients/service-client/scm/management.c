@@ -110,8 +110,6 @@ cb_change_argv (xmmsc_connection_t *conn, xmmsc_result_t *res,
 			xmmsc_service_method_ret_add_uint32 (method, ARG_RET, 1);
 		}
 	}
-
-	method_return (conn, res, method);
 }
 
 /**
@@ -144,8 +142,6 @@ cb_launch (xmmsc_connection_t *conn, xmmsc_result_t *res,
 
 		xmmsc_service_method_ret_add_uint32 (method, ARG_RET, 1);
 	}
-
-	method_return (conn, res, method);
 }
 
 /**
@@ -176,8 +172,6 @@ cb_shutdown (xmmsc_connection_t *conn, xmmsc_result_t *res,
 
 		xmmsc_service_method_ret_add_uint32 (method, ARG_RET, 1);
 	}
-
-	method_return (conn, res, method);
 }
 
 /**
@@ -211,8 +205,6 @@ cb_toggle_autostart (xmmsc_connection_t *conn, xmmsc_result_t *res,
 			xmmsc_service_method_ret_add_uint32 (method, ARG_RET, 1);
 		}
 	}
-
-	method_return (conn, res, method);
 }
 
 /**
