@@ -106,22 +106,6 @@ print_config (gpointer k, gpointer v, gpointer d)
 }
 
 /**
- * Return and reset arg list.
- */
-void
-method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
-               xmmsc_service_method_t *method)
-{
-	xmmsc_result_t *result;
-
-	x_return_if_fail (res);
-	x_return_if_fail (method);
-
-	result = xmmsc_service_return (conn, res, method);
-	xmmsc_result_unref (result);
-}
-
-/**
  * Get client name and look it up.
  */
 config_t *
