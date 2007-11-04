@@ -39,6 +39,9 @@
  * @{
  */
 
+static xmmsc_result_t *method_return (xmmsc_connection_t *conn,
+                                      xmmsc_result_t *res,
+                                      xmmsc_service_method_t *method);
 static int arg_attribute_get (xmmsc_service_argument_t *arg,
                               xmmsc_service_arg_type_t *type, uint32_t *optional,
                               uint32_t *none);
@@ -299,59 +302,6 @@ xmmsc_service_request (xmmsc_connection_t *conn, const char *service,
 	res = xmmsc_send_msg (conn, msg);
 
 	return res;
-}
-
-/**
- * Return service method request.
- *
- * All return values will be reset after this call.
- *
- * @param conn The connection to the server.
- * @param res The result containing the service cookie.
- * @param method The #xmmsc_service_method_t structure.
- */
-xmmsc_result_t *
-xmmsc_service_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
-                      xmmsc_service_method_t *method)
-{
-	xmms_ipc_msg_t *msg;
-	uint32_t cookie;
-	x_list_t *n;
-	xmmsc_service_argument_t *arg;
-
-	x_check_conn (conn, NULL);
-	x_return_null_if_fail (res);
-	x_return_null_if_fail (method);
-	x_return_null_if_fail (method->ret_list);
-
-	if (!xmmsc_result_get_service_cookie (res, &cookie))
-		return NULL;
-
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_RETURN);
-	xmms_ipc_msg_put_uint32 (msg, cookie);
-	if (method->error) {
-		xmms_ipc_msg_put_uint32 (msg, XMMS_IPC_CMD_ERROR);
-		xmms_ipc_msg_put_string (msg, method->error_str);
-	} else if (method->ret_list) {
-		xmms_ipc_msg_put_uint32 (msg, XMMS_IPC_CMD_REPLY);
-		for (n = method->ret_list; n; n = x_list_next (n)) {
-			arg = (xmmsc_service_argument_t *)n->data;
-
-			xmms_ipc_msg_put_string (msg, arg->name);
-			xmms_ipc_msg_put_uint32 (msg, arg->none);
-			if (arg->none)
-				continue;
-			if (!argument_write (msg, arg))
-				return 0;
-
-			arg_value_free (arg);
-		}
-	}
-
-	ret_reset (method);
-
-	return xmmsc_send_msg (conn, msg);
 }
 
 /**
@@ -1342,6 +1292,52 @@ xmmsc_service_method_error_isset (xmmsc_service_method_t *method)
 /**
  * @internal
  */
+static xmmsc_result_t *
+method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
+               xmmsc_service_method_t *method)
+{
+	xmms_ipc_msg_t *msg;
+	uint32_t cookie;
+	x_list_t *n;
+	xmmsc_service_argument_t *arg;
+
+	x_check_conn (conn, NULL);
+	x_return_null_if_fail (res);
+	x_return_null_if_fail (method);
+	if (!method->error && !method->ret_list) {
+		return NULL;
+	}
+
+	if (!xmmsc_result_get_service_cookie (res, &cookie))
+		return NULL;
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_CMD_SERVICE_RETURN);
+	xmms_ipc_msg_put_uint32 (msg, cookie);
+	if (method->error) {
+		xmms_ipc_msg_put_uint32 (msg, XMMS_IPC_CMD_ERROR);
+		xmms_ipc_msg_put_string (msg, method->error_str);
+	} else if (method->ret_list) {
+		xmms_ipc_msg_put_uint32 (msg, XMMS_IPC_CMD_REPLY);
+		for (n = method->ret_list; n; n = x_list_next (n)) {
+			arg = (xmmsc_service_argument_t *)n->data;
+
+			xmms_ipc_msg_put_string (msg, arg->name);
+			xmms_ipc_msg_put_uint32 (msg, arg->none);
+			if (arg->none)
+				continue;
+			if (!argument_write (msg, arg))
+				return 0;
+
+			arg_value_free (arg);
+		}
+	}
+
+	ret_reset (method);
+
+	return xmmsc_send_msg (conn, msg);
+}
+
 static int
 arg_attribute_get (xmmsc_service_argument_t *arg, xmmsc_service_arg_type_t *type,
                    uint32_t *optional, uint32_t *none)
@@ -1475,13 +1471,26 @@ free_infos (void *data)
 }
 
 static void
+dummy_handler (xmmsc_result_t *res, void *data)
+{
+
+}
+
+static void
 dispatch (xmmsc_result_t *res, void *data)
 {
 	xmmsc_service_method_t *method = (xmmsc_service_method_t *)data;
+	xmmsc_result_t *result;
 
 	x_return_if_fail (method);
 
 	method->func (method->conn, res, method, method->udata);
+
+	result = method_return (method->conn, res, method);
+	if (result) {
+		xmmsc_result_notifier_set (result, dummy_handler, NULL);
+		xmmsc_result_unref (result);
+	}
 }
 
 static xmmsc_coll_t *
