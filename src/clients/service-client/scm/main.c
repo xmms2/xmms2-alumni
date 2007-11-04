@@ -137,7 +137,7 @@ register_all (info_t *info)
 	                                   cb_list_sc_ids, info->clients);
 	if (!xmmsc_service_method_ret_type_add (method, ARG_IDS,
 	                                        XMMSC_SERVICE_ARG_TYPE_STRINGLIST,
-	                                        0)) {
+	                                        1)) {
 		print_error ("Unable to push types");
 		xmmsc_service_method_unref (method);
 		return FALSE;
