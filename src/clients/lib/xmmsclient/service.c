@@ -1378,7 +1378,7 @@ arg_value_free (xmmsc_service_argument_t *arg)
 		if (arg->value.string)
 			free (arg->value.string);
 	} else if (arg->type == XMMSC_SERVICE_ARG_TYPE_STRINGLIST) {
-		for (i = 0; arg->value.strings[i]; i++)
+		for (i = 0; arg->value.strings && arg->value.strings[i]; i++)
 			free (arg->value.strings[i]);
 		free (arg->value.strings);
 	} else if (arg->type == XMMSC_SERVICE_ARG_TYPE_BIN) {
