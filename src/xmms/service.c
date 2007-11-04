@@ -1111,6 +1111,8 @@ xmms_service_args_parse (xmms_ipc_msg_t *msg, GHashTable *args,
 				return NULL;
 			}
 
+			val = xmms_object_cmd_value_none_new ();
+			g_hash_table_insert (table, name, val);
 			continue;
 		}
 		switch (arg->type) {
