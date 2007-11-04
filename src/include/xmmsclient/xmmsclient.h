@@ -322,7 +322,6 @@ xmmsc_result_t *xmmsc_service_method_list (xmmsc_connection_t *conn, const char 
 xmmsc_result_t *xmmsc_service_method_describe (xmmsc_connection_t *conn, const char *service, const char *method);
 xmmsc_result_t *xmmsc_service_method_describe_args (xmmsc_connection_t *conn, const char *service, const char *method);
 xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method);
-xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn, xmmsc_result_t *res, xmmsc_service_method_t *method);
 xmmsc_result_t *xmmsc_service_shutdown (xmmsc_connection_t *conn, const char *service);
 /* broadcasts */
 xmmsc_result_t *xmmsc_broadcast_service_changed (xmmsc_connection_t *c);
