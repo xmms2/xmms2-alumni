@@ -38,6 +38,10 @@ cb_list_sc_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 
 	g_hash_table_foreach (clients, match_none, &list);
 
+	if (!list) {
+		return;
+	}
+
 	retval = g_new0 (gchar *, g_list_length (list));
 	for (i = 0, n = list; n; i++, n = g_list_next (n))
 		retval[i] = (gchar *)n->data;
