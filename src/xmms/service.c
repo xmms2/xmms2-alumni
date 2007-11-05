@@ -843,7 +843,9 @@ xmms_service_return (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 	                  XMMS_IPC_SIGNAL_SERVICE,
 	                  &arg);
 
-	xmms_object_cmd_value_free (arg.retval);
+	if (arg.retval) {
+		xmms_object_cmd_value_free (arg.retval);
+	}
 }
 
 /**
