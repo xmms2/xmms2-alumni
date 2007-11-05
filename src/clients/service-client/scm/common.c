@@ -146,9 +146,12 @@ lookup_service (xmmsc_result_t *res, const config_t *config, gchar **name,
 	service_t *service = NULL;
 
 	x_return_null_if_fail (res);
-	x_return_null_if_fail (config);
 	x_return_null_if_fail (name);
 	x_return_null_if_fail (method);
+
+	if (!config) {
+		return NULL;
+	}
 
 	if (!xmmsc_result_get_dict_entry_string (res, ARG_SERVICE_NAME, name)) {
 		xmmsc_service_method_error_set (method, "Service name not given.");
@@ -170,9 +173,12 @@ lookup_method (xmmsc_result_t *res, const service_t *service, gchar **name,
 	method_t *ret;
 
 	x_return_null_if_fail (res);
-	x_return_null_if_fail (service);
 	x_return_null_if_fail (name);
 	x_return_null_if_fail (method);
+
+	if (!service) {
+		return NULL;
+	}
 
 	if (!xmmsc_result_get_dict_entry_string (res, ARG_METHOD_NAME, name)) {
 		xmmsc_service_method_error_set (method,
