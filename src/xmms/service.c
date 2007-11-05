@@ -830,7 +830,7 @@ xmms_service_return (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 
 	if (xmms_service_args_is_error (msg) &&
 	    xmms_service_args_error_parse (msg, &error, err)) {
-		XMMS_SERVICE_ERROR (&arg.error, XMMS_ERROR_GENERIC, error);
+		xmms_error_set (&arg.error, XMMS_ERROR_GENERIC, error);
 		free (error);
 	} else {
 		if (!(table = xmms_service_args_parse (msg, cli->method->rets, err))) {
