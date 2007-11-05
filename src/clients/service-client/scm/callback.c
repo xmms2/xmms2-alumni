@@ -50,11 +50,11 @@ update_configval (xmmsc_result_t *res, void *data)
 		return;
 	}
 
-	if (g_strcasecmp (info->data, "clients." CONFIGVAL_TIMEOUT) == 0)
+	if (g_strcasecmp (info->data, "clients." CONFIGVAL_TIMEOUT) == 0) {
 		timeout = g_ascii_strtoull (value, NULL, 10);
-	else if (g_strcasecmp (info->data, "clients." CONFIGVAL_PERIOD) == 0)
+	} else if (g_strcasecmp (info->data, "clients." CONFIGVAL_PERIOD) == 0) {
 		period = g_ascii_strtoull (value, NULL, 10);
-	else {
+	} else {
 		if (g_strcasecmp (value, "yes") == 0) {
 			if (!monitor) {
 				monitor = TRUE;
@@ -187,12 +187,13 @@ cb_configval_changed (xmmsc_result_t *res, void *data)
 		return;
 	}
 
-	if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_TIMEOUT, &value))
+	if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_TIMEOUT, &value)) {
 		timeout = g_ascii_strtoull (value, NULL, 10);
-	else if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_PERIOD, &value))
+	} else if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_PERIOD,
+	                                               &value)) {
 		period = g_ascii_strtoull (value, NULL, 10);
-	else if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_MONITOR,
-	                                             &value)) {
+	} else if (xmmsc_result_get_dict_entry_string (res, CONFIGVAL_MONITOR,
+	                                               &value)) {
 		if (g_strcasecmp (value, "yes") == 0) {
 			if (!monitor) {
 				monitor = TRUE;
@@ -236,8 +237,9 @@ cb_service_changed (xmmsc_result_t *res, void *data)
 
 	if (g_strcasecmp (name, SERVICE_MANAGEMENT) == 0 ||
 	    g_strcasecmp (name, SERVICE_QUERY) == 0 ||
-	    g_strcasecmp (name, SERVICE_MISC) == 0)
+	    g_strcasecmp (name, SERVICE_MISC) == 0) {
 		return;
+	}
 
 	info.conn = ((info_t *)data)->conn;
 	info.clients = ((info_t *)data)->clients;
@@ -255,9 +257,9 @@ cb_service_changed (xmmsc_result_t *res, void *data)
 		}
 
 		g_hash_table_foreach (info.clients, match_unregistered_service, &info);
-		if (info.ret)
+		if (info.ret) {
 			((service_t *)((GList *)info.ret)->data)->registered = TRUE;
-		else {
+		} else {
 			print_error ("Unable to find an unregistered service as: %s", name);
 			return;
 		}
@@ -268,9 +270,9 @@ cb_service_changed (xmmsc_result_t *res, void *data)
 		break;
 	case XMMS_SERVICE_CHANGED_UNREGISTER:
 		g_hash_table_foreach (info.clients, match_registered_service, &info);
-		if (info.ret)
+		if (info.ret) {
 			((service_t *)((GList *)info.ret)->data)->registered = FALSE;
-		else {
+		} else {
 			print_error ("Unable to find a registered service as: %s", name);
 			return;
 		}
@@ -280,8 +282,9 @@ cb_service_changed (xmmsc_result_t *res, void *data)
 		break;
 	}
 
-	if (info.ret)
+	if (info.ret) {
 		g_list_free ((GList *)info.ret);
+	}
 }
 
 /**
@@ -316,8 +319,9 @@ cb_method_changed (xmmsc_result_t *res, void *data)
 
 	if (g_strcasecmp (service_name, SERVICE_MANAGEMENT) == 0 ||
 	    g_strcasecmp (service_name, SERVICE_QUERY) == 0 ||
-	    g_strcasecmp (service_name, SERVICE_MISC) == 0)
+	    g_strcasecmp (service_name, SERVICE_MISC) == 0) {
 		return;
+	}
 
 	info.conn = ((info_t *)data)->conn;
 	info.clients = ((info_t *)data)->clients;
@@ -353,9 +357,9 @@ cb_method_changed (xmmsc_result_t *res, void *data)
 			return;
 		}
 
-		if (!method->registered)
+		if (!method->registered) {
 			method->registered = TRUE;
-		else {
+		} else {
 			print_error ("Unable to find an unregistered method as: %s",
 			             method_name);
 			return;
@@ -365,9 +369,9 @@ cb_method_changed (xmmsc_result_t *res, void *data)
 		xmmsc_result_unref (result);
 		break;
 	case XMMS_SERVICE_CHANGED_UNREGISTER:
-		if (method->registered)
+		if (method->registered) {
 			method->registered = FALSE;
-		else {
+		} else {
 			print_error ("Unable to find an unregistered method as: %s",
 			             method_name);
 			return;

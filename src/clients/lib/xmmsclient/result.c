@@ -1608,42 +1608,54 @@ xmmsc_deserialize_method (xmms_ipc_msg_t *msg)
 	char *desc = NULL;
 	xmmsc_service_method_t *method = NULL;
 
-	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len))
+	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
 		goto err;
-	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len))
+	}
+	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len)) {
 		goto err;
+	}
 
 	method = xmmsc_service_method_new (name, desc, NULL, NULL);
 	free (name);
 	free (desc);
 
-	if (!xmms_ipc_msg_get_uint32 (msg, &i))
+	if (!xmms_ipc_msg_get_uint32 (msg, &i)) {
 		goto err;
+	}
 	for (; i > 0; i--) {
-		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len))
+		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
 			goto err;
-		if (!xmms_ipc_msg_get_uint32 (msg, &type))
+		}
+		if (!xmms_ipc_msg_get_uint32 (msg, &type)) {
 			goto err;
-		if (!xmms_ipc_msg_get_int32 (msg, &opt))
+		}
+		if (!xmms_ipc_msg_get_int32 (msg, &opt)) {
 			goto err;
+		}
 
-		if (!xmmsc_service_method_arg_type_add (method, name, type, opt))
+		if (!xmmsc_service_method_arg_type_add (method, name, type, opt)) {
 			goto err;
+		}
 		free (name);
 	}
 
-	if (!xmms_ipc_msg_get_uint32 (msg, &i))
+	if (!xmms_ipc_msg_get_uint32 (msg, &i)) {
 		goto err;
+	}
 	for (; i > 0; i--) {
-		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len))
+		if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
 			goto err;
-		if (!xmms_ipc_msg_get_uint32 (msg, &type))
+		}
+		if (!xmms_ipc_msg_get_uint32 (msg, &type)) {
 			goto err;
-		if (!xmms_ipc_msg_get_int32 (msg, &opt))
+		}
+		if (!xmms_ipc_msg_get_int32 (msg, &opt)) {
 			goto err;
+		}
 
-		if (!xmmsc_service_method_ret_type_add (method, name, type, opt))
+		if (!xmmsc_service_method_ret_type_add (method, name, type, opt)) {
 			goto err;
+		}
 		free (name);
 	}
 

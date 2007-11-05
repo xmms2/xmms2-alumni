@@ -55,8 +55,9 @@ print_error_and_exit (info_t *info, const gchar *fmt, ...)
 	g_printerr ("ERROR: %s\n", buf);
 
 	g_hash_table_destroy (info->clients);
-	if (info->conn)
+	if (info->conn) {
 		xmmsc_unref (info->conn);
+	}
 	exit (EXIT_FAILURE);
 }
 
@@ -71,8 +72,9 @@ print_method (gpointer k, gpointer v, gpointer d)
 
 	print_info ("\t\t%s", name);
 	print_info ("\t\tdesc: %s", method->desc);
-	if (method->registered)
+	if (method->registered) {
 		print_info ("\t\tregistered");
+	}
 }
 
 void
@@ -84,8 +86,9 @@ print_service (gpointer k, gpointer v, gpointer d)
 	print_info ("\t%s", name);
 	print_info ("\tdesc: %s\n\tmajor: %d\n\tminor: %d", serv->desc, serv->major,
 	            serv->minor);
-	if (serv->registered)
+	if (serv->registered) {
 		print_info ("\tregistered");
+	}
 	g_hash_table_foreach (serv->methods, print_method, NULL);
 }
 
@@ -98,10 +101,11 @@ print_config (gpointer k, gpointer v, gpointer d)
 	print_info ("%s", name);
 	print_info ("path: %s\nargv: %s", conf->path, conf->argv);
 	print_info ("Pid: %d", conf->pid);
-	if (conf->autostart)
+	if (conf->autostart) {
 		print_info ("auto: yes");
-	else
+	} else {
 		print_info ("auto: no");
+	}
 	g_hash_table_foreach (conf->services, print_service, NULL);
 }
 
@@ -118,15 +122,16 @@ lookup_client (info_t *info, xmmsc_result_t *res, xmmsc_service_method_t *method
 	x_return_null_if_fail (method);
 
 	if (!xmmsc_result_get_dict_entry_string (res, ARG_CLIENT_NAME,
-	                                         (gchar **)info->ret))
+	                                         (gchar **)info->ret)) {
 		xmmsc_service_method_error_set (method,
 		                                "Service client name not given.");
-	else
+	} else {
 		if (!(config = g_hash_table_lookup (info->clients,
 		                                    *((gchar **)info->ret))))
 			xmmsc_service_method_error_set (method,
 			                                "Service client does not exist or it"
 			                                " is a remote service client.");
+	}
 
 	return config;
 }
@@ -145,11 +150,12 @@ lookup_service (xmmsc_result_t *res, const config_t *config, gchar **name,
 	x_return_null_if_fail (name);
 	x_return_null_if_fail (method);
 
-	if (!xmmsc_result_get_dict_entry_string (res, ARG_SERVICE_NAME, name))
+	if (!xmmsc_result_get_dict_entry_string (res, ARG_SERVICE_NAME, name)) {
 		xmmsc_service_method_error_set (method, "Service name not given.");
-	else
+	} else {
 		if (!(service = g_hash_table_lookup (config->services, *name)))
 			xmmsc_service_method_error_set (method, "Service does not exist");
+	}
 
 	return service;
 }
@@ -168,13 +174,14 @@ lookup_method (xmmsc_result_t *res, const service_t *service, gchar **name,
 	x_return_null_if_fail (name);
 	x_return_null_if_fail (method);
 
-	if (!xmmsc_result_get_dict_entry_string (res, ARG_METHOD_NAME, name))
+	if (!xmmsc_result_get_dict_entry_string (res, ARG_METHOD_NAME, name)) {
 		xmmsc_service_method_error_set (method,
 		                                "Service method name not given.");
-	else
+	} else {
 		if (!(ret = g_hash_table_lookup (service->methods, *name)))
 			xmmsc_service_method_error_set (method,
 			                                "Service method does not exist");
+	}
 
 	return ret;
 }

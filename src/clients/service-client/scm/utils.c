@@ -25,8 +25,9 @@ match_auto (gpointer key, gpointer value, gpointer data)
 	GList **list = data;
 	config_t *config = value;
 
-	if (config->autostart)
+	if (config->autostart) {
 		*list = g_list_prepend (*list, config);
+	}
 }
 
 /**
@@ -39,8 +40,9 @@ match_pid (gpointer key, gpointer value, gpointer data)
 	gchar *name = key;
 	config_t *config = value;
 
-	if (config->pid)
+	if (config->pid) {
 		*list = g_list_prepend (*list, name);
+	}
 }
 
 /**
@@ -101,8 +103,9 @@ match_service (gpointer key, gpointer value, gpointer data)
 	gchar *name = key;
 	config_t *config = value;
 
-	if (g_hash_table_lookup (config->services, (const gchar *)info->data))
+	if (g_hash_table_lookup (config->services, (const gchar *)info->data)) {
 		info->ret = g_list_prepend ((GList *)info->ret, name);
+	}
 }
 
 /**
@@ -117,8 +120,9 @@ match_registered_service (gpointer key, gpointer value, gpointer data)
 
 	if ((service = g_hash_table_lookup (config->services,
 	                                    (const gchar *)info->data)) &&
-	    service->registered)
+	    service->registered) {
 		info->ret = g_list_prepend ((GList *)info->ret, service);
+	}
 }
 
 /**
@@ -133,6 +137,7 @@ match_unregistered_service (gpointer key, gpointer value, gpointer data)
 
 	if ((service = g_hash_table_lookup (config->services,
 	                                    (const gchar *)info->data)) &&
-	    !service->registered)
+	    !service->registered) {
 		info->ret = g_list_prepend ((GList *)info->ret, service);
+	}
 }

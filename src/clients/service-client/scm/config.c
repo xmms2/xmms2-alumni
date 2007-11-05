@@ -53,18 +53,19 @@ parse_service (service_t **service, gchar **split, gint *i)
 		stripped = g_strstrip (split[*i]);
 
 		if (g_str_has_prefix (stripped, "[") &&
-		    g_str_has_suffix (stripped, "]"))
+		    g_str_has_suffix (stripped, "]")) {
 			break;
+		}
 
 		s = g_strsplit (stripped, "=", 2);
 		if (s && s[0] && s[1]) {
-			if (g_strcasecmp (s[0], "description") == 0)
+			if (g_strcasecmp (s[0], "description") == 0) {
 				(*service)->desc = g_strdup (s[1]);
-			else if (g_strcasecmp (s[0], "major") == 0)
+			} else if (g_strcasecmp (s[0], "major") == 0) {
 				(*service)->major = g_ascii_strtoull (s[1], NULL, 10);
-			else if (g_strcasecmp (s[0], "minor") == 0)
+			} else if (g_strcasecmp (s[0], "minor") == 0) {
 				(*service)->minor = g_ascii_strtoull (s[1], NULL, 10);
-			else {
+			} else {
 				method = g_new0 (method_t, 1);
 				method->desc = g_strdup (s[1]);
 				g_hash_table_insert ((*service)->methods, g_strdup (s[0]),
@@ -109,15 +110,16 @@ parse_config (const gchar *buffer)
 
 		s = g_strsplit (stripped, "=", 2);
 		if (s && s[0] && s[1]) {
-			if (g_strcasecmp (s[0], "path") == 0)
+			if (g_strcasecmp (s[0], "path") == 0) {
 				config->path = g_strdup (s[1]);
-			else if (g_strcasecmp (s[0], "argv") == 0)
+			} else if (g_strcasecmp (s[0], "argv") == 0) {
 				config->argv = g_strdup (s[1]);
-			else if (g_strcasecmp (s[0], "auto") == 0) {
-				if (g_strcasecmp (s[1], "yes") == 0)
+			} else if (g_strcasecmp (s[0], "auto") == 0) {
+				if (g_strcasecmp (s[1], "yes") == 0) {
 					config->autostart = TRUE;
-				else
+				} else {
 					config->autostart = FALSE;
+				}
 			}
 		}
 		g_strfreev (s);
@@ -183,8 +185,9 @@ read_all (info_t *info)
 	}
 
 	while ((f = g_dir_read_name (dir))) {
-		if ((config = read_config (f)))
+		if ((config = read_config (f))) {
 			g_hash_table_insert (info->clients, g_strdup (f), config);
+		}
 	}
 
 	g_dir_close (dir);
@@ -326,8 +329,9 @@ free_config (gpointer v)
 	if (config) {
 		g_free (config->path);
 		g_free (config->argv);
-		if (config->pid)
+		if (config->pid) {
 			g_spawn_close_pid (config->pid);
+		}
 		g_hash_table_destroy (config->services);
 		g_free (config);
 	}

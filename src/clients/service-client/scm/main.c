@@ -72,8 +72,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_MANAGEMENT, method))
+	if (!register_single (info, SERVICE_MANAGEMENT, method)) {
 		return FALSE;
+	}
 
 	method = xmmsc_service_method_new ("shutdown", "Shutdown a service client",
 	                                   cb_shutdown, NULL);
@@ -85,8 +86,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_MANAGEMENT, method))
+	if (!register_single (info, SERVICE_MANAGEMENT, method)) {
 		return FALSE;
+	}
 
 	method = xmmsc_service_method_new ("change_argv", "Change the command-line"
 	                                   " argument to pass to a service client",
@@ -101,8 +103,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_MANAGEMENT, method))
+	if (!register_single (info, SERVICE_MANAGEMENT, method)) {
 		return FALSE;
+	}
 
 	method = xmmsc_service_method_new ("toggle_autostart", "Toggle the autostart"
 	                                   " property of a service client",
@@ -117,8 +120,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_MANAGEMENT, method))
+	if (!register_single (info, SERVICE_MANAGEMENT, method)) {
 		return FALSE;
+	}
 
 	/* Query methods */
 	result = xmmsc_service_register (info->conn, SERVICE_QUERY, "Query"
@@ -142,8 +146,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method))
+	if (!register_single (info, SERVICE_QUERY, method)) {
 		return FALSE;
+	}
 
 	method = xmmsc_service_method_new ("service_ids", "List the names of"
 	                                   " all services of a service client",
@@ -157,8 +162,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method))
+	if (!register_single (info, SERVICE_QUERY, method)) {
 		return FALSE;
+	}
 
 	method = xmmsc_service_method_new ("method_ids", "List the names of"
 	                                   " all methods of a service",
@@ -174,8 +180,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method))
+	if (!register_single (info, SERVICE_QUERY, method)) {
 		return FALSE;
+	}
 
 	method = xmmsc_service_method_new ("lookup_client", "Search for all service"
 	                                   " clients which provide the given"
@@ -190,8 +197,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method))
+	if (!register_single (info, SERVICE_QUERY, method)) {
 		return FALSE;
+	}
 
 	method = xmmsc_service_method_new ("sc", "List details of an installed"
 	                                   " service client",
@@ -208,8 +216,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method))
+	if (!register_single (info, SERVICE_QUERY, method)) {
 		return FALSE;
+	}
 
 	method = xmmsc_service_method_new ("service", "List details of a"
 	                                   " service",
@@ -232,8 +241,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method))
+	if (!register_single (info, SERVICE_QUERY, method)) {
 		return FALSE;
+	}
 
 	method = xmmsc_service_method_new ("method", "List details of a method",
 	                                   cb_list_method, info->clients);
@@ -251,8 +261,9 @@ register_all (info_t *info)
 		xmmsc_service_method_unref (method);
 		return FALSE;
 	}
-	if (!register_single (info, SERVICE_QUERY, method))
+	if (!register_single (info, SERVICE_QUERY, method)) {
 		return FALSE;
+	}
 
 	/* Miscellaneous methods */
 	result = xmmsc_service_register (info->conn, SERVICE_MISC,
@@ -269,8 +280,9 @@ register_all (info_t *info)
 	method = xmmsc_service_method_new ("poll", "Force the manager to check for"
 	                                   " any changes in config dir",
 	                                   cb_poll, info->clients);
-	if (!register_single (info, SERVICE_MISC, method))
+	if (!register_single (info, SERVICE_MISC, method)) {
 		return FALSE;
+	}
 
 	return TRUE;
 }
@@ -292,8 +304,9 @@ static void
 cb_quit (gpointer data)
 {
 	kill_all (((info_t *)data)->clients);
-	if (timeout_quit (((info_t *)data)->ml))
+	if (timeout_quit (((info_t *)data)->ml)) {
 		g_timeout_add (timeout / 5, timeout_quit, ((info_t *)data)->ml);
+	}
 }
 
 static gboolean
@@ -314,8 +327,9 @@ subscribe_broadcasts (info_t *info)
 static void
 quit (info_t *info)
 {
-	if (monitor)
+	if (monitor) {
 		shutdown_monitor ();
+	}
 	g_hash_table_destroy (info->clients);
 	g_main_loop_unref (info->ml);
 	xmmsc_unref (info->conn);
@@ -330,10 +344,12 @@ main (void)
 	monitor = FALSE;
 
 	info.conn = xmmsc_init (SCM_NAME);
-	if (!info.conn)
+	if (!info.conn) {
 		print_error_and_exit (&info, "Unable to initialize connection.");
-	if (!xmmsc_connect (info.conn, getenv ("XMMS_PATH")))
+	}
+	if (!xmmsc_connect (info.conn, getenv ("XMMS_PATH"))) {
 		print_error_and_exit (&info, "Unable to connect to server.");
+	}
 
 	info.ml = g_main_loop_new (NULL, FALSE);
 
