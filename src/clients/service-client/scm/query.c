@@ -109,6 +109,10 @@ cb_list_service_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 	if ((config = lookup_client (&info, res, method))) {
 		g_hash_table_foreach (config->services, match_none, &list);
 
+		if (!list) {
+			return;
+		}
+
 		retval = g_new0 (gchar *, g_list_length (list));
 		for (i = 0, n = list; n; i++, n = g_list_next (n)) {
 			retval[i] = (gchar *)n->data;
@@ -183,6 +187,10 @@ cb_list_method_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 	                               &name, method))) {
 		g_hash_table_foreach (service->methods, match_none, &list);
 
+		if (!list) {
+			return;
+		}
+
 		retval = g_new0 (gchar *, g_list_length (list));
 		for (i = 0, n = list; n; i++, n = g_list_next (n)) {
 			retval[i] = (gchar *)n->data;
@@ -255,6 +263,10 @@ cb_lookup_client (xmmsc_connection_t *conn, xmmsc_result_t *res,
 	info.ret = NULL;
 
 	g_hash_table_foreach ((GHashTable *)data, match_service, &info);
+
+	if (!info.ret) {
+		return;
+	}
 
 	retval = g_new0 (gchar *, g_list_length ((GList *)info.ret));
 	for (i = 0, n = (GList *)info.ret; n; i++, n = g_list_next (n)) {
