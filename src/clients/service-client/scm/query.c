@@ -79,6 +79,8 @@ cb_list_sc (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		                                     config->autostart);
 		xmmsc_service_method_ret_add_uint32 (method, ARG_SERVICES,
 		                                     g_hash_table_size (config->services));
+	} else {
+		xmmsc_service_method_error_set (method, "Service client not found.");
 	}
 }
 
@@ -155,6 +157,8 @@ cb_list_service (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		                                     service->registered);
 		xmmsc_service_method_ret_add_uint32 (method, ARG_METHODS,
 		                                     g_hash_table_size (service->methods));
+	} else {
+		xmmsc_service_method_error_set (method, "Service not found.");
 	}
 }
 
@@ -231,6 +235,8 @@ cb_list_method (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		xmmsc_service_method_ret_add_string (method, ARG_DESC, ret->desc);
 		xmmsc_service_method_ret_add_uint32 (method, ARG_REGISTERED,
 		                                     ret->registered);
+	} else {
+		xmmsc_service_method_error_set (method, "Method not found.");
 	}
 }
 
