@@ -290,8 +290,10 @@ xmmsc_service_request (xmmsc_connection_t *conn, const char *service,
 			xmms_ipc_msg_put_uint32 (msg, arg->none);
 			if (arg->none)
 				continue;
-			if (!argument_write (msg, arg))
+			if (!argument_write (msg, arg)) {
+				xmms_ipc_msg_destroy (msg);
 				return 0;
+			}
 
 			arg_value_free (arg);
 		}
@@ -1326,8 +1328,10 @@ method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
 			xmms_ipc_msg_put_uint32 (msg, arg->none);
 			if (arg->none)
 				continue;
-			if (!argument_write (msg, arg))
+			if (!argument_write (msg, arg)) {
+				xmms_ipc_msg_destroy (msg);
 				return 0;
+			}
 
 			arg_value_free (arg);
 		}
