@@ -193,8 +193,9 @@ xmms_service_handle (xmms_object_t *obj, xmms_ipc_msg_t *msg,
 		if (arg) {
 			arg->retval = xmms_object_cmd_value_none_new ();
 			xmms_service_unregister (serv, msg, client, &arg->error);
-		} else
+		} else {
 			xmms_service_unregister (serv, msg, client, NULL);
+		}
 		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_LIST:
 		xmms_service_list (serv, arg);
@@ -549,22 +550,25 @@ xmms_service_unregister (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		                                   xmms_service_matchsc,
 		                                   GUINT_TO_POINTER (client));
 		g_mutex_unlock (xmms_service->mutex);
-		if (ret > 0)
+		if (ret > 0) {
 			XMMS_DBG ("Service client (%d) just vaporized!"
 			          " Removed from registry.", client);
+		}
 
 		g_mutex_lock (xmms_service->mutex);
 		ret = g_hash_table_foreach_remove (xmms_service->clients,
 		                                   xmms_service_method_request_matchfd,
 		                                   GUINT_TO_POINTER (client));
 		g_mutex_unlock (xmms_service->mutex);
-		if (ret > 0)
+		if (ret > 0) {
 			XMMS_DBG ("Requests from client (%d) removed.", client);
+		}
 		return;
 	}
 
-	if (!(entry = xmms_service_get (xmms_service, msg, &name, err)))
+	if (!(entry = xmms_service_get (xmms_service, msg, &name, err))) {
 		return;
+	}
 
 	if (client != entry->sc) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_PERMISSION,
@@ -575,9 +579,10 @@ xmms_service_unregister (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 
 	if (!xmms_service_method_unregister (xmms_service, msg, entry, err)) {
 		g_mutex_lock (xmms_service->mutex);
-		if (!g_hash_table_remove (xmms_service->registry, name))
+		if (!g_hash_table_remove (xmms_service->registry, name)) {
 			XMMS_SERVICE_ERROR (err, XMMS_ERROR_GENERIC,
 			                    "Failed to remove service");
+		}
 		g_mutex_unlock (xmms_service->mutex);
 	}
 
@@ -603,8 +608,9 @@ xmms_service_method_unregister (xmms_service_t *xmms_service,
 		if (!g_hash_table_remove (entry->methods, name)) {
 			XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Invalid method name!");
 			ret = TRUE;
-		} else
+		} else {
 			ret = g_hash_table_size (entry->methods) == 0 ? FALSE : TRUE;
+		}
 		g_mutex_unlock (entry->mutex);
 
 		XMMS_DBG ("Method unregistered.");
@@ -680,8 +686,9 @@ xmms_service_method_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 
 	g_return_if_fail (msg);
 
-	if (!(entry = xmms_service_get (xmms_service, msg, &name, &arg->error)))
+	if (!(entry = xmms_service_get (xmms_service, msg, &name, &arg->error))) {
 		return;
+	}
 
 	free (name);
 
@@ -705,13 +712,15 @@ xmms_service_method_info_list (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg
 
 	g_return_if_fail (msg);
 
-	if (!(entry = xmms_service_get (xmms_service, msg, &name, &arg->error)))
+	if (!(entry = xmms_service_get (xmms_service, msg, &name, &arg->error))) {
 		return;
+	}
 
 	free (name);
 
-	if ((method = xmms_service_method_get (msg, entry, &name, &arg->error)))
+	if ((method = xmms_service_method_get (msg, entry, &name, &arg->error))) {
 		arg->retval = xmms_object_cmd_value_method_new (method);
+	}
 
 	free (name);
 }
@@ -735,13 +744,15 @@ xmms_service_request (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 
 	g_return_val_if_fail (msg, FALSE);
 
-	if (!(entry = xmms_service_get (xmms_service, msg, &name, err)))
+	if (!(entry = xmms_service_get (xmms_service, msg, &name, err))) {
 		return FALSE;
+	}
 
 	free (name);
 
-	if (!(method = xmms_service_method_get (msg, entry, &name, err)))
+	if (!(method = xmms_service_method_get (msg, entry, &name, err))) {
 		return FALSE;
+	}
 
 	XMMS_DBG ("Requesting method (%s) from client (%d)", name, client);
 
@@ -822,8 +833,9 @@ xmms_service_return (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 		XMMS_SERVICE_ERROR (&arg.error, XMMS_ERROR_GENERIC, error);
 		free (error);
 	} else {
-		if (!(table = xmms_service_args_parse (msg, cli->method->rets, err)))
+		if (!(table = xmms_service_args_parse (msg, cli->method->rets, err))) {
 			return;
+		}
 		arg.retval = xmms_object_cmd_value_dict_new (table);
 	}
 
@@ -847,8 +859,9 @@ xmms_service_shutdown (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
 
 	g_return_if_fail (msg);
 
-	if (!(entry = xmms_service_get (xmms_service, msg, &name, err)))
+	if (!(entry = xmms_service_get (xmms_service, msg, &name, err))) {
 		return;
+	}
 
 	free (name);
 
@@ -870,8 +883,9 @@ xmms_service_is_registered (xmms_service_t *xmms_service, const gchar *name)
 {
 	xmms_service_entry_t *ret;
 
-	if (!name)
+	if (!name) {
 		return NULL;
+	}
 
 	g_mutex_lock (xmms_service->mutex);
 	ret = g_hash_table_lookup (xmms_service->registry, name);
@@ -887,8 +901,9 @@ xmms_service_method_is_registered (xmms_service_entry_t *entry,
 	xmms_service_method_t *ret;
 
 	g_return_val_if_fail (entry, NULL);
-	if (!name)
+	if (!name) {
 		return NULL;
+	}
 
 	g_mutex_lock (entry->mutex);
 	ret = g_hash_table_lookup (entry->methods, name);
@@ -918,8 +933,9 @@ xmms_service_method_request_matchfd (gpointer key, gpointer value, gpointer data
 	xmms_service_client_t *cli = value;
 	xmms_socket_t fd = GPOINTER_TO_UINT (data);
 
-	if (cli->fd == fd)
+	if (cli->fd == fd) {
 		return TRUE;
+	}
 
 	return FALSE;
 }
@@ -934,8 +950,9 @@ xmms_service_method_request_matchmethod (gpointer key, gpointer value,
 	xmms_service_client_t *cli = value;
 	xmms_service_method_t *method = data;
 
-	if (cli->method == method)
+	if (cli->method == method) {
 		return TRUE;
+	}
 
 	return FALSE;
 }
@@ -1119,16 +1136,18 @@ xmms_service_args_parse (xmms_ipc_msg_t *msg, GHashTable *args,
 		case XMMS_OBJECT_CMD_ARG_UINT32:
 		{
 			guint tmp;
-			if (!xmms_ipc_msg_get_uint32 (msg, &tmp))
+			if (!xmms_ipc_msg_get_uint32 (msg, &tmp)) {
 				goto inval;
+			}
 			val = xmms_object_cmd_value_uint_new (tmp);
 		}
 		break;
 		case XMMS_OBJECT_CMD_ARG_INT32:
 		{
 			gint tmp;
-			if (!xmms_ipc_msg_get_int32 (msg, &tmp))
+			if (!xmms_ipc_msg_get_int32 (msg, &tmp)) {
 				goto inval;
+			}
 			val = xmms_object_cmd_value_int_new (tmp);
 		}
 		break;
@@ -1147,8 +1166,9 @@ xmms_service_args_parse (xmms_ipc_msg_t *msg, GHashTable *args,
 		{
 			GList *tmp = NULL;
 			guint size, k;
-			if (!xmms_ipc_msg_get_uint32 (msg, &size))
+			if (!xmms_ipc_msg_get_uint32 (msg, &size)) {
 				goto inval;
+			}
 			for (k = 0; k < size; k++) {
 				gchar *buf;
 				if (!xmms_ipc_msg_get_string_alloc (msg, &buf, &len) ||
@@ -1212,8 +1232,9 @@ xmms_service_args_is_error (xmms_ipc_msg_t *msg)
 
 	g_return_val_if_fail (msg, FALSE);
 
-	if (xmms_ipc_msg_get_uint32 (msg, &err) && err == XMMS_IPC_CMD_ERROR)
+	if (xmms_ipc_msg_get_uint32 (msg, &err) && err == XMMS_IPC_CMD_ERROR) {
 		return TRUE;
+	}
 
 	return FALSE;
 }

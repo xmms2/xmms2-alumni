@@ -134,8 +134,9 @@ xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service,
 
 	res = xmmsc_send_msg (conn, msg);
 
-	if (xmmsc_result_iserror (res))
+	if (xmmsc_result_iserror (res)) {
 		return res;
+	}
 
 	method->conn = conn;
 
@@ -288,8 +289,9 @@ xmmsc_service_request (xmmsc_connection_t *conn, const char *service,
 
 			xmms_ipc_msg_put_string (msg, arg->name);
 			xmms_ipc_msg_put_uint32 (msg, arg->none);
-			if (arg->none)
+			if (arg->none) {
 				continue;
+			}
 			if (!argument_write (msg, arg)) {
 				xmms_ipc_msg_destroy (msg);
 				return 0;
@@ -416,8 +418,9 @@ xmmsc_service_method_new_full (const char *name, const char *description,
 {
 	xmmsc_service_method_t *ret = NULL;
 
-	if (!name || !description)
+	if (!name || !description) {
 		return NULL;
+	}
 
 	ret = x_new0 (xmmsc_service_method_t, 1);
 
@@ -446,8 +449,9 @@ xmmsc_service_method_free (xmmsc_service_method_t *method)
 	x_list_t *n;
 	xmmsc_service_argument_t *arg;
 
-	if (!method)
+	if (!method) {
 		return;
+	}
 
 	free (method->name);
 	free (method->description);
@@ -467,8 +471,9 @@ xmmsc_service_method_free (xmmsc_service_method_t *method)
 	x_list_free (method->arg_list);
 	free (method->error_str);
 
-	if (method->free_func)
+	if (method->free_func) {
 		method->free_func (method->udata);
+	}
 	free (method);
 }
 
@@ -499,8 +504,9 @@ xmmsc_service_method_unref (xmmsc_service_method_t *method)
 	x_api_error_if (method->ref < 1, "with a freed method",);
 
 	method->ref--;
-	if (method->ref == 0)
+	if (method->ref == 0) {
 		xmmsc_service_method_free (method);
+	}
 }
 
 /**
@@ -520,10 +526,12 @@ xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
 {
 	x_return_val_if_fail (method, 0);
 
-	if (name && method->name)
+	if (name && method->name) {
 		*name = method->name;
-	if (description && method->description)
+	}
+	if (description && method->description) {
 		*description = method->description;
+	}
 
 	return !name && !description ? 0 : 1;
 }
@@ -552,8 +560,9 @@ xmmsc_service_method_arg_type_add (xmmsc_service_method_t *method,
 	                " it is reserved for internal use only.", 0);
 
 	arg = x_new0 (xmmsc_service_argument_t, 1);
-	if (!arg)
+	if (!arg) {
 		return 0;
+	}
 
 	arg->name = strdup (name);
 	arg->type = type;
@@ -585,8 +594,9 @@ xmmsc_service_method_ret_type_add (xmmsc_service_method_t *method,
 	x_return_val_if_fail (name, 0);
 
 	arg = x_new0 (xmmsc_service_argument_t, 1);
-	if (!arg)
+	if (!arg) {
 		return 0;
+	}
 
 	arg->name = strdup (name);
 	arg->type = type;
@@ -614,12 +624,14 @@ xmmsc_service_method_arg_add_uint32 (xmmsc_service_method_t *method,
 
 	x_return_val_if_fail (method, 0);
 
-	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_UINT32)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_UINT32) {
 		return 0;
+	}
 	arg->value.uint32 = value;
 	arg->none = 0;
 
@@ -643,12 +655,14 @@ xmmsc_service_method_arg_add_int32 (xmmsc_service_method_t *method,
 
 	x_return_val_if_fail (method, 0);
 
-	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_INT32)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_INT32) {
 		return 0;
+	}
 	arg->value.int32 = value;
 	arg->none = 0;
 
@@ -674,18 +688,21 @@ xmmsc_service_method_arg_add_string (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (value, 0);
 
-	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRING)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRING) {
 		return 0;
+	}
 
 	l = strlen (value);
 
 	arg->value.string = x_malloc (l + 1);
-	if (!arg->value.string)
+	if (!arg->value.string) {
 		return 0;
+	}
 
 	if (!data_copy (arg->value.string, value, l)) {
 		free (arg->value.string);
@@ -719,12 +736,14 @@ xmmsc_service_method_arg_add_stringlist (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (value, 0);
 
-	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRINGLIST)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRINGLIST) {
 		return 0;
+	}
 
 	for (len = 0; value[len]; len++);
 	arg->value.strings = x_new (char *, len + 1);
@@ -734,16 +753,18 @@ xmmsc_service_method_arg_add_stringlist (xmmsc_service_method_t *method,
 
 		arg->value.strings[i] = x_malloc (l + 1);
 		if (!arg->value.strings[i]) {
-			while (i > 0)
+			while (i > 0) {
 				free (arg->value.strings[--i]);
+			}
 
 			free (arg->value.strings);
 			return 0;
 		}
 
 		if (!data_copy (arg->value.strings[i], value[i], l)) {
-			while (i >= 0)
+			while (i >= 0) {
 				free (arg->value.strings[i--]);
+			}
 
 			free (arg->value.strings);
 			return 0;
@@ -776,12 +797,14 @@ xmmsc_service_method_arg_add_coll (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (value, 0);
 
-	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_COLL)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_COLL) {
 		return 0;
+	}
 	arg->value.coll = value;
 	arg->none = 0;
 
@@ -808,16 +831,19 @@ xmmsc_service_method_arg_add_bin (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (value, 0);
 
-	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_BIN || len == 0)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_BIN || len == 0) {
 		return 0;
+	}
 
 	arg->value.bin = x_malloc (len);
-	if (!arg->value.bin)
+	if (!arg->value.bin) {
 		return 0;
+	}
 
 	if (!data_copy (arg->value.bin, value, len)) {
 		free (arg->value.bin);
@@ -847,12 +873,14 @@ xmmsc_service_method_ret_add_uint32 (xmmsc_service_method_t *method,
 
 	x_return_val_if_fail (method, 0);
 
-	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_UINT32)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_UINT32) {
 		return 0;
+	}
 	arg->value.uint32 = value;
 	arg->none = 0;
 
@@ -876,12 +904,14 @@ xmmsc_service_method_ret_add_int32 (xmmsc_service_method_t *method,
 
 	x_return_val_if_fail (method, 0);
 
-	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_INT32)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_INT32) {
 		return 0;
+	}
 	arg->value.int32 = value;
 	arg->none = 0;
 
@@ -907,18 +937,21 @@ xmmsc_service_method_ret_add_string (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (value, 0);
 
-	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRING)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRING) {
 		return 0;
+	}
 
 	l = strlen (value);
 
 	arg->value.string = x_malloc (l + 1);
-	if (!arg->value.string)
+	if (!arg->value.string) {
 		return 0;
+	}
 
 	if (!data_copy (arg->value.string, value, l)) {
 		free (arg->value.string);
@@ -952,14 +985,16 @@ xmmsc_service_method_ret_add_stringlist (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (value, 0);
 
-	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRINGLIST || len == 0)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_STRINGLIST || len == 0) {
 		return 0;
+	}
 
-	for (len = 0; value[len]; len++);
+	for (len = 0; value[len]; len++) { }
 	arg->value.strings = x_new (char *, len + 1);
 
 	for (i = 0; i < len; i++) {
@@ -967,16 +1002,18 @@ xmmsc_service_method_ret_add_stringlist (xmmsc_service_method_t *method,
 
 		arg->value.strings[i] = x_malloc (l + 1);
 		if (!arg->value.strings[i]) {
-			while (i > 0)
+			while (i > 0) {
 				free (arg->value.strings[--i]);
+			}
 
 			free (arg->value.strings);
 			return 0;
 		}
 
 		if (!data_copy (arg->value.strings[i], value[i], l)) {
-			while (i >= 0)
+			while (i >= 0) {
 				free (arg->value.strings[i--]);
+			}
 
 			free (arg->value.strings);
 			return 0;
@@ -1009,12 +1046,14 @@ xmmsc_service_method_ret_add_coll (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (value, 0);
 
-	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_COLL)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_COLL) {
 		return 0;
+	}
 
 	arg->value.coll = coll_copy (value);
 	if (!arg->value.coll) {
@@ -1046,16 +1085,19 @@ xmmsc_service_method_ret_add_bin (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (value, 0);
 
-	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
-	if (arg->type != XMMSC_SERVICE_ARG_TYPE_BIN || len == 0)
+	if (arg->type != XMMSC_SERVICE_ARG_TYPE_BIN || len == 0) {
 		return 0;
+	}
 
 	arg->value.bin = x_malloc (len);
-	if (!arg->value.bin)
+	if (!arg->value.bin) {
 		return 0;
+	}
 
 	if (!data_copy (arg->value.bin, value, len)) {
 		free (arg->value.bin);
@@ -1128,8 +1170,9 @@ xmmsc_service_method_arg_attribute_get (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (name, 0);
 
-	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
 	return arg_attribute_get (arg, type, optional, none);
@@ -1159,8 +1202,9 @@ xmmsc_service_method_ret_attribute_get (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (name, 0);
 
-	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
 	return arg_attribute_get (arg, type, optional, none);
@@ -1183,8 +1227,9 @@ xmmsc_service_method_arg_remove (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (name, 0);
 
-	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
 	arg_value_free (arg);
@@ -1211,8 +1256,9 @@ xmmsc_service_method_ret_remove (xmmsc_service_method_t *method,
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (name, 0);
 
-	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup)))
+	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup))) {
 		return 0;
+	}
 	arg = (xmmsc_service_argument_t *)item->data;
 
 	arg_value_free (arg);
@@ -1233,8 +1279,9 @@ xmmsc_service_method_error_get (xmmsc_service_method_t *method)
 {
 	x_return_val_if_fail (method, 0);
 
-	if (method->error && method->error_str)
+	if (method->error && method->error_str) {
 		return method->error_str;
+	}
 
 	return NULL;
 }
@@ -1252,12 +1299,14 @@ xmmsc_service_method_error_set (xmmsc_service_method_t *method, const char *err)
 	x_return_val_if_fail (method, 0);
 	x_return_val_if_fail (err, 0);
 
-	if (method->error && method->error_str)
+	if (method->error && method->error_str) {
 		free (method->error_str);
+	}
 
 	method->error = 1;
-	if (!(method->error_str = strdup (err)))
+	if (!(method->error_str = strdup (err))) {
 		return 0;
+	}
 
 	return 1;
 }
@@ -1310,8 +1359,9 @@ method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return NULL;
 	}
 
-	if (!xmmsc_result_get_service_cookie (res, &cookie))
+	if (!xmmsc_result_get_service_cookie (res, &cookie)) {
 		return NULL;
+	}
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_RETURN);
@@ -1326,8 +1376,9 @@ method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
 
 			xmms_ipc_msg_put_string (msg, arg->name);
 			xmms_ipc_msg_put_uint32 (msg, arg->none);
-			if (arg->none)
+			if (arg->none) {
 				continue;
+			}
 			if (!argument_write (msg, arg)) {
 				xmms_ipc_msg_destroy (msg);
 				return 0;
@@ -1346,12 +1397,15 @@ static int
 arg_attribute_get (xmmsc_service_argument_t *arg, xmmsc_service_arg_type_t *type,
                    uint32_t *optional, uint32_t *none)
 {
-	if (type)
+	if (type) {
 		*type = arg->type;
-	if (optional)
+	}
+	if (optional) {
 		*optional = arg->optional;
-	if (none)
+	}
+	if (none) {
 		*none = arg->none;
+	}
 
 	return !type && !optional && !none ? 0 : 1;
 }
@@ -1362,8 +1416,9 @@ arg_attribute_get (xmmsc_service_argument_t *arg, xmmsc_service_arg_type_t *type
 static int
 data_copy (void *dest, const void *src, uint32_t len)
 {
-	if (!dest || !src)
+	if (!dest || !src) {
 		return 0;
+	}
 
 	memcpy (dest, src, len);
 
@@ -1375,23 +1430,28 @@ arg_value_free (xmmsc_service_argument_t *arg)
 {
 	uint32_t i;
 
-	if (!arg)
+	if (!arg) {
 		return;
+	}
 
 	if (arg->type == XMMSC_SERVICE_ARG_TYPE_STRING) {
-		if (arg->value.string)
+		if (arg->value.string) {
 			free (arg->value.string);
+		}
 	} else if (arg->type == XMMSC_SERVICE_ARG_TYPE_STRINGLIST) {
-		for (i = 0; arg->value.strings && arg->value.strings[i]; i++)
+		for (i = 0; arg->value.strings && arg->value.strings[i]; i++) {
 			free (arg->value.strings[i]);
+		}
 		free (arg->value.strings);
 	} else if (arg->type == XMMSC_SERVICE_ARG_TYPE_BIN) {
-		if (arg->value.bin)
+		if (arg->value.bin) {
 			free (arg->value.bin);
+		}
 		arg->len = 0;
 	} else if (arg->type == XMMSC_SERVICE_ARG_TYPE_COLL) {
-		if (arg->value.coll)
+		if (arg->value.coll) {
 			xmmsc_coll_unref (arg->value.coll);
+		}
 	}
 }
 
@@ -1400,13 +1460,15 @@ arg_reset (xmmsc_service_method_t *method)
 {
 	x_list_t *n;
 
-	if (!method)
+	if (!method) {
 		return;
+	}
 
 	xmmsc_service_method_error_reset (method);
 
-	for (n = method->arg_list; n; n = x_list_next (n))
+	for (n = method->arg_list; n; n = x_list_next (n)) {
 		((xmmsc_service_argument_t *)n->data)->none = 1;
+	}
 }
 
 static void
@@ -1414,13 +1476,15 @@ ret_reset (xmmsc_service_method_t *method)
 {
 	x_list_t *n;
 
-	if (!method)
+	if (!method) {
 		return;
+	}
 
 	xmmsc_service_method_error_reset (method);
 
-	for (n = method->ret_list; n; n = x_list_next (n))
+	for (n = method->ret_list; n; n = x_list_next (n)) {
 		((xmmsc_service_argument_t *)n->data)->none = 1;
+	}
 }
 
 static int
@@ -1460,8 +1524,9 @@ static int
 arg_lookup (const void *arg, const void *name)
 {
 	if (strcasecmp (((const xmmsc_service_argument_t *)arg)->name,
-	                (const char *)name) == 0)
+	                (const char *)name) == 0) {
 		return 0;
+	}
 
 	return 1;
 }

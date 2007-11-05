@@ -43,8 +43,9 @@ cb_list_sc_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 	}
 
 	retval = g_new0 (gchar *, g_list_length (list));
-	for (i = 0, n = list; n; i++, n = g_list_next (n))
+	for (i = 0, n = list; n; i++, n = g_list_next (n)) {
 		retval[i] = (gchar *)n->data;
+	}
 	g_list_free (list);
 
 	xmmsc_service_method_ret_add_stringlist (method, ARG_IDS, retval);
@@ -109,8 +110,9 @@ cb_list_service_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		g_hash_table_foreach (config->services, match_none, &list);
 
 		retval = g_new0 (gchar *, g_list_length (list));
-		for (i = 0, n = list; n; i++, n = g_list_next (n))
+		for (i = 0, n = list; n; i++, n = g_list_next (n)) {
 			retval[i] = (gchar *)n->data;
+		}
 		g_list_free (list);
 
 		xmmsc_service_method_ret_add_stringlist (method, ARG_IDS, retval);
@@ -182,8 +184,9 @@ cb_list_method_ids (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		g_hash_table_foreach (service->methods, match_none, &list);
 
 		retval = g_new0 (gchar *, g_list_length (list));
-		for (i = 0, n = list; n; i++, n = g_list_next (n))
+		for (i = 0, n = list; n; i++, n = g_list_next (n)) {
 			retval[i] = (gchar *)n->data;
+		}
 		g_list_free (list);
 
 		xmmsc_service_method_ret_add_stringlist (method, ARG_IDS, retval);
@@ -245,16 +248,18 @@ cb_lookup_client (xmmsc_connection_t *conn, xmmsc_result_t *res,
 		return;
 	}
 
-	if (!xmmsc_result_get_dict_entry_string (res, ARG_SERVICE_NAME, &name))
+	if (!xmmsc_result_get_dict_entry_string (res, ARG_SERVICE_NAME, &name)) {
 		xmmsc_service_method_error_set (method, "Service name not given.");
+	}
 	info.data = name;
 	info.ret = NULL;
 
 	g_hash_table_foreach ((GHashTable *)data, match_service, &info);
 
 	retval = g_new0 (gchar *, g_list_length ((GList *)info.ret));
-	for (i = 0, n = (GList *)info.ret; n; i++, n = g_list_next (n))
+	for (i = 0, n = (GList *)info.ret; n; i++, n = g_list_next (n)) {
 		retval[i] = (gchar *)n->data;
+	}
 	g_list_free ((GList *)info.ret);
 
 	xmmsc_service_method_ret_add_stringlist (method, ARG_IDS, retval);

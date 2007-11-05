@@ -389,8 +389,9 @@ ret:
 		xmms_ipc_msg_put_string (retmsg, xmms_error_message_get (&arg.error));
 	}
 
-	if (arg.retval)
+	if (arg.retval) {
 		xmms_object_cmd_value_free (arg.retval);
+	}
 
 err:
 	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {
@@ -777,13 +778,15 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 
 			if ((broadcastid == XMMS_IPC_SIGNAL_SERVICE ||
 			     broadcastid == XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN) &&
-			    fd != cli->transport->fd)
+			    fd != cli->transport->fd) {
 					continue;
+			}
 			g_mutex_lock (cli->lock);
 			for (l = cli->broadcasts[broadcastid]; l; l = g_list_next (l)) {
 				if (broadcastid == XMMS_IPC_SIGNAL_SERVICE &&
-					cookie != GPOINTER_TO_UINT (l->data))
+					cookie != GPOINTER_TO_UINT (l->data)) {
 					continue;
+				}
 				if (xmms_error_isok (&a->error)) {
 					msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL,
 					                        XMMS_IPC_CMD_BROADCAST);
