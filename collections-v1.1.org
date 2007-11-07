@@ -2,13 +2,12 @@
 #+AUTHOR: Sébastien Cevey
 #+EMAIL: seb@cine7.net
 #+OPTIONS: H:3
-#+COLUMNS: %35Item %10Where %4Prio %4Complexity %5Brainstorm{X} %10Depends
+#+COLUMNS: %50ITEM %4Release(Ver.) %4Complexity %5Brainstorm{X}
 
 #+PROPERTIES:
-#:Where_ALL: server clientlib bindings client
-#:Prio_ALL: low med high
-#:Complexity_ALL: triv easy med hard arg
-#:Brainstorm_ALL: "[ ]"  "[X]"
+#+PROPERTY: Release_ALL v1.1 v1.2 v2.0
+#+PROPERTY: Complexity_ALL triv easy med hard arg
+#+PROPERTY: Brainstorm_ALL "[ ]"  "[X]"
 #+END:
 
 # Also link to related issues!
@@ -16,6 +15,10 @@
 * New collection commands
 
 ** List all existing properties (keys) of all media in a collection
+   :PROPERTIES:
+   :Release:  v1.1
+   :Complexity: easy
+   :END:
    xmmsc_coll_property_list (coll, pattern = NULL)
   
    possibly filtered by a pattern (same syntax as Match, i.e. _ and % wildcards).
@@ -25,6 +28,8 @@
 ** List all values for a list of props in a collection
    :PROPERTIES:
    :Brainstorm: [X]
+   :Release:  v1.1
+   :Complexity: med
    :END:
    xmmsc_coll_property_values (coll, groupby = [])
 
@@ -34,6 +39,10 @@
 ?  add start, limit offsets
 
 ** Get N random media from a collection
+   :PROPERTIES:
+   :Release:  v1.1
+   :Complexity: easy
+   :END:
    xmmsc_coll_random_get (coll, n = 1)
 
    Needed for client-side party shuffle or anything like that
@@ -44,11 +53,15 @@
 ** Use functions as select fields (fetch), or matching field (e.g. compare dates, substring)
    :PROPERTIES:
    :Brainstorm: [X]
+   :Release:  v1.2
+   :Complexity: hard
    :END:
 
 ** Aggregate functions:
    :PROPERTIES:
    :Brainstorm: [X]
+   :Release:  v1.1
+   :Complexity: med
    :END:
    - count  (function of "rows")
    - max, min, avg  (function of "values")
@@ -60,6 +73,10 @@
 * Bindings
 
 ** Ruby: Collection operators as classes
+   :PROPERTIES:
+   :Release:  v1.1
+   :Complexity: med
+   :END:
 
    See C++ and python bindings.
 
@@ -67,6 +84,10 @@
 * Concept
 
 ** Special "Virtuals" namespace, for
+   :PROPERTIES:
+   :Release:  v1.2
+   :Complexity: med
+   :END:
 
    Examples:
    - All Media
@@ -80,6 +101,8 @@
 ** Support medialists in DAG and queries, add ORDERBY and LIMIT collection operators
    :PROPERTIES:
    :Brainstorm: [X]
+   :Release:  v2.0
+   :Complexity: arg
    :END:
 
    keep the nature (set vs list) of the output of an operator in the DAG
@@ -90,6 +113,8 @@
 ** Handle sources properly [headaches ahead]
    :PROPERTIES:
    :Brainstorm: [X]
+   :Release:  v2.0
+   :Complexity: arg
    :END:
 
    use connection-saved sourcelist
@@ -102,6 +127,11 @@
 ** Database
 
 *** S4 (Short String Storage System)!
+    :PROPERTIES:
+    :Release:  v2.0
+    :Complexity: arg
+    :Brainstorm: [X]
+    :END:
     (see [[http://wiki.xmms2.xmms.se/index.php/New_medialib_backend]["New medialib backend" wiki page]])
 
 **** Basic operations:
@@ -134,10 +164,17 @@
      * Determine whether an album is VA
 
 *** Optimize query generation
+    :PROPERTIES:
+    :Release: 
+    :Complexity: hard
+    :END:
 
     at least avoid JOINs if not needed (no union), improve those too
 
 *** Auto-sync (optional)  (see [[*Periodic DB-sync service client]])
+    :PROPERTIES:
+    :Complexity: 
+    :END:
 
     every N updates or after timeout T after last update.
     add timer in medialib loop?
@@ -145,10 +182,21 @@
 ** CollParse
 
 *** Virtual path patterns
+    :PROPERTIES:
+    :Release:  v1.2
+    :Complexity: med
+    :END:
+    (see [[file:cli-browsing.org][CLI Browsing orgfile]])
 
 *** Rewrite (?) more modular, allow plugging symbols/parsing in
+    :PROPERTIES:
+    :Release:  v1.2
+    :Complexity: hard
+    :END:
 
     Prototype first (python or ruby)
+    Should be part of xmmscu.
+    Completely customizable grammar.
     Allow to add state/query-dependent syntax, e.g.:
     * '_' current track
     * '+' previous pattern
@@ -157,11 +205,29 @@
 * External tools
 
 ** nycli!
+   :PROPERTIES:
+   :Complexity: med
+   :END:
 
 ** Experiment PartyShuffle as a service client (standard, advanced)
+   :PROPERTIES:
+   :Complexity: med
+   :END:
 
 ** DB-sync service client (see [[*Auto-sync]])
+   :PROPERTIES:
+   :Complexity: easy
+   :END:
 
    after large updates (wait until they're done)
    and/or periodically
    configurable parameters
+
+
+* Documentation
+
+** Tutorials (clientlib + bindings)
+
+** More developer doc
+
+** Pattern syntax of collparser
