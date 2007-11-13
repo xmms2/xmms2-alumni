@@ -65,9 +65,11 @@ Description: XMMS2 - phone home package
  This package contains a small program that (anonymously) reports back
  information on your computer and xmms2 configuration to the xmms2 developers.
 
-Package: libxmmsclient2
+Package: libxmmsclient3
 Architecture: any
 Section: libs
+Conflicts: libxmmsclient2
+Replaces: libxmmsclient2
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: XMMS2 - client library
  XMMS2 is a redesign of the XMMS music player. It features a client-server
@@ -80,7 +82,7 @@ Description: XMMS2 - client library
 Package: libxmmsclient-dev
 Architecture: any
 Section: libdevel
-Depends: libxmmsclient2, xmms2-dev
+Depends: libxmmsclient3, xmms2-dev
 Description: XMMS2 - client library devel files
  XMMS2 is a redesign of the XMMS music player. It features a client-server
  model, allowing multiple (even simultaneous!) user interfaces, both textual
@@ -114,9 +116,11 @@ Description: XMMS2 - glib client library - development files
  This package contains files for developing XMMS2 clients using
  libxmmsclient-glib1.
 
-Package: libxmmsclient++1
+Package: libxmmsclient++2
 Architecture: any
 Section: libs
+Conflicts: libxmmsclient++1
+Replaces: libxmmsclient++1
 Depends: ${shlibs:Depends}, ${misc:Depends},
 Description: XMMS2 - client library for c++
  XMMS2 is a redesign of the XMMS music player. It features a client-server
@@ -129,7 +133,7 @@ Description: XMMS2 - client library for c++
 Package: libxmmsclient++-dev
 Architecture: any
 Section: libdevel
-Depends: libxmmsclient++1, libxmmsclient-dev, libboost-signals-dev
+Depends: libxmmsclient++2, libxmmsclient-dev, libboost-signals-dev
 Description: XMMS2 - client library for c++ - development files
  XMMS2 is a redesign of the XMMS music player. It features a client-server
  model, allowing multiple (even simultaneous!) user interfaces, both textual
