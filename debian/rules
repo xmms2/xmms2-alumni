@@ -36,7 +36,7 @@ install-stamp:
 	dh_testdir
 	dh_testroot
 	dh_clean -k
-	./waf install --destdir=$(CURDIR)/debian/tmp install
+	./waf install --destdir=$(CURDIR)/debian/tmp
 	dh_install -i -s --sourcedir=debian/tmp --fail-missing \
 		-Xusr/include/xmms2/xmmsclient/xmmsclient-cf.h \
 		-Xusr/include/xmms2/xmmsclient/xmmsclient-ecore.h \
