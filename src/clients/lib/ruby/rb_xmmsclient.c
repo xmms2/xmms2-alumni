@@ -96,7 +96,7 @@ c_mark (RbXmmsClient *xmms)
 static void
 c_free (RbXmmsClient *xmms)
 {
-	if (!xmms->deleted)
+	if (xmms->real && !xmms->deleted)
 		xmmsc_unref (xmms->real);
 
 	free (xmms);
@@ -291,7 +291,7 @@ on_io_need_out (int flag, void *data)
 
 /*
  * call-seq:
- *  xc.io_need_out { |flag| }
+ *  xc.io_on_need_out { |flag| }
  *
  * Sets the block that's called when the output socket state changes.
  */
@@ -651,7 +651,7 @@ c_broadcast_playback_volume_changed (VALUE self)
 static VALUE
 c_broadcast_playlist_changed (VALUE self)
 {
-	METHOD_ADD_HANDLER(broadcast_playlist_changed);
+	METHOD_ADD_HANDLER (broadcast_playlist_changed);
 }
 
 /*
@@ -664,7 +664,19 @@ c_broadcast_playlist_changed (VALUE self)
 static VALUE
 c_broadcast_playlist_current_pos (VALUE self)
 {
-	METHOD_ADD_HANDLER(broadcast_playlist_current_pos);
+	METHOD_ADD_HANDLER (broadcast_playlist_current_pos);
+}
+
+/*
+ * call-seq:
+ *  xc.broadcast_playlist_loaded -> result
+ *
+ * Will be called when a playlist has been loaded.
+ */
+static VALUE
+c_broadcast_playlist_loaded (VALUE self)
+{
+	METHOD_ADD_HANDLER (broadcast_playlist_loaded);
 }
 
 /*
@@ -676,7 +688,7 @@ c_broadcast_playlist_current_pos (VALUE self)
 static VALUE
 c_broadcast_medialib_entry_changed (VALUE self)
 {
-	METHOD_ADD_HANDLER(broadcast_medialib_entry_changed);
+	METHOD_ADD_HANDLER (broadcast_medialib_entry_changed);
 }
 
 /*
@@ -732,18 +744,6 @@ c_playlist (int argc, VALUE *argv, VALUE self)
 	rb_scan_args (argc, argv, "01", &args[1]);
 
 	return rb_class_new_instance (2, args, cPlaylist);
-}
-
-/*
- * call-seq:
- *  xc.medialib_select(query) -> result
- *
- * Runs an SQL query on the medialib.
- */
-static VALUE
-c_medialib_select (VALUE self, VALUE query)
-{
-	METHOD_ADD_HANDLER_STR (medialib_select, query);
 }
 
 /*
@@ -880,6 +880,23 @@ c_medialib_entry_property_remove (int argc, VALUE *argv, VALUE self)
 			ckey);
 
 	return TO_XMMS_CLIENT_RESULT (self, res);
+}
+
+/*
+ * call-seq:
+ *  xc.medialib_entry_move(id, url) -> result
+ *
+ * Moves the entry specified by _id_ to a new URL without changing mediainfo.
+ */
+static VALUE
+c_medialib_entry_move (VALUE self, VALUE id, VALUE url)
+{
+	METHOD_HANDLER_HEADER
+
+	res = xmmsc_medialib_move_entry (xmms->real, check_uint32 (id),
+	                                 StringValuePtr (url));
+
+	METHOD_HANDLER_FOOTER
 }
 
 /*
@@ -1258,13 +1275,14 @@ c_coll_query_ids (int argc, VALUE *argv, VALUE self)
 
 /*
  * call-seq:
- * xc.coll_query_info(coll, fetch, [order], [start], [len]) -> result
+ * xc.coll_query_info(coll, fetch, [order], [start], [len], [group]) -> result
  *
  * Retrieves media info of media matched by the collection. _fetch_ should
  * contain an array of properties to retrieve from the collection. _order_
  * specifies a list of properties to order by or no order if omitted. _start_
  * and _len_ determine the offset at which to start retrieving info and the
- * maximum number of ids to retrieve, respectively.
+ * maximum number of ids to retrieve, respectively. _group_ defines a list
+ * of properties to group by or no grouping if omitted.
  */
 static VALUE
 c_coll_query_info (int argc, VALUE *argv, VALUE self)
@@ -1444,6 +1462,8 @@ Init_Client (VALUE mXmms)
 	                  c_broadcast_playlist_changed, 0);
 	rb_define_method (c, "broadcast_playlist_current_pos",
 	                  c_broadcast_playlist_current_pos, 0);
+	rb_define_method (c, "broadcast_playlist_loaded",
+	                  c_broadcast_playlist_loaded, 0);
 	rb_define_method (c, "broadcast_medialib_entry_changed",
 	                  c_broadcast_medialib_entry_changed, 0);
 	rb_define_method (c, "broadcast_medialib_entry_added",
@@ -1466,7 +1486,6 @@ Init_Client (VALUE mXmms)
 	                  c_coll_idlist_from_playlist_file, 1);
 	rb_define_method (c, "broadcast_coll_changed", c_broadcast_coll_changed, 0);
 
-	rb_define_method (c, "medialib_select", c_medialib_select, 1);
 	rb_define_method (c, "medialib_add_entry", c_medialib_add_entry, 1);
 	rb_define_method (c, "medialib_get_id", c_medialib_get_id, 1);
 	rb_define_method (c, "medialib_get_info", c_medialib_get_info, 1);
@@ -1475,6 +1494,7 @@ Init_Client (VALUE mXmms)
 	rb_define_method (c, "medialib_entry_property_remove",
 	                  c_medialib_entry_property_remove, -1);
 	rb_define_method (c, "medialib_entry_remove", c_medialib_entry_remove, 1);
+	rb_define_method (c, "medialib_entry_move", c_medialib_entry_move, 2);
 	rb_define_method (c, "medialib_path_import", c_medialib_path_import, 1);
 	rb_define_method (c, "medialib_rehash", c_medialib_rehash, 1);
 

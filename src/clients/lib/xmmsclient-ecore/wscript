@@ -8,15 +8,10 @@ def build(bld):
     obj.uselib = 'ecore'
     obj.uselib_local = 'xmmsclient'
     obj.vnum = '1.0.0'
-    tool.add_install_flag(obj)
+    tool.add_install_flag(bld, obj)
 
 def configure(conf):
-    cfg = conf.create(configurator='cfgtool')
-    cfg.binary = 'ecore-config'
-    cfg.uselib = 'ecore'
-    cfg.tests = {'--cflags': 'CCFLAGS', '--libs-core': 'LINKFLAGS'}
-
-    return cfg.run()
+    return conf.check_pkg('ecore', destvar='ecore')
 
 def set_options(opt):
     pass

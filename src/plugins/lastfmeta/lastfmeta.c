@@ -100,12 +100,18 @@ xmms_lastfmeta_init (xmms_xform_t *xform)
 	data = g_new (xmms_lastfmeta_data_t, 1);
 	data->handles = 0;
 
-	xmms_xform_private_data_set (xform, data);
 
 	/* seek over the first 4 bytes (SYNC) */
 	xmms_xform_read (xform, buf, 4, &err);
 
-	session = xmms_xform_metadata_get_str (xform, "session");
+	if (!xmms_xform_metadata_get_str (xform, "session", &session)) {
+		xmms_log_error ("No session for lastfmeta to use!");
+		g_free (data);
+		return FALSE;
+	}
+
+	xmms_xform_private_data_set (xform, data);
+
 	g_snprintf (data->url, sizeof (data->url), np_fmt, session);
 
 	data->curl_easy = curl_easy_init ();
@@ -135,6 +141,7 @@ xmms_lastfmeta_init (xmms_xform_t *xform)
 	                             "application/octet-stream",
 	                             XMMS_STREAM_TYPE_END);
 
+
 	return TRUE;
 }
 
@@ -143,6 +150,7 @@ static void
 xmms_lastfmeta_destroy (xmms_xform_t *xform)
 {
 	xmms_lastfmeta_data_t *data;
+	xmms_config_property_t *val;
 
 	g_return_if_fail (xform);
 
@@ -152,6 +160,9 @@ xmms_lastfmeta_destroy (xmms_xform_t *xform)
 	curl_multi_remove_handle (data->curl_multi, data->curl_easy);
 	curl_easy_cleanup (data->curl_easy);
 	curl_multi_cleanup (data->curl_multi);
+
+	val = xmms_xform_config_lookup (xform, "recordtoprofile");
+	xmms_config_property_callback_remove (val, xmms_lastfm_config_changed, xform);
 
 	g_free (data);
 }
@@ -212,25 +223,23 @@ xmms_lastfmeta_now_playing_callback (void *ptr, size_t size,
 
 	split = g_strsplit (ptr, "\n", 0);
 	for (i = 0; split && split[i]; i++) {
+		const gchar *metakey;
+
 		if (g_str_has_prefix (split[i], "error=")) {
 			ret = 0;
 			break;
 		} else if (g_str_has_prefix (split[i], "artist=")) {
-			xmms_xform_metadata_set_str (xform,
-			                             XMMS_MEDIALIB_ENTRY_PROPERTY_ARTIST,
-			                             split[i] + 7);
+			metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_ARTIST,
+			xmms_xform_metadata_set_str (xform, metakey, split[i] + 7);
 		} else if (g_str_has_prefix (split[i], "track=")) {
-			xmms_xform_metadata_set_str (xform,
-			                             XMMS_MEDIALIB_ENTRY_PROPERTY_TITLE,
-			                             split[i] + 6);
+			metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_TITLE;
+			xmms_xform_metadata_set_str (xform, metakey, split[i] + 6);
 		} else if (g_str_has_prefix (split[i], "album=")) {
-			xmms_xform_metadata_set_str (xform,
-			                             XMMS_MEDIALIB_ENTRY_PROPERTY_ALBUM,
-			                             split[i] + 6);
+			metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_ALBUM;
+			xmms_xform_metadata_set_str (xform, metakey, split[i] + 6);
 		} else if (g_str_has_prefix (split[i], "station=")) {
-			xmms_xform_metadata_set_str (xform,
-			                             XMMS_MEDIALIB_ENTRY_PROPERTY_CHANNEL,
-			                             split[i] + 8);
+			metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_CHANNEL;
+			xmms_xform_metadata_set_str (xform, metakey, split[i] + 8);
 		}
 	}
 	g_strfreev (split);
@@ -256,7 +265,10 @@ xmms_lastfm_control (xmms_xform_t *xform, const gchar *cmd)
 	data = xmms_xform_private_data_get (xform);
 	g_return_val_if_fail (data, 0);
 
-	session = xmms_xform_metadata_get_str (xform, "session");
+	if (!xmms_xform_metadata_get_str (xform, "session", &session)) {
+		xmms_log_error ("No session for lastfmeta to use!");
+		return FALSE;
+	}
 
 	buffer = g_string_new (NULL);
 

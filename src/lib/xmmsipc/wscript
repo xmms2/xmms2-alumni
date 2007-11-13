@@ -4,12 +4,12 @@
 # Copyright (C) 2006-2007 XMMS2 Team
 #
 
-import os
-
 def build(bld):
-    if os.name == 'nt':
+    env = bld.env_of_name('default')
+
+    if env['socket_impl'] == 'wsock32':
         platform_sources = "transport_win.c"
-    elif os.name == 'posix':
+    else:
         platform_sources = "socket_unix.c transport_unix.c"
 
     obj = bld.create_obj('cc', 'staticlib')
@@ -17,11 +17,10 @@ def build(bld):
                            "url.c", platform_sources])
     obj.includes='. ../../include'
     obj.target='xmmsipc'
-    obj.uselib_local='xmmssocket'
-    obj.install_in = 0
+    obj.install_var = 0
 
 def configure(conf):
-    pass
+    return True
 
 def set_options(opt):
     pass

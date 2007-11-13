@@ -18,6 +18,7 @@
 #include "xmms/xmms_sample.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_medialib.h"
+#include "xmms/xmms_bindata.h"
 
 #include <string.h>
 #include <math.h>
@@ -109,7 +110,7 @@ xmms_flac_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 static FLAC__StreamDecoderReadStatus
 flac_callback_read (const FLAC__StreamDecoder *flacdecoder,
                     FLAC__byte buffer[],
-                    guint *bytes,
+                    gsize *bytes,
                     void *client_data)
 {
 	xmms_xform_t *xform = (xmms_xform_t *) client_data;
@@ -143,11 +144,9 @@ flac_callback_write (const FLAC__StreamDecoder *flacdecoder,
 {
 	xmms_xform_t *xform = (xmms_xform_t *)client_data;
 	xmms_flac_data_t *data;
-	guint length = frame->header.blocksize * frame->header.channels
-	               * frame->header.bits_per_sample / 8;
-	guint sample, channel, pos = 0;
-	guint8 packed[length];
-	guint16 *packed16 = (guint16 *) packed;
+	guint sample, channel;
+	guint8 packed;
+	guint16 packed16;
 
 	data = xmms_xform_private_data_get (xform);
 
@@ -155,18 +154,17 @@ flac_callback_write (const FLAC__StreamDecoder *flacdecoder,
 		for (channel = 0; channel < frame->header.channels; channel++) {
 			switch (data->bits_per_sample) {
 				case 8:
-					packed[pos] = (guint8)buffer[channel][sample];
+					packed = (guint8)buffer[channel][sample];
+					g_string_append_len (data->buffer, (gchar *) &packed, 1);
 					break;
 				case 16:
-					packed16[pos] = (guint16)buffer[channel][sample];
+					packed16 = (guint16)buffer[channel][sample];
+					g_string_append_len (data->buffer, (gchar *) &packed16, 2);
 					break;
 			}
-
-			pos++;
 		}
 	}
 
-	g_string_append_len (data->buffer, (gchar *) packed, length);
 
 	return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
 }
@@ -210,14 +208,16 @@ flac_callback_length (const FLAC__StreamDecoder *flacdecoder,
                       FLAC__uint64 *stream_length, void *client_data)
 {
 	xmms_xform_t *xform = (xmms_xform_t *) client_data;
-	gint retval;
+	const gchar *metakey;
+	gint val;
 
-	retval = xmms_xform_metadata_get_int (xform,
-										  XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE);
-	*stream_length = retval;
+	metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE;
+	if (xmms_xform_metadata_get_int (xform, metakey, &val)) {
+		*stream_length = val;
+		return FLAC__STREAM_DECODER_LENGTH_STATUS_OK;
+	}
 
-	return (retval == -1) ? FLAC__STREAM_DECODER_LENGTH_STATUS_ERROR
-	                      : FLAC__STREAM_DECODER_LENGTH_STATUS_OK;
+	return FLAC__STREAM_DECODER_LENGTH_STATUS_ERROR;
 }
 
 static void
@@ -227,12 +227,15 @@ flac_callback_metadata (const FLAC__StreamDecoder *flacdecoder,
 {
 	xmms_flac_data_t *data;
 	xmms_xform_t *xform = (xmms_xform_t *) client_data;
-	guint64 filesize;
+	gint32 filesize;
+	const gchar *metakey;
 
 	g_return_if_fail (xform);
 
-	filesize = xmms_xform_metadata_get_int (xform,
-	                                        XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE);
+	metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE;
+	if (!xmms_xform_metadata_get_int (xform, metakey, &filesize)) {
+		filesize = -1;
+	}
 
 	data = xmms_xform_private_data_get (xform);
 
@@ -259,6 +262,24 @@ flac_callback_metadata (const FLAC__StreamDecoder *flacdecoder,
 		case FLAC__METADATA_TYPE_VORBIS_COMMENT:
 			data->vorbiscomment = FLAC__metadata_object_clone (metadata);
 			break;
+#if defined(FLAC_API_VERSION_CURRENT) && FLAC_API_VERSION_CURRENT > 7
+		case FLAC__METADATA_TYPE_PICTURE: {
+			gchar hash[33];
+			if (metadata->data.picture.type == FLAC__STREAM_METADATA_PICTURE_TYPE_FRONT_COVER &&
+			    xmms_bindata_plugin_add (metadata->data.picture.data,
+			                             metadata->data.picture.data_length,
+			                             hash)) {
+				const gchar *metakey;
+				
+				metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_PICTURE_FRONT;
+				xmms_xform_metadata_set_str (xform, metakey, hash);
+				
+				metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_PICTURE_FRONT_MIME;
+				xmms_xform_metadata_set_str (xform, metakey, metadata->data.picture.mime_type);
+			}
+			break;
+		}
+#endif
 		/* if we want to support more metadata types here,
 		 * don't forget to add a call to
 		 * FLAC__stream_decoder_set_metadata_respond() below.
@@ -295,15 +316,15 @@ flac_callback_error (const FLAC__StreamDecoder *flacdecoder,
 
 typedef enum { STRING, INTEGER, RPGAIN } ptype;
 typedef struct {
-	gchar *vname;
-	gchar *xname;
+	const gchar *vname;
+	const gchar *xname;
 	ptype type;
 } props;
 
 #define MUSICBRAINZ_VA_ID "89ad4ac3-39f7-470e-963a-56509c546377"
 
 /** These are the properties that we extract from the comments */
-static props properties[] = {
+static const props properties[] = {
 	{ "title",                XMMS_MEDIALIB_ENTRY_PROPERTY_TITLE,     STRING  },
 	{ "artist",               XMMS_MEDIALIB_ENTRY_PROPERTY_ARTIST,    STRING  },
 	{ "album",                XMMS_MEDIALIB_ENTRY_PROPERTY_ALBUM,     STRING  },
@@ -311,6 +332,7 @@ static props properties[] = {
 	{ "date",                 XMMS_MEDIALIB_ENTRY_PROPERTY_YEAR,      STRING  },
 	{ "genre",                XMMS_MEDIALIB_ENTRY_PROPERTY_GENRE,     STRING  },
 	{ "comment",              XMMS_MEDIALIB_ENTRY_PROPERTY_COMMENT,   STRING  },
+	{ "description",          XMMS_MEDIALIB_ENTRY_PROPERTY_DESCRIPTION, STRING  },
 	{ "discnumber",           XMMS_MEDIALIB_ENTRY_PROPERTY_PARTOFSET, INTEGER },
 	{ "musicbrainz_albumid",  XMMS_MEDIALIB_ENTRY_PROPERTY_ALBUM_ID,  STRING  },
 	{ "musicbrainz_artistid", XMMS_MEDIALIB_ENTRY_PROPERTY_ARTIST_ID, STRING  },
@@ -334,9 +356,8 @@ handle_comment (xmms_xform_t *xform,
 	for (i = 0; i < G_N_ELEMENTS (properties); i++) {
 		if ((!g_ascii_strncasecmp (key, "MUSICBRAINZ_ALBUMARTISTID", key_len)) &&
 		    (!g_ascii_strcasecmp (value, MUSICBRAINZ_VA_ID))) {
-			xmms_xform_metadata_set_int (xform,
-			                             XMMS_MEDIALIB_ENTRY_PROPERTY_COMPILATION,
-			                             1);
+			const gchar *metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_COMPILATION;
+			xmms_xform_metadata_set_int (xform, metakey, 1);
 		} else if (!g_ascii_strncasecmp (key, properties[i].vname, key_len)) {
 			if (properties[i].type == INTEGER) {
 				gint tmp = strtol (value, NULL, 10);
@@ -400,6 +421,7 @@ xmms_flac_init (xmms_xform_t *xform)
 	FLAC__StreamDecoderInitStatus init_status;
 #endif
 	gint filesize;
+	const gchar *metakey;
 
 	g_return_val_if_fail (xform, FALSE);
 
@@ -444,6 +466,8 @@ xmms_flac_init (xmms_xform_t *xform)
 #else
 	FLAC__stream_decoder_set_metadata_respond (data->flacdecoder,
 	                                           FLAC__METADATA_TYPE_VORBIS_COMMENT);
+	FLAC__stream_decoder_set_metadata_respond (data->flacdecoder,
+	                                           FLAC__METADATA_TYPE_PICTURE);
 
 	init_status =
 		FLAC__stream_decoder_init_stream (data->flacdecoder,
@@ -472,16 +496,15 @@ xmms_flac_init (xmms_xform_t *xform)
 		handle_comments (xform, data);
 	}
 
-	xmms_xform_metadata_set_int (xform,
-	                             XMMS_MEDIALIB_ENTRY_PROPERTY_BITRATE,
-	                             (gint) data->bit_rate);
+	metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_BITRATE;
+	xmms_xform_metadata_set_int (xform, metakey, (gint) data->bit_rate);
 
-	filesize = xmms_xform_metadata_get_int (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE);
-	if (filesize != -1) {
-		xmms_xform_metadata_set_int (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_DURATION,
-		                             (gint) data->total_samples
-		                             / data->sample_rate * 1000);
+	metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE;
+	if (xmms_xform_metadata_get_int (xform, metakey, &filesize)) {
+		gint32 val = (gint32) data->total_samples / data->sample_rate * 1000;
+
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_DURATION;
+		xmms_xform_metadata_set_int (xform, metakey, val);
 	}
 
 	if (data->bits_per_sample != 8 && data->bits_per_sample != 16) {

@@ -85,7 +85,7 @@ XMMS_XFORM_PLUGIN ("daap",
  * daap://hostname:port/command
  */
 static gboolean
-get_data_from_url (const gchar *url, gchar **host, guint *port, gchar **cmd)
+get_data_from_url (const gchar *url, gchar **host, guint *port, gchar **cmd, xmms_error_t *err)
 {
 	const gchar *port_ptr, *cmd_ptr, *end_ptr, *stripped;
 
@@ -94,7 +94,7 @@ get_data_from_url (const gchar *url, gchar **host, guint *port, gchar **cmd)
 	end_ptr = stripped + sizeof (gchar) * strlen (stripped);
 
 	if (stripped == end_ptr) {
-		/* empty url */
+		xmms_error_set (err, XMMS_ERROR_INVAL, "Empty URL");
 		return FALSE;
 	}
 
@@ -113,6 +113,10 @@ get_data_from_url (const gchar *url, gchar **host, guint *port, gchar **cmd)
 		*cmd = g_strdup (cmd_ptr);
 	} else if (cmd) {
 		/* cmd wanted but not found */
+		xmms_error_set (err, XMMS_ERROR_INVAL, "No file requested");
+	} else if (!cmd && cmd_ptr && (cmd_ptr + 1) != end_ptr) {
+		/* cmd not wanted but found */
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No such directory");
 		return FALSE;
 	}
 
@@ -274,6 +278,7 @@ xmms_daap_init (xmms_xform_t *xform)
 	xmms_daap_login_data_t *login_data;
 	xmms_error_t err;
 	const gchar *url;
+	const gchar *metakey;
 	gchar *command, *hash;
 	guint filesize;
 
@@ -285,11 +290,11 @@ xmms_daap_init (xmms_xform_t *xform)
 
 	data = g_new0 (xmms_daap_data_t, 1);
 
-	if (!get_data_from_url (url, &(data->host), &(data->port), &command)) {
+	xmms_error_reset (&err);
+
+	if (!get_data_from_url (url, &(data->host), &(data->port), &command, &err)) {
 		return FALSE;
 	}
-
-	xmms_error_reset (&err);
 
 	hash = g_strdup_printf ("%s:%u", data->host, data->port);
 
@@ -335,8 +340,8 @@ xmms_daap_init (xmms_xform_t *xform)
 	}
 	login_data->request_id++;
 
-	xmms_xform_metadata_set_int (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE,
-	                             filesize);
+	metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE;
+	xmms_xform_metadata_set_int (xform, metakey, filesize);
 
 	xmms_xform_private_data_set (xform, data);
 
@@ -405,7 +410,7 @@ xmms_daap_browse (xmms_xform_t *xform, const gchar *url, xmms_error_t *error)
 
 			str = g_strdup_printf ("%s:%d", mdns_serv->address,
 			                       mdns_serv->port);
-			xmms_xform_browse_add_entry (xform, str, 0);
+			xmms_xform_browse_add_entry (xform, str, XMMS_XFORM_BROWSE_FLAG_DIR);
 			g_free (str);
 
 			xmms_xform_browse_add_entry_property_str (xform, "servername",
@@ -434,7 +439,7 @@ xmms_daap_browse (xmms_xform_t *xform, const gchar *url, xmms_error_t *error)
 		gchar *host;
 		guint port;
 
-		if (get_data_from_url (url, &host, &port, NULL)) {
+		if (get_data_from_url (url, &host, &port, NULL, error)) {
 			ret = daap_get_urls_from_server (xform, host, port, error);
 			g_free (host);
 		}

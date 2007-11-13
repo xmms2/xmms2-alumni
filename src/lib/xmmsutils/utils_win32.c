@@ -50,14 +50,14 @@ xmms_userconfdir_get (char *buf, int len)
 
 
 /**
- * Get the default connection path.
+ * Get the fallback connection path (if XMMS_PATH is not accessible)
  *
  * @param buf A char buffer
  * @param len The length of buf (PATH_MAX is a good choice)
  * @return A pointer to buf, or NULL if an error occured.
  */
 const char *
-xmms_default_ipcpath_get (char *buf, int len)
+xmms_fallback_ipcpath_get (char *buf, int len)
 {
 	snprintf (buf, len, "tcp://127.0.0.1:" XMMS_STRINGIFY (XMMS_DEFAULT_TCP_PORT));
 

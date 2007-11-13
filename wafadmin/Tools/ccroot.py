@@ -4,259 +4,37 @@
 
 "base for all c/c++ programs and libraries"
 
-import os, types, sys, re, md5
+import sys, re
+try: from hashlib import md5
+except ImportError: from md5 import md5
+
 import Action, Object, Params, Scan, Common, Utils
 from Params import error, debug, fatal, warning
-from Params import hash_sig_weak
 
 g_prio_link=101
 """default priority for link tasks:
-an even number means link tasks may be parallelized
-an odd number is probably the thing to do"""
+an odd number means one link at a time (no parallelization)"""
 
 g_src_file_ext = ['.c', '.cpp', '.cc']
 "default extensions for source files"
-
-cregexp1 = re.compile(r'^[ \t]*#[ \t]*(?:include)[ \t]*(?:/\*.*?\*/)?[ \t]*(<|")([^>"]+)(>|")', re.M)
-"regexp for computing dependencies (when not using the preprocessor)"
 
 class c_scanner(Scan.scanner):
 	"scanner for c/c++ files"
 	def __init__(self):
 		Scan.scanner.__init__(self)
+		self.do_scan = self.do_scan_new
+		self.get_signature = self.get_signature_rec
 
-	# re-scan a node, update the tree
-	def do_scan(self, node, env, hashparams):
-		debug("do_scan(self, node, env, hashparams)", 'ccroot')
-
-		variant = node.variant(env)
-
-		if not node:
-			error("BUG rescanning a null node")
-			return
-		(nodes, names) = self.scan(node, env, **hashparams)
-		if Params.g_verbose:
-			if Params.g_zones:
-				debug('scanner for %s returned %s %s' % (node.m_name, str(nodes), str(names)), 'deps')
-
-		tree = Params.g_build
-		tree.m_depends_on[variant][node] = nodes
-		tree.m_raw_deps[variant][node] = names
-
-		tree.m_deps_tstamp[variant][node] = tree.m_tstamp_variants[variant][node]
-		if Params.g_preprocess:
-			for n in nodes:
-				try:
-					# FIXME some tools do not behave properly and this part fails
-					# it should not be allowed to scan ahead of time
-					vv = n.variant(env)
-					tree.m_deps_tstamp[vv][n] = tree.m_tstamp_variants[vv][n]
-				except KeyError:
-					pass
-
-	def get_signature(self, task):
-		debug("get_signature(self, task)", 'ccroot')
-		if Params.g_preprocess:
-			if Params.g_strong_hash:
-				return self._get_signature_preprocessor(task)
-			else:
-				return self._get_signature_preprocessor_weak(task)
-		else:
-			if Params.g_strong_hash:
-				return self._get_signature_regexp_strong(task)
-			else:
-				return self._get_signature_regexp_weak(task)
-
-	def scan(self, node, env, path_lst, defines={}):
-		debug("scan", 'ccroot')
-		if Params.g_preprocess:
-			return self._scan_preprocessor(node, env, path_lst, defines)
-		else:
-			# the regular scanner does not use the define values
-			return self._scan_default(node, env, path_lst)
-		#return self._scan_default(node, env, path_lst)
-
-	def _scan_default(self, node, env, path_lst):
-		debug("_scan_default(self, node, env, path_lst)", 'ccroot')
-		variant = node.variant(env)
-		file = open(node.abspath(env), 'rb')
-		found = cregexp1.findall( file.read() )
-		file.close()
-
-		nodes = []
-		names = []
-		if not node: return (nodes, names)
-
-		for (_, name, _) in found:
-			#print 'boo', name
-
-			# quite a few nested 'for' loops, looking suspicious
-			found = None
-			for dir in path_lst:
-				found = dir.get_file(name)
-				if found:
-					break
-			if found: nodes.append(found)
-			else:     names.append(name)
-		#print "-S ", nodes, names
-		return (nodes, names)
-
-	def _scan_preprocessor(self, node, env, path_lst, defines={}):
-		debug("_scan_preprocessor(self, node, env, path_lst)", 'croot')
+	def scan(self, task, node):
+		"look for .h the .cpp need"
+		debug("_scan_preprocessor(self, node, env, path_lst)", 'ccroot')
 		import preproc
-		gruik = preproc.cparse(nodepaths = path_lst, defines=defines)
-		gruik.start2(node, env)
+		gruik = preproc.cparse(nodepaths = task.path_lst, defines = task.defines)
+		gruik.start2(node, task.m_env)
 		if Params.g_verbose:
-			debug("nodes found for %s %s %s" % (str(node), str(gruik.m_nodes), str(gruik.m_names)), 'deps')
+			debug("nodes found for %s: %s %s" % (str(node), str(gruik.m_nodes), str(gruik.m_names)), 'deps')
+			debug("deps found for %s: %s" % (str(node), str(gruik.deps)), 'deps')
 		return (gruik.m_nodes, gruik.m_names)
-
-	def _get_signature_regexp_strong(self, task):
-		m = md5.new()
-		tree = Params.g_build
-		seen = []
-		env  = task.m_env
-		def add_node_sig(node):
-			if not node: warning("null node in get_node_sig")
-			if node in seen: return
-
-			# TODO - using the variant each time is stupid
-			variant = node.variant(env)
-			seen.append(node)
-
-			# rescan if necessary, and add the signatures of the nodes it depends on
-			if tree.needs_rescan(node, task.m_env):
-				self.do_scan(node, task.m_env, task.m_scanner_params)
-			lst = tree.m_depends_on[variant][node]
-			for dep in lst: add_node_sig(dep)
-			m.update(tree.m_tstamp_variants[variant][node])
-		# add the signatures of the input nodes
-		for node in task.m_inputs: add_node_sig(node)
-		# add the signatures of the task it depends on
-		for task in task.m_run_after: m.update(task.signature())
-		return m.digest()
-
-	def _get_signature_regexp_weak(self, task):
-		msum = 0
-		tree = Params.g_build
-		seen = []
-		env  = task.m_env
-		def add_node_sig(node):
-			if not node: warning("null node in get_node_sig")
-			if node in seen: return 0
-
-			sum = 0
-
-			# TODO - using the variant each time is stupid
-			variant = node.variant(env)
-			seen.append(node)
-
-			sum += tree.m_tstamp_variants[variant][node]
-			# rescan if necessary, and add the signatures of the nodes it depends on
-			if tree.needs_rescan(node, task.m_env): self.do_scan(node, task.m_env, task.m_scanner_params)
-			lst = tree.m_depends_on[variant][node]
-			for dep in lst: sum += add_node_sig(dep)
-			return sum
-		# add the signatures of the input nodes
-		for node in task.m_inputs: msum = hash_sig_weak(msum, add_node_sig(node))
-		# add the signatures of the task it depends on
-		for task in task.m_run_after: msum = hash_sig_weak(msum, task.signature())
-		return int(msum)
-
-	def _get_signature_preprocessor_weak(self, task):
-		msum = 0
-		tree = Params.g_build
-		rescan = 0
-		env=task.m_env
-		seen=[]
-		def add_node_sig(n):
-			if not n: warning("null node in get_node_sig")
-			if n.m_name in seen: return 0
-
-			# TODO - using the variant each time is stupid
-			variant = n.variant(env)
-			seen.append(n.m_name)
-			return tree.m_tstamp_variants[variant][n]
-
-		# there is only one c/cpp file as input
-		node = task.m_inputs[0]
-
-		variant = node.variant(env)
-		if not variant == 0: fatal('variant is not 0')
-
-		if tree.needs_rescan(node, task.m_env): rescan = 1
-		if not rescan:
-			for anode in tree.m_depends_on[variant][node]:
-				if tree.needs_rescan(anode, task.m_env): rescan = 1
-
-		# rescan the cpp file if necessary
-		if rescan:
-			#print "rescanning ", node
-			self.do_scan(node, task.m_env, task.m_scanner_params)
-
-#		print "rescan for ", task.m_inputs[0], " is ", rescan,  " and deps ", \
-#			tree.m_depends_on[variant][node], tree.m_raw_deps[variant][node]
-
-		# we are certain that the files have been scanned - compute the signature
-		msum = hash_sig_weak(msum, add_node_sig(node))
-		for n in tree.m_depends_on[variant][node]:
-			msum = hash_sig_weak(msum, add_node_sig(n))
-
-		# and now xor the signature with the other tasks
-		for task in task.m_run_after:
-			msum = hash_sig_weak(msum, task.signature())
-		#debug("signature of the task %d is %s" % (task.m_idx, Params.vsig(sig)), 'ccroot')
-
-		return int(msum)
-
-	def _get_signature_preprocessor(self, task):
-		# assumption: there is only one cpp file to compile in a task
-
-		tree = Params.g_build
-		rescan = 0
-
-		m = md5.new()
-		seen=[]
-		env = task.m_env
-		def add_node_sig(n):
-			if not n: warning("warning: null node in get_node_sig")
-			if n.m_name in seen: return
-
-			# TODO - using the variant each time is stupid
-			variant = n.variant(env)
-			seen.append(n.m_name)
-			m.update(tree.m_tstamp_variants[variant][n])
-
-		# there is only one c/cpp file as input
-		node = task.m_inputs[0]
-
-		variant = node.variant(env)
-		if not variant == 0: fatal('variant is not 0')
-
-		if tree.needs_rescan(node, task.m_env): rescan = 1
-		#if rescan: print "node has changed, a rescan is req ", node
-
-		if not rescan:
-			#print node, "depends on ", tree.m_depends_on[variant][node]
-			for anode in tree.m_depends_on[variant][node]:
-				if tree.needs_rescan(anode, task.m_env):
-					#print "rescanning because of ", anode
-					rescan = 1
-
-		# rescan the cpp file if necessary
-		if rescan:
-			#print "rescanning ", node
-			self.do_scan(node, task.m_env, task.m_scanner_params)
-
-		# DEBUG
-		#print "rescan for ", task.m_inputs[0], " is ", rescan,  " and deps ", \
-		#	tree.m_depends_on[variant][node], tree.m_raw_deps[variant][node]
-
-		# we are certain that the files have been scanned - compute the signature
-		add_node_sig(node)
-		for n in tree.m_depends_on[variant][node]: add_node_sig(n)
-
-		#for task in task.m_run_after: m.update(task.signature())
-		return m.digest()
 
 g_c_scanner = c_scanner()
 "scanner for c programs"
@@ -311,17 +89,27 @@ Action.Action('fakelibtool', vars=fakelibtool_vardeps, func=fakelibtool_build, c
 class ccroot(Object.genobj):
 	"Parent class for programs and libraries in languages c, c++ and moc (Qt)"
 	s_default_ext = []
-	def __init__(self, type='program'):
+	def __init__(self, type='program', subtype=None):
 		Object.genobj.__init__(self, type)
 
 		self.env = Params.g_build.m_allenvs['default'].copy()
 		if not self.env['tools']: fatal('no tool selected')
 
-		# installation directory, to override PREFIX/bin or PREFIX/lib
-		self.install_in = ''
+		self.install_var = ''
+		self.install_subdir = ''
 
 		# includes, seen from the current directory
 		self.includes=''
+
+		## list of directories to enable when scanning
+		## #include directives in source files for automatic
+		## dependency tracking.  If left empty, scanning the
+		## whole project tree is enabled.  If non-empty, only
+		## the indicated directories (which must be relative
+		## paths), plus the directories in obj.includes, are
+		## scanned for #includes.
+		self.dependencies = ''
+
 		self.defines=''
 		self.rpaths=''
 
@@ -354,28 +142,36 @@ class ccroot(Object.genobj):
 
 		# these are kind of private, do not touch
 		self._incpaths_lst=[]
+		self.inc_paths = []
 		self.scanner_defines = {}
 		self._bld_incpaths_lst=[]
 
-	def create_task(self, type, env=None, nice=10):
+		# the subtype, used for all sorts of things
+		self.subtype = subtype
+		if not self.subtype:
+			if self.m_type == 'program':
+				self.subtype = 'program'
+			elif self.m_type == 'staticlib':
+				self.subtype = 'staticlib'
+			elif self.m_type == 'plugin':
+				self.subtype = 'plugin'
+			else:
+				self.subtype = 'shlib'
+
+	def create_task(self, type, env=None, nice=100):
 		"overrides Object.create_task to catch the creation of cpp tasks"
 		task = Object.genobj.create_task(self, type, env, nice)
 		if type == self.m_type_initials:
 			self.p_compiletasks.append(task)
 		return task
 
-	def get_valid_types(self):
-		"subclass me"
-		fatal('subclass method get_valid_types of ccroot')
-
 	def apply(self):
 		"adding some kind of genericity is tricky subclass this method if it does not suit your needs"
 		debug("apply called for "+self.m_type_initials, 'ccroot')
-		if not self.m_type in self.get_valid_types():
-			fatal('Invalid type for object: '+self.m_type_initials)
 
 		self.apply_type_vars()
 		self.apply_incpaths()
+		self.apply_dependencies()
 		self.apply_defines()
 
 		self.apply_core()
@@ -389,7 +185,7 @@ class ccroot(Object.genobj):
 			self.apply_libtool()
 
 		if self.m_type == 'objects':
-			type = 'program'
+			type = 'program' # TODO: incorrect for shlibs
 		else:
 			type = self.m_type
 
@@ -399,7 +195,6 @@ class ccroot(Object.genobj):
 		# get the list of folders to use by the scanners
 		# all our objects share the same include paths anyway
 		tree = Params.g_build
-		dir_lst = { 'path_lst' : self._incpaths_lst, 'defines' : self.scanner_defines }
 
 		lst = self.to_list(self.source)
 		find_source_lst = self.path.find_source_lst
@@ -419,7 +214,8 @@ class ccroot(Object.genobj):
 			task = self.create_task(self.m_type_initials, self.env)
 
 			task.m_scanner        = g_c_scanner
-			task.m_scanner_params = dir_lst
+			task.path_lst = self.inc_paths
+			task.defines  = self.scanner_defines
 
 			task.m_inputs = [node]
 			task.m_outputs = [node.change_ext(obj_ext)]
@@ -436,7 +232,7 @@ class ccroot(Object.genobj):
 		# link in a lower priority (101) so it runs alone (default is 10)
 		global g_prio_link
 		if self.m_type=='staticlib':
-			linktask = self.create_task(pre+'_link_static', self.env, g_prio_link)
+			linktask = self.create_task('ar_link_static', self.env, g_prio_link)
 		else:
 			linktask = self.create_task(pre+'_link', self.env, g_prio_link)
 		outputs = []
@@ -454,16 +250,29 @@ class ccroot(Object.genobj):
 			self.m_latask = latask
 
 	def get_target_name(self, ext=None):
-		return self.get_library_name(self.target, self.m_type, ext)
+		return self.get_library_name(self.target, ext)
 
-	def get_library_name(self, name, type, ext=None):
-		prefix = self.env[type+'_PREFIX']
-		suffix = self.env[type+'_SUFFIX']
+	def get_library_name(self, name, ext=None):
+		v = self.env
+
+		prefix = v[self.m_type+'_PREFIX']
+		if self.subtype+'_PREFIX' in v.m_table:
+			prefix = v[self.subtype+'_PREFIX']
+
+		suffix = v[self.m_type+'_SUFFIX']
+		if self.subtype+'_SUFFIX' in v.m_table:
+			suffix = v[self.subtype+'_SUFFIX']
 
 		if ext: suffix = ext
 		if not prefix: prefix=''
 		if not suffix: suffix=''
-		return ''.join([prefix, name, suffix])
+
+		# Handle the case where the name contains a directory src/mylib
+		k=name.rfind('/')
+		if k == -1:
+			return ''.join([prefix, name, suffix])
+		else:
+			return name[0:k+1] + ''.join([prefix, name[k+1:], suffix])
 
 	def apply_defines(self):
 		"subclass me"
@@ -484,7 +293,7 @@ class ccroot(Object.genobj):
 		# now process the include paths
 		tree = Params.g_build
 		for dir in inc_lst:
-			if os.path.isabs(dir[0]) or (len(dir) > 1 and dir[1] == ':'):
+			if Utils.is_absolute_path(dir):
 				self.env.append_value('CPPPATH', dir)
 				continue
 
@@ -497,11 +306,40 @@ class ccroot(Object.genobj):
 			self._bld_incpaths_lst.append(node)
 		# now the nodes are added to self._incpaths_lst
 
+	def apply_dependencies(self):
+		if self.dependencies:
+			dep_lst = (self.to_list(self.dependencies)
+				   + self.to_list(self.includes))
+			self.inc_paths = []
+			for directory in dep_lst:
+				if Utils.is_absolute_path(directory):
+					Params.fatal("Absolute paths not allowed in obj.dependencies")
+					return
+
+				node = self.path.find_dir_lst(Utils.split_path(directory))
+				if not node:
+					Params.fatal("node not found in ccroot:apply_dependencies "
+						     + str(directory), 'ccroot')
+					return
+				if node not in self.inc_paths:
+					self.inc_paths.append(node)
+		else:
+			## by default, we include the whole project tree
+			lst = []
+			for obj in Object.g_allobjs:
+				if obj.path not in lst:
+					lst.append(obj.path)
+			self.inc_paths = lst + self._incpaths_lst
+
 	def apply_type_vars(self):
 		debug('apply_type_vars called', 'ccroot')
+		# if the subtype defines uselib to add, add them
+		st = self.env[self.subtype+'_USELIB']
+		if st: self.uselib = self.uselib + ' ' + st
+
+		# each compiler defines variables like 'shlib_CXXFLAGS', 'shlib_LINKFLAGS', etc
+		# so when we make a cppobj of the type shlib, CXXFLAGS are modified accordingly
 		for var in self.p_type_vars:
-			# each compiler defines variables like 'shlib_CXXFLAGS', 'shlib_LINKFLAGS', etc
-			# so when we make a cppobj of the type shlib, CXXFLAGS are modified accordingly
 			compvar = '_'.join([self.m_type, var])
 			#print compvar
 			value = self.env[compvar]
@@ -565,20 +403,14 @@ class ccroot(Object.genobj):
 
 	def install(self):
 		if not (Params.g_commands['install'] or Params.g_commands['uninstall']): return
-		if self.install_in is 0: return
-		dest_var    = ''
-		dest_subdir = ''
 
-		if self.install_in:
-			dest_var    = self.install_in
-			dest_subdir = ''
-		else:
-			if self.m_type == 'program':
-				dest_var    = 'PREFIX'
-				dest_subdir = 'bin'
-			else:
-				dest_var    = 'PREFIX'
-				dest_subdir = 'lib'
+		dest_var    = self.install_var
+		dest_subdir = self.install_subdir
+		if dest_var == 0: return
+
+		if not dest_var:
+			dest_var = self.env[self.subtype+'_INST_VAR']
+			dest_subdir = self.env[self.subtype+'_INST_DIR']
 
 		if self.m_type == 'program':
 			self.install_results(dest_var, dest_subdir, self.m_linktask, chmod=self.chmod)
@@ -603,7 +435,7 @@ class ccroot(Object.genobj):
 
 				Common.symlink_as(dest_var, name3, dest_subdir+'/'+name2)
 				Common.symlink_as(dest_var, name2, dest_subdir+'/'+name1)
-		elif self.m_type == 'staticlib':
+		else:
 			self.install_results(dest_var, dest_subdir, self.m_linktask, chmod=0644)
 
 	# This piece of code must suck, no one uses it
@@ -649,56 +481,82 @@ class ccroot(Object.genobj):
 
 	def apply_lib_vars(self):
 		debug('apply_lib_vars called', 'ccroot')
+		env=self.env
 
-		# 0. override if necessary
+		# 1. override if necessary
 		self.process_vnum()
 
-		# 1. the case of the libs defined in the project
-		names = self.uselib_local.split()
-		env=self.env
-		htbl = Params.g_build.m_depends_on
-		for name in names:
-			for obj in Object.g_allobjs:
-				if obj.name != name: continue
+		# 2. the case of the libs defined in the project (visit ancestors first)
+		# the ancestors external libraries (uselib) will be prepended
+		uselib = self.to_list(self.uselib)
+		seen = []
+		names = self.to_list(self.uselib_local) # consume the list of names
+		while names:
+			x = names[0]
 
-				if not obj.m_posted: obj.post()
+			# visit dependencies only once
+			if x in seen:
+				names = names[1:]
+				continue
 
-				if obj.m_type == 'shlib':
-					env.append_value('LIB', obj.target)
-				elif obj.m_type == 'plugin':
-					if platform == 'darwin':
-						env.append_value('PLUGIN', obj.target)
-					else:
-						env.append_value('LIB', obj.target)
-				elif obj.m_type == 'staticlib':
-					env.append_value('STATICLIB', obj.target)
-				else:
-					error('unknown object type %s in apply_lib_vars' % obj.name)
+			# object does not exist ?
+			y = Object.name_to_obj(x)
+			if not y:
+				fatal('object not found in uselib_local: obj %s uselib %s' % (self.name, x))
+				names = names[1:]
+				continue
 
-				# add the path too
-				tmp_path = obj.path.bldpath(self.env)
-				if not tmp_path in env['LIBPATH']: env.prepend_value('LIBPATH', tmp_path)
+			# object has ancestors to process first ? update the list of names
+			if y.uselib_local:
+				added = 0
+				lst = y.to_list(y.uselib_local)
+				lst.reverse()
+				for u in lst:
+					if u in seen: continue
+					added = 1
+					names = [u]+names
+				if added: continue # list of names modified, loop
 
-				# set the dependency over the link task
-				self.m_linktask.m_run_after.append(obj.m_linktask)
+			# safe to process the current object
+			if not y.m_posted: y.post()
+			seen.append(x)
 
-				# make sure to rebuild our link task if obj.m_linktask is re-run
-				try:
-					lst = htbl[self.m_linktask.m_outputs[0]]
-					for a in obj.m_linktask:
-						if not a in lst:
-							lst.append(a)
-				except:
-					htbl[self.m_linktask.m_outputs[0]] = obj.m_linktask.m_outputs
+			if y.m_type == 'shlib':
+				env.append_value('LIB', y.target)
+			elif y.m_type == 'plugin':
+				if sys.platform == 'darwin': env.append_value('PLUGIN', y.target)
+				else: env.append_value('LIB', y.target)
+			elif y.m_type == 'staticlib':
+				env.append_value('STATICLIB', y.target)
+			elif y.m_type == 'objects':
+				pass
+			else:
+				error('%s has unknown object type %s, in apply_lib_vars, uselib_local.'
+				      % (y.name, y.m_type))
 
-				# do not continue on all objects, we have found the interesting one
-				break
+			# add the link path too
+			tmp_path = y.path.bldpath(self.env)
+			if not tmp_path in env['LIBPATH']: env.prepend_value('LIBPATH', tmp_path)
 
-		# 2. the case of the libs defined outside
-		libs = self.uselib.split()
-		for l in libs:
+			# set the dependency over the link task # FIXME it cannot be null
+			if y.m_linktask is not None:
+				self.m_linktask.set_run_after(y.m_linktask)
+				dep_nodes = getattr(self.m_linktask, 'dep_nodes', [])
+				dep_nodes += y.m_linktask.m_outputs
+				self.m_linktask.dep_nodes = dep_nodes
+
+			# add ancestors uselib too
+			# TODO potential problems with static libraries ?
+			morelibs = y.to_list(y.uselib)
+			for v in morelibs:
+				if v in uselib: continue
+				uselib = [v]+uselib
+			names = names[1:]
+
+		# 3. the case of the libs defined outside
+		for x in uselib:
 			for v in self.p_flag_vars:
-				val=self.env[v+'_'+l]
+				val = self.env[v+'_'+x]
 				if val: self.env.append_value(v, val)
 	def process_vnum(self):
 		if self.vnum and sys.platform != 'darwin' and sys.platform != 'win32':
@@ -710,19 +568,42 @@ class ccroot(Object.genobj):
 
 	def apply_objdeps(self):
 		"add the .o files produced by some other object files in the same manner as uselib_local"
-		lst = self.add_objects.split()
-		if not lst: return
-		for obj in Object.g_allobjs:
-			if obj.target in lst or obj.name in lst:
-				if not obj.m_posted: obj.post()
-				self.m_linktask.m_inputs += obj.out_nodes
+		seen = []
+		names = self.to_list(self.add_objects)
+		while names:
+			x = names[0]
+
+			# visit dependencies only once
+			if x in seen:
+				names = names[1:]
+				continue
+
+			# object does not exist ?
+			y = Object.name_to_obj(x)
+			if not y:
+				error('object not found in add_objects: obj %s add_objects %s' % (self.name, x))
+				names = names[1:]
+				continue
+
+			# object has ancestors to process first ? update the list of names
+			if y.add_objects:
+				added = 0
+				lst = y.to_list(y.add_objects)
+				lst.reverse()
+				for u in lst:
+					if u in seen: continue
+					added = 1
+					names = [u]+names
+				if added: continue # list of names modified, loop
+
+			# safe to process the current object
+			if not y.m_posted: y.post()
+			seen.append(x)
+
+			self.m_linktask.m_inputs += y.out_nodes
+
 
 	def addflags(self, var, value):
 		"utility function for cc.py and ccroot.py: add self.cxxflags to CXXFLAGS"
-		if type(var) is types.StringType:
-			for i in value.split():
-				self.env.append_value(var, i)
-		else:
-			# TODO: double-check
-			self.env[var] += value
+		self.env.append_value(var, self.to_list(value))
 

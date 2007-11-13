@@ -151,18 +151,22 @@ static void
 xmms_diskwrite_destroy (xmms_output_t *output)
 {
 	xmms_config_property_t *val;
+	gpointer data;
 
 	g_return_if_fail (output);
 
+	data = xmms_output_private_data_get (output);
+
 	val = xmms_output_config_lookup (output, "destination_directory");
 	xmms_config_property_callback_remove (val,
-	    (xmms_object_handler_t) on_dest_directory_changed);
+	                                      (xmms_object_handler_t) on_dest_directory_changed, data);
 
 	xmms_object_disconnect (XMMS_OBJECT (output),
 	                        XMMS_IPC_SIGNAL_OUTPUT_CURRENTID,
-	                        (xmms_object_handler_t ) on_playlist_entry_changed);
+	                        (xmms_object_handler_t ) on_playlist_entry_changed,
+	                        data);
 
-	g_free (xmms_output_private_data_get (output));
+	g_free (data);
 }
 
 static gboolean
@@ -178,7 +182,7 @@ xmms_diskwrite_open (xmms_output_t *output)
 
 	/* create the destination directory if it doesn't exist yet */
 	if (!g_file_test (data->destdir, G_FILE_TEST_IS_DIR)) {
-		ret = mkdir (data->destdir, 0755);
+		ret = g_mkdir_with_parents (data->destdir, 0755);
 	} else {
 		ret = access (data->destdir, W_OK);
 	}

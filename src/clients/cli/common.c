@@ -32,7 +32,7 @@ format_url (gchar *item, GFileTest test)
 	if (!(p && p[1] == '/' && p[2] == '/')) {
 		/* OK, so this is NOT an valid URL */
 
-		if (!realpath (item, rpath)) {
+		if (!x_realpath (item, rpath)) {
 			return NULL;
 		}
 
@@ -45,7 +45,7 @@ format_url (gchar *item, GFileTest test)
 		url = g_strdup_printf ("%s", item);
 	}
 
-	return url;
+	return x_path2url (url);
 }
 
 
@@ -54,7 +54,7 @@ print_info (const gchar *fmt, ...)
 {
 	gchar buf[8096];
 	va_list ap;
-	
+
 	va_start (ap, fmt);
 	g_vsnprintf (buf, 8096, fmt, ap);
 	va_end (ap);
@@ -68,7 +68,7 @@ print_error (const gchar *fmt, ...)
 {
 	gchar buf[1024];
 	va_list ap;
-	
+
 	va_start (ap, fmt);
 	g_vsnprintf (buf, 1024, fmt, ap);
 	va_end (ap);
@@ -80,7 +80,7 @@ print_error (const gchar *fmt, ...)
 
 
 void
-print_hash (const void *key, xmmsc_result_value_type_t type, 
+print_hash (const void *key, xmmsc_result_value_type_t type,
 			const void *value, void *udata)
 {
 	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
@@ -92,7 +92,7 @@ print_hash (const void *key, xmmsc_result_value_type_t type,
 
 
 void
-print_entry (const void *key, xmmsc_result_value_type_t type, 
+print_entry (const void *key, xmmsc_result_value_type_t type,
 			 const void *value, const gchar *source, void *udata)
 {
 	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
@@ -134,29 +134,6 @@ print_entry (const void *key, xmmsc_result_value_type_t type,
 	}
 }
 
-gint
-find_terminal_width() {
-	gint columns = 0;
-	struct winsize ws;
-	char *colstr, *endptr;
-
-	if (!ioctl(STDIN_FILENO, TIOCGWINSZ, &ws)) {
-		columns = ws.ws_col;
-	} else {
-		colstr = getenv("COLUMNS");
-		if(colstr != NULL) {
-			columns = strtol(colstr, &endptr, 10);
-		}
-	}
-
-	/* Default to 80 columns */
-	if(columns <= 0) {
-		columns = 80;
-	}
-
-	return columns;
-}
-
 void
 print_padded_string (gint columns, gchar padchar, gboolean padright, const gchar *fmt, ...)
 {
@@ -164,7 +141,7 @@ print_padded_string (gint columns, gchar padchar, gboolean padright, const gchar
 	gchar *padstring;
 
 	va_list ap;
-	
+
 	va_start (ap, fmt);
 	g_vsnprintf (buf, 1024, fmt, ap);
 	va_end (ap);
@@ -287,57 +264,43 @@ coll_read_collname (gchar *str, gchar **name, gchar **namespace)
 	return TRUE;
 }
 
-/** Return an escaped version of the string, with \-protected chars.
+/** Return an escaped version of the string, with \-protected spaces
+ *  outside of quotes.
  *
- *  A heuristic is used to pseudo-smartly escape the parentheses: an
- *  opening parenthesis is escaped unless it's the first char of the
- *  string; a closing parenthesis is escaped unless it's the last char
- *  of the string or it has a corresponding opening parenthesis.
- *
- *  It is imperfect in the case that s ends with a parenthesis which
- *  has not been opened.
+ *  The returned string must be freed manually afterwards.
  */
 char *
 string_escape (const char *s)
 {
-	int i, w;
-	int esc_chars;
-	int end_index;
-	int paren_cnt;
+	gboolean escaped, quoted;
+	gchar quote_char;
+	gint i, w, len;
 	char *res;
 
-	end_index = strlen (s) - 1;
-
-	paren_cnt = 0;
-	esc_chars = 0;
-	for (i = 0; s[i] != '\0'; i++) {
-		if (s[i] == '\\' || s[i] == ' ' || s[i] == '"' || s[i] == '\'' ||
-		    (s[i] == '(' && i != 0) ||
-		    (s[i] == ')' && (i != end_index || paren_cnt > 0)) ) {
-
-			if (s[i] == '(') {
-				paren_cnt++;
-			} else if (s[i] == ')') {
-				paren_cnt--;
-			}
-			esc_chars++;
+	/* Conservative length estimation */
+	for (i = 0, len = 0; s[i] != '\0'; i++, len++) {
+		if (s[i] == ' ' || s[i] == '\\') {
+			len++;
 		}
 	}
 
-	paren_cnt = 0;
-	res = g_new0 (char, strlen (s) + esc_chars + 1);
-	for (i = 0, w = 0; s[i] != '\0'; i++, w++) {
-		if (s[i] == '\\' || s[i] == ' ' || s[i] == '"' || s[i] == '\'' ||
-		    (s[i] == '(' && i != 0) ||
-		    (s[i] == ')' && (i != end_index || paren_cnt > 0)) ) {
+	res = g_new0 (char, len + 1);
 
-			if (s[i] == '(') {
-				paren_cnt++;
-			} else if (s[i] == ')') {
-				paren_cnt--;
-			}
+	/* Copy string, escape spaces outside of quotes */
+	escaped = FALSE;
+	quoted = FALSE;
+	quote_char = 0;
+	for (i = 0, w = 0; s[i] != '\0'; i++, w++) {
+		if ((s[i] == ' ') && !quoted) {
 			res[w] = '\\';
 			w++;
+		}
+
+		if (!quoted && (s[i] == '"' || s[i] == '\'')) {
+			quoted = TRUE;
+			quote_char = s[i];
+		} else if (quoted && s[i] == quote_char) {
+			quoted = FALSE;
 		}
 
 		res[w] = s[i];

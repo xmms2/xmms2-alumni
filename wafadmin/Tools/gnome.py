@@ -12,6 +12,28 @@ from Params import fatal, error
 n1_regexp = re.compile('<refentrytitle>(.*)</refentrytitle>', re.M)
 n2_regexp = re.compile('<manvolnum>(.*)</manvolnum>', re.M)
 
+
+def postinstall():
+	if Params.g_commands['install']:
+		import Runner, Common
+
+		# add the gconf schema
+		dir = Common.path_install('PREFIX', 'etc/gconf/schemas/gnome_test.schemas')
+		command = 'gconftool-2 --install-schema-file=%s 1> /dev/null' % dir
+		ret = Runner.exec_command(command)
+
+		# update the pixmap cache directory
+		dir = Common.path_install('DATADIR', 'icons/hicolor')
+		command = 'gtk-update-icon-cache -q -f -t %s' % dir
+		ret = Runner.exec_command(command)
+
+		# now the scrollkeeper update if we can write to the log file
+		if os.path.iswriteable('/var/log/scrollkeeper.log'):
+			dir1 = Common.path_install('PREFIX', 'var/scrollkeeper')
+			dir2 = Common.path_install('DATADIR', 'omf/gnome-hello')
+			command = 'scrollkeeper-update -q -p %s -o %s' % (dir1, dir2)
+			ret = Runner.exec_command(command)
+
 class sgml_man_scanner(Scan.scanner):
 	def __init__(self):
 		Scan.scanner.__init__(self)
@@ -54,7 +76,7 @@ class gnome_intltool(Object.genobj):
 
 			podirnode = self.path.find_source(self.podir)
 
-			self.env['INTLCACHE'] = Utils.join_path(Params.g_build.m_curdirnode.bldpath(self.env),".intlcache")
+			self.env['INTLCACHE'] = os.path.join(Params.g_build.m_curdirnode.bldpath(self.env),".intlcache")
 			self.env['INTLPODIR'] = podirnode.bldpath(self.env)
 			self.env['INTLFLAGS'] = self.flags
 
@@ -136,7 +158,7 @@ class gnome_translations(Object.genobj):
 			node = self.path.find_source(lang+'.gmo')
 			orig = node.relpath_gen(current)
 
-			destfile = Utils.join_path(lang, 'LC_MESSAGES', destfilename)
+			destfile = os.path.join(lang, 'LC_MESSAGES', destfilename)
 			Common.install_as('GNOMELOCALEDIR', destfile, orig, self.env)
 
 
@@ -318,7 +340,7 @@ def detect(conf):
 	#Define to 1 if you have the <string.h> header file.
 	conf.check_header('string.h', 'HAVE_STRING_H')
 
-        #Define to 1 if you have the <sys/stat.h> header file.
+	#Define to 1 if you have the <sys/stat.h> header file.
 	conf.check_header('sys/stat.h', 'HAVE_SYS_STAT_H')
 
 	#Define to 1 if you have the <sys/types.h> header file.

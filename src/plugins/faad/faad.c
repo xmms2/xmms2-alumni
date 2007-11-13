@@ -159,6 +159,7 @@ xmms_faad_init (xmms_xform_t *xform)
 	}
 
 	while (data->buffer_length < 8) {
+		xmms_error_reset (&error);
 		bytes_read = xmms_xform_read (xform,
 		                              (gchar *) data->buffer + data->buffer_length,
 		                              data->buffer_size - data->buffer_length,
@@ -225,6 +226,22 @@ xmms_faad_init (xmms_xform_t *xform)
 
 	data->samplerate = samplerate;
 	data->channels = channels;
+
+	/* Because for HE AAC files some versions of libfaad return the wrong
+	 * samplerate in init, we have to do one read and let it decide the
+	 * real parameters. After changing sample parameters and format is
+	 * supported, this hack should be removed and handled in read instead. */
+	{
+		gchar tmpbuf[1024];
+
+		xmms_error_reset (&error);
+		bytes_read = xmms_faad_read (xform, tmpbuf, 1024, &error);
+		if (bytes_read <= 0) {
+			XMMS_DBG ("First read from faad decoder failed!");
+			return FALSE;
+		}
+		g_string_prepend_len (data->outbuf, tmpbuf, bytes_read);
+	}
 
 	xmms_xform_outdata_type_add (xform,
 	                             XMMS_STREAM_TYPE_MIMETYPE,
@@ -296,6 +313,14 @@ xmms_faad_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len, xmms_error_t 
 		if (bytes_read > 0 && frameInfo.error == 0) {
 			gint32 temp, toskip = 0;
 
+			if (data->samplerate != frameInfo.samplerate ||
+			    data->channels != frameInfo.channels) {
+				/* We should inform output to change parameters somehow */
+				XMMS_DBG ("Output format changed in the middle of a read!");
+				data->samplerate = frameInfo.samplerate;
+				data->channels = frameInfo.channels;
+			}
+
 			if (xmms_xform_privdata_get_int (xform, "frame_offset", &temp)) {
 				toskip = (temp * frameInfo.channels *
 				          xmms_sample_size_get (data->sampleformat));
@@ -352,6 +377,7 @@ static void
 xmms_faad_get_mediainfo (xmms_xform_t *xform)
 {
 	xmms_faad_data_t *data;
+	const gchar *metakey;
 
 	g_return_if_fail (xform);
 
@@ -360,28 +386,28 @@ xmms_faad_get_mediainfo (xmms_xform_t *xform)
 
 	if (data->filetype == FAAD_TYPE_ADIF) {
 		guint skip_size, bitrate;
-		guint64 duration;
+		gint32 duration;
 
 		skip_size = (data->buffer[4] & 0x80) ? 9 : 0;
 		bitrate = ((guint) (data->buffer[4 + skip_size] & 0x0F) << 19) |
 		          ((guint) data->buffer[5 + skip_size] << 11) |
 		          ((guint) data->buffer[6 + skip_size] << 3) |
 		          ((guint) data->buffer[7 + skip_size] & 0xE0);
-		xmms_xform_metadata_set_int (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_BITRATE,
-		                             bitrate);
 
-		duration = xmms_xform_metadata_get_int (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE);;
-		if (duration != 0) {
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_BITRATE;
+		xmms_xform_metadata_set_int (xform, metakey, bitrate);
+
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE;
+		if (xmms_xform_metadata_get_int (xform, metakey, &duration)) {
 			duration = ((float) duration * 8000.f) / ((float) bitrate) + 0.5f;
-			xmms_xform_metadata_set_int (xform,
-			                             XMMS_MEDIALIB_ENTRY_PROPERTY_DURATION,
-			                             duration);
+
+			metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_DURATION;
+			xmms_xform_metadata_set_int (xform, metakey, duration);
 		}
 	} else if (data->filetype == FAAD_TYPE_ADTS) {
-		xmms_xform_metadata_set_int (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_SAMPLERATE,
-		                             faad_mpeg_samplerates[(data->buffer[2]&0x3c)>>2]);
+		gint32 val = faad_mpeg_samplerates[(data->buffer[2] & 0x3c) >> 2];
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SAMPLERATE;
+		xmms_xform_metadata_set_int (xform, metakey, val);
 	}
 }
 

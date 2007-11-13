@@ -46,12 +46,12 @@ typedef struct {
 
 typedef enum { STRING, INTEGER } ptype;
 typedef struct {
-	gchar *vname;
-	gchar *xname;
+	const gchar *vname;
+	const gchar *xname;
 	ptype type;
 } props;
 
-static props properties[] = {
+static const props properties[] = {
 	{ "title",                XMMS_MEDIALIB_ENTRY_PROPERTY_TITLE,     STRING  },
 	{ "artist",               XMMS_MEDIALIB_ENTRY_PROPERTY_ARTIST,    STRING  },
 	{ "album",                XMMS_MEDIALIB_ENTRY_PROPERTY_ALBUM,     STRING  },
@@ -194,58 +194,60 @@ xmms_mac_get_media_info (xmms_xform_t *xform)
 
 	CAPETag *p_ape_tag = (CAPETag *)(data->p_decompress->GetInfo (APE_INFO_TAG));
 
-	BOOL bHasID3Tag = p_ape_tag->GetHasID3Tag ();
-	BOOL bHasAPETag = p_ape_tag->GetHasAPETag ();
+	if (p_ape_tag) {
+		BOOL bHasID3Tag = p_ape_tag->GetHasID3Tag ();
+		BOOL bHasAPETag = p_ape_tag->GetHasAPETag ();
 
-	if (bHasID3Tag || bHasAPETag) {
-		CAPETagField * pTagField;
-		int index = 0;
-		while ((pTagField = p_ape_tag->GetTagField (index)) != NULL) {
-			index ++;
+		if (bHasID3Tag || bHasAPETag) {
+			CAPETagField * pTagField;
+			int index = 0;
+			while ((pTagField = p_ape_tag->GetTagField (index)) != NULL) {
+				index ++;
 
-			const wchar_t *field_name;
-			char field_value[255];
+				const wchar_t *field_name;
+				char field_value[255];
 
-			gchar *name;
+				gchar *name;
 
-			field_name = pTagField->GetFieldName ();
-			name = (gchar *)GetUTF8FromUTF16 (field_name);
+				field_name = pTagField->GetFieldName ();
+				name = (gchar *)GetUTF8FromUTF16 (field_name);
 
-			memset (field_value, 0, 255);
-			int size = 255;
-			p_ape_tag->GetFieldString (field_name, (char *)field_value, &size, TRUE);
+				memset (field_value, 0, 255);
+				int size = 255;
+				p_ape_tag->GetFieldString (field_name, (char *)field_value, &size, TRUE);
 
-			guint i = 0;
-			for (i = 0; i < G_N_ELEMENTS (properties); i++) {
-				if (g_strcasecmp (name, properties[i].vname) == 0) {
-					if (properties[i].type == INTEGER) {
-						gint tmp = strtol (field_value, NULL, 10);
-						xmms_xform_metadata_set_int (xform,
-						                             properties[i].xname,
-						                             tmp);
-					} else {
-						xmms_xform_metadata_set_str (xform,
-						                             properties[i].xname,
-						                             field_value);
+				guint i = 0;
+				for (i = 0; i < G_N_ELEMENTS (properties); i++) {
+					if (g_strcasecmp (name, properties[i].vname) == 0) {
+						if (properties[i].type == INTEGER) {
+							gint tmp = strtol (field_value, NULL, 10);
+							xmms_xform_metadata_set_int (xform,
+														 properties[i].xname,
+														 tmp);
+						} else {
+							xmms_xform_metadata_set_str (xform,
+														 properties[i].xname,
+														 field_value);
+						}
+						break;
 					}
-					break;
 				}
+				if (i >= G_N_ELEMENTS (properties)) {
+					xmms_xform_metadata_set_str (xform, name, field_value);
+				}
+				g_free (name);
 			}
-			if (i >= G_N_ELEMENTS (properties)) {
-				xmms_xform_metadata_set_str (xform, name, field_value);
-			}
-			g_free (name);
 		}
 	}
 
-	gchar *name, *value;
+	gchar *name, *value, *metakey;
+	gint filesize;
 
-	gint filesize = xmms_xform_metadata_get_int (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE);
-	if (filesize != -1) {	
+	metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE;
+	if (xmms_xform_metadata_get_int (xform, metakey, &filesize)) {
 		gint duration = data->p_decompress->GetInfo (APE_DECOMPRESS_LENGTH_MS);
-		xmms_xform_metadata_set_int (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_DURATION,
-		                             duration);
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_DURATION;
+		xmms_xform_metadata_set_int (xform, metakey, duration);
 	}
 
 	/* Technical Information */

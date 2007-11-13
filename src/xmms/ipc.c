@@ -229,7 +229,7 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
 }
 
 static void
-process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
+process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 {
 	xmms_object_t *object;
 	xmms_object_cmd_desc_t *cmd;
@@ -238,7 +238,6 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_t *ipc, xmms_ipc_msg_t *msg)
 	uint32_t objid, cmdid;
 	gint i;
 
-	g_return_if_fail (ipc);
 	g_return_if_fail (msg);
 
 	objid = xmms_ipc_msg_get_object (msg);
@@ -363,11 +362,7 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 
 	g_return_val_if_fail (client, FALSE);
 
-	if (!(cond & G_IO_IN)) {
-		xmms_log_error ("Client got error/hup, maybe connection died?");
-		g_main_loop_quit (client->ml);
-		return FALSE;
-	} else {
+	if (cond & G_IO_IN) {
 		while (TRUE) {
 			if (!client->read_msg) {
 				client->read_msg = xmms_ipc_msg_alloc ();
@@ -376,7 +371,7 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 			if (xmms_ipc_msg_read_transport (client->read_msg, client->transport, &disconnect)) {
 				xmms_ipc_msg_t *msg = client->read_msg;
 				client->read_msg = NULL;
-				process_msg (client, client->ipc, msg);
+				process_msg (client, msg);
 				xmms_ipc_msg_destroy (msg);
 			} else {
 				break;
@@ -384,12 +379,18 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 		}
 	}
 
-	if (disconnect) {
+	if (disconnect || (cond & G_IO_HUP)) {
 		if (client->read_msg) {
 			xmms_ipc_msg_destroy (client->read_msg);
 			client->read_msg = NULL;
 		}
 		XMMS_DBG ("disconnect was true!");
+		g_main_loop_quit (client->ml);
+		return FALSE;
+	}
+
+	if (cond & G_IO_ERR) {
+		xmms_log_error ("Client got error, maybe connection died?");
 		g_main_loop_quit (client->ml);
 		return FALSE;
 	}
@@ -477,6 +478,10 @@ xmms_ipc_client_new (xmms_ipc_t *ipc, xmms_ipc_transport_t *transport)
 	fd = xmms_ipc_transport_fd_get (transport);
 	client->iochan = g_io_channel_unix_new (fd);
 	g_return_val_if_fail (client->iochan, NULL);
+
+	g_io_channel_set_close_on_unref (client->iochan, TRUE);
+	g_io_channel_set_encoding (client->iochan, NULL, NULL);
+	g_io_channel_set_buffered (client->iochan, FALSE);
 
 	client->transport = transport;
 	client->ipc = ipc;
@@ -606,6 +611,11 @@ xmms_ipc_setup_server_internaly (xmms_ipc_t *ipc)
 {
 	g_mutex_lock (ipc->mutex_lock);
 	ipc->chan = g_io_channel_unix_new (xmms_ipc_transport_fd_get (ipc->transport));
+
+	g_io_channel_set_close_on_unref (ipc->chan, TRUE);
+	g_io_channel_set_encoding (ipc->chan, NULL, NULL);
+	g_io_channel_set_buffered (ipc->chan, FALSE);
+
 	g_io_add_watch (ipc->chan, G_IO_IN | G_IO_HUP | G_IO_ERR,
 	                xmms_ipc_source_accept, ipc);
 	g_mutex_unlock (ipc->mutex_lock);
@@ -733,7 +743,7 @@ xmms_ipc_broadcast_unregister (xmms_ipc_signals_t signalid)
 	g_mutex_lock (ipc_object_pool_lock);
 	obj = ipc_object_pool->broadcasts[signalid];
 	if (obj) {
-		xmms_object_disconnect (obj, signalid, xmms_ipc_broadcast_cb);
+		xmms_object_disconnect (obj, signalid, xmms_ipc_broadcast_cb, GUINT_TO_POINTER (signalid));
 		ipc_object_pool->broadcasts[signalid] = NULL;
 	}
 	g_mutex_unlock (ipc_object_pool_lock);
@@ -764,7 +774,7 @@ xmms_ipc_signal_unregister (xmms_ipc_signals_t signalid)
 	g_mutex_lock (ipc_object_pool_lock);
 	obj = ipc_object_pool->signals[signalid];
 	if (obj) {
-		xmms_object_disconnect (obj, signalid, xmms_ipc_signal_cb);
+		xmms_object_disconnect (obj, signalid, xmms_ipc_signal_cb, GUINT_TO_POINTER (signalid));
 		ipc_object_pool->signals[signalid] = NULL;
 	}
 	g_mutex_unlock (ipc_object_pool_lock);
@@ -816,6 +826,7 @@ xmms_ipc_shutdown_server (xmms_ipc_t *ipc)
 	if (!ipc) return;
 
 	g_mutex_lock (ipc->mutex_lock);
+	g_source_remove_by_user_data (ipc);
 	g_io_channel_unref (ipc->chan);
 	xmms_ipc_transport_destroy (ipc->transport);
 

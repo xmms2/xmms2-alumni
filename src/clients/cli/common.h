@@ -22,21 +22,21 @@
 #include <glib.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
-#include <termios.h>
 
 #define CMD_COLL_DEFAULT_NAMESPACE  "Collections"
 
 typedef struct {
-	char *name;
-	char *help;
+	const char *name;
+	const char *help;
 	void (*func) (xmmsc_connection_t *conn, int argc, char **argv);
 } cmds;
 
+gboolean x_realpath (const gchar *item, gchar *rpath);
+gchar *x_path2url (gchar *path);
 gchar *format_url (gchar *item, GFileTest test);
 void print_info (const gchar *fmt, ...);
 void print_error (const gchar *fmt, ...);
-void print_hash (const void *key, xmmsc_result_value_type_t type, 
+void print_hash (const void *key, xmmsc_result_value_type_t type,
                  const void *value, void *udata);
 void print_entry (const void *key, xmmsc_result_value_type_t type,
                   const void *value, const gchar *source, void *udata);

@@ -3,7 +3,10 @@
 
 "Configuration system"
 
-import os, types, imp, cPickle, md5, sys, re, inspect
+import os, types, imp, cPickle, sys, re, inspect, shlex
+try: from hashlib import md5
+except ImportError: from md5 import md5
+
 import Params, Environment, Runner, Build, Utils, libtool_config
 from Params import error, fatal, warning
 
@@ -73,9 +76,10 @@ def find_program_impl(lenv, filename, path_list=None, var=None):
 		if lenv[var]:
 			return lenv[var]
 		elif var in os.environ:
+			lenv[var] = os.environ[var]
 			return os.environ[var]
 
-	if lenv['WINDOWS']: filename += '.exe'
+	if Params.g_platform=='win32': filename += '.exe'
 	if not path_list: path_list = os.environ['PATH'].split(os.pathsep)
 	for directory in path_list:
 		if os.path.exists( os.path.join(directory, filename) ):
@@ -121,7 +125,7 @@ class enumerator_base:
 		except: pass
 
 	def hash(self):
-		m = md5.new()
+		m = md5()
 		self.update_hash(m)
 		return m.digest()
 
@@ -209,7 +213,8 @@ class function_enumerator(enumerator_base):
 		self.conf.add_define(self.define, retval)
 
 	def run_test(self):
-		ret = 0 # not found
+		# not found
+		ret = 0
 
 		oldlibpath = self.env['LIBPATH']
 		oldlib = self.env['LIB']
@@ -233,7 +238,7 @@ class function_enumerator(enumerator_base):
 		obj.includes      = self.include_paths
 		obj.env           = self.env
 
-		ret = int(not self.conf.run_check(obj))
+		ret = int(self.conf.run_check(obj))
 		self.conf.check_message('function %s' % self.function, '', ret, option='')
 
 		self.conf.add_define(self.define, ret)
@@ -277,6 +282,12 @@ class library_enumerator(enumerator_base):
 
 		name = self.env['shlib_PREFIX']+self.name+self.env['shlib_SUFFIX']
 		ret  = find_file(name, self.path)
+
+		if not ret:
+			for implib_suffix in self.env['shlib_IMPLIB_SUFFIX']:
+				name = self.env['shlib_PREFIX'] + self.name + implib_suffix
+				ret  = find_file(name, self.path)
+				if ret: break
 
 		if not ret:
 			name = self.env['staticlib_PREFIX']+self.name+self.env['staticlib_SUFFIX']
@@ -397,7 +408,7 @@ class pkgconfig_configurator(configurator_base):
 	- uselib: name that could be used in tasks with obj.uselib if not set uselib = upper(name)
 	- define: name that will be used in config.h if not set define = HAVE_+uselib
 	- variables: list of addional variables to be checked for, for example variables='prefix libdir'
-"""
+	"""
 	def __init__(self, conf):
 		configurator_base.__init__(self,conf)
 
@@ -415,6 +426,7 @@ class pkgconfig_configurator(configurator_base):
 		# - list of values to check (define name will be upper(uselib"_"value_name))
 		# - a list of [value_name, override define_name]
 		self.variables   = []
+		self.defines = {}
 
 	def error(self):
 		if self.version:
@@ -459,36 +471,57 @@ class pkgconfig_configurator(configurator_base):
 			pkgpath = 'PKG_CONFIG_PATH=$PKG_CONFIG_PATH:' + pkgpath
 		pkgcom = '%s %s' % (pkgpath, pkgbin)
 
+		for key, val in self.defines.items():
+			pkgcom += ' --define-variable=%s=%s' % (key, val)
+
+		g_defines = self.env['PKG_CONFIG_DEFINES']
+		if type(g_defines) is types.DictType:
+			for key, val in g_defines.items():
+				if self.defines and self.defines.has_key(key):
+					continue
+				pkgcom += ' --define-variable=%s=%s' % (key, val)
+
 		retval = {}
 
 		try:
 			if self.version:
-				ret = os.popen("%s --atleast-version=%s %s" % (pkgcom, self.version, self.name)).close()
+				cmd = "%s --atleast-version=%s \"%s\"" % (pkgcom, self.version, self.name)
+				ret = os.popen(cmd).close()
+				Params.debug("pkg-config cmd '%s' returned %s" % (cmd, ret))
 				self.conf.check_message('package %s >= %s' % (self.name, self.version), '', not ret)
 				if ret: raise ValueError, "error"
 			else:
-				ret = os.popen("%s %s" % (pkgcom, self.name)).close()
+				cmd = "%s \"%s\"" % (pkgcom, self.name)
+				ret = os.popen(cmd).close()
+				Params.debug("pkg-config cmd '%s' returned %s" % (cmd, ret))
 				self.conf.check_message('package %s' % (self.name), '', not ret)
 				if ret:
 					raise ValueError, "error"
 
-			retval['CCFLAGS_'+uselib]   = [os.popen('%s --cflags %s' % (pkgcom, self.name)).read().strip()]
-			retval['CXXFLAGS_'+uselib]  = [os.popen('%s --cflags %s' % (pkgcom, self.name)).read().strip()]
+			cflags_I = shlex.split(os.popen('%s --cflags-only-I \"%s\"' % (pkgcom, self.name)).read())
+			cflags_other = shlex.split(os.popen('%s --cflags-only-other \"%s\"' % (pkgcom, self.name)).read())
+			retval['CCFLAGS_'+uselib] = cflags_other
+			retval['CXXFLAGS_'+uselib] = cflags_other
+			retval['CPPPATH_'+uselib] = []
+			for incpath in cflags_I:
+				assert incpath[:2] == '-I' or incpath[:2] == '/I'
+				retval['CPPPATH_'+uselib].append(incpath[2:]) # strip '-I' or '/I'
+
 			#env['LINKFLAGS_'+uselib] = os.popen('%s --libs %s' % (pkgcom, self.name)).read().strip()
 			# Store the library names:
-			modlibs = os.popen('%s --libs-only-l %s' % (pkgcom, self.name)).read().strip().split()
+			modlibs = os.popen('%s --libs-only-l \"%s\"' % (pkgcom, self.name)).read().strip().split()
 			retval['LIB_'+uselib] = []
 			for item in modlibs:
 				retval['LIB_'+uselib].append( item[2:] ) #Strip '-l'
 
 			# Store the library paths:
-			modpaths = os.popen('%s --libs-only-L %s' % (pkgcom, self.name)).read().strip().split()
+			modpaths = os.popen('%s --libs-only-L \"%s\"' % (pkgcom, self.name)).read().strip().split()
 			retval['LIBPATH_'+uselib] = []
 			for item in modpaths:
 				retval['LIBPATH_'+uselib].append( item[2:] ) #Strip '-l'
 
 			# Store only other:
-			modother = os.popen('%s --libs-only-other %s' % (pkgcom, self.name)).read().strip().split()
+			modother = os.popen('%s --libs-only-other \"%s\"' % (pkgcom, self.name)).read().strip().split()
 			retval['LINKFLAGS_'+uselib] = []
 			for item in modother:
 				if str(item).endswith(".la"):
@@ -517,7 +550,7 @@ class pkgconfig_configurator(configurator_base):
 				if not var_defname:
 					var_defname = uselib + '_' + variable.upper()
 
-				retval[var_defname] = os.popen('%s --variable=%s %s' % (pkgcom, variable, self.name)).read().strip()
+				retval[var_defname] = os.popen('%s --variable=%s \"%s\"' % (pkgcom, variable, self.name)).read().strip()
 
 			self.conf.add_define(self.define, 1)
 			self.update_env(retval)
@@ -608,6 +641,9 @@ class library_configurator(configurator_base):
 		oldlibpath = self.env['LIBPATH']
 		oldlib = self.env['LIB']
 
+		olduselibpath = self.env['LIBPATH_'+self.uselib]
+		olduselib = self.env['LIB_'+self.uselib]
+
 		# try the enumerator to find the correct libpath
 		test = self.conf.create_library_enumerator()
 		test.name = self.name
@@ -621,7 +657,6 @@ class library_configurator(configurator_base):
 
 		self.env['LIB_'+self.uselib] = self.name
 
-		val = {}
 
 		#self.env['LIB'] = self.name
 		#self.env['LIBPATH'] = self.lib_paths
@@ -632,20 +667,23 @@ class library_configurator(configurator_base):
 		obj.uselib        = self.uselib
 		obj.libpath       = self.path
 
-		ret = int(not self.conf.run_check(obj))
+		ret = int(self.conf.run_check(obj))
 		self.conf.check_message('library %s' % self.name, '', ret)
 
 		self.conf.add_define(self.define, ret)
 
+		val = {}
 		if ret:
 			val['LIBPATH_'+self.uselib] = self.env['LIBPATH_'+self.uselib]
 			val['LIB_'+self.uselib] = self.env['LIB_'+self.uselib]
 			val[self.define] = ret
-
+		else:
+			self.env['LIBPATH_'+self.uselib] = olduselibpath
+			self.env['LIB_'+self.uselib] = olduselib
+			
 		self.env['LIB'] = oldlib
 		self.env['LIBPATH'] = oldlibpath
 
-		if not ret: return {}
 		return val
 
 class framework_configurator(configurator_base):
@@ -716,7 +754,7 @@ class framework_configurator(configurator_base):
 		obj.uselib        = self.uselib
 		obj.flags		  += " ".join (cflags)
 
-		ret = int(not self.conf.run_check(obj))
+		ret = int(self.conf.run_check(obj))
 		self.conf.check_message('framework %s' % self.name, '', ret, option='')
 		self.conf.add_define(self.define, ret)
 
@@ -812,7 +850,7 @@ class header_configurator(configurator_base):
 		obj.env           = self.env
 		obj.uselib        = self.uselib
 
-		ret = int(not self.conf.run_check(obj))
+		ret = int(self.conf.run_check(obj))
 		self.conf.check_message('header %s' % self.name, '', ret, option='')
 
 		self.conf.add_define(self.define, ret)
@@ -855,6 +893,9 @@ class check_data:
 		self.execute       = 0  # execute the program produced and return its output
 		self.options       = '' # command-line options
 
+		self.force_compiler= None
+		self.build_type    = 'program'
+
 class Configure:
 	def __init__(self, env=None, blddir='', srcdir=''):
 
@@ -876,7 +917,7 @@ class Configure:
 		self.lastprog = ''
 
 		try:
-			file = open(Utils.join_path(Params.g_homedir, '.wafcache', 'runs-%s.txt' % self._cache_platform()), 'rb')
+			file = open(os.path.join(Params.g_homedir, '.wafcache', 'runs-%s.txt' % self._cache_platform()), 'rb')
 			self.m_cache_table = cPickle.load(file)
 			file.close()
 		except:
@@ -914,8 +955,8 @@ class Configure:
 		for i in lst:
 			try:
 				file,name,desc = imp.find_module(i, tooldir)
-			except:
-				error("no tool named '%s' found" % i)
+			except Exception, ex:
+				error("no tool named '%s' found (%s)" % (i, str(ex)))
 				return 0
 			module = imp.load_module(i,file,name,desc)
 			ret = ret and int(module.detect(self))
@@ -935,8 +976,10 @@ class Configure:
 
 	def store(self, file=''):
 		"save the config results into the cache file"
-		try: os.makedirs(Params.g_cachedir)
-		except OSError: pass
+		try:
+			os.makedirs(Params.g_cachedir)
+		except OSError:
+			pass
 
 		if not self.m_allenvs:
 			fatal("nothing to store in Configure !")
@@ -944,7 +987,8 @@ class Configure:
 			tmpenv = self.m_allenvs[key]
 			tmpenv.store(os.path.join(Params.g_cachedir, key+'.cache.py'))
 
-	def check_pkg(self, modname, destvar='', vnum='', pkgpath='', pkgbin=''):
+	def check_pkg(self, modname, destvar='', vnum='', pkgpath='', pkgbin='',
+	              pkgvars=[], pkgdefs={}):
 		"wrapper provided for convenience"
 		pkgconf = self.create_pkgconfig_configurator()
 
@@ -955,6 +999,8 @@ class Configure:
 		pkgconf.version = vnum
 		pkgconf.path = pkgpath
 		pkgconf.binary = pkgbin
+		pkgconf.variables = pkgvars
+		pkgconf.defines = pkgdefs
 		return pkgconf.run()
 
 	def sub_config(self, dir):
@@ -966,17 +1012,16 @@ class Configure:
 
 		try:
 			mod = Utils.load_module(cur)
-		except:
-			msg = "no module or function configure was found in wscript\n[%s]:\n * make sure such a function is defined \n * run configure from the root of the project"
-			fatal(msg % self.cwd)
+		except IOError:
+			fatal("the wscript file %s was not found." % cur)
 
-		# TODO check
-		#if not 'configure' in mod:
-		#	fatal('the module has no configure function')
+		if not hasattr(mod, 'configure'):
+			fatal('the module %s has no configure function; '
+			      'make sure such a function is defined' % cur)
 
 		ret = mod.configure(self)
 		if Params.g_autoconfig:
-			self.hash = Params.hash_sig_weak(self.hash, inspect.getsource(mod.configure).__hash__())
+			self.hash = Params.hash_function_with_globals(self.hash, mod.configure)
 			self.files.append(os.path.abspath(cur))
 		self.cwd = current
 		return ret
@@ -984,19 +1029,22 @@ class Configure:
 	def cleanup(self):
 		"called on shutdown"
 		try:
-			dir = Utils.join_path(Params.g_homedir, '.wafcache')
+			dir = os.path.join(Params.g_homedir, '.wafcache')
 			try:
 				os.makedirs(dir)
 			except:
 				pass
 
-			file = open(Utils.join_path(Params.g_homedir, '.wafcache', 'runs-%s.txt' % self._cache_platform()), 'wb')
+			file = open(os.path.join(Params.g_homedir, '.wafcache', 'runs-%s.txt' % self._cache_platform()), 'wb')
 			cPickle.dump(self.m_cache_table, file)
 			file.close()
 		except:
 			raise
 			pass
 
+	class IntDefine(int):
+		"""Special int subclass to denote a literal integer being defined"""
+		pass
 
 	def add_define(self, define, value, quote=-1, comment=''):
 		"""store a single define and its state into an internal list
@@ -1012,7 +1060,10 @@ class Configure:
 			else:
 				tbl[define] = value
 		elif not quote:
-			tbl[define] = value
+			if isinstance(value, int):
+				tbl[define] = self.IntDefine(value)
+			else:
+				tbl[define] = value
 		else:
 			tbl[define] = '"%s"' % str(value)
 
@@ -1028,7 +1079,7 @@ class Configure:
 
 	def get_define(self, define):
 		"get the value of a previously stored define"
-		try: return self.env['define']
+		try: return self.env['defines'][define]
 		except: return 0
 
 	def write_config_header(self, configfile='config.h', env=''):
@@ -1040,32 +1091,39 @@ class Configure:
 
 		if not env: env = self.env
 		base = [self.m_blddir, env.variant()]+base
-		dir = Utils.join_path(*base)
-		try: os.makedirs(dir)
-		except: pass
+		dir = os.path.join(*base)
+		try:
+			os.makedirs(dir)
+		except OSError:
+			pass
 
-		dir = Utils.join_path(dir, lst[-1])
+		dir = os.path.join(dir, lst[-1])
 
 		# remember config files - do not remove them on "waf clean"
 		self.env.append_value('waf_config_files', os.path.abspath(dir))
 
+		inclusion_guard_name = '_%s_WAF' % (Utils.path_to_define_name(configfile),)
+
 		dest = open(dir, 'w')
 		dest.write('/* configuration created by waf */\n')
-		dest.write('#ifndef _CONFIG_H_WAF\n#define _CONFIG_H_WAF\n\n')
+		dest.write('#ifndef %s\n#define %s\n\n' % (inclusion_guard_name, inclusion_guard_name))
 
 		# yes, this is special
 		if not configfile in self.env['dep_files']:
 			self.env['dep_files'] += [configfile]
-		for key in env['defines']:
-			if env['defines'][key] is None:
+		if not env['defines']: env['defines']={'missing':'"code"'}
+		for key, value in env['defines'].iteritems():
+			if value is None:
 				dest.write('#define %s\n' % key)
-			elif env['defines'][key]:
-				dest.write('#define %s %s\n' % (key, env['defines'][key]))
+			elif isinstance(value, self.IntDefine):
+				dest.write('#define %s %i\n' % (key, value))
+			elif value:
+				dest.write('#define %s %s\n' % (key, value))
 				#if addcontent:
 				#	dest.write(addcontent);
 			else:
 				dest.write('/* #undef %s */\n' % key)
-		dest.write('\n#endif /* _CONFIG_H_WAF */\n')
+		dest.write('\n#endif /* %s */\n' % (inclusion_guard_name,))
 		dest.close()
 
 	def set_config_header(self, header):
@@ -1171,24 +1229,26 @@ class Configure:
 		if not pkgbin: pkgbin='pkg-config'
 		if pkgpath: pkgpath='PKG_CONFIG_PATH=$PKG_CONFIG_PATH:'+pkgpath
 		pkgcom = '%s %s' % (pkgpath, pkgbin)
-		try:
-			if pkgversion:
-				ret = os.popen("%s --atleast-version=%s %s" % (pkgcom, pkgversion, pkgname)).close()
-				self.conf.check_message('package %s >= %s' % (pkgname, pkgversion), '', not ret)
-				if ret: raise "error"
-			else:
-				ret = os.popen("%s %s" % (pkgcom, pkgname)).close()
-				self.conf.check_message('package %s ' % (pkgname), '', not ret)
-				if ret: raise "error"
+		if pkgversion:
+			ret = os.popen("%s --atleast-version=%s %s" % (pkgcom, pkgversion, pkgname)).close()
+			self.conf.check_message('package %s >= %s' % (pkgname, pkgversion), '', not ret)
+			if ret:
+				return '' # error
+		else:
+			ret = os.popen("%s %s" % (pkgcom, pkgname)).close()
+			self.check_message('package %s ' % (pkgname), '', not ret)
+			if ret:
+				return '' # error
 
-			return os.popen('%s --variable=%s %s' % (pkgcom, variable, pkgname)).read().strip()
-		except:
-			return ''
+		return os.popen('%s --variable=%s %s' % (pkgcom, variable, pkgname)).read().strip()
 
 
 	def run_check(self, obj):
-		"compile, link and run if necessary"
-
+		"""compile, link and run if necessary
+@param obj: data of type check_data
+@return: (False if a error during build happens) or ( (True if build ok) or
+(a {'result': ''} if execute was set))
+"""
 		# first make sure the code to execute is defined
 		if not obj.code:
 			error('run_check: no code to process in check')
@@ -1203,10 +1263,14 @@ class Configure:
 				os.remove(os.path.join(root, f))
 
 		bdir = os.path.join( dir, '_testbuild_')
-		try: os.makedirs(dir)
-		except: pass
-		try: os.makedirs(bdir)
-		except: pass
+		try:
+			os.makedirs(dir)
+		except OSError:
+			pass
+		try:
+			os.makedirs(bdir)
+		except OSError:
+			pass
 
 		dest=open(os.path.join(dir, 'test.c'), 'w')
 		dest.write(obj.code)
@@ -1221,24 +1285,25 @@ class Configure:
 		back=os.path.abspath('.')
 
 		bld = Build.Build()
-		bld.load_dirs(dir, bdir, isconfigure=1)
+		bld.m_allenvs.update(self.m_allenvs)
 		bld.m_allenvs['default'] = env
-		bld._variants=['default']
+		bld._variants=bld.m_allenvs.keys()
+		bld.load_dirs(dir, bdir, isconfigure=1)
 
-		os.chdir(dir)
 
 		for t in env['tools']: env.setup(**t)
+
+		os.chdir(dir)
 
 		# not sure yet when to call this:
 		#bld.rescan(bld.m_srcnode)
 
-		if env['CXX']:
+		if (not obj.force_compiler and env['CXX']) or obj.force_compiler == "cpp":
 			import cpp
-			o=cpp.cppobj('program')
+			o=cpp.cppobj(obj.build_type)
 		else:
 			import cc
-			o=cc.ccobj('program')
-
+			o=cc.ccobj(obj.build_type)
 		o.source   = 'test.c'
 		o.target   = 'testprog'
 		o.uselib   = obj.uselib
@@ -1262,18 +1327,20 @@ class Configure:
 
 		# if we need to run the program, try to get its result
 		if obj.execute:
-			if ret: return None
+			if ret: return not ret
 			try:
-				data = os.popen(lastprog).read().strip()
+				data = os.popen('"%s"' %lastprog).read().strip()
 				ret = {'result': data}
+				return ret
 			except:
 				raise
 				pass
-		return ret
+
+		return not ret
 
 	def _cache_platform(self):
-		m = md5.new()
-		m.update(sys.platform)
+		m = md5()
+		m.update(Params.g_platform)
 		return m.hexdigest()
 
 

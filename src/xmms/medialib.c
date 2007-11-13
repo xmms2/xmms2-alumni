@@ -33,17 +33,17 @@
 #include <sqlite3.h>
 
 /**
- * @fil
+ * @file
  * Medialib is a metainfo cache that is searchable.
  */
 
 
-static GList *xmms_medialib_select_method (xmms_medialib_t *, gchar *, xmms_error_t *);
 static void xmms_medialib_entry_remove_method (xmms_medialib_t *medialib, guint32 entry, xmms_error_t *error);
 static gboolean xmms_medialib_int_cb (xmms_object_cmd_value_t **row, gpointer udata);
 gchar *xmms_medialib_url_encode (const gchar *path);
 
 static void xmms_medialib_add_entry (xmms_medialib_t *, gchar *, xmms_error_t *);
+static void xmms_medialib_move_entry (xmms_medialib_t *, guint32 entry, gchar *, xmms_error_t *);
 static void xmms_medialib_path_import (xmms_medialib_t *medialib, gchar *path, xmms_error_t *error);
 static void xmms_medialib_rehash (xmms_medialib_t *medialib, guint32 id, xmms_error_t *error);
 static void xmms_medialib_property_set_str_method (xmms_medialib_t *medialib, guint32 entry, gchar *source, gchar *key, gchar *value, xmms_error_t *error);
@@ -52,10 +52,10 @@ static void xmms_medialib_property_remove_method (xmms_medialib_t *medialib, gui
 static guint32 xmms_medialib_entry_get_id (xmms_medialib_t *medialib, gchar *url, xmms_error_t *error);
 
 
-XMMS_CMD_DEFINE (select, xmms_medialib_select_method, xmms_medialib_t *, LIST, STRING, NONE);
 XMMS_CMD_DEFINE (info, xmms_medialib_info, xmms_medialib_t *, PROPDICT, UINT32, NONE);
 XMMS_CMD_DEFINE (mlib_add, xmms_medialib_add_entry, xmms_medialib_t *, NONE, STRING, NONE);
 XMMS_CMD_DEFINE (mlib_remove, xmms_medialib_entry_remove_method, xmms_medialib_t *, NONE, UINT32, NONE);
+XMMS_CMD_DEFINE (mlib_move, xmms_medialib_move_entry, xmms_medialib_t *, NONE, UINT32, STRING);
 XMMS_CMD_DEFINE (path_import, xmms_medialib_path_import, xmms_medialib_t *, NONE, STRING, NONE);
 XMMS_CMD_DEFINE (rehash, xmms_medialib_rehash, xmms_medialib_t *, NONE, UINT32, NONE);
 XMMS_CMD_DEFINE (get_id, xmms_medialib_entry_get_id, xmms_medialib_t *, UINT32, STRING, NONE);
@@ -208,7 +208,7 @@ xmms_sqlite_source_pref (sqlite3_context *context, int args, sqlite3_value **val
 	pref = sqlite3_value_text (val[1]);
 
 	g_mutex_lock (mlib->source_lock);
-	source_name = g_hash_table_lookup (mlib->sources, (gpointer)source);
+	source_name = g_hash_table_lookup (mlib->sources, GINT_TO_POINTER (source));
 	g_mutex_unlock (mlib->source_lock);
 
 	split = g_strsplit ((gchar *)pref, ":", 0);
@@ -229,12 +229,13 @@ int
 add_to_source (void *hash, int columns, char **vals, char **cols)
 {
 	int source = strtol (vals[0], NULL, 10);
-	g_hash_table_insert ((GHashTable*)hash, (gpointer)source, g_strdup (vals[1]));
+	g_hash_table_insert ((GHashTable*)hash, GINT_TO_POINTER (source), g_strdup (vals[1]));
 	return 0;
 }
 
 guint32
-xmms_medialib_source_to_id (xmms_medialib_session_t *session, gchar *source)
+xmms_medialib_source_to_id (xmms_medialib_session_t *session,
+                            const gchar *source)
 {
 	guint32 ret = 0;
 	g_return_val_if_fail (source, 0);
@@ -267,7 +268,7 @@ xmms_medialib_session_new (const char *file, int line)
 	session->medialib = medialib;
 	session->file = file;
 	session->line = line;
-	session->sql = xmms_sqlite_open (&create);
+	session->sql = xmms_sqlite_open ();
 	session->source_pref = g_strdup ("server:client/*:plugin/id3v2:plugin/*");
 	sqlite3_create_function (session->sql, "xmms_source_pref", 2, SQLITE_UTF8,
 	                         session->medialib, xmms_sqlite_source_pref, NULL, NULL);
@@ -304,9 +305,6 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	xmms_ipc_broadcast_register (XMMS_OBJECT (medialib), XMMS_IPC_SIGNAL_MEDIALIB_ENTRY_UPDATE);
 
 	xmms_object_cmd_add (XMMS_OBJECT (medialib),
-	                     XMMS_IPC_CMD_SELECT,
-	                     XMMS_CMD_FUNC (select));
-	xmms_object_cmd_add (XMMS_OBJECT (medialib),
 	                     XMMS_IPC_CMD_INFO,
 	                     XMMS_CMD_FUNC (info));
 	xmms_object_cmd_add (XMMS_OBJECT (medialib),
@@ -333,12 +331,16 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	xmms_object_cmd_add (XMMS_OBJECT (medialib),
 	                     XMMS_IPC_CMD_PROPERTY_REMOVE,
 	                     XMMS_CMD_FUNC (remove_property));
+	xmms_object_cmd_add (XMMS_OBJECT (medialib),
+	                     XMMS_IPC_CMD_MOVE_URL,
+	                     XMMS_CMD_FUNC (mlib_move));
 
 	path = XMMS_BUILD_PATH ("medialib.db");
 
 	xmms_config_property_register ("medialib.path",
 	                               path,
 	                               xmms_medialib_path_changed, medialib);
+	xmms_config_property_register ("medialib.analyze_on_startup", "0", NULL, NULL);
 	xmms_config_property_register ("medialib.allow_remote_fs",
 	                               "0", NULL, NULL);
 
@@ -348,6 +350,9 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	xmms_medialib_debug_hash = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, g_free);
 	xmms_medialib_debug_mutex = g_mutex_new ();
 	global_medialib_session = NULL;
+
+	/* init the database */
+	xmms_sqlite_create ();
 
 	if (sqlite3_libversion_number () < 3002004) {
 		xmms_log_info ("**************************************************************");
@@ -742,7 +747,7 @@ process_file (xmms_medialib_session_t *session,
 }
 
 static gchar *
-lookup_string (xmms_object_cmd_value_t *tbl, gchar *key)
+lookup_string (xmms_object_cmd_value_t *tbl, const gchar *key)
 {
 	xmms_object_cmd_value_t *val;
 
@@ -761,7 +766,7 @@ lookup_string (xmms_object_cmd_value_t *tbl, gchar *key)
 }
 
 static gint32
-lookup_int (xmms_object_cmd_value_t *tbl, gchar *key)
+lookup_int (xmms_object_cmd_value_t *tbl, const gchar *key)
 {
 	xmms_object_cmd_value_t *val;
 
@@ -882,7 +887,6 @@ void
 xmms_medialib_add_recursive (xmms_medialib_t *medialib, gchar *playlist,
                              gchar *path, xmms_error_t *error)
 {
-	xmms_mediainfo_reader_t *mr;
 	xmms_medialib_session_t *session;
 	guint32 id;
 	GList *list = NULL, *n;
@@ -911,8 +915,6 @@ xmms_medialib_add_recursive (xmms_medialib_t *medialib, gchar *playlist,
 
 	XMMS_DBG ("and we are done!");
 	xmms_medialib_end (session);
-	mr = xmms_playlist_mediainfo_reader_get (medialib->playlist);
-	xmms_mediainfo_reader_wakeup (mr);
 }
 
 static void
@@ -927,6 +929,7 @@ xmms_medialib_entry_new_insert (xmms_medialib_session_t *session,
                                 const char *url,
                                 xmms_error_t *error)
 {
+	xmms_mediainfo_reader_t *mr;
 	guint source;
 
 	source = XMMS_MEDIALIB_SOURCE_SERVER_ID;
@@ -940,6 +943,8 @@ xmms_medialib_entry_new_insert (xmms_medialib_session_t *session,
 	}
 
 	xmms_medialib_entry_status_set (session, id, XMMS_MEDIALIB_ENTRY_STATUS_NEW);
+	mr = xmms_playlist_mediainfo_reader_get (medialib->playlist);
+	xmms_mediainfo_reader_wakeup (mr);
 
 	return 1;
 
@@ -1132,7 +1137,6 @@ static void
 xmms_medialib_add_entry (xmms_medialib_t *medialib, gchar *url, xmms_error_t *error)
 {
 	xmms_medialib_entry_t entry;
-	xmms_mediainfo_reader_t *mr;
 	xmms_medialib_session_t *session;
 
 	g_return_if_fail (medialib);
@@ -1143,11 +1147,37 @@ xmms_medialib_add_entry (xmms_medialib_t *medialib, gchar *url, xmms_error_t *er
 	entry = xmms_medialib_entry_new_encoded (session, url, error);
 
 	xmms_medialib_end (session);
-
-	mr = xmms_playlist_mediainfo_reader_get (medialib->playlist);
-	xmms_mediainfo_reader_wakeup (mr);
 }
 
+/**
+ * Changes the URL of an entry in the medialib.
+ *
+ * @param medialib Medialib pointer
+ * @param entry entry to modify
+ * @param url URL to change to
+ * @param error In case of error this will be filled.
+ */
+static void
+xmms_medialib_move_entry (xmms_medialib_t *medialib, guint32 entry,
+                          gchar *url, xmms_error_t *error)
+{
+	const gchar *key = XMMS_MEDIALIB_ENTRY_PROPERTY_URL;
+	guint32 sourceid = XMMS_MEDIALIB_SOURCE_SERVER_ID;
+	gchar *enc_url;
+
+	xmms_medialib_session_t *session;
+
+	enc_url = xmms_medialib_url_encode (url);
+
+	session = xmms_medialib_begin_write ();
+	xmms_medialib_entry_property_set_str_source (session, entry, key, enc_url,
+	                                             sourceid);
+	xmms_medialib_end (session);
+
+	g_free (enc_url);
+
+	xmms_medialib_entry_send_update (entry);
+}
 
 static void
 xmms_medialib_property_set_str_method (xmms_medialib_t *medialib, guint32 entry,
@@ -1227,16 +1257,6 @@ xmms_medialib_property_remove_method (xmms_medialib_t *medialib, guint32 entry,
 	return xmms_medialib_property_remove (medialib, entry, source, key, error);
 }
 
-static GList *
-xmms_medialib_select_method (xmms_medialib_t *medialib, gchar *query, xmms_error_t *error)
-{
-	GList *ret;
-	xmms_medialib_session_t *session = xmms_medialib_begin ();
-	ret = xmms_medialib_select (session, query, error);
-	xmms_medialib_end (session);
-	return ret;
-}
-
 /**
  * Get a list of GHashTables 's that matches the query.
  *
@@ -1248,7 +1268,7 @@ xmms_medialib_select_method (xmms_medialib_t *medialib, gchar *query, xmms_error
  */
 GList *
 xmms_medialib_select (xmms_medialib_session_t *session,
-                      gchar *query, xmms_error_t *error)
+                      const gchar *query, xmms_error_t *error)
 {
 	GList *res = NULL;
 	gint ret;

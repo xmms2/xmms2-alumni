@@ -32,6 +32,11 @@
 extern int errno;
 
 /*
+ * libsmbclient is not threadsafe.
+ */
+static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
+
+/*
  * Type definitions
  */
 
@@ -88,7 +93,10 @@ xmms_samba_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	                              "application/x-url", XMMS_STREAM_TYPE_URL,
 	                              "smb://*", XMMS_STREAM_TYPE_END);
 
+	g_static_mutex_lock (&mutex);
 	err = smbc_init (xmms_samba_auth_fn, 0);
+	g_static_mutex_unlock (&mutex);
+
 	if (err < 0) {
 		xmms_log_error ("%s", strerror (errno));
 		return FALSE;
@@ -106,6 +114,7 @@ xmms_samba_init (xmms_xform_t *xform)
 {
 	xmms_samba_data_t *data;
 	const gchar *url;
+	const gchar *metakey;
 	struct stat st;
 	gint fd, err;
 
@@ -114,7 +123,10 @@ xmms_samba_init (xmms_xform_t *xform)
 	url = xmms_xform_indata_get_str (xform, XMMS_STREAM_TYPE_URL);
 	g_return_val_if_fail (url, FALSE);
 
+	g_static_mutex_lock (&mutex);
 	err = smbc_stat (url, &st);
+	g_static_mutex_unlock (&mutex);
+
 	if (err < 0) {
 		xmms_log_error ("%s", strerror (errno));
 		return FALSE;
@@ -125,7 +137,10 @@ xmms_samba_init (xmms_xform_t *xform)
 		return FALSE;
 	}
 
+	g_static_mutex_lock (&mutex);
 	fd = smbc_open (url, O_RDONLY | O_NONBLOCK, 0);
+	g_static_mutex_unlock (&mutex);
+
 	if (fd == -1) {
 		xmms_log_error ("%s", strerror (errno));
 		return FALSE;
@@ -140,10 +155,11 @@ xmms_samba_init (xmms_xform_t *xform)
 	                             "application/octet-stream",
 	                             XMMS_STREAM_TYPE_END);
 
-	xmms_xform_metadata_set_int (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE,
-	                             st.st_size);
-	xmms_xform_metadata_set_int (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_LMOD,
-	                             st.st_mtime);
+	metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE;
+	xmms_xform_metadata_set_int (xform, metakey, st.st_size);
+
+	metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_LMOD;
+	xmms_xform_metadata_set_int (xform, metakey, st.st_mtime);
 
 	return TRUE;
 }
@@ -160,7 +176,10 @@ xmms_samba_destroy (xmms_xform_t *xform)
 	g_return_if_fail (data);
 
 	if (data->fd != -1) {
+		g_static_mutex_lock (&mutex);
 		err = smbc_close (data->fd);
+		g_static_mutex_unlock (&mutex);
+
 		if (err < 0) {
 			xmms_log_error ("%s", strerror (errno));
 		}
@@ -184,7 +203,9 @@ xmms_samba_read (xmms_xform_t *xform, void *buffer, gint len,
 	data = xmms_xform_private_data_get (xform);
 	g_return_val_if_fail (data, -1);
 
+	g_static_mutex_lock (&mutex);
 	ret = smbc_read (data->fd, buffer, len);
+	g_static_mutex_unlock (&mutex);
 
 	if (ret == 0) {
 		xmms_error_set (error, XMMS_ERROR_EOS, "End of file reached");
@@ -220,7 +241,10 @@ xmms_samba_seek (xmms_xform_t *xform, gint64 offset,
 			break;
 	}
 
+	g_static_mutex_lock (&mutex);
 	res = smbc_lseek (data->fd, offset, w);
+	g_static_mutex_unlock (&mutex);
+
 	if (res == -1) {
 		xmms_error_set (error, XMMS_ERROR_INVAL, "Couldn't seek");
 	}
@@ -235,18 +259,30 @@ xmms_samba_browse (xmms_xform_t *xform,
 	struct smbc_dirent *dir;
 	int handle;
 
+	g_static_mutex_lock (&mutex);
 	handle = smbc_opendir (url);
+	g_static_mutex_unlock (&mutex);
+
 	if (handle < 0) {
 		xmms_error_set (error, XMMS_ERROR_GENERIC, "Couldn't browse URL");
 		xmms_log_error ("Couldn't open directory %s!", url);
 		return FALSE;
 	}
 
-	while ((dir = smbc_readdir (handle))) {
+	while (42) {
 		guint32 flags = 0;
 
-		if (dir->name[0] == '.')
+		g_static_mutex_lock (&mutex);
+		dir = smbc_readdir (handle);
+		if (!dir) {
+			g_static_mutex_unlock (&mutex);
+			break;
+		}
+
+		if (dir->name[0] == '.') {
+			g_static_mutex_unlock (&mutex);
 			continue;
+		}
 
 		if (dir->smbc_type == SMBC_DIR ||
 		    dir->smbc_type == SMBC_WORKGROUP ||
@@ -255,9 +291,12 @@ xmms_samba_browse (xmms_xform_t *xform,
 			flags |= XMMS_XFORM_BROWSE_FLAG_DIR;
 
 		xmms_xform_browse_add_entry (xform, dir->name, flags);
+		g_static_mutex_unlock (&mutex);
 	}
 
+	g_static_mutex_lock (&mutex);
 	smbc_closedir (handle);
+	g_static_mutex_unlock (&mutex);
 
 	return TRUE;
 }

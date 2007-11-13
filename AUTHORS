@@ -48,6 +48,10 @@ E: dan@chokola.com
 W: http://dan.chokola.com/
 D: Various fixes.
 
+N: Sadrul Habib Chowdhury
+E: imadil@gmail.com
+D: Minor Fixes.
+
 N: Sham Chukoury
 E: eleusis@xmms.org
 W: http://eleusis.f2o.org/
@@ -71,11 +75,6 @@ N: G. Gallino
 E: ggallino@gmail.com
 D: Equaliser fixes
 
-N: Anders Gustafsson
-E: andersg@xmms.org
-P: 1024D/5D46D966 4186 4775 154B 9E4F 8CE7  A3F8 E165 5471 5D46 D966
-D: Stuff all over the place. Master bitch.
-
 N: Dries Harnie
 E: dries@harnie.be
 D: Status aware CLI
@@ -88,13 +87,17 @@ N: Olle Hällnäs
 E: olle@xmms.org
 D: Better seeking in cli.
 
+N: Armando Jagucki
+E: ajagucki@gmail.com
+D: Python bindings improvements
+
 N: Thomas Jollans
 E: thomas@jollans.com
 D: Python bindings improvements
 
-N: Daniel Kamiñski
+N: Daniel Kamiński
 E: maniel.rulez@gmail.com
-D: mlib remove command in cli.
+D: mlib remove command in cli, Ruby fixes.
 
 N: Karsten Krispin
 E: karsten@krispin.de
@@ -134,6 +137,10 @@ N: Thomas Nilsson
 E: thomas@xmms.org
 D: Bugfixes. XMMS1 expertise.
 
+N: Sebastian Noack
+E: sebastian.noack@artaculous.com
+D: Better track number support in ASF.
+
 N: Vegard Nossum
 E: vegard@peltkore.net
 D: IPv6 support. Various fixes.
@@ -154,11 +161,20 @@ N: Algardas Pelakauskas
 E: algardas@gmail.com
 D: Ruby radd binding
 
+N: Robin Lee Powell
+E: rlpowell@chain.digitalkingdom.org
+D: New medialib/collection helper commands.
+
 N: Florian Ragwitz
 E: rafl@debian.org
 W: http://perldition.org/
 P: 1024D/8E635A5E E8DC 91A1 B7BE E5AB C172  47EE 742F 2A42 8E63 5A5E
 D: Official Debian packages. Bugfixes. Perl bindings.
+
+N: Ugo Riboni
+E: nerochiaro@neuros.us
+W: http://nerochiaro.net
+D: Neuros OSD support and related fixes.
 
 N: Alexander Rigbo
 E: alex@rigbo.se
@@ -168,14 +184,24 @@ N: Christopher Rosell
 E: chrippa@evangelion.se
 D: FreeBSD support in cdae plugin.
 
+N: Andrew Ruder
+E: andy@aeruder.net
+W: http://www.aeruder.net
+D: Various fixes
+
 N: Tobias Rundström
 E: tru@xmms.org
 W: http://tobi.nu/
 P: 1024D/EA0C5340 E203 6001 264C 71CE DBFD  7A95 102A 11D0 EA0C 5340
 D: Stuff all over the map. Release manager.
 
+N: Martin Salzer
+E: stoky@gmx.net
+D: sorting fix
+
 N: Tilman Sauerbeck
 E: tilman@code-monkey.de
+E: tilman@xmms.org
 W: http://www.code-monkey.de/
 P: 1024D/CAD6DB0F 8606 96BC ABE4 FD1B 8A7A  959B DBBB 8B8A CAD6 DB0F
 D: Ruby bindings. Many other things all over the place.
@@ -192,11 +218,17 @@ N: Tim Schumacher
 E: tim@we-are-teh-b.org
 D: Windows CLI terminal width fix
 
+N: Javeed Shaikh
+E: syscrash2k@gmail.com
+W: http://syscrash.ca
+D: Volume normalization plugin
+
 N: Ben Slote
 E: bslote@gmail.com
 D: Pythonbindings fix
 
 N: Daniel Svensson
+E: dsvensson@gmail.com
 E: daniel@nittionio.nu
 D: Musepack. CoreFoundation. Alsa. Gnomevfs. Samba. Sun. Various fixes.
 
@@ -225,6 +257,16 @@ E: juhovh@iki.fi
 W: http://juho.vaha-herttua.fi/
 P: 1024D/CB130DCE 1C70 BF1D AEF7 619C C0A6  60E7 563D FCA3 CB13 0DCE
 D: Faad, wma, equalizer, vocoder, ao. Various fixes.
+
+N: Georg Wacker
+E: gpsw@gmx.de
+P: 1024D/22C30FF7 2BEE 0628 1C78 385F 3979  3E91 29C4 A4F1 22C3 0FF7
+D: Ruby documentation fix
+
+N: Anders Waldenborg
+E: andersg@xmms.org
+P: 1024D/5D46D966 4186 4775 154B 9E4F 8CE7  A3F8 E165 5471 5D46 D966
+D: Stuff all over the place. Master bitch.
 
 N: Michael Walle
 E: michael@walle.cc

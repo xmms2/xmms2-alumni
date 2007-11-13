@@ -63,7 +63,7 @@ static GString* xmms_collection_gen_query (coll_query_t *query);
 static void xmms_collection_append_to_query (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, coll_query_t *query);
 
 static void query_append_uint (coll_query_t *query, guint i);
-static void query_append_string (coll_query_t *query, gchar *s);
+static void query_append_string (coll_query_t *query, const gchar *s);
 static void query_append_protect_string (coll_query_t *query, gchar *s);
 static void query_append_operand (coll_query_t *query, xmms_coll_dag_t *dag, xmmsc_coll_t *coll);
 static void query_append_intersect_operand (coll_query_t *query, xmms_coll_dag_t *dag, xmmsc_coll_t *coll);
@@ -75,7 +75,7 @@ static void query_string_append_alias (GString *qstring, coll_query_alias_t *ali
 
 static gchar *canonical_field_name (gchar *field);
 static gboolean operator_is_allmedia (xmmsc_coll_t *op);
-static coll_query_alias_t *query_make_alias (coll_query_t *query, gchar *field, gboolean optional);
+static coll_query_alias_t *query_make_alias (coll_query_t *query, const gchar *field, gboolean optional);
 
 
 
@@ -306,7 +306,7 @@ xmms_collection_append_to_query (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
  * @return  The alias pointer.
  */
 static coll_query_alias_t *
-query_make_alias (coll_query_t *query, gchar *field, gboolean optional)
+query_make_alias (coll_query_t *query, const gchar *field, gboolean optional)
 {
 	coll_query_alias_t *alias;
 	alias = g_hash_table_lookup (query->aliases, field);
@@ -372,7 +372,7 @@ query_append_uint (coll_query_t *query, guint i)
 }
 
 static void
-query_append_string (coll_query_t *query, gchar *s)
+query_append_string (coll_query_t *query, const gchar *s)
 {
 	g_string_append (query->conditions, s);
 }

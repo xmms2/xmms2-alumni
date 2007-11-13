@@ -299,7 +299,8 @@ xmms_config_property_callback_set (xmms_config_property_t *prop,
  */
 void
 xmms_config_property_callback_remove (xmms_config_property_t *prop,
-                                      xmms_object_handler_t cb)
+                                      xmms_object_handler_t cb,
+                                      gpointer userdata)
 {
 	g_return_if_fail (prop);
 
@@ -307,7 +308,7 @@ xmms_config_property_callback_remove (xmms_config_property_t *prop,
 		return;
 
 	xmms_object_disconnect (XMMS_OBJECT (prop),
-	                        XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED, cb);
+	                        XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED, cb, userdata);
 }
 
 /**
@@ -369,7 +370,7 @@ static xmms_configparser_state_t
 get_current_state (const gchar *name)
 {
 	static struct {
-		gchar *name;
+		const gchar *name;
 		xmms_configparser_state_t state;
 	} *ptr, lookup[] = {
 		{"xmms", XMMS_CONFIG_STATE_START},
@@ -564,7 +565,7 @@ xmms_config_parse_text (GMarkupParseContext *ctx,
  * @param err To be filled in if an error occurs
  */
 void
-xmms_config_setvalue (xmms_config_t *conf, gchar *key, const gchar *value,
+xmms_config_setvalue (xmms_config_t *conf, const gchar *key, const gchar *value,
                       xmms_error_t *err)
 {
 	xmms_config_property_t *prop;
@@ -927,7 +928,7 @@ xmms_config_save (const gchar *file)
 		return FALSE;
 	}
 
-	tree = g_node_new ("xmms");
+	tree = g_node_new ((gpointer) "xmms");
 	g_hash_table_foreach (global_config->properties, add_to_tree_foreach, tree);
 
 	dump_node (tree, fp);

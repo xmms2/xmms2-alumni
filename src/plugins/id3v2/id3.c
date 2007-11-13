@@ -82,7 +82,7 @@
  * TXXX User defined text information frame
  */
 
-const gchar *id3_genres[] =
+static const gchar * const id3_genres[] =
 {
         "Blues", "Classic Rock", "Country", "Dance",
         "Disco", "Funk", "Grunge", "Hip-Hop",
@@ -196,7 +196,7 @@ find_nul (const gchar *buf, gsize *len)
 static void
 add_to_entry (xmms_xform_t *xform,
               xmms_id3v2_header_t *head,
-              gchar *key,
+              const gchar *key,
               gchar *val,
               gint len)
 {
@@ -216,12 +216,13 @@ add_to_entry (xmms_xform_t *xform,
 
 static void
 handle_id3v2_tcon (xmms_xform_t *xform, xmms_id3v2_header_t *head,
-                   gchar *key, gchar *buf, gsize len)
+                   const gchar *key, gchar *buf, gsize len)
 {
 	gint res;
 	guint genre_id;
 	gchar *val;
 	const gchar *tmp;
+	const gchar *metakey;
 
 	/* XXX - we should handle it differently v4 separates them with NUL instead of using () */
 	/*
@@ -237,13 +238,12 @@ handle_id3v2_tcon (xmms_xform_t *xform, xmms_id3v2_header_t *head,
 	res = sscanf (val, "(%u)", &genre_id);
 
 	if (res > 0 && genre_id < G_N_ELEMENTS (id3_genres)) {
-		xmms_xform_metadata_set_str (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_GENRE,
-		                             (gchar *)id3_genres[genre_id]);
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_GENRE;
+		xmms_xform_metadata_set_str (xform, metakey,
+		                             (gchar *) id3_genres[genre_id]);
 	} else {
-		xmms_xform_metadata_set_str (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_GENRE,
-		                             val);
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_GENRE;
+		xmms_xform_metadata_set_str (xform, metakey, val);
 	}
 
 	g_free (val);
@@ -251,11 +251,12 @@ handle_id3v2_tcon (xmms_xform_t *xform, xmms_id3v2_header_t *head,
 
 static void
 handle_id3v2_txxx (xmms_xform_t *xform, xmms_id3v2_header_t *head,
-                   gchar *_key, gchar *buf, gsize len)
+                   const gchar *_key, gchar *buf, gsize len)
 {
 	const gchar *enc;
 	gchar *cbuf;
 	const gchar *key, *val;
+	const gchar *metakey;
 	gsize clen;
 
 	enc = binary_to_enc (buf[0]);
@@ -271,17 +272,15 @@ handle_id3v2_txxx (xmms_xform_t *xform, xmms_id3v2_header_t *head,
 	}
 
 	if (g_strcasecmp (key, "MusicBrainz Album Id") == 0) {
-		xmms_xform_metadata_set_str (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_ALBUM_ID,
-		                             val);
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_ALBUM_ID;
+		xmms_xform_metadata_set_str (xform, metakey, val);
 	} else if (g_strcasecmp (key, "MusicBrainz Artist Id") == 0) {
-		xmms_xform_metadata_set_str (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_ARTIST_ID,
-		                             val);
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_ARTIST_ID;
+		xmms_xform_metadata_set_str (xform, metakey, val);
 	} else if ((g_strcasecmp (key, "MusicBrainz Album Artist Id") == 0) &&
 	           (g_strcasecmp (val, MUSICBRAINZ_VA_ID) == 0)) {
-		xmms_xform_metadata_set_int (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_COMPILATION, 1);
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_COMPILATION;
+		xmms_xform_metadata_set_int (xform, metakey, 1);
 	}
 
 	g_free (cbuf);
@@ -289,7 +288,7 @@ handle_id3v2_txxx (xmms_xform_t *xform, xmms_id3v2_header_t *head,
 
 static void
 handle_int_field (xmms_xform_t *xform, xmms_id3v2_header_t *head,
-                  gchar *key, gchar *buf, gsize len)
+                  const gchar *key, gchar *buf, gsize len)
 {
 
 	gchar *nval;
@@ -308,7 +307,7 @@ handle_int_field (xmms_xform_t *xform, xmms_id3v2_header_t *head,
 
 static void
 handle_id3v2_ufid (xmms_xform_t *xform, xmms_id3v2_header_t *head,
-                   gchar *key, gchar *buf, gsize len)
+                   const gchar *key, gchar *buf, gsize len)
 {
 	const gchar *val;
 
@@ -317,12 +316,13 @@ handle_id3v2_ufid (xmms_xform_t *xform, xmms_id3v2_header_t *head,
 		return;
 
 	if (g_strcasecmp (buf, "http://musicbrainz.org") == 0) {
+		const gchar *metakey;
 		gchar *val0;
 		/* make sure it is NUL terminated */
 		val0 = g_strndup (val, len);
-		xmms_xform_metadata_set_str (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_TRACK_ID,
-		                             val0);
+
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_TRACK_ID,
+		xmms_xform_metadata_set_str (xform, metakey, val0);
 
 		g_free (val0);
 	}
@@ -330,7 +330,7 @@ handle_id3v2_ufid (xmms_xform_t *xform, xmms_id3v2_header_t *head,
 
 static void
 handle_id3v2_apic (xmms_xform_t *xform, xmms_id3v2_header_t *head,
-                   gchar *key, gchar *buf, gsize len)
+                   const gchar *key, gchar *buf, gsize len)
 {
 	const gchar *enc, *typ, *desc, *data, *mime;
 	gchar hash[33];
@@ -353,14 +353,19 @@ handle_id3v2_apic (xmms_xform_t *xform, xmms_id3v2_header_t *head,
 	data = find_nul (desc, &len);
 
 	if (data && xmms_bindata_plugin_add ((const guchar *)data, len, hash)) {
-		xmms_xform_metadata_set_str (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_PICTURE_FRONT, hash);
-		xmms_xform_metadata_set_str (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_PICTURE_FRONT_MIME, mime);
+		const gchar *metakey;
+
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_PICTURE_FRONT;
+		xmms_xform_metadata_set_str (xform, metakey, hash);
+
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_PICTURE_FRONT_MIME;
+		xmms_xform_metadata_set_str (xform, metakey, mime);
 	}
 }
 
 static void
 handle_id3v2_comm (xmms_xform_t *xform, xmms_id3v2_header_t *head,
-                   gchar *key, gchar *buf, gsize len)
+                   const gchar *key, gchar *buf, gsize len)
 {
 	/* COMM is weird but it's like this:
 	 * $xx enc
@@ -388,12 +393,17 @@ handle_id3v2_comm (xmms_xform_t *xform, xmms_id3v2_header_t *head,
 	comm = find_nul (cbuf, &clen);
 
 	if (comm && comm[0]) {
+		const gchar *metakey;
+		gchar *tmp;
+
 		if (desc && desc[0]) {
-			key = g_strdup_printf ("%s_%s", XMMS_MEDIALIB_ENTRY_PROPERTY_COMMENT, desc);
-			xmms_xform_metadata_set_str (xform, key, comm);
-			g_free (key);
+			metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_COMMENT;
+			tmp = g_strdup_printf ("%s_%s", metakey, desc);
+			xmms_xform_metadata_set_str (xform, tmp, comm);
+			g_free (tmp);
 		} else {
-			xmms_xform_metadata_set_str (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_COMMENT, comm);
+			metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_COMMENT;
+			xmms_xform_metadata_set_str (xform, metakey, comm);
 		}
 	}
 
@@ -403,8 +413,8 @@ handle_id3v2_comm (xmms_xform_t *xform, xmms_id3v2_header_t *head,
 
 struct id3tags_t {
 	guint32 type;
-	gchar *prop;
-	void (*fun)(xmms_xform_t *, xmms_id3v2_header_t *, gchar *, gchar *, gsize); /* Instead of add_to_entry */
+	const gchar *prop;
+	void (*fun)(xmms_xform_t *, xmms_id3v2_header_t *, const gchar *, gchar *, gsize); /* Instead of add_to_entry */
 };
 
 static struct id3tags_t tags[] = {

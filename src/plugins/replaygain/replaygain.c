@@ -43,6 +43,7 @@ typedef enum {
 typedef struct xmms_replaygain_data_St {
 	xmms_replaygain_mode_t mode;
 	gboolean use_anticlip;
+	gfloat preamp;
 	gfloat gain;
 	gboolean has_replaygain;
 	gboolean enabled;
@@ -108,6 +109,9 @@ xmms_replaygain_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	xmms_xform_plugin_config_property_register (xform_plugin,
 	                                            "use_anticlip", "1",
 	                                            NULL, NULL);
+	xmms_xform_plugin_config_property_register (xform_plugin,
+	                                            "preamp", "6.0",
+	                                            NULL, NULL);
 
 	return TRUE;
 }
@@ -139,6 +143,13 @@ xmms_replaygain_init (xmms_xform_t *xform)
 	                                   xform);
 
 	data->use_anticlip = !!xmms_config_property_get_int (cfgv);
+
+	cfgv = xmms_xform_config_lookup (xform, "preamp");
+	xmms_config_property_callback_set (cfgv,
+	                                   xmms_replaygain_config_changed,
+	                                   xform);
+
+	data->preamp = pow (10.0, atof (xmms_config_property_get_string (cfgv)) / 20.0);
 
 	cfgv = xmms_xform_config_lookup (xform, "enabled");
 	xmms_config_property_callback_set (cfgv,
@@ -197,15 +208,19 @@ xmms_replaygain_destroy (xmms_xform_t *xform)
 
 	cfgv = xmms_xform_config_lookup (xform, "mode");
 	xmms_config_property_callback_remove (cfgv,
-	                                      xmms_replaygain_config_changed);
+	                                      xmms_replaygain_config_changed, xform);
 
 	cfgv = xmms_xform_config_lookup (xform, "use_anticlip");
 	xmms_config_property_callback_remove (cfgv,
-	                                      xmms_replaygain_config_changed);
+	                                      xmms_replaygain_config_changed, xform);
+
+	cfgv = xmms_xform_config_lookup (xform, "preamp");
+	xmms_config_property_callback_remove (cfgv,
+	                                      xmms_replaygain_config_changed, xform);
 
 	cfgv = xmms_xform_config_lookup (xform, "enabled");
 	xmms_config_property_callback_remove (cfgv,
-	                                      xmms_replaygain_config_changed);
+	                                      xmms_replaygain_config_changed, xform);
 }
 
 static gint
@@ -263,6 +278,10 @@ xmms_replaygain_config_changed (xmms_object_t *obj, gconstpointer value,
 	                                "replaygain.use_anticlip")) {
 		data->use_anticlip = !!atoi (value);
 		dirty = TRUE;
+	} else if (!g_ascii_strcasecmp (name,
+	                                "replaygain.preamp")) {
+		data->preamp = pow (10.0, atof (value) / 20.0);
+		dirty = TRUE;
 	} else if (!g_ascii_strcasecmp (name, "replaygain.enabled")) {
 		data->enabled = !!atoi (value);
 	}
@@ -287,13 +306,19 @@ compute_gain (xmms_xform_t *xform, xmms_replaygain_data_t *data)
 	}
 
 	/** @todo should this be ints instead? */
-	tmp = xmms_xform_metadata_get_str (xform, key_s);
-	s = tmp ? atof (tmp) : 1.0;
+	if (xmms_xform_metadata_get_str (xform, key_s, &tmp)) {
+		s = atof (tmp);
+	} else {
+		s = 1.0;
+	}
 
-	tmp = xmms_xform_metadata_get_str (xform, key_p);
-	p = tmp ? atof (tmp) : 1.0;
+	if (xmms_xform_metadata_get_str (xform, key_p, &tmp)) {
+		p = atof (tmp);
+	} else {
+		p = 1.0;
+	}
 
-	s *= 2; /* 6db pre-amp */
+	s *= data->preamp;
 
 	if (data->use_anticlip && s * p > 1.0) {
 		s = 1.0 / p;

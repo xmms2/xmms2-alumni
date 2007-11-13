@@ -166,16 +166,6 @@ struct xmms_output_St {
  * Public functions
  */
 
-/**
- * @defgroup OutputPlugin OutputPlugin
- * @ingroup XMMSPlugin
- * @{
- */
-
-/**
- * Retrieve the private data for the plugin that was set with
- * #xmms_output_private_data_set.
- */
 gpointer
 xmms_output_private_data_get (xmms_output_t *output)
 {
@@ -185,10 +175,6 @@ xmms_output_private_data_get (xmms_output_t *output)
 	return output->plugin_data;
 }
 
-/**
- * Set the private data for the plugin that can be retrived
- * with #xmms_output_private_data_get later.
- */
 void
 xmms_output_private_data_set (xmms_output_t *output, gpointer data)
 {
@@ -198,14 +184,6 @@ xmms_output_private_data_set (xmms_output_t *output, gpointer data)
 	output->plugin_data = data;
 }
 
-/**
- * Add format to list of supported formats.
- * Should be called from initialisation function for every supported
- * format. Any call to the format_set method will be with one of these
- * formats.
- *
- *
- */
 void
 xmms_output_stream_type_add (xmms_output_t *output, ...)
 {
@@ -263,7 +241,8 @@ xmms_output_set_error (xmms_output_t *output, xmms_error_t *error)
 	xmms_output_status_set (output, XMMS_PLAYBACK_STATUS_STOP);
 
 	if (error) {
-		xmms_log_error ("plugin reported error, '%s'",
+		xmms_log_error ("Output plugin %s reported error, '%s'",
+		                xmms_plugin_shortname_get ((xmms_plugin_t *)output->plugin),
 		                xmms_error_message_get (error));
 	}
 }
@@ -484,10 +463,12 @@ xmms_output_filler (void *arg)
 			gint skip = MIN (ret, output->toskip);
 
 			output->toskip -= skip;
-			xmms_ringbuf_write_wait (output->filler_buffer,
-			                         buf + skip,
-			                         ret - skip,
-			                         output->filler_mutex);
+			if (ret > skip) {
+				xmms_ringbuf_write_wait (output->filler_buffer,
+				                         buf + skip,
+				                         ret - skip,
+				                         output->filler_mutex);
+			}
 		} else {
 			if (ret == -1) {
 				/* print error */
@@ -559,8 +540,6 @@ xmms_output_config_lookup (xmms_output_t *output, const gchar *path)
 	g_return_val_if_fail (output->plugin, NULL);
 	return xmms_plugin_config_lookup ((xmms_plugin_t *)output->plugin, path);
 }
-
-/** @} */
 
 
 /** @addtogroup Output
@@ -814,8 +793,10 @@ xmms_output_destroy (xmms_object_t *object)
 	xmms_output_t *output = (xmms_output_t *)object;
 
 	output->monitor_volume_running = FALSE;
-	if (output->monitor_volume_thread)
+	if (output->monitor_volume_thread) {
 		g_thread_join (output->monitor_volume_thread);
+		output->monitor_volume_thread = NULL;
+	}
 
 	xmms_output_filler_state (output, FILLER_QUIT);
 	g_thread_join (output->filler_thread);
@@ -973,7 +954,7 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 
 	if (plugin) {
 		if (!set_plugin (output, plugin)) {
-			xmms_log_error ("couldn't initialize output plugin");
+			xmms_log_error ("Could not initialize output plugin");
 		}
 	} else {
 		xmms_log_error ("initalized output without a plugin, please fix!");
@@ -1040,7 +1021,12 @@ set_plugin (xmms_output_t *output, xmms_output_plugin_t *plugin)
 	g_assert (output);
 	g_assert (plugin);
 
-	/* first, shut down the current plugin if present */
+	output->monitor_volume_running = FALSE;
+	if (output->monitor_volume_thread) {
+		g_thread_join (output->monitor_volume_thread);
+		output->monitor_volume_thread = NULL;
+	}
+
 	if (output->plugin) {
 		xmms_output_plugin_method_destroy (output->plugin, output);
 		output->plugin = NULL;
@@ -1054,12 +1040,11 @@ set_plugin (xmms_output_t *output, xmms_output_plugin_t *plugin)
 
 	if (!ret) {
 		output->plugin = NULL;
+	} else if (!output->monitor_volume_thread) {
+		output->monitor_volume_running = TRUE;
+		output->monitor_volume_thread = g_thread_create (xmms_output_monitor_volume_thread,
+		                                                 output, TRUE, NULL);
 	}
-
-	output->monitor_volume_running = TRUE;
-	output->monitor_volume_thread =
-		g_thread_create (xmms_output_monitor_volume_thread, output,
-		                 TRUE, NULL);
 
 	return ret;
 }

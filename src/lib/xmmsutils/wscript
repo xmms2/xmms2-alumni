@@ -4,19 +4,23 @@
 # Copyright (C) 2006-2007 XMMS2 Team
 #
 
-import os
+import Params
 
 def build(bld):
-    platform_src = {'nt':'win32', 'posix':'unix'}
-
+    env = bld.env_of_name('default')
     obj = bld.create_obj('cc', 'staticlib')
-    obj.source = "strlist.c utils_%s.c" % platform_src[os.name]
+    obj.source = ["strlist.c", "utils.c", "utils_%s.c" % env['util_impl']]
     obj.includes='. ../../include'
     obj.target='xmmsutils'
-    obj.install_in = 0
+    obj.install_var = 0
 
 def configure(conf):
-    pass
+    if Params.g_platform == 'win32':
+        conf.env['util_impl'] = 'win32'
+    else:
+        conf.env['util_impl'] = 'unix'
+
+    return True
 
 def set_options(opt):
     pass

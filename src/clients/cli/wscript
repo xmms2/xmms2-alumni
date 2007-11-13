@@ -1,4 +1,8 @@
+import Params
+
 def build(bld):
+    env = bld.env_of_name('default')
+
     obj = bld.create_obj('cc', 'program')
     obj.target = 'xmms2'
     obj.source = """cmd_config.c
@@ -10,6 +14,11 @@ def build(bld):
                     cmd_coll.c
                     common.c
                     main.c""".split()
+    obj.source.append('common_%s.c' % env['common_impl'])
+
+    if env["xmms_icon"]:
+        obj.source.append('../../../pixmaps/xmms2.rc')
+
     obj.includes = '. ../../include'
     obj.uselib_local = 'xmmsclient-glib xmmsclient'
     obj.uselib = 'glib2'
@@ -18,6 +27,11 @@ def build(bld):
     obj.files = ['xmms2.1']
 
 def configure(conf):
+    if Params.g_platform == 'win32':
+        conf.env['common_impl'] = 'win32'
+    else:
+        conf.env['common_impl'] = 'unix'
+
     return True
 
 def set_options(opt):

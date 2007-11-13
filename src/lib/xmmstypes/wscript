@@ -4,17 +4,15 @@
 # Copyright (C) 2006-2007 XMMS2 Team
 #
 
-import os
-
 def build(bld):
     obj = bld.create_obj('cc', 'staticlib')
     obj.source = "coll.c xlist.c".split()
     obj.includes='. ../../include ../../includepriv'
     obj.target='xmmstypes'
-    obj.install_in = 0
+    obj.install_var = 0
 
 def configure(conf):
-    pass
+    return True
 
 def set_options(opt):
     pass

@@ -62,12 +62,20 @@ src/plugins/vocoder/pvocoder*:
         Copyright (C) 2006 Juho Vähä-Herttua <juhovh@iki.fi>
         Licensed under GPL license.
 
+src/plugins/asf/libasf/*:
+        Copyright (C) 2006-2007 Juho Vähä-Herttua <juhovh@iki.fi>
+
+src/plugins/ices/*:
+        Licensed under GPL license.
+
 src/plugins/ices/encode.*:
         Copyright (c) 2001 Michael Smith <msmith@labyrinth.net.au>
-        Licensed under GPL license.
 
 src/plugins/jack/jack.c:
         Copyright (C) 2004  Chris Morgan <cmorgan@alum.wpi.edu>
+
+src/plugins/normalise/compress*
+        Copyright (C) 2002-2003 trikuare studios (http://trikuare.cx)
 
 src/plugins/daap/daap_md5.*:
         Copyright (C) 2004,2005 Charles Schmidt <cschmidt2@emich.edu>
@@ -77,6 +85,9 @@ src/plugins/daap/daap_md5.*:
 
 src/plugins/daap/*:
         Licensed under GPL license.
+
+src/plugins/normalize/compress*:
+	Copyright (C) 2002-2003 trikuare studios (http://trikuare.cx)
 
 src/includepriv/xmmspriv/xmms_list.h:
         Copyright (C) 1995-1997  Peter Mattis, Spencer Kimball and Josh MacDonald
@@ -94,3 +105,7 @@ wafadmin/libtool_config.py:
 
 wafadmin/pproc.py:
         Copyright (C) 2003-2004 by Peter Astrand <astrand@lysator.liu.se>
+
+src/clients/lib/perl/:
+        Copyright (C) 2006-2007 Florian Ragwitz <rafl@debian.org>
+        Licensed under the same terms as Perl itself.

@@ -1,11 +1,10 @@
-import sys
+import os
+from Params import g_platform
 
-def add_install_flag(obj):
-	if not sys.platform == 'darwin':
-		return
-	obj.env["LINKFLAGS_xlibs"] = obj.env["LINKFLAGS_xlibs"][0] % obj.target
-	if obj.uselib:
-		obj.uselib += ' xlibs'
-	else:
-		obj.uselib = 'xlibs'
+def add_install_flag(bld, obj):
+    env = bld.env_of_name("default")
 
+    if env['explicit_install_name']:
+        libname = obj.env["shlib_PREFIX"]+obj.target+obj.env["shlib_SUFFIX"]
+        insname = os.path.join(obj.env["PREFIX"], 'lib', libname)
+        obj.env.append_unique("LINKFLAGS", '-install_name ' + insname)

@@ -101,7 +101,7 @@ class kde_translations(Object.genobj):
 			try:
 				base, ext = os.path.splitext(file.m_name)
 				if ext != '.po': continue
-				task = self.create_task('po', self.env, 2)
+				task = self.create_task('po', self.env, 20)
 				task.set_inputs(file)
 				task.set_outputs(file.change_ext('.gmo'))
 				self.m_tasks.append(task)
@@ -117,7 +117,7 @@ class kde_translations(Object.genobj):
 			node = self.path.find_source(lang+'.gmo')
 			orig = node.relpath_gen(current)
 
-			destfile = Utils.join_path(lang, 'LC_MESSAGES', destfilename)
+			destfile = os.path.join(lang, 'LC_MESSAGES', destfilename)
 			Common.install_as('KDE_LOCALE', destfile, orig, self.env)
 
 # documentation
@@ -139,12 +139,12 @@ class kde_documentation(Object.genobj):
 			self.m_files.append(node)
 			(base, ext) = os.path.splitext(filename)
 			if ext == '.docbook':
-				task = self.create_task('meinproc', self.env, 2)
+				task = self.create_task('meinproc', self.env, 20)
 				task.set_inputs(node)
 				task.set_outputs(node.change_ext('.cache.bz2'))
 				self.m_docbooks.append(task)
 	def install(self):
-		destpath = Utils.join_path(self.m_lang, self.m_appname)
+		destpath = os.path.join(self.m_lang, self.m_appname)
 
 		current = Params.g_build.m_curdirnode
 		lst = []
@@ -160,7 +160,7 @@ def handler_ui(self, node, base=''):
 	cppnode = node.change_ext('.cpp')
 	hnode   = node.change_ext('.h')
 
-	uictask = self.create_task('uic', self.env, 2)
+	uictask = self.create_task('uic', self.env, 20)
 	uictask.set_inputs(node)
 	uictask.set_outputs([hnode, cppnode])
 
@@ -194,7 +194,7 @@ def handler_kcfgc(self, node, base=''):
 
 def handler_skel_or_stub(obj, base, type):
 	if not base in obj.skel_or_stub:
-		kidltask = obj.create_task('kidl', obj.env, 2)
+		kidltask = obj.create_task('kidl', obj.env, 20)
 		kidltask.set_inputs(obj.find(base+'.h'))
 		kidltask.set_outputs(obj.find(base+'.kidl'))
 		obj.skel_or_stub[base] = kidltask
@@ -203,7 +203,7 @@ def handler_skel_or_stub(obj, base, type):
 	# instead of saying "task.run_after(othertask)" we only give priority numbers on tasks
 
 	# the skel or stub (dcopidl2cpp)
-	task = obj.create_task(type, obj.env, 4)
+	task = obj.create_task(type, obj.env, 40)
 	task.set_inputs(obj.skel_or_stub[base].m_outputs)
 	task.set_outputs(obj.find(''.join([base,'_',type,'.cpp'])))
 
@@ -226,10 +226,10 @@ class kdeobj(cpp.cppobj):
 		self.m_linktask = None
 		self.m_latask   = None
 		self.skel_or_stub = {}
+		self.defines_lst = {}
 		self.want_libtool = -1 # fake libtool here
 
-	def get_valid_types(self):
-		return ['program', 'shlib', 'staticlib', 'module', 'convenience', 'other']
+		# valid types are ['program', 'shlib', 'staticlib', 'module', 'convenience', 'other']
 
 	def apply_core(self):
 
@@ -290,7 +290,7 @@ class kdeobj(cpp.cppobj):
 					path = node.m_parent.srcpath(self.env)
 					for i in globals('MOC_H'):
 						try:
-							os.stat(Utils.join_path(path,base2+i))
+							os.stat(os.path.join(path,base2+i))
 							ext = i
 							break
 						except:
@@ -329,7 +329,7 @@ class kdeobj(cpp.cppobj):
 			cpptask.m_run_after = moctasks
 
 		# and after the cpp objects, the remaining is the link step - in a lower priority so it runs alone
-		if self.m_type=='staticlib': linktask = self.create_task('cpp_link_static', self.env, ccroot.g_prio_link)
+		if self.m_type=='staticlib': linktask = self.create_task('ar_link_static', self.env, ccroot.g_prio_link)
 		else:                        linktask = self.create_task('cpp_link', self.env, ccroot.g_prio_link)
 		cppoutputs = []
 		for t in self.p_compiletasks: cppoutputs.append(t.m_outputs[0])

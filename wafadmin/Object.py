@@ -21,58 +21,69 @@ hooks
   - cf bison.py and flex.py for more details on this scheme
 """
 
+import copy
 import os, types, time
 import Params, Task, Common, Node, Utils
 from Params import debug, error, fatal
 
 g_allobjs=[]
 "contains all objects, provided they are created (not in distclean or in dist)"
+#TODO part of the refactoring to eliminate the static stuff (Utils.reset)
+
+g_name_to_obj = {}
+
+def name_to_obj(name):
+	global g_name_to_obj
+	if not g_name_to_obj:
+		for x in g_allobjs:
+			if x.name:
+				g_name_to_obj[x.name] = x
+			elif not x.target in g_name_to_obj.keys():
+				g_name_to_obj[x.target] = x
+	return g_name_to_obj.get(name, None)
 
 def flush():
 	"object instances under the launch directory create the tasks now"
+	global g_allobjs
+	global g_name_to_obj
+
+	# force the initialization of the mapping name->object in flush
+	# name_to_obj can be used in userland scripts, in that case beware of incomplete mapping
+	g_name_to_obj = {}
+	name_to_obj(None)
 
 	tree = Params.g_build
 	debug("delayed operation Object.flush() called", 'object')
 
-	dir_lst = Utils.split_path(Params.g_cwd_launch)
+	# post only objects below a particular folder (recursive make behaviour)
 	launch_dir_node = tree.m_root.find_dir(Params.g_cwd_launch)
-
 	if launch_dir_node.is_child_of(tree.m_bldnode):
 		launch_dir_node=tree.m_srcnode
 
-	if Params.g_options.compile_targets:
-		compile_targets = Params.g_options.compile_targets.split(',')
+	if Params.g_options.compile_targets: # well this feature is not used too much
+		debug('posting objects listed in compile_targets', 'object')
+		for x in Params.g_options.compile_targets.split(','):
+			y = name_to_obj(x)
+			if not y: continue
+			if y.m_posted: continue
+			y.post()
+			if Params.g_options.verbose == 3: print "flushed at ", time.asctime(time.localtime())
 	else:
-		compile_targets = None
-
-	for obj in tree.m_outstanding_objs:
-		debug("posting object", 'object')
-
-		if obj.m_posted: continue
-
-		if launch_dir_node:
-			objnode = obj.path
-			if not objnode.is_child_of(launch_dir_node):
-				continue
-		if compile_targets:
-			if obj.name and not (obj.name in compile_targets):
-				debug('skipping because of name', 'object')
-				continue
-			if not obj.target in compile_targets:
-				debug('skipping because of target', 'object')
-				continue
-		obj.post()
-		if Params.g_options.verbose == 3:
-			print "flushed at ", time.asctime(time.localtime())
+		debug('posting objects (normal)', 'object')
+		for obj in g_allobjs:
+			if obj.m_posted: continue
+			if launch_dir_node and not obj.path.is_child_of(launch_dir_node): continue
+			obj.post()
+			if Params.g_options.verbose == 3: print "flushed at ", time.asctime(time.localtime())
 
 def hook(objname, var, func):
 	"Attach a new method to an object class (objname is the name of the class)"
 	klass = g_allclasses[objname]
-	klass.__dict__[var] = func
-	try: klass.__dict__['all_hooks'].append(var)
-	except KeyError: klass.__dict__['all_hooks'] = [var]
+	setattr(klass, var, func)
+	try: klass.all_hooks.append(var)
+	except AttributeError: klass.all_hooks = [var]
 
-class genobj:
+class genobj(object):
 	def __init__(self, type):
 		self.m_type  = type
 		self.m_posted = 0
@@ -89,16 +100,11 @@ class genobj:
 		# no default environment - in case if
 		self.env = None
 
-		# register ourselves - used at install time
-		g_allobjs.append(self)
-
 		# allow delayed operations on objects created (declarative style)
 		# an object is then posted when another one is added
 		# Objects can be posted manually, but this can break a few things, use with care
-		Params.g_build.m_outstanding_objs.append(self)
-
-		if not type in self.get_valid_types():
-			error("BUG genobj::init : invalid type given")
+		# used at install time too
+		g_allobjs.append(self)
 
 	def get_valid_types(self):
 		return ['program', 'shlib', 'staticlib', 'other']
@@ -154,11 +160,11 @@ class genobj:
 	def install_results(self, var, subdir, task, chmod=0644):
 		debug('install results called', 'object')
 		current = Params.g_build.m_curdirnode
-		lst=map(lambda a: a.relpath_gen(current), task.m_outputs)
+		lst = [a.relpath_gen(current) for a in task.m_outputs]
 		Common.install_files(var, subdir, lst, chmod=chmod)
 
 	def clone(self, env):
-		newobj = Utils.copyobj(self)
+		newobj = copy.deepcopy(self)
 
 		if type(env) is types.StringType:
 			newobj.env = Params.g_build.m_allenvs[env]
@@ -166,7 +172,6 @@ class genobj:
 			newobj.env = env
 
 		g_allobjs.append(newobj)
-		Params.g_build.m_outstanding_objs.append(newobj)
 
 		return newobj
 
@@ -207,7 +212,9 @@ class genobj:
 						lst.append(s)
 
 		lst.sort()
-		self.source = self.source+' '+(" ".join(lst))
+		self.source = self.to_list(self.source)
+		if not self.source: self.source = lst
+		else: self.source += lst
 
 g_cache_max={}
 def sign_env_vars(env, vars_list):
@@ -219,7 +226,7 @@ def sign_env_vars(env, vars_list):
 	try: return g_cache_max[s]
 	except KeyError: pass
 
-	lst = map(lambda a: env.get_flat(a), vars_list)
+	lst = [env.get_flat(a) for a in vars_list]
 	ret = Params.h_list(lst)
 	if Params.g_zones: debug("%s %s" % (Params.vsig(ret), str(lst)), 'envhash')
 

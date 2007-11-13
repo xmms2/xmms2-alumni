@@ -19,8 +19,6 @@ class Environment:
 		g_idx += 1
 		self.m_table={}
 		self.m_var_cache={}
-		# may be there is a better place for this
-		if sys.platform == "win32": self.m_table['WINDOWS']=1
 
 		# set the prefix once and for everybody on creation (configuration)
 		self.m_table['PREFIX'] = Params.g_options.prefix
@@ -63,7 +61,8 @@ class Environment:
 
 	def __getitem__(self, key):
 		r = self.m_table.get(key, None)
-		if r: return r
+		if r is not None:
+			return r
 		return Params.g_globals.get(key, [])
 
 	def __setitem__(self, key, value):
@@ -126,11 +125,21 @@ class Environment:
 		"return the destdir, useful for installing"
 		if self.m_table.has_key('NOINSTALL'): return ''
 		dst = Params.g_options.destdir
-		try: dst = Utils.join_path(dst,os.sep,self.m_table['SUBDEST'])
+		try: dst = os.path.join(dst, os.sep, self.m_table['SUBDEST'])
 		except: pass
 		return dst
 
 	def hook(self, classname, ext, func):
+		"silly wrapper"
 		import Object
 		Object.hook(classname, ext, func)
+
+	def set_dependency(self, infile, outfile):
+		"TODO: future: set manual dependencies"
+		pass
+
+	def set_var_dependency(self, infile, text):
+		"TODO: future: add manual dependencies on env variables"
+		pass
+
 

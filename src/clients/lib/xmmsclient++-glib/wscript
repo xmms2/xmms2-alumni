@@ -7,9 +7,11 @@ def build(bld):
     lib.uselib_local = 'xmmsclient xmmsclient-glib'
     lib.includes = '../../../include ../../../includepriv'
     lib.vnum = '1.0.0'
-    tool.add_install_flag(lib)
+    tool.add_install_flag(bld, lib)
 
 def configure(conf):
+    if not conf.env["HAVE_CXX"]:
+        return False
     conf.env.append_value('XMMS_PKGCONF_FILES', ('xmms2-client-cpp-glib', '-lxmmsclient-glib -lxmmsclient++-glib'))
     return True
 

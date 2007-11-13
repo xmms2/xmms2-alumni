@@ -43,6 +43,12 @@ static void xmmsc_deinit (xmmsc_connection_t *c);
  */
 
 /**
+ * @mainpage
+ * @image html pixmaps/xmms2-128.png
+ */
+
+/**
+ * @defgroup XMMSClient
  * @brief This functions are used to connect a client software
  * to the XMMS2 daemon.
  *
@@ -121,7 +127,7 @@ xmmsc_send_hello (xmmsc_connection_t *c)
 	xmmsc_result_t *result;
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_HELLO);
-	xmms_ipc_msg_put_int32 (msg, 1); /* PROTOCOL VERSION */
+	xmms_ipc_msg_put_int32 (msg, XMMS_IPC_PROTOCOL_VERSION);
 	xmms_ipc_msg_put_string (msg, c->clientname);
 
 	result = xmmsc_send_msg (c, msg);
@@ -152,8 +158,6 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 {
 	xmmsc_ipc_t *ipc;
 	xmmsc_result_t *result;
-	uint32_t i;
-	int ret;
 
 	char path[PATH_MAX];
 
@@ -177,13 +181,13 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 	c->ipc = ipc;
 	result = xmmsc_send_hello (c);
 	xmmsc_result_wait (result);
-	ret = xmmsc_result_get_uint (result, &i);
-	xmmsc_result_unref (result);
-	if (!ret) {
-		c->error = strdup (xmmsc_ipc_error_get (ipc));
+	if (xmmsc_result_iserror (result)) {
+		c->error = strdup (xmmsc_result_get_error (result));
+		xmmsc_result_unref (result);
+		return false;
 	}
-
-	return ret;
+	xmmsc_result_unref (result);
+	return true;
 }
 
 /**

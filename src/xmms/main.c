@@ -14,6 +14,10 @@
  *  Lesser General Public License for more details.
  */
 
+/**
+ * @mainpage
+ * @image html pixmaps/xmms2-128.png
+ */
 
 /** @file
  * This file controls the XMMS2 main loop.
@@ -33,6 +37,8 @@
 #include "xmmspriv/xmms_playlist.h"
 #include "xmmspriv/xmms_collection.h"
 #include "xmmspriv/xmms_signal.h"
+#include "xmmspriv/xmms_symlink.h"
+#include "xmmspriv/xmms_checkroot.h"
 #include "xmmspriv/xmms_medialib.h"
 #include "xmmspriv/xmms_output.h"
 #include "xmmspriv/xmms_ipc.h"
@@ -48,23 +54,20 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <fcntl.h>
-
-#include <pthread.h>
 
 /*
  * Forward declarations of the methods in the main object
  */
 static void quit (xmms_object_t *object, xmms_error_t *error);
 static GHashTable *stats (xmms_object_t *object, xmms_error_t *error);
-static guint hello (xmms_object_t *object, guint protocolver, gchar *client, xmms_error_t *error);
+static void hello (xmms_object_t *object, guint protocolver, gchar *client, xmms_error_t *error);
 static void install_scripts (const gchar *into_dir);
 static xmms_xform_object_t *xform_obj;
 static xmms_bindata_t *bindata_obj;
 
 XMMS_CMD_DEFINE (quit, quit, xmms_object_t*, NONE, NONE, NONE);
-XMMS_CMD_DEFINE (hello, hello, xmms_object_t *, UINT32, UINT32, STRING);
+XMMS_CMD_DEFINE (hello, hello, xmms_object_t *, NONE, UINT32, STRING);
 XMMS_CMD_DEFINE (stats, stats, xmms_object_t *, DICT, NONE, NONE);
 XMMS_CMD_DEFINE (plugin_list, xmms_plugin_client_list, xmms_object_t *, LIST, UINT32, NONE);
 
@@ -253,11 +256,15 @@ xmms_main_destroy (xmms_object_t *object)
 /**
  * @internal Function to respond to the 'hello' sent from clients on connect
  */
-static guint
+static void
 hello (xmms_object_t *object, guint protocolver, gchar *client, xmms_error_t *error)
 {
-	XMMS_DBG ("Client %s with protocol version %d sent hello!", client, protocolver);
-	return 1;
+	if (protocolver != XMMS_IPC_PROTOCOL_VERSION) {
+		xmms_log_info ("Client '%s' with bad protocol version (%d, not %d) connected", client, protocolver, XMMS_IPC_PROTOCOL_VERSION);
+		xmms_error_set (error, XMMS_ERROR_INVAL, "Bad protocol version");
+		return;
+	}
+	XMMS_DBG ("Client '%s' connected", client);
 }
 
 static gboolean
@@ -287,19 +294,6 @@ quit (xmms_object_t *object, xmms_error_t *error)
 	g_timeout_add (1, kill_server, object);
 }
 
-static gboolean
-symlink_file (gchar *source, gchar *dest)
-{
-	gint r;
-
-	g_return_val_if_fail (source, FALSE);
-	g_return_val_if_fail (dest, FALSE);
-
-	r = symlink (source, dest);
-
-	return r != -1;
-}
-
 static void
 install_scripts (const gchar *into_dir)
 {
@@ -326,7 +320,7 @@ install_scripts (const gchar *into_dir)
 	while ((f = g_dir_read_name (dir))) {
 		gchar *source = g_strdup_printf ("%s/%s", path, f);
 		gchar *dest = g_strdup_printf ("%s/%s", into_dir, f);
-		if (!symlink_file (source, dest)) {
+		if (!xmms_symlink_file (source, dest)) {
 			break;
 		}
 		g_free (source);
@@ -426,7 +420,7 @@ main (int argc, char **argv)
 		exit (EXIT_FAILURE);
 	}
 
-	if (getuid () == 0 || geteuid () == 0) {
+	if (xmms_checkroot ()) {
 		if (runasroot) {
 			g_print ("***************************************\n");
 			g_print ("Warning! You are running XMMS2D as root, this is a bad idea!\nBut I'll allow it since you asked nicely.\n");
@@ -456,7 +450,7 @@ main (int argc, char **argv)
 
 	load_config ();
 
-	xmms_default_ipcpath_get (default_path, sizeof (default_path));
+	xmms_fallback_ipcpath_get (default_path, sizeof (default_path));
 
 	cv = xmms_config_property_register ("core.ipcsocket",
 	                                    default_path,

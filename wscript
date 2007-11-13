@@ -23,7 +23,7 @@ import Object
 import Utils
 import Common
 
-VERSION="0.2 DrJekyll (git commit: %s)" % gittools.get_info_str()
+VERSION="0.2 DrJekyll+WIP+TEST1 (git commit: %s)" % gittools.get_info_str()
 APPNAME='xmms2'
 
 srcdir='.'
@@ -56,9 +56,11 @@ optional_subdirs = ["src/clients/cli",
                     "src/clients/lib/xmmsclient-ecore",
                     "src/clients/lib/xmmsclient++",
                     "src/clients/lib/xmmsclient++-glib",
+                    "src/clients/lib/xmmsclient-cf",
                     "src/clients/lib/python",
                     "src/clients/lib/perl",
-                    "src/clients/lib/ruby"]
+                    "src/clients/lib/ruby",
+                    "pixmaps"]
 
 all_optionals = sets.Set([os.path.basename(o) for o in optional_subdirs])
 all_plugins = sets.Set([p for p in os.listdir("src/plugins")
@@ -207,6 +209,12 @@ def _output_summary(enabled_plugins, disabled_plugins,
     Params.pprint('BLUE', ", ".join(disabled_plugins))
 
 def configure(conf):
+    if os.environ.has_key('PKG_CONFIG_PREFIX'):
+        prefix = os.environ['PKG_CONFIG_PREFIX']
+        if not os.path.isabs(prefix):
+            prefix = os.path.abspath(prefix)
+        conf.env['PKG_CONFIG_DEFINES'] = {'prefix':prefix}
+
     conf.env["BUILD_XMMS2D"] = False
     if not Params.g_options.without_xmms2d == True:
         conf.env["BUILD_XMMS2D"] = True
@@ -226,6 +234,15 @@ def configure(conf):
     conf.check_tool('pkgconfig', tooldir=os.path.abspath('waftools'))
     conf.check_tool('man', tooldir=os.path.abspath('waftools'))
 
+    if conf.check_tool('winres'):
+        conf.env['WINRCFLAGS'] = '-I' + os.path.abspath('pixmaps')
+        conf.env['xmms_icon'] = True
+    else:
+        conf.env['xmms_icon'] = False
+
+    if Params.g_options.target_platform:
+        Params.g_platform = Params.g_options.target_platform
+
     conf.env["VERSION"] = VERSION
     conf.env["CCFLAGS"] = Utils.to_list(conf.env["CCFLAGS"]) + ['-g', '-O0']
     conf.env["CXXFLAGS"] = Utils.to_list(conf.env["CXXFLAGS"]) + ['-g', '-O0']
@@ -235,15 +252,41 @@ def configure(conf):
     conf.env['CCDEFINES'] += ["XMMS_VERSION=\"\\\"%s\\\"\"" % VERSION]
     conf.env['CXXDEFINES'] += ["XMMS_VERSION=\"\\\"%s\\\"\"" % VERSION]
 
-    if Params.g_options.config_prefix:
-        conf.env["LIBPATH"] += [os.path.join(Params.g_options.config_prefix, "lib")]
-        include = [os.path.join(Params.g_options.config_prefix, "include")]
-        conf.env['CPPPATH'] += include
+    if Params.g_options.libdir:
+        conf.env["LIBDIR"] = Params.g_options.libdir
+        conf.env["shlib_INST_DIR"] = ""
+        conf.env["shlib_INST_VAR"] = "LIBDIR"
 
-    conf.env["LINKFLAGS_xlibs"] += ['-install_name %s%s%s' % (os.path.join(conf.env["PREFIX"], 'lib', conf.env["shlib_PREFIX"]), '%s', conf.env["shlib_SUFFIX"])]
+    if Params.g_options.config_prefix:
+        for dir in Params.g_options.config_prefix:
+            if not os.path.isabs(dir):
+                dir = os.path.abspath(dir)
+            conf.env.prepend_value("LIBPATH", os.path.join(dir, "lib"))
+            conf.env.prepend_value("CPPPATH", os.path.join(dir, "include"))
 
     # Our static libraries may link to dynamic libraries
-    conf.env["staticlib_CCFLAGS"] += ['-fPIC', '-DPIC']
+    if Params.g_platform != 'win32':
+        conf.env["staticlib_CCFLAGS"] += ['-fPIC', '-DPIC']
+    else:
+        # As we have to change target platform after the tools
+        # have been loaded there are a few variables that needs
+        # to be initiated if building for win32.
+
+        # Make sure we don't have -fPIC and/or -DPIC in our CCFLAGS
+        conf.env["shlib_CCFLAGS"] = []
+        conf.env['plugin_CCFLAGS'] = []
+
+        # Setup various prefixes
+        conf.env["shlib_SUFFIX"] = '.dll'
+        conf.env['plugin_SUFFIX'] = '.dll'
+        conf.env['program_SUFFIX'] = '.exe'
+
+    # Add some specific OSX things
+    if Params.g_platform == 'darwin':
+        conf.env["LINKFLAGS"] += ['-multiply_defined suppress']
+        conf.env["explicit_install_name"] = True
+    else:
+        conf.env["explicit_install_name"] = False
 
     # Check for support for the generic platform
     has_platform_support = os.name in ('nt', 'posix')
@@ -255,17 +298,21 @@ def configure(conf):
     conf.check_tool('checks')
 
     # Check sunOS socket support
-    if sys.platform == 'sunos5':
+    if Params.g_platform == 'sunos5':
         if not conf.check_library2("socket", uselib='socket'):
             Params.fatal("xmms2 requires libsocket on Solaris.")
         conf.env.append_unique('CCFLAGS', '-D_POSIX_PTHREAD_SEMANTICS')
         conf.env.append_unique('CCFLAGS', '-D_REENTRANT')
-
+        conf.env['socket_impl'] = 'socket'
     # Check win32 (winsock2) socket support
-    if sys.platform == 'win32':
+    elif Params.g_platform == 'win32':
         if not conf.check_library2("wsock32", uselib='socket'):
             Params.fatal("xmms2 requires wsock32 on windows.")
         conf.env.append_unique('LIB_socket', 'ws2_32')
+        conf.env['socket_impl'] = 'wsock32'
+    # Default POSIX sockets
+    else:
+        conf.env['socket_impl'] = 'posix'
 
     # Glib is required by everyone, so check for it here and let them
     # assume its presence.
@@ -278,8 +325,10 @@ def configure(conf):
     conf.env['NEWEST_WSCRIPT_SUBDIR'] = newest
 
     [conf.sub_config(s) for s in subdirs]
-    
+
     _output_summary(enabled_plugins, disabled_plugins, enabled_optionals, disabled_optionals)
+
+    return True
 
 
 ####
@@ -302,9 +351,13 @@ def set_options(opt):
                    type="string", dest="enable_optionals")
     opt.add_option('--without-optionals', action="callback", callback=_list_cb,
                    type="string", dest="disable_optionals")
-    opt.add_option('--conf-prefix', type='string', dest='config_prefix')
+    opt.add_option('--conf-prefix', action="callback", callback=_list_cb,
+                   type='string', dest='config_prefix')
     opt.add_option('--without-xmms2d', type='int', dest='without_xmms2d')
     opt.add_option('--with-mandir', type='string', dest='manualdir')
+    opt.add_option('--with-libdir', type='string', dest='libdir')
+    opt.add_option('--with-target-platform', type='string',
+	               dest='target_platform')
 
     for o in optional_subdirs + subdirs:
         opt.sub_options(o)

@@ -109,7 +109,7 @@ struct xmmsc_result_St {
  * Each command to the server will return a #xmmsc_result_t
  * to the programmer. This object will be used to see the results
  * off the call. It will handle errors and the results.
- * 
+ *
  * results could be used in both sync and async fashions. Here
  * is a sync example:
  * @code
@@ -136,7 +136,7 @@ struct xmmsc_result_St {
  *   xmmsc_result_unref (res);
  *   printf ("current id is: %d", id);
  * }
- * 
+ *
  * int main () {
  *   // Connect blah blah ...
  *   xmmsc_result_t *res;
@@ -291,7 +291,7 @@ xmmsc_result_disconnect (xmmsc_result_t *res)
  *   xmmsc_result_unref (newres);
  *   printf ("current id is: %d", id);
  * }
- * 
+ *
  * int main () {
  *   // Connect blah blah ...
  *   xmmsc_result_t *res;
@@ -613,7 +613,10 @@ xmmsc_result_wait (xmmsc_result_t *res)
 }
 
 /**
- * Set source to used when fetching stuff from a DICT
+ * Set sources to be used when fetching stuff from a propdict.
+ * @param res a #xmmsc_result_t that you got from a command dispatcher.
+ * @param preference a list of sources from most to least preferrable.
+ * You may use a wildcard "*" character.
  */
 void
 xmmsc_result_source_preference_set (xmmsc_result_t *res, const char **preference)
@@ -634,7 +637,43 @@ xmmsc_result_source_preference_set (xmmsc_result_t *res, const char **preference
 }
 
 /**
- * @defgroup ResultValueRetrieval ResultValueRetrieval 
+ * Get sources to be used when fetching stuff from a propdict.
+ * @param res a #xmmsc_result_t that you got from a command dispatcher.
+ * @param preference a list of the current sources from most to least
+ * preferrable. This list is owned by the result and will be freed with the
+ * result.
+ */
+char **
+xmmsc_result_source_preference_get (xmmsc_result_t *res)
+{
+	int i = 0;
+	char **preference = NULL;
+	x_list_t *list;
+	x_return_val_if_fail (res, NULL);
+
+	list = res->source_pref;
+	preference = malloc (x_list_length (list) * sizeof (char *) + 1);
+	if (!preference) {
+		x_oom ();
+		return NULL;
+	}
+
+	for (i = 0; list; list = list->next) {
+		preference[i] = strdup (list->data);
+		if (!preference[i]) {
+			x_oom ();
+			return NULL;
+		}
+		x_list_append (res->extra_free, preference[i++]);
+	}
+	preference[i] = NULL;
+	x_list_append (res->extra_free, preference);
+
+	return preference;
+}
+
+/**
+ * @defgroup ResultValueRetrieval ResultValueRetrieval
  * @ingroup Result
  * @brief Explains how you can retrive values from a #xmmsc_result_t
  * @{
@@ -747,7 +786,7 @@ xmmsc_result_get_collection (xmmsc_result_t *res, xmmsc_coll_t **c)
  * Retrives binary data from the resultset.
  * @param res a #xmmsc_result_t containing a string.
  * @param r the return data. This data is owned by the result and will be freed when the result is freed.
- * @param rlen the return length of data. 
+ * @param rlen the return length of data.
  * @return 1 upon success otherwise 0
  */
 int
@@ -822,7 +861,7 @@ xmmsc_result_dict_lookup (xmmsc_result_t *res, const char *key)
  * Retrieve integer associated for specified key in the resultset.
  *
  * If the key doesn't exist in the result the returned integer is
- * undefined. 
+ * undefined.
  *
  * @param res a #xmmsc_result_t containing dict list.
  * @param key Key that should be retrieved
@@ -860,7 +899,7 @@ xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *
  * Retrieve unsigned integer associated for specified key in the resultset.
  *
  * If the key doesn't exist in the result the returned integer is
- * undefined. 
+ * undefined.
  *
  * @param res a #xmmsc_result_t containing a hashtable.
  * @param key Key that should be retrieved
@@ -1039,7 +1078,7 @@ xmmsc_result_propdict_foreach (xmmsc_result_t *res,
  * Iterate over all key/value-pair in the resultset.
  *
  * Calls specified function for each key/value-pair in the dictionary.
- * 
+ *
  * void function (const void *key, #xmmsc_result_value_type_t type, const void *value, void *user_data);
  *
  * @param res a #xmmsc_result_t containing a dict.

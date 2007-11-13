@@ -109,6 +109,7 @@ xmms_id3v2_init (xmms_xform_t *xform)
 	gint filesize;
 	guchar *buf;
 	gint res;
+	const gchar *metakey;
 
 	xmms_error_reset (&err);
 
@@ -127,11 +128,10 @@ xmms_id3v2_init (xmms_xform_t *xform)
 
 	data->len = head.len;
 
-	filesize = xmms_xform_metadata_get_int (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE);
-	if (filesize != -1) {
-		xmms_xform_metadata_set_int (xform,
-		                             XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE,
-		                             filesize - head.len);
+	metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE;
+	if (xmms_xform_metadata_get_int (xform, metakey, &filesize)) {
+		metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE;
+		xmms_xform_metadata_set_int (xform, metakey, filesize - head.len);
 	}
 
 

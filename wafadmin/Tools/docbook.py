@@ -94,7 +94,7 @@ def docb_file(obj, node):
 	if ext == '.xml':
 		if obj.get_type() == 'txt' or obj.get_type() == 'ps':
 			fatal("docbook: while processing '%s':\n"
-			      "txt and ps output are currently not supported when input format is XML." % node.m_name )
+			      'txt and ps output are currently not supported when input format is XML.' % node.m_name )
 
 # docbook objects
 class docbookobj(Object.genobj):
@@ -102,17 +102,13 @@ class docbookobj(Object.genobj):
 		Object.genobj.__init__(self, type)
 		self.stylesheet = None
 
-	def get_valid_types(self):
-		return ['html', 'pdf', 'txt', 'ps']
+		self.ext = ['html', 'pdf', 'txt', 'ps']
 
 	def get_type(self):
 		return self.m_type
 
 	def apply(self):
 		debug("apply called for docbookobj")
-
-		if not self.m_type in self.get_valid_types():
-			fatal('Trying to convert docbook file to unknown type')
 
 		# for each source argument, create a task
 		lst = self.source.split()
@@ -130,12 +126,12 @@ class docbookobj(Object.genobj):
 
 		current = Params.g_build.m_curdirnode
 		lst = []
-		docpath = Utils.join_path('share',Utils.g_module.APPNAME, 'doc')
+		docpath = os.path.join('share',Utils.g_module.APPNAME, 'doc')
 
 		# Install all generated docs
 		for task in self.m_tasks:
 			base, ext = os.path.splitext(task.m_outputs[0].m_name)
-			if ext[1:] not in self.get_valid_types():
+			if ext[1:] not in self.ext:
 				continue
 			self.install_results('PREFIX', docpath, task )
 

@@ -12,14 +12,13 @@ g_cc_flag_vars = [
 'FRAMEWORK', 'FRAMEWORKPATH',
 'STATICLIB', 'LIB', 'LIBPATH', 'LINKFLAGS', 'RPATH',
 'INCLUDE',
-'CCFLAGS', 'CPPPATH', 'CPPLAGS', 'CCDEFINES']
+'CCFLAGS', 'CPPPATH', 'CPPFLAGS', 'CCDEFINES']
 
-cctypes=['plugin', 'shlib', 'program', 'staticlib', 'objects']
 g_cc_type_vars=['CCFLAGS', 'LINKFLAGS', 'obj_ext']
 class ccobj(ccroot.ccroot):
 	s_default_ext = ['.c', '.cc', '.C']
-	def __init__(self, type='program'):
-		ccroot.ccroot.__init__(self, type)
+	def __init__(self, type='program', subtype=None):
+		ccroot.ccroot.__init__(self, type, subtype)
 
 		self.ccflags=''
 		self.cppflags=''
@@ -38,10 +37,6 @@ class ccobj(ccroot.ccroot):
 
 		global g_cc_type_vars
 		self.p_type_vars = g_cc_type_vars
-
-	def get_valid_types(self):
-		global cctypes
-		return cctypes
 
 	def apply_obj_vars(self):
 		debug('apply_obj_vars called for ccobj', 'cc')
@@ -109,9 +104,9 @@ class ccobj(ccroot.ccroot):
 		for l in libs:
 			val = self.env['CCDEFINES_'+l]
 			if val: milst += val
-		self.env['DEFLINES'] = map(lambda x: "define %s"%  ' '.join(x.split('=', 1)), milst)
+		self.env['DEFLINES'] = ["define %s"%  ' '.join(x.split('=', 1)) for x in milst]
 		y = self.env['CCDEFINES_ST']
-		self.env['_CCDEFFLAGS'] = map(lambda x: y%x, milst)
+		self.env['_CCDEFFLAGS'] = [y%x for x in milst]
 
 def setup(env):
 	cc_str = '${CC} ${CCFLAGS} ${CPPFLAGS} ${_CCINCFLAGS} ${_CCDEFFLAGS} ${CC_SRC_F}${SRC} ${CC_TGT_F}${TGT}'

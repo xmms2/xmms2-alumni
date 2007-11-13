@@ -50,6 +50,7 @@ struct xmmsc_coll_St {
 
 
 static void xmmsc_coll_free (xmmsc_coll_t *coll);
+static int free_udata (void *ptr, void *userdata);
 
 static int xmmsc_coll_unref_udata (void *coll, void *userdata);
 static int xmmsc_coll_idlist_resize (xmmsc_coll_t *coll, size_t newsize);
@@ -126,8 +127,9 @@ xmmsc_coll_free (xmmsc_coll_t *coll)
 {
 	x_return_if_fail (coll);
 
-	/* Unref all the operands */
+	/* Unref all the operands and attributes */
 	x_list_foreach (coll->operands, xmmsc_coll_unref_udata, NULL);
+	x_list_foreach (coll->attributes, free_udata, NULL);
 
 	x_list_free (coll->operands);
 	x_list_free (coll->attributes);
@@ -488,8 +490,9 @@ xmmsc_coll_operand_list_valid (xmmsc_coll_t *coll)
 }
 
 /**
- * Retrieve the current operand in the list
- * by changing the operand parameter to point to it.
+ * Provide a reference to the current operand in the list by changing
+ * the operand parameter to point to it. Note that the refcount of the
+ * operand is not modified by this operation.
  * The function returns 1 if the entry was valid, 0 otherwise.
  *
  * @param coll  The collection to consider.
@@ -572,6 +575,30 @@ xmmsc_coll_operand_list_restore (xmmsc_coll_t *coll)
 	coll->curr_stack = x_list_delete_link (coll->curr_stack, coll->curr_stack);
 
 	return 1;
+}
+
+
+/**
+ * Remove all the operands.
+ *
+ * @param coll  The collection to consider.
+ */
+void
+xmmsc_coll_operand_list_clear (xmmsc_coll_t *coll)
+{
+	xmmsc_coll_t *op;
+
+	x_return_if_fail (coll);
+
+	/* Unref all the operands sequentially. */
+	while (coll->operands != NULL) {
+		op = (xmmsc_coll_t *) coll->operands->data;
+		coll->operands = x_list_delete_link (coll->operands, coll->operands);
+		xmmsc_coll_unref (op);
+	}
+
+	coll->curr_op = NULL;
+	coll->curr_stack = NULL;
 }
 
 
@@ -746,9 +773,11 @@ xmmsc_coll_attribute_list_next (xmmsc_coll_t *coll)
 
 /**
  * Return a collection referencing the whole media library,
- * i.e. the "All Media" collection.
+ * that is a reference to the "All Media" collection.
+ * The returned structure must be unref'd using #xmmsc_coll_unref
+ * after usage.
  *
- * @return a collection refering the "All Media" collection.
+ * @return a collection referring to the "All Media" collection.
  */
 xmmsc_coll_t*
 xmmsc_coll_universe ()
@@ -775,6 +804,17 @@ static int
 xmmsc_coll_unref_udata (void *coll, void *userdata)
 {
 	xmmsc_coll_unref ((xmmsc_coll_t *)coll);
+	return 1;
+}
+
+/**
+ * Alternate version of the free() C function with an extra userdata
+ * argument, to be used as a foreach function.
+ */
+static int
+free_udata (void *ptr, void *userdata)
+{
+	free (ptr);
 	return 1;
 }
 

@@ -4,8 +4,9 @@
 # Copyright (C) 2006-2007 XMMS2 Team
 #
 
-import sys,os
+import os
 import Common
+import Params
 
 source = """config.c
             mediainfo.c
@@ -34,28 +35,32 @@ source = """config.c
             utils.c""".split()
 
 def build(bld):
-    if sys.platform == 'win32':
+    env = bld.env_of_name("default")
+
+    if env['xmms_shared_library']:
         lib = bld.create_obj('cc', 'shlib')
         lib.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes'
     else:
         lib = bld.create_obj('cc', 'staticlib')
+        lib.install_var = 0
     lib.target = 'xmms2core'
     lib.includes = '. ../include ../includepriv'
-    lib.install_in = 0
     lib.uselib = 'glib2 gmodule2 gthread2 sqlite3 statfs socket'
     lib.source = source
 
-    env = bld.env_of_name("default")
-    lib.source.append("statfs_%s.c" % env["statfs_os"])
+    lib.source.append("compat/statfs_%s.c" % env["statfs_impl"])
 
     prog = bld.create_obj('cc', 'program')
     prog.target = 'xmms2d'
     prog.includes = '. ../include ../includepriv'
     prog.source = ["main.c"]
-    if sys.platform == 'win32':
-        prog.source.append("signal_dummy.c")
-    else:
-        prog.source.append("signal_unix.c")
+    prog.source.append("compat/signal_%s.c" % env['compat_impl'])
+    prog.source.append("compat/symlink_%s.c" % env['compat_impl'])
+    prog.source.append("compat/checkroot_%s.c" % env['compat_impl'])
+
+    if env['xmms_icon']:
+        prog.source.append('../../pixmaps/xmms2.rc')
+
     prog.uselib_local = 'xmms2core xmmsipc xmmssocket xmmsutils xmmstypes'
     prog.uselib = 'glib2 gmodule2 gthread2 sqlite3 statfs socket'
 
@@ -87,21 +92,36 @@ def configure(conf):
         test.mandatory = mandatory
         return test.run()
 
-    if check_header('sys/vfs.h'):
-        if sys.platform == 'sunos5':
-            conf.env['statfs_os'] = 'solaris'
+    if Params.g_platform == 'win32':
+        conf.env['statfs_impl'] = 'dummy'
+    elif check_header('sys/vfs.h'):
+        if Params.g_platform == 'sunos5':
+            conf.env['statfs_impl'] = 'solaris'
         else:
-            conf.env['statfs_os'] = 'linux'
+            conf.env['statfs_impl'] = 'linux'
     elif check_header('sys/param.h'):
-        conf.env['statfs_os'] = 'bsd'
+        conf.env['statfs_impl'] = 'bsd'
     else:
-        conf.env['statfs_os'] = 'dummy'
+        conf.env['statfs_impl'] = 'dummy'
 
     # Add Darwin stuff
-    if sys.platform == 'darwin':
+    if Params.g_platform == 'darwin':
         conf.env['LINKFLAGS'] += ['-framework', 'CoreFoundation']
+        conf.env['CCDEFINES'] += ['USE_BUNDLES']
+
+    if Params.g_platform == 'win32':
+        conf.env['xmms_shared_library'] = True
+    else:
+        conf.env['xmms_shared_library'] = False
+
+    if Params.g_platform == 'win32':
+        conf.env['compat_impl'] = 'dummy'
+    else:
+        conf.env['compat_impl'] = 'unix'
 
     conf.env.append_value('XMMS_PKGCONF_FILES', ('xmms2-plugin', ''))
+
+    return True
 
 def set_options(opt):
     pass

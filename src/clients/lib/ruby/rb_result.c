@@ -383,6 +383,29 @@ c_value_get (VALUE self)
 }
 
 static VALUE
+c_is_error (VALUE self)
+{
+	RbResult *res;
+
+	Data_Get_Struct (self, RbResult, res);
+
+	return xmmsc_result_iserror (res->real) ? Qtrue : Qfalse;
+}
+
+static VALUE
+c_get_error (VALUE self)
+{
+	RbResult *res;
+	char *error;
+
+	Data_Get_Struct (self, RbResult, res);
+
+	error = xmmsc_result_get_error (res->real);
+
+	return rb_str_new2 (error ? error : "");
+}
+
+static VALUE
 c_propdict_init (VALUE self, VALUE result)
 {
 	rb_iv_set (self, "result", result);
@@ -560,6 +583,28 @@ c_propdict_each_value (VALUE self)
 	return self;
 }
 
+static VALUE
+c_source_preference_get (VALUE self)
+{
+	RbResult *res = NULL;
+	VALUE ary = rb_ary_new ();
+	char **preferences = NULL;
+	unsigned int i;
+
+	Data_Get_Struct (self, RbResult, res);
+
+	preferences = xmmsc_result_source_preference_get (res->real);
+
+	for (i = 0; preferences[i]; i++) {
+		if (!preferences[i]) {
+			continue;
+		}
+		rb_ary_push (ary, rb_str_new2 (preferences[i]));
+	}
+
+	return ary;
+}
+
 void
 Init_Result (VALUE mXmms)
 {
@@ -574,6 +619,10 @@ Init_Result (VALUE mXmms)
 	rb_define_method (cResult, "notifier", c_notifier_set, 0);
 	rb_define_method (cResult, "wait", c_wait, 0);
 	rb_define_method (cResult, "value", c_value_get, 0);
+	rb_define_method (cResult, "error?", c_is_error, 0);
+	rb_define_method (cResult, "error", c_get_error, 0);
+
+	rb_define_method (cResult, "source_preference", c_source_preference_get, 0);
 
 	cBroadcastResult = rb_define_class_under (mXmms,
 	                                          "BroadcastResult",

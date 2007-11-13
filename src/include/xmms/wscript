@@ -1,4 +1,4 @@
-import sys,os
+import os
 import Params
 
 def build(bld):
@@ -11,13 +11,6 @@ def configure(conf):
     """Set the values needed by xmms_defs.h.in in the environment."""
 
     defs = {}
-
-    platform_names = ['linux', 'freebsd', 'openbsd',
-                      'netbsd', 'dragonfly', 'darwin']
-    for platform in platform_names:
-        if sys.platform.startswith(platform):
-            defs["XMMS_OS_%s" % platform.upper()] = 1
-            break
 
     defs['PKGLIBDIR'] = os.path.join(conf.env['PREFIX'],
                                      'lib', 'xmms2')
@@ -35,7 +28,7 @@ def configure(conf):
     if prio == -1:
         Params.warning("No output plugin found, this is bad")
     defs['XMMS_OUTPUT_DEFAULT'] = name
-    if sys.platform == 'darwin':
+    if Params.g_platform == 'darwin':
         defs["USERCONFDIR"] = 'Library/xmms2'
         defs["USERCACHEDIR"] = 'Library/xmms2/logs'
     else:
@@ -47,9 +40,16 @@ def configure(conf):
     conf.env['PLUGINDIR'] = defs['PKGLIBDIR']
     conf.env['PKGCONFIGDIR'] = os.path.join(conf.env["PREFIX"], "lib", "pkgconfig")
 
+    # The plugin path in Windows should be relative, not absolute
+    if Params.g_platform == 'win32':
+        defs['PKGLIBDIR'] = 'Plugins/'
+
     for i in defs:
         conf.add_define(i, defs[i])
     conf.write_config_header('xmms_configuration.h')
 
     print "\nDefault output plugin: ",
     Params.pprint('BLUE', conf.env["XMMS_DEFS"]['XMMS_OUTPUT_DEFAULT'])
+
+    return True
+

@@ -4,11 +4,13 @@
 
 "Dependency tree holder"
 
-import os, cPickle
+import os, cPickle, sys
 import Params, Runner, Object, Node, Task, Scripting, Utils, Environment
 from Params import debug, error, fatal, warning
 
-g_saved_attrs = 'm_root m_srcnode m_bldnode m_tstamp_variants m_depends_on m_deps_tstamp m_raw_deps'.split()
+
+
+SAVED_ATTRS = 'm_root m_srcnode m_bldnode m_tstamp_variants m_depends_on m_deps_tstamp m_raw_deps m_sig_cache'.split()
 "Build class members to save"
 
 class BuildDTO:
@@ -16,12 +18,12 @@ class BuildDTO:
 	def __init__(self):
 		pass
 	def init(self, bdobj):
-		global g_saved_attrs
-		for a in g_saved_attrs:
+		global SAVED_ATTRS
+		for a in SAVED_ATTRS:
 			setattr(self, a, getattr(bdobj, a))
 	def update_build(self, bdobj):
-		global g_saved_attrs
-		for a in g_saved_attrs:
+		global SAVED_ATTRS
+		for a in SAVED_ATTRS:
 			setattr(bdobj, a, getattr(self, a))
 
 class Build:
@@ -70,16 +72,15 @@ class Build:
 		# file contents
 		self._cache_node_content = {}
 
+		# list of targets to uninstall for removing the empty folders after uninstalling
+		self.m_uninstall = []
+
 		# ======================================= #
 		# tasks and objects
 
-		# objects that are not posted and objects already posted
-		# -> delay task creation
-		self.m_outstanding_objs = []
-
 		# build dir variants (release, debug, ..)
 		for name in ['default', 0]:
-			for v in 'm_tstamp_variants m_depends_on m_deps_tstamp m_raw_deps m_abspath_cache'.split():
+			for v in 'm_tstamp_variants m_depends_on m_sig_cache m_deps_tstamp m_raw_deps m_abspath_cache'.split():
 				var = getattr(self, v)
 				if not name in var: var[name] = {}
 
@@ -111,6 +112,8 @@ class Build:
 		# results of a scan: self.m_raw_deps[variant][node] = [filename1, filename2, filename3]
 		# for example, find headers in c files
 		self.m_raw_deps        = {}
+
+		self.m_sig_cache       = {}
 
 	# load existing data structures from the disk (stored using self._store())
 	def _load(self):
@@ -171,18 +174,24 @@ class Build:
 
 		self.m_generator = executor.m_generator
 
+		def dw():
+			if Params.g_options.progress_bar: sys.stdout.write(Params.g_cursor_on)
+
 		debug("executor starting", 'build')
 		try:
-
+			if Params.g_options.progress_bar: sys.stdout.write(Params.g_cursor_off)
 			ret = executor.start()
 			#ret = 0
 		except KeyboardInterrupt:
+			dw()
 			os.chdir(self.m_srcnode.abspath())
 			self._store()
 			raise
 		except Runner.CompilationError:
+			dw()
 			fatal("Compilation failed")
 
+		dw()
 		if Params.g_verbose>2: self.dump()
 
 		os.chdir(self.m_srcnode.abspath())
@@ -191,12 +200,36 @@ class Build:
 	def install(self):
 		"this function is called for both install and uninstall"
 		debug("install called", 'build')
+
 		Object.flush()
 		for obj in Object.g_allobjs:
 			if obj.m_posted: obj.install()
 
+		# remove empty folders after uninstalling
+		if Params.g_commands['uninstall']:
+			lst = []
+			for x in self.m_uninstall:
+				dir = os.path.dirname(x)
+				if not dir in lst: lst.append(dir)
+			lst.sort()
+			lst.reverse()
+
+			nlst = []
+			for y in lst:
+				x = y
+				while len(x) > 4:
+					if not x in nlst: nlst.append(x)
+					x = os.path.dirname(x)
+
+			nlst.sort()
+			nlst.reverse()
+			for x in nlst:
+				try: os.rmdir(x)
+				except OSError: pass
+
 	def add_subdirs(self, dirs):
 		lst = Utils.to_list(dirs)
+		lst.reverse()
 		for d in lst:
 			if not d: continue
 			Scripting.add_subdir(d, self)
@@ -226,6 +259,23 @@ class Build:
 			self.m_allenvs[name] = env
 			for t in env['tools']: env.setup(**t)
 
+		self._initialize_variants()
+
+		for env in self.m_allenvs.values():
+			for f in env['dep_files']:
+				newnode = self.m_srcnode.find_build(f, create=1)
+				try:
+					hash = Params.h_file(newnode.abspath(env))
+				except IOError:
+					error("cannot find "+f)
+					hash = Params.sig_nil
+				except AttributeError:
+					error("cannot find "+f)
+					hash = Params.sig_nil
+				self.m_tstamp_variants[env.variant()][newnode] = hash
+
+
+	def _initialize_variants(self):
 		debug("init variants", 'build')
 
 		lstvariants = []
@@ -241,19 +291,6 @@ class Build:
 				var = getattr(self, v)
 				if not name in var:
 					var[name] = {}
-
-		for env in self.m_allenvs.values():
-			for f in env['dep_files']:
-				newnode = self.m_srcnode.find_build(f)
-				try:
-					hash = Params.h_file(newnode.abspath(env))
-				except IOError:
-					error("cannot find "+f)
-					hash = Params.sig_nil
-				except AttributeError:
-					error("cannot find "+f)
-					hash = Params.sig_nil
-				self.m_tstamp_variants[env.variant()][newnode] = hash
 
 	# ======================================= #
 	# node and folder handling
@@ -271,7 +308,7 @@ class Build:
 
 		# set the source directory
 		if not os.path.isabs(srcdir):
-			srcdir = Utils.join_path(os.path.abspath('.'),srcdir)
+			srcdir = os.path.join(os.path.abspath('.'),srcdir)
 
 		# set the build directory it is a path, not a node (either absolute or relative)
 		if not os.path.isabs(blddir):
@@ -296,6 +333,9 @@ class Build:
 		# create this build dir if necessary
 		try: os.makedirs(blddir)
 		except OSError: pass
+
+		self._initialize_variants()
+
 
 	def ensure_dir_node_from_path(self, abspath):
 		"return a node corresponding to an absolute path, creates nodes if necessary"
@@ -352,7 +392,7 @@ class Build:
 		lst.reverse()
 
 		for variant in self._variants:
-			sub_path = Utils.join_path(self.m_bldnode.abspath(), variant , *lst)
+			sub_path = os.path.join(self.m_bldnode.abspath(), variant , *lst)
 			try:
 				files = self.scan_path(src_dir_node, sub_path, src_dir_node.m_build_lookup.values(), variant)
 				src_dir_node.m_build_lookup={}
@@ -384,8 +424,12 @@ class Build:
 	# ======================================= #
 	def scan_src_path(self, i_parent_node, i_path, i_existing_nodes):
 
-		# read the dir contents, ignore the folders in it
-		l_names_read = os.listdir(i_path)
+		try:
+			# read the dir contents, ignore the folders in it
+			l_names_read = os.listdir(i_path)
+		except OSError:
+			warning("OSError exception in scan_src_path()  i_path=%s" % str(i_path) )
+			return None
 
 		debug("folder contents "+str(l_names_read), 'build')
 
@@ -542,7 +586,21 @@ class Build:
 			error('no such environment'+name)
 			return None
 
+	def env(self, name='default'):
+		return self.env_of_name(name)
+
 	def add_group(self, name=''):
 		Object.flush()
 		Task.g_tasks.add_group(name)
+
+
+	def set_sig_cache(self, key, val):
+		self.m_sig_cache[key] = val
+
+	def get_sig_cache(self, key):
+		try:
+			return self.m_sig_cache[key]
+		except KeyError:
+			s = Params.sig_nil
+			return [s, s, s, s, s]
 

@@ -31,7 +31,7 @@ class TaskMaster(Task.Task):
 
 	def add_slave(self, slave):
 		self.slaves.append(slave)
-		self.m_run_after.append(slave)
+		self.set_run_after(slave)
 
 	def may_start(self):
 		for t in self.m_run_after:
@@ -87,7 +87,7 @@ class TaskSlave(Task.Task):
 	def can_retrieve_cache(self, sig):
 		return None
 
-def create_task_new(self, type, env=None, nice=10):
+def create_task_new(self, type, env=None, nice=100):
 	if type == "cc" or type == "cpp":
 
 		if env is None: env=self.env
@@ -116,7 +116,7 @@ def detect(conf):
 
 def setup(env):
 	cc_str = '${CC} ${CCFLAGS} ${CPPFLAGS} ${_CCINCFLAGS} ${_CCDEFFLAGS} -c ${SRC}'
-        Action.simple_action('all_cc', cc_str, 'GREEN')
+	Action.simple_action('all_cc', cc_str, 'GREEN')
 
 	cpp_str = '${CXX} ${CXXFLAGS} ${CPPFLAGS} ${_CXXINCFLAGS} ${_CXXDEFFLAGS} -c ${SRC}'
 	Action.simple_action('all_cpp', cpp_str, color='GREEN')

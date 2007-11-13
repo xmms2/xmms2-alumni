@@ -4,7 +4,8 @@
 # Ralf Habacker, 2006 (rh)
 
 import os, sys
-import Utils, Action, Params
+import optparse
+import Utils, Action, Params, checks, Configure
 
 def setup(env):
 	pass
@@ -49,12 +50,6 @@ def detect(conf):
 
 	v['CPPPATH_ST']          = '-I%s' # template for adding include paths
 
-	# compiler debug levels
-	v['CXXFLAGS']            = ['-Wall']
-	v['CXXFLAGS_OPTIMIZED']  = ['-O2']
-	v['CXXFLAGS_RELEASE']    = ['-O2']
-	v['CXXFLAGS_DEBUG']      = ['-g', '-DDEBUG']
-	v['CXXFLAGS_ULTRADEBUG'] = ['-g3', '-O0', '-DDEBUG']
 
 	# linker
 	v['LINK_CXX']            = v['CXX']
@@ -63,8 +58,8 @@ def detect(conf):
 	v['CPPLNK_TGT_F']        = '-o '
 	v['CPPLNK_SRC_F']        = ''
 
-	v['LIB_ST']              = '-l%s'	# template for adding libs
-	v['LIBPATH_ST']          = '-L%s' # template for adding libpathes
+	v['LIB_ST']              = '-l%s' # template for adding libs
+	v['LIBPATH_ST']          = '-L%s' # template for adding libpaths
 	v['STATICLIB_ST']        = '-l%s'
 	v['STATICLIBPATH_ST']    = '-L%s'
 	v['CXXDEFINES_ST']       = '-D%s'
@@ -80,17 +75,6 @@ def detect(conf):
 	v['LINKFLAGS_RELEASE']   = ['-s']
 	v['LINKFLAGS_DEBUG']     = ['-g']
 	v['LINKFLAGS_ULTRADEBUG'] = ['-g3']
-
-	ron = os.environ
-	def addflags(orig, dest=None):
-		if not dest: dest=orig
-		try: conf.env[dest] = ron[orig]
-		except KeyError: pass
-	addflags('CXXFLAGS')
-	addflags('CPPFLAGS')
-	addflags('LINKFLAGS')
-
-	if not v['DESTDIR']: v['DESTDIR']=''
 
 	if sys.platform == "win32":
 		# shared library
@@ -112,7 +96,7 @@ def detect(conf):
 		v['program_SUFFIX']    = '.exe'
 
 		# plugins, loadable modules.
-		v['plugin_CCFLAGS']      = v['shlib_CCFLAGS']
+		v['plugin_CXXFLAGS']     = v['shlib_CXXFLAGS']
 		v['plugin_LINKFLAGS']    = v['shlib_LINKFLAGS']
 		v['plugin_obj_ext']      = v['shlib_obj_ext']
 		v['plugin_PREFIX']       = v['shlib_PREFIX']
@@ -157,7 +141,7 @@ def detect(conf):
 		# bundles
 		v['plugin_LINKFLAGS']    = ['-bundle', '-undefined dynamic_lookup']
 		v['plugin_obj_ext']      = ['.os']
-		v['plugin_CCFLAGS']      = ['-fPIC']
+		v['plugin_CXXFLAGS']     = ['-fPIC']
 		v['plugin_PREFIX']       = ''
 		v['plugin_SUFFIX']       = '.bundle'
 
@@ -165,8 +149,8 @@ def detect(conf):
 		v['program_obj_ext']   = ['.o']
 		v['program_SUFFIX']    = ''
 
-		v['SHLIB_MARKER']        = ' '
-		v['STATICLIB_MARKER']    = ' '
+		v['SHLIB_MARKER']        = ''
+		v['STATICLIB_MARKER']    = ''
 
 	elif sys.platform == 'aix5':
 		# shared library
@@ -177,7 +161,7 @@ def detect(conf):
 		v['shlib_SUFFIX']      = '.so'
 
 		# plugins, loadable modules.
-		v['plugin_CCFLAGS']    = v['shlib_CCFLAGS']
+		v['plugin_CXXFLAGS']   = v['shlib_CXXFLAGS']
 		v['plugin_LINKFLAGS']  = v['shlib_LINKFLAGS']
 		v['plugin_obj_ext']    = v['shlib_obj_ext']
 		v['plugin_PREFIX']     = v['shlib_PREFIX']
@@ -194,7 +178,7 @@ def detect(conf):
 		v['program_obj_ext']   = ['.o']
 		v['program_SUFFIX']    = ''
 
-		v['SHLIB_MARKER']      = ' '
+		v['SHLIB_MARKER']      = ''
 	else:
 		# shared library
 		v['shlib_CXXFLAGS']    = ['-fPIC', '-DPIC']
@@ -204,7 +188,7 @@ def detect(conf):
 		v['shlib_SUFFIX']      = '.so'
 
 		# plugins, loadable modules.
-		v['plugin_CCFLAGS']      = v['shlib_CCFLAGS']
+		v['plugin_CXXFLAGS']     = v['shlib_CXXFLAGS']
 		v['plugin_LINKFLAGS']    = v['shlib_LINKFLAGS']
 		v['plugin_obj_ext']      = v['shlib_obj_ext']
 		v['plugin_PREFIX']       = v['shlib_PREFIX']
@@ -220,6 +204,70 @@ def detect(conf):
 		v['program_obj_ext']   = ['.o']
 		v['program_SUFFIX']    = ''
 
+	conf.check_tool('checks')
+	#test if the compiler could build a prog
+	test = Configure.check_data()
+	test.code = 'int main() {return 0;}\n'
+	test.env = v
+	test.execute = 1
+	ret = conf.run_check(test)
+	conf.check_message('compiler could create', 'programs', not (ret is False))
+	if not ret:
+		return 0
+	#test if the compiler could build a shlib
+	lib_obj = Configure.check_data()
+	lib_obj.code = "int k = 3;\n"
+	lib_obj.env = v
+	lib_obj.build_type = "shlib"
+	ret = conf.run_check(lib_obj)
+	conf.check_message('compiler could create', 'shared libs', not (ret is False))
+	if not ret:
+		return 0
+	#test if the compiler could build a staiclib
+	lib_obj = Configure.check_data()
+	lib_obj.code = "int k = 3;\n"
+	lib_obj.env = v
+	lib_obj.build_type = "staticlib"
+	ret = conf.run_check(lib_obj)
+	conf.check_message('compiler could create', 'static libs', not (ret is False))
+	if not ret:
+		return 0
+
+	# compiler debug levels
+	if conf.check_flags('-Wall'):
+		v['CXXFLAGS'] = ['-Wall']
+	if conf.check_flags('-O2'):
+		v['CXXFLAGS_OPTIMIZED'] = ['-O2']
+		v['CXXFLAGS_RELEASE'] = ['-O2']
+	if conf.check_flags('-g -DDEBUG'):
+		v['CXXFLAGS_DEBUG'] = ['-g', '-DDEBUG']
+	if conf.check_flags('-g3 -O0 -DDEBUG'):
+		v['CXXFLAGS_ULTRADEBUG'] = ['-g3', '-O0', '-DDEBUG']
+
+	# see the option below
+	try:
+		v.append_value('CXXFLAGS', v['CXXFLAGS_'+Params.g_options.debug_level.upper()])
+	except AttributeError:
+		pass
+
+	ron = os.environ
+	def addflags(orig, dest=None):
+		if not dest: dest=orig
+		try: conf.env[dest] = ron[orig]
+		except KeyError: pass
+	addflags('CXXFLAGS')
+	addflags('CPPFLAGS')
+	addflags('LINKFLAGS')
+
+	if not v['DESTDIR']: v['DESTDIR']=''
+
+	v['program_INST_VAR'] = 'PREFIX'
+	v['program_INST_DIR'] = 'bin'
+	v['shlib_INST_VAR'] = 'PREFIX'
+	v['shlib_INST_DIR'] = 'lib'
+	v['staticlib_INST_VAR'] = 'PREFIX'
+	v['staticlib_INST_DIR'] = 'lib'
+
 	return 1
 
 def set_options(opt):
@@ -227,9 +275,8 @@ def set_options(opt):
 		opt.add_option('-d', '--debug-level',
 		action = 'store',
 		default = 'release',
-		help = 'Specify the debug level. [Allowed Values: ultradebug, debug, release, optimized]',
+		help = 'Specify the debug level, does nothing if CXXFLAGS is set in the environment. [Allowed Values: ultradebug, debug, release, optimized]',
 		dest = 'debug_level')
-	except:
+	except optparse.OptionConflictError:
 		# the gcc tool might have added that option already
 		pass
-

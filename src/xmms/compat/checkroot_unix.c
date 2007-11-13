@@ -15,19 +15,19 @@
  */
 
 
+/** @file
+ * Takes care of checking if the user is root or not.
+ */
 
 
-#ifndef _XMMS_EFFECT_H_
-#define _XMMS_EFFECT_H_
+#include "xmmspriv/xmms_checkroot.h"
 
-#include "xmms/xmms_plugin.h"
-
-typedef struct xmms_effect_St xmms_effect_t;
-
-gpointer xmms_effect_private_data_get (xmms_effect_t *effect);
-void xmms_effect_private_data_set (xmms_effect_t *effect, gpointer data);
-xmms_plugin_t * xmms_effect_plugin_get (xmms_effect_t *effect);
+#include <unistd.h>
+#include <sys/types.h>
 
 
-#endif
-
+gboolean
+xmms_checkroot ()
+{
+	return (getuid () == 0 || geteuid () == 0);
+}

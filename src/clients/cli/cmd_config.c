@@ -28,11 +28,28 @@ cmd_config (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_t *res;
 	gchar *key, *value;
 
-	if (argc < 4) {
-		print_error ("You need to specify a configkey and a value");
+	if (argc < 3) {
+		print_error ("You need to specify at least a configkey");
 	}
 
 	key = argv[2];
+
+	if (argc == 3) {
+		res = xmmsc_configval_get (conn, key);
+		xmmsc_result_wait (res);
+
+		if (xmmsc_result_iserror (res)) {
+			print_error ("Couldn't get config value: %s",
+			             xmmsc_result_get_error (res));
+		}
+
+		xmmsc_result_get_string (res, &value);
+		print_info ("%s", value);
+
+		xmmsc_result_unref (res);
+
+		return;
+	}
 
 	if (g_strcasecmp(argv[3], "=") == 0) {
 		value = argv[4];
@@ -84,7 +101,7 @@ get_keys (const void *key, xmmsc_result_value_type_t type, const void *value, vo
 
 	chan = g_new (volume_channel_t, 1);
 	chan->name = g_strdup ((const gchar *)key);
-	chan->volume = (guint)value;
+	chan->volume = XPOINTER_TO_UINT (value);
 
 	*l = g_list_prepend (*l, chan);
 }
