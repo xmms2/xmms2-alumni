@@ -485,6 +485,13 @@ Description: XMMS2 - OFA plugin
  This package enables xmms2 to calcuate Open Fingerprint Architecture (OFA)
  fingerprints.
 
+Package: xmms2-plugin-asf
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - ASF plugin
+ This plugin enables Advanced Systems Format decoding for xmms2.
+
 Package: libaudio-xmmsclient-perl
 Architecture: any
 Section: perl
