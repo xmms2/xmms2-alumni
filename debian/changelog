@@ -1,6 +1,7 @@
 xmms2 (0.2DrJekyll+WIP+TEST1-1) unstable; urgency=low
 
   * New upstream test release.
+    + Binds playlist_current_pos to Ruby (Closes: #450541).
   * Explicitly disable the mac plugin (Closes: #447927).
   * Fix bad curl dependency (Closes: #427261).
 
