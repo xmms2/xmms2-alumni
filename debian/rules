@@ -5,7 +5,7 @@ PERLARCHDIR=$(shell $(PERL) -MConfig -le'print $$Config{vendorarch}')
 RUBYARCHDIR=$(shell ruby1.8 -rrbconfig -e'print Config::CONFIG["archdir"]')
 RUBYLIBDIR=$(shell ruby1.8 -rrbconfig -e'print Config::CONFIG["rubylibdir"]')
 PYVERS=$(shell pyversions -vr)
-WAFFLAGS=--with-mandir=/usr/share/man --prefix=/usr --with-ruby-archdir=$(RUBYARCHDIR) --with-ruby-libdir=$(RUBYLIBDIR) --with-perl-archdir=$(PERLARCHDIR) --with-perl-binary=$(PERL)
+WAFFLAGS=--without-plugins=mac --with-mandir=/usr/share/man --prefix=/usr --with-ruby-archdir=$(RUBYARCHDIR) --with-ruby-libdir=$(RUBYLIBDIR) --with-perl-archdir=$(PERLARCHDIR) --with-perl-binary=$(PERL)
 
 export NOCOLOR=1
 
