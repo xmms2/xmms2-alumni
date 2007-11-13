@@ -1,0 +1,101 @@
+#!/usr/bin/make -f
+
+PERL=/usr/bin/perl
+PERLARCHDIR=$(shell $(PERL) -MConfig -le'print $$Config{vendorarch}')
+RUBYARCHDIR=$(shell ruby1.8 -rrbconfig -e'print Config::CONFIG["archdir"]')
+RUBYLIBDIR=$(shell ruby1.8 -rrbconfig -e'print Config::CONFIG["rubylibdir"]')
+PYVERS=$(shell pyversions -vr)
+WAFFLAGS=--with-mandir=/usr/share/man --prefix=/usr --with-ruby-archdir=$(RUBYARCHDIR) --with-ruby-libdir=$(RUBYLIBDIR) --with-perl-archdir=$(PERLARCHDIR) --with-perl-binary=$(PERL)
+
+export NOCOLOR=1
+
+configure: configure-stamp
+configure-stamp:
+	./waf configure $(WAFFLAGS)
+	touch configure-stamp
+
+build: build-stamp
+build-stamp: patch configure
+	dh_testdir
+	./waf -v
+	touch build-stamp
+
+clean: clean1 unpatch
+clean1:
+	dh_testdir
+	dh_testroot
+	rm -f configure-stamp build-stamp install-stamp
+	-./waf distclean
+	rm -rf \
+		_build_ \
+		waf-lightc
+	dh_clean
+
+install: install-stamp
+install-stamp:
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	./waf install --destdir=$(CURDIR)/debian/tmp install
+	dh_install -i -s --sourcedir=debian/tmp --fail-missing \
+		-Xusr/include/xmms2/xmmsclient/xmmsclient-cf.h \
+		-Xusr/include/xmms2/xmmsclient/xmmsclient-ecore.h \
+		-Xusr/include/xmms2/xmmsclient/xmmsclient-qt.h \
+		-Xusr/lib/libxmmsclient-ecore.so.1.0.0 \
+		-Xusr/lib/libxmmsclient-ecore.so.1 \
+		-Xusr/lib/libxmmsclient-ecore.so \
+		-Xusr/lib/ruby/1.8/i486-linux/xmmsclient_ecore.so
+	for pkg in `dh_listpackages`; do \
+		for checker in lintian linda; do \
+			src="debian/$${pkg}.$${checker}-overrides"; \
+			dst="debian/$${pkg}/usr/share/$${checker}/overrides"; \
+			if [ -e "$$src" ]; then \
+				mkdir -p "$$dst"; \
+				cp "$$src" "$${dst}/$${pkg}"; \
+			fi; \
+		done; \
+	done;
+	touch install-stamp
+
+binary-indep: build install
+	dh_testdir -i
+	dh_testroot -i
+	dh_installdocs -i README TODO AUTHORS
+	dh_installchangelogs -i
+	dh_compress -i
+	dh_fixperms -i
+	dh_installdeb -i
+	dh_gencontrol -i
+	dh_md5sums -i
+	dh_builddeb -i
+
+binary-arch: build install
+	dh_testdir -s
+	dh_testroot -s
+	dh_installdocs -s README TODO AUTHORS
+	dh_installchangelogs -s
+	dh_link -s
+	dh_strip -s
+	dh_compress -s
+	dh_fixperms -s
+	dh_perl -s -plibaudio-xmmsclient-perl
+	dh_makeshlibs -s -V -plibxmmsclient2 -plibxmmsclient-glib1 -plibxmmsclient++1 -plibxmmsclient++-glib1
+	dh_pysupport -s -ppython-xmmsclient
+	dh_installdeb -s
+	dh_shlibdeps -s -Llibxmmsclient2 -Llibxmmsclient-glib1 -Llibxmmsclient++1 -Llibxmmsclient++-glib1 -ldebian/tmp/usr/lib
+	dh_gencontrol -s
+	dh_md5sums -s
+	dh_builddeb -s
+
+patch: patch-stamp
+patch-stamp:
+	dpatch apply-all
+	touch patch-stamp
+
+unpatch:
+	dpatch deapply-all
+	rm -rf patch-stamp debian/patched
+
+binary: binary-indep binary-arch
+
+.PHONY: binary binary-arch binary-indep clean patch unpatch clean1

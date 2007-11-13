@@ -1,0 +1,499 @@
+Source: xmms2
+Section: sound
+Priority: optional
+Maintainer: Florian Ragwitz <rafl@debian.org>
+Uploaders: Jens Taprogge <jlt@taprogge.org>, Jonne Lehtinen <jms@modeemi.fi>, Thomas Jollans <thomas@jollans.com>
+Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 5.0.37.2), dpatch, libsqlite3-dev, ruby, ruby1.8-dev, libperl-dev, python, python-dev, libglib2.0-dev, libcurl3-openssl-dev, libsmbclient-dev, libgnomevfs2-dev, libvorbis-dev, libshout-dev, libflac-dev, libmodplug-dev, libmad0-dev, libasound2-dev [!kfreebsd-i386 !kfreebsd-amd64], libjack-dev, libavahi-client-dev, libgamin-dev, libmpcdec-dev, libmms-dev, libsidplay2-dev, libresid-builder-dev, libavformat-dev, libraw1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libdc1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libboost-dev, libboost-signals-dev, python-support (>= 0.3), python-pyrex, libfaad-dev, fftw3-dev, libsamplerate-dev, libao-dev, libcdio-cdda-dev, libdiscid0-dev, libxml2-dev, libexpat1-dev, libofa0-dev
+XS-Python-Version: 2.4
+
+Package: xmms2
+Architecture: all
+Depends: xmms2-core, xmms2-client-cli, xmms2-plugin-vorbis, xmms2-plugin-mad, xmms2-plugin-id3v2, xmms2-plugin-alsa [!kfreebsd-i386 !kfreebsd-amd64], xmms2-plugin-oss [kfreebsd-i386 kfreebsd-amd64]
+Conflicts: xmms2-plugin-nulstripper
+Replaces: xmms2-plugin-nulstipper
+Description: Client/server based media player system
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package is a meta package depending on various other XMMS2 packages.
+ Installing this package gets you a commandline client and enables XMMS2
+ playback of Ogg Vorbis and MP3 files from local and remote sources.
+
+Package: xmms2-plugin-all
+Architecture: all
+Depends: xmms2-plugin-curl, xmms2-plugin-smb, xmms2-plugin-mms, xmms2-plugin-gnomevfs, xmms2-plugin-vorbis, xmms2-plugin-flac, xmms2-plugin-faad, xmms2-plugin-modplug, xmms2-plugin-mad, xmms2-plugin-musepack, xmms2-plugin-avformat, xmms2-plugin-avcodec, xmms2-plugin-wma, xmms2-plugin-sid, xmms2-plugin-oss, xmms2-plugin-alsa [!kfreebsd-i386 !kfreebsd-amd64], xmms2-plugin-jack, xmms2-plugin-id3v2, xmms2-plugin-icymetaint, xmms2-plugin-daap, xmms2-plugin-ices, xmms2-plugin-lastfm, xmms2-plugin-vocoder, xmms2-plugin-ao, xmms2-plugin-mp4, xmms2-plugin-xml, xmms2-plugin-xspf, xmms2-plugin-cdda, xmms2-plugin-cue, xmms2-plugin-pls, xmms2-plugin-asx, xmms2-plugin-rss, xmms2-plugin-m3u, xmms2-plugin-ofa
+Description: XMMS2 - all plugins
+ This is a metapackage depending on all available XMMS2 plugins to make
+ installation easier.
+
+Package: xmms2-dev
+Architecture: all
+Section: libdevel
+Depends: ${misc:Depends}
+Description: XMMS2 - plugin development files
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains headers required for developing XMMS2 plugins.
+
+Package: xmms2-core
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: XMMS2 - core package
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package just contains the daemon that loads plugins and allows clients to
+ connect.
+
+Package: xmms2-et
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: XMMS2 - phone home package
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains a small program that (anonymously) reports back
+ information on your computer and xmms2 configuration to the xmms2 developers.
+
+Package: libxmmsclient2
+Architecture: any
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: XMMS2 - client library
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains a client library written in c.
+
+Package: libxmmsclient-dev
+Architecture: any
+Section: libdevel
+Depends: libxmmsclient2, xmms2-dev
+Description: XMMS2 - client library devel files
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains files for developing XMMS2 clients using libxmmsclient2.
+
+Package: libxmmsclient-glib1
+Architecture: any
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: XMMS2 - glib client library
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains a glib based client library written in c.
+
+Package: libxmmsclient-glib-dev
+Architecture: any
+Section: libdevel
+Depends: libxmmsclient-glib1, libxmmsclient-dev, libglib2.0-dev
+Description: XMMS2 - glib client library - development files
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains files for developing XMMS2 clients using
+ libxmmsclient-glib1.
+
+Package: libxmmsclient++1
+Architecture: any
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends},
+Description: XMMS2 - client library for c++
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains a client library written in c++.
+
+Package: libxmmsclient++-dev
+Architecture: any
+Section: libdevel
+Depends: libxmmsclient++1, libxmmsclient-dev, libboost-signals-dev
+Description: XMMS2 - client library for c++ - development files
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains files for developing XMMS2 clients using
+ libxmmsclient++1.
+
+Package: libxmmsclient++-glib1
+Architecture: any
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: XMMS2 - glib client library for c++
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains a glib based client library written in c++.
+
+Package: libxmmsclient++-glib-dev
+Architecture: any
+Section: libdevel
+Depends: libxmmsclient++-glib1, libxmmsclient++-dev, libxmmsclient-glib-dev
+Description: XMMS2 - glib client library for c++ - development files
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains files for developing XMMS2 clients using
+ libxmmsclient++-glib1.
+
+Package: libxmmsclient-ruby
+Architecture: all
+Section: interpreters
+Depends: libxmmsclient-ruby1.8, ruby
+Description: XMMS2 - Ruby client library
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains a Ruby library that allows you do write xmms2 clients.
+ It's a language binding of libxmmsclient0.
+ .
+ This package is an empty dummy package that always depends on a package
+ built for Debian's default Ruby version.
+
+Package: libxmmsclient-ruby1.8
+Architecture: any
+Section: interpreters
+Depends: ruby1.8, ${shlibs:Depends}, ${misc:Depends}
+Description: XMMS2 - Ruby bindings
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains a Ruby library that allows you do write xmms2 clients.
+ It's a language binding of libxmmsclient0.
+ .
+ This package is compiled for Ruby 1.8.
+
+Package: python-xmmsclient
+Architecture: any
+Section: python
+XB-Python-Version: ${python:Versions}
+Depends: ${python:Depends}, ${shlibs:Depends}, ${misc:Depends}
+Description: XMMS2 - Python bindings
+ Python bindings for the xmms2 client library.
+
+Package: xmms2-client-cli
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Suggests: xmms2-core (= ${binary:Version})
+Description: XMMS2 - cli client
+ This package contains a simple text-ui for xmms2.
+
+Package: xmms2-client-avahi
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: XMMS2 - avahi client
+ This package contains the avahi client.
+
+Package: xmms2-client-medialib-updater
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: XMMS2 - medialib-updater client
+ The media library is where XMMS2 stores metadata about files as it plays them.
+ Having a media library allows XMMS2 to 'remember' the songs it has played, and
+ thus allows users to easily re-create their favourite playlists. 
+ .
+ This package contains the medialib-updater client which monitors given
+ directories and updates the media library with new and changed files.
+
+Package: xmms2-plugin-curl
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Suggests: xmms2-plugin-icymetaint
+Enhances: xmms2-core
+Description: XMMS2 - curl transport for HTTP
+ This package contains a HTTP transport for xmms2.
+
+Package: xmms2-plugin-smb
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - Samba transport
+ This package contains a Samba transport for xmms2.
+
+Package: xmms2-plugin-mms
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - MMS transport
+ THis package contains an MMS transport for xmms2.
+
+Package: xmms2-plugin-gnomevfs
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - GnomeVFS transport
+ This package contains a GnomeVFS transport for xmms2.
+
+Package: xmms2-plugin-vorbis
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - vorbis decoder
+ This package enables ogg-vorbis decoding for xmms2.
+
+Package: xmms2-plugin-flac
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - flac decoder
+ This package enables flac decoding for xmms2.
+
+Package: xmms2-plugin-faad
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Recommends: xmms2-plugin-mp4
+Description: XMMS2 - faad decoder
+ This package enables decoding of faad encoded AAC files for xmms2. Together
+ with xmms2-plugin-mp4 it also allows to decide faad encoded data inside of an
+ mp4 container.
+
+Package: xmms2-plugin-modplug
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - modplug decoder
+ This package enables modplug decoding for xmms2.
+
+Package: xmms2-plugin-mad
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: xmms2-plugin-id3v2
+Enhances: xmms2-core
+Description: XMMS2 - libmad based mp3 decoder
+ This package enables mp3 decoding for xmms2.
+
+Package: xmms2-plugin-musepack
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - mpc decoder
+ This package enables musepack (mpc) decoding for xmms2.
+
+Package: xmms2-plugin-avformat
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core, xmms2-plugin-avcodec
+Description: XMMS2 - avformat demuxer
+ This package enables avformat demuxing for xmms2. Together with
+ xmms2-plugin-avcodec you'll be able to decode .wma files.
+
+Package: xmms2-plugin-avcodec
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Recommends: xmms2-plugin-avformat, xmms2-plugin-mp4
+Description: XMMS2 - avcodec decoder
+ This package enables avcodec decoding for xmms2. Together with
+ xmms2-plugin-avformat it's possible to decode .wma files. Combined with
+ xmms2-plugin-mp4 you can decode .mp4 files.
+
+Package: xmms2-plugin-wma
+Architecture: any
+Depends: xmms2-plugin-avformat (= ${binary:Version}), xmms2-plugin-avcodec (= ${binary:Version})
+Enhances: xmms2-core
+Description: XMMS2 - wma decoder
+ This is a transitional package that depends on all plugins required for
+ decoding Windows Media Audio files with xmms2.
+ .
+ You may safely remove this package.
+
+Package: xmms2-plugin-sid
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - libsidplay2 based decoder
+ This package enables decoding for tunes from C64 and C128.
+
+Package: xmms2-plugin-oss
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - OSS output
+ This package enables OSS output for xmms2.
+
+Package: xmms2-plugin-alsa
+Architecture: alpha amd64 arm armeb armel hppa i386 ia64 m32r m68k mips mipsel powerpc s390 sparc
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - ALSA output
+ This package enables ALSA output for xmms2.
+
+Package: xmms2-plugin-jack
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - JACK output
+ This package enables JACK output for xmms2.
+
+Package: xmms2-plugin-id3v2
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - ID3v2 plugin
+ This package enables handling of ID3v2 tag containers.
+
+Package: xmms2-plugin-icymetaint
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, xmms2-plugin-curl
+Enhances: xmms2-core
+Description: XMMS2 - shoutcast metadata plugin
+ This package allows to decode and use shoutcast stream metadata in xmms2.
+
+Package: xmms2-plugin-daap
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - daap plugin
+ This package contains a plugin which allows you to share your media
+ library over their network via DAAP (Digital Audio Access Protocol).
+
+Package: xmms2-plugin-ices
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - ogg streaming output
+ This package contains an output plugin for ogg/vorbis streaming. 
+
+Package: xmms2-plugin-lastfm
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, xmms2-plugin-curl
+Enhances: xmms2-core
+Description: XMMS2 - Last.FM plugin
+ This package allows you to play lastfm:// streams.
+ .
+ For more information on AudioScrobbler see http://www.last.fm/
+
+Package: xmms2-plugin-vocoder
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - vocoder plugin
+ This package contains a phase vocoder effect plugin.
+
+Package: xmms2-plugin-ao
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - libao output plugin
+ This package enables libao output for xmms2.
+
+Package: xmms2-plugin-mp4
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core, xmms2-plugin-faad, xmms2-plugin-avcodec
+Description: XMMS2 - MPEG-4 plugin
+ This package enables decoding of data inside of mp4 containers for xmms2.
+ Together with xmms2-plugin-faad it's possible to decode .mp4 fieles. Combined
+ with xmms2-plugin-avcodec you can decode ALAC files.
+
+Package: xmms2-plugin-xml
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - XML plugin
+ This package allows xmms2 to read XML based formats. This package is used by
+ other plugins that implement support for specific xml formats like
+ xmms2-plugin-xspf and xmms2-plugin-rss.
+
+Package: xmms2-plugin-xspf
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), xmms2-plugin-xml (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - XSPF playist plugin
+ This package enables xmms2 to read XSPF playlists.
+
+Package: xmms2-plugin-cdda
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - CDDA plugin
+ This package enables audio CD playback for xmms2.
+
+Package: xmms2-plugin-cue
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - CUE playlist plugin
+ This package enables xmms2 to read cue files.
+
+Package: xmms2-plugin-pls
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - PLS playlist plugin
+ This package enables xmms2 to read pls playlists.
+
+Package: xmms2-plugin-asx
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - ASX playlist plugin
+ This package enables xmms2 to read asx playlists.
+
+Package: xmms2-plugin-rss
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), xmms2-plugin-xml (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - RSS podcast plugin
+ This package enables xmms2 to use podcast rss feeds as playlists.
+
+Package: xmms2-plugin-m3u
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - M3U playlist plugin
+ This package enables xmms2 to read M3U playlists.
+
+Package: xmms2-plugin-ofa
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - OFA plugin
+ This package enables xmms2 to calcuate Open Fingerprint Architecture (OFA)
+ fingerprints.
+
+Package: libaudio-xmmsclient-perl
+Architecture: any
+Section: perl
+Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends}
+Description: XMMS2 - perl client library
+ XMMS2 is a redesign of the XMMS music player. It features a client-server
+ model, allowing multiple (even simultaneous!) user interfaces, both textual
+ and graphical. All common audio formats are supported using plugins. On top of
+ this, there is a flexible media library to organize your music.
+ .
+ This package contains a perl library that allows you do write xmms2 clients.
+ It's a language binding of libxmmsclient0.

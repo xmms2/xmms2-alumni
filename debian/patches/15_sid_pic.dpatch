@@ -1,0 +1,19 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 15_sid_pic.dpatch.dpatch by  <thomas@jollans.com>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: use -fPIC for C++ part of sid plugin
+
+@DPATCH@
+diff --git a/src/plugins/sid/wscript b/src/plugins/sid/wscript
+index ff4fcf5..b958710 100644
+--- a/src/plugins/sid/wscript
++++ b/src/plugins/sid/wscript
+@@ -39,6 +39,7 @@ def plugin_build(bld, obj):
+     obj.includes = '../../include'
+     obj.source = """sidplay_wrapper.cpp md5.cpp""".split()
+     obj.uselib = 'sidplay resid glib2'
++    obj.cxxflags = '-fPIC'
+ 
+ configure, build = plugin('sid', configure=plugin_configure,
+                           build=plugin_build, extra_libs=['sidplay resid'])

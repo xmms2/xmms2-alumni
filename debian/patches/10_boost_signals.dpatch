@@ -1,0 +1,48 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 10_boost_signals.dpatch by Florian Ragwitz <rafl@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Fix boost_signals detection.
+
+@DPATCH@
+diff -urNad trunk~/src/clients/lib/xmmsclient++/wscript trunk/src/clients/lib/xmmsclient++/wscript
+--- trunk~/src/clients/lib/xmmsclient++/wscript	2007-05-21 17:49:51.000000000 +0200
++++ trunk/src/clients/lib/xmmsclient++/wscript	2007-05-21 18:25:09.627531679 +0200
+@@ -30,19 +30,31 @@
+ def configure(conf):
+     if not conf.env["HAVE_CXX"]:
+         return False
++
+     h = conf.create_header_configurator()
+     h.name = 'boost/signal.hpp'
+     h.uselib = 'boosth'
+ 
+-    l = conf.create_library_configurator()
+-    l.name = 'boost_signals'
+-    l.uselib = 'boostl'
+-
+     if Params.g_options.boostprefix:
+         h.path = [os.path.join(Params.g_options.boostprefix, "include")]
+-        l.path = [os.path.join(Params.g_options.boostprefix, "lib")]
+ 
+-    ret = (h.run() and l.run())
++    if not h.run():
++        # Fail without the header
++        return False
++
++    ret = False
++    for name in ["boost_signals", "boost_signals-st", "boost_signals-mt"]:
++        l = conf.create_library_configurator()
++        l.name = name
++        l.uselib = 'boostl'
++
++        if Params.g_options.boostprefix:
++            l.path = [os.path.join(Params.g_options.boostprefix, "lib")]
++
++        if l.run():
++            ret = True
++            break
++
+     if ret:
+         conf.env.append_value('XMMS_PKGCONF_FILES', ('xmms2-client-cpp', '-lxmmsclient -lxmmsclient++'))
+ 

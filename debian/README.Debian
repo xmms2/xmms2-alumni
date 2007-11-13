@@ -1,0 +1,7 @@
+xmms2 for Debian
+----------------
+
+The upstream tarball of xmms2 already contained a debian/ directory. I removed
+it and repacked the tarball to keep things more sane.
+
+Florian Ragwitz <rafl@debian.org>, Fri, 31 Mar 2006 19:13:37 +0200
