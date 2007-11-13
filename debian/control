@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Florian Ragwitz <rafl@debian.org>
 Uploaders: Jens Taprogge <jlt@taprogge.org>, Jonne Lehtinen <jms@modeemi.fi>, Thomas Jollans <thomas@jollans.com>
 Standards-Version: 3.7.2
-Build-Depends: debhelper (>= 5.0.37.2), dpatch, libsqlite3-dev, ruby, ruby1.8-dev, libperl-dev, python, python-dev, libglib2.0-dev, libcurl4-openssl-dev, libsmbclient-dev, libgnomevfs2-dev, libvorbis-dev, libshout-dev, libflac-dev, libmodplug-dev, libmad0-dev, libasound2-dev [!kfreebsd-i386 !kfreebsd-amd64], libjack-dev, libavahi-client-dev, libgamin-dev, libmpcdec-dev, libmms-dev, libsidplay2-dev, libresid-builder-dev, libavformat-dev, libraw1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libdc1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libboost-dev, libboost-signals-dev, python-support (>= 0.3), python-pyrex, libfaad-dev, fftw3-dev, libsamplerate-dev, libao-dev, libcdio-cdda-dev, libdiscid0-dev, libxml2-dev, libexpat1-dev, libofa0-dev
+Build-Depends: debhelper (>= 5.0.37.2), dpatch, libsqlite3-dev, ruby, ruby1.8-dev, libperl-dev, python, python-dev, libglib2.0-dev, libcurl4-openssl-dev, libsmbclient-dev, libgnomevfs2-dev, libvorbis-dev, libshout-dev, libflac-dev, libmodplug-dev, libmad0-dev, libasound2-dev [!kfreebsd-i386 !kfreebsd-amd64], libjack-dev, libavahi-client-dev, libgamin-dev, libmpcdec-dev, libmms-dev, libsidplay2-dev, libresid-builder-dev, libavformat-dev, libraw1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libdc1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libboost-dev, libboost-signals-dev, python-support (>= 0.3), python-pyrex, libfaad-dev, fftw3-dev, libsamplerate-dev, libao-dev, libcdio-cdda-dev, libdiscid0-dev, libxml2-dev, libexpat1-dev, libofa0-dev, libpulse-dev
 XS-Python-Version: 2.4
 
 Package: xmms2
@@ -502,6 +502,13 @@ Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Enhances: xmms2-core
 Description: XMMS2 - Normalize plugin
  This plugin enables volume normalization for xmms2.
+
+Package: xmms2-plugin-pulse
+Architecture: any
+Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Enhances: xmms2-core
+Description: XMMS2 - pulseaudio output plugin
+ This package enables pulseaudio output for xmms2.
 
 Package: libaudio-xmmsclient-perl
 Architecture: any

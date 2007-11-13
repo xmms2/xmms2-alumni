@@ -7,7 +7,7 @@ xmms2 (0.2DrJekyll+WIP+TEST1-1) unstable; urgency=low
   * Remove obsolete patches.
   * Call waf with --nocache.
   * Install the xmms2 logos.
-  * Add packages for the asf and normalize plugins.
+  * Add packages for the asf, pulse and normalize plugins.
   * Fix debian/NEWS syntax.
   * Update package names to reflect SONAME changes.
 
