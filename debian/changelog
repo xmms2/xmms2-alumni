@@ -2,6 +2,7 @@ xmms2 (0.2DrJekyll+WIP+TEST1-1) unstable; urgency=low
 
   * New upstream test release.
   * Explicitly disable the mac plugin (Closes: #447927).
+  * Fix bad curl dependency (Closes: #427261).
 
  -- Florian Ragwitz <rafl@debian.org>  Tue, 13 Nov 2007 11:38:58 +0100
 
