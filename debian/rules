@@ -4,8 +4,8 @@ PERL=/usr/bin/perl
 PERLARCHDIR=$(shell $(PERL) -MConfig -le'print $$Config{vendorarch}')
 RUBYARCHDIR=$(shell ruby1.8 -rrbconfig -e'print Config::CONFIG["archdir"]')
 RUBYLIBDIR=$(shell ruby1.8 -rrbconfig -e'print Config::CONFIG["rubylibdir"]')
-PYVERS=$(shell pyversions -vr)
-WAFFLAGS=--without-plugins=mac --with-mandir=/usr/share/man --prefix=/usr --with-ruby-archdir=$(RUBYARCHDIR) --with-ruby-libdir=$(RUBYLIBDIR) --with-perl-archdir=$(PERLARCHDIR) --with-perl-binary=$(PERL) --nocache
+PYVERS=$(shell pyversions -vs)
+WAFFLAGS=--without-plugins=mac --with-mandir=/usr/share/man --prefix=/usr --with-ruby-archdir=$(RUBYARCHDIR) --with-ruby-libdir=$(RUBYLIBDIR) --with-perl-archdir=$(PERLARCHDIR) --with-perl-binary=$(PERL) --nocache --without-optionals=python
 
 export NOCOLOR=1
 
@@ -14,29 +14,57 @@ configure-stamp:
 	./waf configure $(WAFFLAGS)
 	touch configure-stamp
 
-build: build-stamp
+build: build-stamp $(PYVERS:%=build-python%)
 build-stamp: patch configure
 	dh_testdir
 	./waf -v
+	mv _build_ _build_default_
 	touch build-stamp
+
+build-python%: patch
+	dh_testdir
+	PYTHON=python$* ./waf configure --prefix=/usr --without-plugins=null --with-optionals=python --nocache
+	./waf -v
+	mv _build_ _build_python$*_
+	touch $@
+
+install-python%:
+	dh_testdir
+	dh_testroot
+	mv _build_python$*_ _build_
+	./waf install --destdir=$(CURDIR)/debian/tmp
+	mv _build_ _build_python$*_
 
 clean: clean1 unpatch
 clean1:
 	dh_testdir
 	dh_testroot
-	rm -f configure-stamp build-stamp install-stamp
+	rm -f configure-stamp build-stamp install-stamp build-python2.4 build-python2.5 install-default
 	-./waf distclean
 	rm -rf \
 		_build_ \
+		_build_default_ \
+		_build_python2.4_ \
+		_build_python2.5_ \
 		waf-lightc
 	dh_clean
 
-install: install-stamp
+install: install-clean install-default $(PYVERS:%=install-python%) install-stamp
+
+install-clean:
+	dh_clean -k
+
+install-default:
+	dh_testdir
+	dh_testroot
+	mv _build_default_ _build_
+	./waf install --destdir=$(CURDIR)/debian/tmp
+	mv _build_ _build_default_
+	touch $@
+
 install-stamp:
 	dh_testdir
 	dh_testroot
-	dh_clean -k
-	./waf install --destdir=$(CURDIR)/debian/tmp
 	dh_install -i -s --sourcedir=debian/tmp --fail-missing \
 		-Xusr/include/xmms2/xmmsclient/xmmsclient-cf.h \
 		-Xusr/include/xmms2/xmmsclient/xmmsclient-ecore.h \

@@ -4,8 +4,7 @@ Priority: optional
 Maintainer: Florian Ragwitz <rafl@debian.org>
 Uploaders: Jens Taprogge <jlt@taprogge.org>, Jonne Lehtinen <jms@modeemi.fi>, Thomas Jollans <thomas@jollans.com>
 Standards-Version: 3.7.2
-Build-Depends: debhelper (>= 5.0.37.2), dpatch, libsqlite3-dev, ruby, ruby1.8-dev, libperl-dev, python, python-dev, libglib2.0-dev, libcurl4-openssl-dev, libsmbclient-dev, libgnomevfs2-dev, libvorbis-dev, libshout-dev, libflac-dev, libmodplug-dev, libmad0-dev, libasound2-dev [!kfreebsd-i386 !kfreebsd-amd64], libjack-dev, libavahi-client-dev, libgamin-dev, libmpcdec-dev, libmms-dev, libsidplay2-dev, libresid-builder-dev, libavformat-dev, libraw1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libdc1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libboost-dev, libboost-signals-dev, python-support (>= 0.3), python-pyrex, libfaad-dev, fftw3-dev, libsamplerate-dev, libao-dev, libcdio-cdda-dev, libdiscid0-dev, libxml2-dev, libexpat1-dev, libofa0-dev, libpulse-dev
-XS-Python-Version: 2.4
+Build-Depends: debhelper (>= 5.0.37.2), dpatch, libsqlite3-dev, ruby, ruby1.8-dev, libperl-dev, python, python2.4-dev, python2.5-dev, libglib2.0-dev, libcurl4-openssl-dev, libsmbclient-dev, libgnomevfs2-dev, libvorbis-dev, libshout-dev, libflac-dev, libmodplug-dev, libmad0-dev, libasound2-dev [!kfreebsd-i386 !kfreebsd-amd64], libjack-dev, libavahi-client-dev, libgamin-dev, libmpcdec-dev, libmms-dev, libsidplay2-dev, libresid-builder-dev, libavformat-dev, libraw1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libdc1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libboost-dev, libboost-signals-dev, python-support (>= 0.3), python-pyrex, libfaad-dev, fftw3-dev, libsamplerate-dev, libao-dev, libcdio-cdda-dev, libdiscid0-dev, libxml2-dev, libexpat1-dev, libofa0-dev, libpulse-dev
 
 Package: xmms2
 Architecture: all
@@ -202,7 +201,6 @@ Description: XMMS2 - Ruby bindings
 Package: python-xmmsclient
 Architecture: any
 Section: python
-XB-Python-Version: ${python:Versions}
 Depends: ${python:Depends}, ${shlibs:Depends}, ${misc:Depends}
 Description: XMMS2 - Python bindings
  Python bindings for the xmms2 client library.
