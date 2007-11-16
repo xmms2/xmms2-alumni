@@ -1,4 +1,4 @@
-xmms2 (0.2DrKosmos-1) unstable; urgency=low
+xmms2 (0.4DrKosmos-1) unstable; urgency=low
 
   * New upstream test release.
     + Binds playlist_current_pos to Ruby (Closes: #450541).
