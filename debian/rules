@@ -9,19 +9,15 @@ WAFFLAGS=--without-plugins=mac --with-mandir=/usr/share/man --prefix=/usr --with
 
 export NOCOLOR=1
 
-configure: configure-stamp
-configure-stamp:
-	./waf configure $(WAFFLAGS)
-	touch configure-stamp
-
-build: build-stamp $(PYVERS:%=build-python%)
-build-stamp: patch configure
+build: patch-stamp build-stamp $(PYVERS:%=build-python%)
+build-stamp:
 	dh_testdir
+	./waf configure $(WAFFLAGS)
 	./waf -v
 	mv _build_ _build_default_
 	touch build-stamp
 
-build-python%: patch
+build-python%:
 	dh_testdir
 	PYTHON=python$* ./waf configure --prefix=/usr --without-plugins=null --with-optionals=python --nocache
 	./waf -v
@@ -39,7 +35,7 @@ clean: clean1 unpatch
 clean1:
 	dh_testdir
 	dh_testroot
-	rm -f configure-stamp build-stamp install-stamp build-python2.4 build-python2.5 install-default
+	rm -f build-stamp install-stamp build-python2.4 build-python2.5 install-default
 	-./waf distclean
 	rm -rf \
 		_build_ \
