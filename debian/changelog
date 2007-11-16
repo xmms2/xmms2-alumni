@@ -1,4 +1,4 @@
-xmms2 (0.2DrJekyll+WIP+TEST2-1) unstable; urgency=low
+xmms2 (0.2DrKosmos-1) unstable; urgency=low
 
   * New upstream test release.
     + Binds playlist_current_pos to Ruby (Closes: #450541).
@@ -10,6 +10,7 @@ xmms2 (0.2DrJekyll+WIP+TEST2-1) unstable; urgency=low
   * Add packages for the asf, pulse and normalize plugins.
   * Fix debian/NEWS syntax.
   * Update package names to reflect SONAME changes.
+  * Build the python bindings for both 2.4 and 2.5 (Closes: #445409).
 
  -- Florian Ragwitz <rafl@debian.org>  Tue, 13 Nov 2007 11:38:58 +0100
 
