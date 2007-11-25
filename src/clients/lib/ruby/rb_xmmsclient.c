@@ -1066,18 +1066,6 @@ c_configval_register (VALUE self, VALUE key, VALUE defval)
 
 /*
  * call-seq:
- *  xc.signal_visualization_data -> result
- *
- * Retrieves visualization data as a signal.
- */
-static VALUE
-c_signal_visualisation_data (VALUE self)
-{
-	METHOD_ADD_HANDLER(signal_visualisation_data);
-}
-
-/*
- * call-seq:
  *  xc.bindata_add(str) -> result
  *
  * Stores binary data on the server.
@@ -1507,9 +1495,6 @@ Init_Client (VALUE mXmms)
 
 	rb_define_method (c, "plugin_list", c_plugin_list, -1);
 	rb_define_method (c, "main_stats", c_main_stats, 0);
-
-	rb_define_method (c, "signal_visualisation_data",
-	                  c_signal_visualisation_data, 0);
 
 	rb_define_method (c, "configval_list", c_configval_list, 0);
 	rb_define_method (c, "configval_get", c_configval_get, 1);
