@@ -356,7 +356,7 @@ decrement_client (xmmsc_vis_unixshm_t *t) {
 		case EIDRM:
 			return 0;
 		case EINTR:
-			break;
+			return 2;
 		default: perror ("Unexpected semaphore problem");
 		}
 	}
@@ -396,8 +396,12 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t **d
 				return 0;
 			}
 		}
-		if (!decrement_client (t)) {
+		int decr = decrement_client (t);
+		if (!decr) {
 			return -1;
+		}
+		if (decr == 2) {
+			return 0;
 		}
 		*dest = &t->buffer[t->pos];
 		return 1;
@@ -412,7 +416,8 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t **d
 			blocking = MSG_DONTWAIT;
 		}
 		cnt = recv (t->socket[0], packet, sizeof (xmmsc_vis_udp_data_t), blocking);
-		if (cnt == -1 && errno == EAGAIN) {
+		if (cnt == -1 && (errno == EAGAIN || errno == EINTR)) {
+			free (packet);
 			return 0;
 		}
 		if (cnt > 0 && packet->type == 'V') {
@@ -432,6 +437,7 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t **d
 			tv2net (packet->data.timestamp, interim);
 			return 1;
 		} else if (cnt > -1) {
+			free (packet);
 			return 0;
 		} else {
 			return -1;
@@ -496,6 +502,8 @@ xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, short *buffer, int
 			} else {
 				old = 1;
 			}
+		} else {
+			old = 0;
 		}
 		if (!old) {
 			size = ntohs (src->size);
