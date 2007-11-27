@@ -18,7 +18,7 @@
 
 
 /** @file
- * Extremly simple example of a visualisation for xmms2
+ * Extremly simple example of a visualization for xmms2
  * (should probably just be put in /usr/share/doc/xmms2-dev/examples)
  */
 
@@ -94,7 +94,7 @@ void draw () {
 
 gboolean draw_gtk (gpointer stuff)
 {
-	int ret = xmmsc_visualisation_chunk_get (connection, vis, data, 0, 0);
+	int ret = xmmsc_visualization_chunk_get (connection, vis, data, 0, 0);
 	if (ret == 2) {
 		draw ();
 	}
@@ -120,7 +120,7 @@ main (int argc, char **argv)
 		return 1;
 	}
 
-	res = xmmsc_visualisation_version (connection);
+	res = xmmsc_visualization_version (connection);
 	xmmsc_result_wait (res);
 
 	if (xmmsc_result_iserror (res)) {
@@ -137,8 +137,8 @@ main (int argc, char **argv)
 	}
 	xmmsc_result_unref (res);
 
-	vis = xmmsc_visualisation_init (connection);
-	res = xmmsc_visualisation_properties_set (connection, vis, config);
+	vis = xmmsc_visualization_init (connection);
+	res = xmmsc_visualization_properties_set (connection, vis, config);
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {
 		puts (xmmsc_result_get_error (res));
@@ -146,7 +146,7 @@ main (int argc, char **argv)
 	}
 	xmmsc_result_unref (res);
 
-	res = xmmsc_visualisation_start (connection, vis);
+	res = xmmsc_visualization_start (connection, vis);
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {
 		puts (xmmsc_result_get_error (res));
@@ -161,12 +161,12 @@ main (int argc, char **argv)
 	g_main_loop_run (mainloop);
 
 	/* not using GTK mainloop */
-	while (xmmsc_visualisation_chunk_get (connection, vis, data, 0, 1) == 2) {
+	while (xmmsc_visualization_chunk_get (connection, vis, data, 0, 1) == 2) {
 		draw ();
 	}
 
 	putchar ('\n');
-	xmmsc_visualisation_shutdown (connection, vis);
+	xmmsc_visualization_shutdown (connection, vis);
 
 	if (connection) {
 		xmmsc_unref (connection);
