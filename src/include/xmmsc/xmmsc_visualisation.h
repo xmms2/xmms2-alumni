@@ -97,7 +97,10 @@ typedef struct {
 	xmmsc_vis_data_t type;
 	/* wether to send both channels seperate, or mixed */
 	int stereo;
-	/* TODO frequency of package delivery in hz */
+	/* wether the stereo signal should go 00001111 (false) or 01010101 (true) */
+	int pcm_hardwire;
+
+	/* TODO: implement following.. */
 	double freq;
 	double timeframe;
 	/* pcm amount of data wanted */
