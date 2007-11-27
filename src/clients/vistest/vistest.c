@@ -29,26 +29,26 @@
 #include <signal.h>
 
 #include <xmmsclient/xmmsclient.h>
-#include "xmmsclient/xmmsclient-glib.h"
+#include <xmmsclient/xmmsclient-glib.h>
 
 static GMainLoop *mainloop;
 static xmmsc_connection_t *connection;
 static int vis;
 
 static char* config[] = {
-	"type", "pcm",
+	"type", "peak",
 	"stereo", "1",
-	//"freq", "44100",
-	//"pcm_samplecount", "512",
 	NULL
 };
 
 short data[2];
 char buf[38+38];
-int i, w;
 
 void draw () {
+	int i, w;
+
 	w = (int)(((double)data[0] / (double)SHRT_MAX) * 36.0);
+
 	for (i = 0; i < 36 - w; ++i) {
 		switch (buf[i]) {
 			case '#':
@@ -69,7 +69,7 @@ void draw () {
 
 	buf[36] = buf[37] = ' ';
 
-	w = 38 + (int)(((double)data[0] / (double)SHRT_MAX) * 36.0);
+	w = (int)(((double)data[1] / (double)SHRT_MAX) * 36.0) + 38;
 	for (i = 38; i < w; ++i)
 		buf[i] = '#';
 	for (i = w; i < 38+38; ++i) {
@@ -94,8 +94,8 @@ void draw () {
 
 gboolean draw_gtk (gpointer stuff)
 {
-	int ret = xmmsc_visualisation_chunk_get (connection, vis, &data, 0, 0);
-	if (ret == 0) {
+	int ret = xmmsc_visualisation_chunk_get (connection, vis, data, 0, 0);
+	if (ret == 2) {
 		draw ();
 	}
 	return (ret >= 0);
@@ -161,18 +161,12 @@ main (int argc, char **argv)
 	g_main_loop_run (mainloop);
 
 	/* not using GTK mainloop */
-	while (xmmsc_visualisation_chunk_get (connection, vis, &data, 0, 1) > -1) {
+	while (xmmsc_visualisation_chunk_get (connection, vis, data, 0, 1) == 2) {
 		draw ();
 	}
 
 	putchar ('\n');
-	res = xmmsc_visualisation_shutdown (connection, vis);
-	xmmsc_result_wait (res);
-	if (xmmsc_result_iserror (res)) {
-		puts (xmmsc_result_get_error (res));
-		exit (EXIT_FAILURE);
-	}
-	xmmsc_result_unref (res);
+	xmmsc_visualisation_shutdown (connection, vis);
 
 	if (connection) {
 		xmmsc_unref (connection);
