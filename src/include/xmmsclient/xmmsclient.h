@@ -184,14 +184,10 @@ xmmsc_result_t *xmmsc_visualisation_properties_set (xmmsc_connection_t *c, int v
     if  < 0, the data is returned as soon as available, and no old data is thrown away
  * blocking: 1 to wait for incoming data,
              0 to not wait for data (but if data is found, wait until it is current, see drawtime)
- * returns 0 on success, -1 on failure (server killed!) and 1 if no data is available yet (retry later)
+ * returns size read on success, -1 on failure (server killed!) and 0 if no data is available yet (retry later)
+ * Note: the size read can be less than expected (for example, on song end). Check it!
  */
-int xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data, int drawtime, int blocking);
-
-/*
- * returns 0 on success, -1 on failure (server killed!)
- */
-int xmmsc_visualisation_chunk_get_noblock (xmmsc_connection_t *c, int vv, void *data, int drawtime);
+int xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, short *buffer, int drawtime, int blocking);
 
 xmmsc_result_t *xmmsc_visualisation_shutdown (xmmsc_connection_t *c, int v);
 

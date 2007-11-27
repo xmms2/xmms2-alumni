@@ -393,14 +393,14 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t **d
 				return -1;
 			}
 			if (v == 0) {
-				return 1;
+				return 0;
 			}
 		}
 		if (!decrement_client (t)) {
 			return -1;
 		}
 		*dest = &t->buffer[t->pos];
-		return 0;
+		return 1;
 	}
 	if (v->type == VIS_UDP) {
 		int cnt;
@@ -413,7 +413,7 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t **d
 		}
 		cnt = recv (t->socket[0], packet, sizeof (xmmsc_vis_udp_data_t), blocking);
 		if (cnt == -1 && errno == EAGAIN) {
-			return 1;
+			return 0;
 		}
 		if (cnt > 0 && packet->type == 'V') {
 			if (packet->grace < 100) {
@@ -430,9 +430,9 @@ package_read_start (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t **d
 			double interim = net2tv (packet->data.timestamp);
 			interim -= t->timediff;
 			tv2net (packet->data.timestamp, interim);
-			return 0;
-		} else if (cnt > -1) {
 			return 1;
+		} else if (cnt > -1) {
+			return 0;
 		} else {
 			return -1;
 		}
@@ -459,21 +459,21 @@ package_read_finish (xmmsc_visualisation_t *v, int blocking, xmmsc_vischunk_t *d
  */
 
 int
-xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data, int drawtime, int blocking) {
+xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, short *buffer, int drawtime, int blocking) {
 	xmmsc_visualisation_t *v;
 	xmmsc_vischunk_t *src;
 	struct timeval time;
 	double diff;
 	struct timespec sleeptime;
 	int old;
-	int ret;
+	int i, ret, size;
 
 	x_check_conn (c, 0);
 	x_api_error_if (!(v = get_dataset(c, vv)), "with unregistered visualisation dataset", 0);
 
 	while (1) {
 		ret = package_read_start (v, blocking, &src);
-		if (ret != 0) {
+		if (ret < 1) {
 			return ret;
 		}
 
@@ -498,15 +498,14 @@ xmmsc_visualisation_chunk_get (xmmsc_connection_t *c, int vv, void *data, int dr
 			}
 		}
 		if (!old) {
-			/* TODO: make this usable ;-) */
-			short *source = (short*)src->data;
-			short *dest = (short*)data;
-			dest[0] = ntohs (source[0]);
-			dest[1] = ntohs (source[1]);
+			size = ntohs (src->size);
+			for (i = 0; i < size; ++i) {
+				buffer[i] = (int16_t)ntohs (src->data[i]);
+			}
 		}
 		package_read_finish (v, blocking, src);
 		if (!old) {
-			return 0;
+			return size;
 		}
 	}
 }
