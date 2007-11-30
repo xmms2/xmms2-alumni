@@ -1,0 +1,17 @@
+%module "xmmsc-swig"
+
+%feature ("intern_function", "my-lispify");
+
+%feature ("export");
+
+%typemap(cout) xmmsc_result_value_type_t ":int";
+%typemap(cin) xmmsc_result_value_type_t ":int";
+%typemap(cout) xmmsc_coll_type_t ":int";
+%typemap(cin) xmmsc_coll_type_t ":int";
+%typemap(cin) uint32_t ":unsigned-int"
+%typemap(cout) uint32_t ":unsigned-int"
+%ignore "xmmsc_result_value_type_t";
+
+%include "/usr/local/include/xmms2/xmmsc/xmmsc_coll.h"
+%include "/usr/local/include/xmms2/xmmsc/xmmsc_idnumbers.h"
+%include "/usr/local/include/xmms2/xmmsclient/xmmsclient.h"
