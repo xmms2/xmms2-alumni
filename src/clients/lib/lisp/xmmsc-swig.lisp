@@ -230,6 +230,10 @@
 
 (cl:export '#.(my-lispify "xmmsc_coll_universe" 'function))
 
+(cl:defconstant #.(my-lispify "XMMS_IPC_PROTOCOL_VERSION" 'constant) 10)
+
+(cl:export '#.(my-lispify "XMMS_IPC_PROTOCOL_VERSION" 'constant))
+
 (cffi:defcenum #.(my-lispify "xmms_object_cmd_arg_type_t" 'enumname)
 	#.(my-lispify "XMMS_OBJECT_CMD_ARG_NONE" 'enumvalue :keyword)
 	#.(my-lispify "XMMS_OBJECT_CMD_ARG_UINT32" 'enumvalue :keyword)
@@ -391,8 +395,6 @@
 (cffi:defcenum #.(my-lispify "xmms_plugin_type_t" 'enumname)
 	#.(my-lispify "XMMS_PLUGIN_TYPE_ALL" 'enumvalue :keyword)
 	#.(my-lispify "XMMS_PLUGIN_TYPE_OUTPUT" 'enumvalue :keyword)
-	#.(my-lispify "XMMS_PLUGIN_TYPE_PLAYLIST" 'enumvalue :keyword)
-	#.(my-lispify "XMMS_PLUGIN_TYPE_EFFECT" 'enumvalue :keyword)
 	#.(my-lispify "XMMS_PLUGIN_TYPE_XFORM" 'enumvalue :keyword))
 
 (cl:export '#.(my-lispify "xmms_plugin_type_t" 'enumname))

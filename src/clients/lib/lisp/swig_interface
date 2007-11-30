@@ -12,6 +12,6 @@
 %typemap(cout) uint32_t ":unsigned-int"
 %ignore "xmmsc_result_value_type_t";
 
-%include "/usr/local/include/xmms2/xmmsc/xmmsc_coll.h"
-%include "/usr/local/include/xmms2/xmmsc/xmmsc_idnumbers.h"
-%include "/usr/local/include/xmms2/xmmsclient/xmmsclient.h"
+%include "../../../include/xmmsc/xmmsc_coll.h"
+%include "../../../include/xmmsc/xmmsc_idnumbers.h"
+%include "../../../include/xmmsclient/xmmsclient.h"
