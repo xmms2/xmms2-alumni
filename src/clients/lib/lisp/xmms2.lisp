@@ -141,8 +141,8 @@
     (sync-exec 'xmmsc-playback-pause)
     (sync-exec 'xmmsc-playback-start)))
 
-;; Collections
-
+;;;; Collections
+;;; Lowlevel structure generation
 (defmacro collection-type (type)
   `(foreign-enum-value 'XMMSC-COLL-TYPE-T ,(intern (concatenate 'string "+XMMS-COLLECTION-TYPE-" (string type) "+") (find-package :keyword))))
 
@@ -202,7 +202,7 @@
     (xmmsc-coll-attribute-set new-collection "field" key)
     (return-from coll-has new-collection)))
 
-;;; Highlevel Collection Structure
+;;; Highlevel structure generation
 (defmacro with-highlevel-bindings (&body body)
   `(macrolet ((album (album &optional reference)
 		     (if (typep album 'cons)
@@ -234,7 +234,7 @@
 		 finally (return ret)) )
      ,@body))
 
-;;; Highlevel Collection Operations
+;;; Collection Operations
 (defmacro playlist-append-collection (collection-structure &key (order-by nil) (playlist "_active"))
   (let ((order (typecase order-by
 		 (cons `(string-array-lisp-to-c ,order-by))
@@ -242,3 +242,7 @@
 		 (t '(null-pointer)))))
     `(with-collection ((nc ,collection-structure))
 		      (sync-exec #'xmmsc-playlist-add-collection ,playlist nc ,order))))
+
+(defmacro save-collection (collection-structure name &optional (namespace "Collections"))
+  `(with-collection ((nc ,collection-structure))
+		    (sync-exec #'xmmsc-coll-save nc ,name ,namespace)))
