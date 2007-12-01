@@ -195,28 +195,48 @@
     (xmmsc-coll-attribute-set new-collection "field" key)
     (return-from coll-has new-collection)))
 
-(defun get-collection (name namespace)
-  (sync-exec #'xmmsc-coll-get name namespace))
+;;; Highlevel Collection Structure
+(defmacro with-highlevel-bindings (&body body)
+  `(macrolet ((album (album &optional reference)
+		     (if (typep album 'cons)
+		       `(coll-union ,@(loop for name in album
+					    collect `(album ,name ,reference) into ret
+					    finally (return ret)))
+		       `(coll-match "album" ,(concatenate 'string "%" (string album) "%") ,reference)))
+	      (artist (artist &optional reference)
+		      (if (typep artist 'cons)
+			`(coll-union ,@(loop for name in artist
+					     collect `(artist ,name ,reference) into ret
+					     finally (return ret)))
+			`(coll-match "artist" ,(concatenate 'string "%" (string artist) "%") ,reference)))
+	      (song (song &optional reference)
+		    (if (typep song 'cons)
+		      `(coll-union ,@(loop for name in song
+					   collect `(song ,name ,reference) into ret
+					   finally (return ret)))
+		      `(coll-match "title" ,(concatenate 'string "%" (string song) "%") ,reference)))
+	      (collection (name &optional (namespace "Collections"))
+			  `(sync-exec #'xmmsc-coll-get ,name ,namespace))
+	      (playlist (name &optional (namespace "Playlists"))
+			`(sync-exec #'xmmsc-coll-get ,name ,namespace)))
+     ,@body))
 
-;;; Highlevel Collection
+(defmacro with-collection (name-structure &body body)
+  `(let (,@(loop for (name . structure) in name-structure
+		 collect `(,name (with-highlevel-bindings ,(car structure))) into ret
+		 finally (return ret)) )
+     ,@body))
 
-(defmacro album (album &optional reference)
-  (if (typep album 'cons)
-    `(coll-union ,@(loop for name in album
-			 collect `(album ,name ,reference) into ret
-			 finally (return ret)))
-    `(coll-match "album" ,(concatenate 'string "%" (string album) "%") ,reference)))
-
-(defmacro artist (artist &optional reference)
-  (if (typep artist 'cons)
-    `(coll-union ,@(loop for name in artist
-			 collect `(artist ,name ,reference) into ret
-			 finally (return ret)))
-    `(coll-match "artist" ,(concatenate 'string "%" (string artist) "%") ,reference)))
-
-(defmacro song (song &optional reference)
-  (if (typep song 'cons)
-    `(coll-union ,@(loop for name in song
-			 collect `(song ,name ,reference) into ret
-			 finally (return ret)))
-    `(coll-match "title" ,(concatenate 'string "%" (string song) "%") ,reference)))
+;;; Highlevel Collection Operations
+;xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist, int pos, xmmsc_coll_t *coll, const char **order)
+(defmacro playlist-append-collection (collection-structure &key (order-by nil) (playlist "_active"))
+  (let ((order (typecase order-by
+		 (cons `(foreign-alloc :string
+				       :initial-contents ,(loop for element in order-by collect element into ret finally (return element))
+				       :null-terminated-p t))
+		 (string `(foreign-alloc :string
+					 :initial-contents '(,order-by)
+					 :null-terminated-p t))
+		 (t '(null-pointer)))))
+    `(with-collection ((nc ,collection-structure))
+		      (sync-exec #'xmmsc-playlist-add-collection ,playlist nc ,order))))
