@@ -235,15 +235,10 @@
      ,@body))
 
 ;;; Highlevel Collection Operations
-;xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist, int pos, xmmsc_coll_t *coll, const char **order)
 (defmacro playlist-append-collection (collection-structure &key (order-by nil) (playlist "_active"))
   (let ((order (typecase order-by
-		 (cons `(foreign-alloc :string
-				       :initial-contents ,(loop for element in order-by collect element into ret finally (return element))
-				       :null-terminated-p t))
-		 (string `(foreign-alloc :string
-					 :initial-contents '(,order-by)
-					 :null-terminated-p t))
+		 (cons `(string-array-lisp-to-c ,order-by))
+		 (string `(string-array-lisp-to-c '(,order-by)))
 		 (t '(null-pointer)))))
     `(with-collection ((nc ,collection-structure))
 		      (sync-exec #'xmmsc-playlist-add-collection ,playlist nc ,order))))
