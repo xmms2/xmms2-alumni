@@ -1,7 +1,7 @@
 (load "xmmsc.lisp")
 
 (defpackage :xmms2
- (:use :common-lisp :xmmsc :cffi))
+  (:use :common-lisp :xmmsc :cffi))
 
 (in-package :xmms2)
 
@@ -9,41 +9,41 @@
   (if (= 1 (xmmsc-result-iserror result))
     (error (xmmsc-result-get-error result))
     (let ((result-type (foreign-enum-keyword '#.(my-lispify "xmmsc_result_value_type_t" 'enumname) (xmmsc-result-get-type result)))
-          (result-pointer (foreign-alloc :pointer)))
+	  (result-pointer (foreign-alloc :pointer)))
       (cond
-        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-NONE+) nil)
+	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-NONE+) nil)
 
-        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-UINT32+) ; UINT
-         (xmmsc-result-get-uint result result-pointer)
-         (mem-ref result-pointer :unsigned-int 0))
+	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-UINT32+) ; UINT
+	 (xmmsc-result-get-uint result result-pointer)
+	 (mem-ref result-pointer :unsigned-int 0))
 
-        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-INT32+) ; INT
-         (xmmsc-result-get-int result result-pointer)
-         (mem-ref result-pointer :int 0))
+	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-INT32+) ; INT
+	 (xmmsc-result-get-int result result-pointer)
+	 (mem-ref result-pointer :int 0))
 
-        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-STRING+) ;string
-         (xmmsc-result-get-string result result-pointer)
-         (foreign-string-to-lisp (mem-ref result-pointer :pointer 0)))
+	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-STRING+) ;string
+	 (xmmsc-result-get-string result result-pointer)
+	 (foreign-string-to-lisp (mem-ref result-pointer :pointer 0)))
 
-        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-DICT) ;string
-         (xmmsc-result-get-string result result-pointer)
-         (foreign-string-to-lisp (mem-ref result-pointer :pointer 0)))
+	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-DICT) ;string
+	 (xmmsc-result-get-string result result-pointer)
+	 (foreign-string-to-lisp (mem-ref result-pointer :pointer 0)))
 
-        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-PROPDICT) ;string
-         (xmmsc-result-get-string result result-pointer)
-         (foreign-string-to-lisp (mem-ref result-pointer :pointer 0)))
+	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-PROPDICT) ;string
+	 (xmmsc-result-get-string result result-pointer)
+	 (foreign-string-to-lisp (mem-ref result-pointer :pointer 0)))
 
-        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-COLL+) ;collection
-         (xmmsc-result-get-collection result result-pointer)
-         (mem-ref result-pointer :pointer 0))
-         ; (collection-c-to-lisp (mem-ref result-pointer :pointer 0)))
-        (t (error (format nil "not yet implementet - result-type = ~a" (foreign-enum-value '#.(my-lispify "xmmsc_result_value_type_t" 'enumname) result-type))))))))
+	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-COLL+) ;collection
+	 (xmmsc-result-get-collection result result-pointer)
+	 (mem-ref result-pointer :pointer 0))
+	; (collection-c-to-lisp (mem-ref result-pointer :pointer 0)))
+	(t (error (format nil "not yet implementet - result-type = ~a" (foreign-enum-value '#.(my-lispify "xmmsc_result_value_type_t" 'enumname) result-type))))))))
 
 (defun result-c-to-lisp (result)
   (if (= (xmmsc-result-is-list result) 1)
     (loop when (= (xmmsc-result-list-valid result) 0) do (return col)
 	  collect (get-value-from-result result) into col
-          do (xmmsc-result-list-next result))
+	  do (xmmsc-result-list-next result))
     (get-value-from-result result)))
 
 (defctype result (:wrapper :pointer :from-c result-c-to-lisp))
@@ -66,12 +66,12 @@
   (if (equal string-list nil)
     string
     (list-to-string (cdr string-list) (concatenate 'string string (car string-list)))))
- 
+
 (defun get-indent-tabs (level)
   (list-to-string
     (loop for i from 1 upto level
 	  collect (string "  "))))
- 
+
 (defun attribute-list-to-string (attribute-list &optional (indent-level 0))
   (if (equal attribute-list nil)
     nil
@@ -81,7 +81,7 @@
 		   (get-indent-tabs indent-level)
 		   (car pair) ": " (cdr pair)
 		   (attribute-list-to-string (cdr attribute-list) indent-level)))))
- 
+
 (defun collection-c-to-lisp (collection &optional (indent-level 0))
   (let ((coll-type (xmmsc-coll-get-type collection)))
     (xmmsc-coll-operand-list-first collection)
@@ -112,7 +112,7 @@
 		    "queue")
 		   ((= coll-type 11) ;XMMS_COLLECTION_TYPE_PARTYSHUFFLE
 		    "partyshuffle"))
- 
+
 		 ; retrieving attributes
 		 (attribute-list-to-string
 		   (loop with key-pointer = (foreign-alloc :pointer)
