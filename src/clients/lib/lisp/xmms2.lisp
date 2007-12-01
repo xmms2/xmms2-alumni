@@ -134,6 +134,13 @@
 		 (get-indent-tabs indent-level)
 		 ")")))
 
+;; PlaybackControl
+
+(defun toggle-play ()
+  (if (equal :+XMMS-PLAYBACK-STATUS-PLAY+ (foreign-enum-keyword 'xmms-playback-status-t (sync-exec 'xmmsc-playback-status)))
+    (sync-exec 'xmmsc-playback-pause)
+    (sync-exec 'xmmsc-playback-start)))
+
 ;; Collections
 
 (defmacro collection-type (type)
