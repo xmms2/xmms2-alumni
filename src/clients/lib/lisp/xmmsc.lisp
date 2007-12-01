@@ -60,6 +60,12 @@
 
 (export 'my-lispify)
 
+(defun string-array-lisp-to-c (string-list)
+  (foreign-alloc :string
+		 :initial-contents string-list
+		 :null-terminated-p t))
+
+(export 'string-array-lisp-to-c)
 ;(cffi:defcenum #.(my-lispify "xmmsc_result_value_type_t" 'enumname)
 ;(#.(my-lispify "XMMSC_RESULT_VALUE_TYPE_NONE" 'enumvalue :keyword)
 ;(foreign-enum-value

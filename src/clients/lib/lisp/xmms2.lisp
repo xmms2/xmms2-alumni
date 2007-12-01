@@ -13,11 +13,11 @@
       (cond
 	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-NONE+) nil)
 
-	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-UINT32+) ; UINT
+	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-UINT-32+) ; UINT
 	 (xmmsc-result-get-uint result result-pointer)
 	 (mem-ref result-pointer :unsigned-int 0))
 
-	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-INT32+) ; INT
+	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-INT-32+) ; INT
 	 (xmmsc-result-get-int result result-pointer)
 	 (mem-ref result-pointer :int 0))
 
@@ -133,6 +133,13 @@
 		 (string #\Newline)
 		 (get-indent-tabs indent-level)
 		 ")")))
+
+;; PlaybackControl
+
+(defun toggle-play ()
+  (if (equal :+XMMS-PLAYBACK-STATUS-PLAY+ (foreign-enum-keyword 'xmms-playback-status-t (sync-exec 'xmmsc-playback-status)))
+    (sync-exec 'xmmsc-playback-pause)
+    (sync-exec 'xmmsc-playback-start)))
 
 ;; Collections
 
