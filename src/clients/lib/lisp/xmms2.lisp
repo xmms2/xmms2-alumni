@@ -133,3 +133,90 @@
 		 (string #\Newline)
 		 (get-indent-tabs indent-level)
 		 ")")))
+
+;; Collections
+
+(defmacro collection-type (type)
+  `(foreign-enum-value 'XMMSC-COLL-TYPE-T ,(intern (concatenate 'string "+XMMS-COLLECTION-TYPE-" (string type) "+") (find-package :keyword))))
+
+(defun coll-union (&rest collections)
+  (let ((new-collection (xmmsc-coll-new (collection-type union))))
+    (loop for (fun . nil) on collections
+	  do (xmmsc-coll-add-operand new-collection (eval fun)))
+    (return-from coll-union new-collection)))
+
+(defun coll-intersection (&rest collections)
+  (let ((new-collection (xmmsc-coll-new (collection-type intersection))))
+    (loop for (fun . nil) on collections
+	  do (xmmsc-coll-add-operand new-collection (eval fun)))
+    (return-from coll-intersection new-collection)))
+
+(defun coll-complement (&rest collections)
+  (let ((new-collection (xmmsc-coll-new (collection-type complement))))
+    (xmmsc-coll-add-operand new-collection (apply 'coll-union collections))
+    (return-from coll-complement new-collection)))
+
+;(defun coll-reference (collection)
+;(let ((new-collection (xmmsc-coll-new (collection-type reference))))
+;(xmmsc-coll-add-operand new-collection collection)
+;(return-from coll-reference new-collection)))
+
+(defun coll-match (key value &optional reference)
+  (let ((new-collection (xmmsc-coll-new (collection-type match))))
+    (xmmsc-coll-add-operand new-collection (if reference (eval reference) (xmmsc-coll-universe)))
+    (xmmsc-coll-attribute-set new-collection "field" key)
+    (xmmsc-coll-attribute-set new-collection "value" value)
+    (return-from coll-match new-collection)))
+
+(defun coll-equals (key value &optional reference)
+  (let ((new-collection (xmmsc-coll-new (collection-type equals))))
+    (xmmsc-coll-add-operand new-collection (if reference (eval reference) (xmmsc-coll-universe)))
+    (xmmsc-coll-attribute-set new-collection "field" key)
+    (xmmsc-coll-attribute-set new-collection "value" value)
+    (return-from coll-equals new-collection)))
+
+(defun coll-smaller (key value &optional reference)
+  (let ((new-collection (xmmsc-coll-new (collection-type smaller))))
+    (xmmsc-coll-add-operand new-collection (if reference (eval reference) (xmmsc-coll-universe)))
+    (xmmsc-coll-attribute-set new-collection "field" key)
+    (xmmsc-coll-attribute-set new-collection "value" value)
+    (return-from coll-smaller new-collection)))
+
+(defun coll-greater (key value &optional reference)
+  (let ((new-collection (xmmsc-coll-new (collection-type greater))))
+    (xmmsc-coll-add-operand new-collection (if reference (eval reference) (xmmsc-coll-universe)))
+    (xmmsc-coll-attribute-set new-collection "field" key)
+    (xmmsc-coll-attribute-set new-collection "value" value)
+    (return-from coll-greater new-collection)))
+
+(defun coll-has (key &optional reference)
+  (let ((new-collection (xmmsc-coll-new (collection-type has))))
+    (xmmsc-coll-add-operand new-collection (if reference (eval reference) (xmmsc-coll-universe)))
+    (xmmsc-coll-attribute-set new-collection "field" key)
+    (return-from coll-has new-collection)))
+
+(defun get-collection (name namespace)
+  (sync-exec #'xmmsc-coll-get name namespace))
+
+;;; Highlevel Collection
+
+(defmacro album (album &optional reference)
+  (if (typep album 'cons)
+    `(coll-union ,@(loop for name in album
+			 collect `(album ,name ,reference) into ret
+			 finally (return ret)))
+    `(coll-match "album" ,(concatenate 'string "%" (string album) "%") ,reference)))
+
+(defmacro artist (artist &optional reference)
+  (if (typep artist 'cons)
+    `(coll-union ,@(loop for name in artist
+			 collect `(artist ,name ,reference) into ret
+			 finally (return ret)))
+    `(coll-match "artist" ,(concatenate 'string "%" (string artist) "%") ,reference)))
+
+(defmacro song (song &optional reference)
+  (if (typep song 'cons)
+    `(coll-union ,@(loop for name in song
+			 collect `(song ,name ,reference) into ret
+			 finally (return ret)))
+    `(coll-match "title" ,(concatenate 'string "%" (string song) "%") ,reference)))
