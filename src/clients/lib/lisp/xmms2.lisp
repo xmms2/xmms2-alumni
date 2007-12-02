@@ -244,7 +244,21 @@
   (sync-exec #'xmmsc-coll-remove name namespace))
 
 (defun remove-playlist (name &key (namespace "Playlists"))
-  (remove-collection name namespace))
+  (remove-collection name :namespace namespace))
+
+(defun rename-collection (oldname newname &key (namespace "Collections"))
+  (sync-exec #'xmmsc-coll-rename oldname newname namespace))
+
+(defun rename-playlist (oldname newname &key (namespace "Playlists"))
+  (rename-collection oldname newname :namespace namespace))
+
+(defmacro collection-query-ids (collection &key (order-by nil) (start 0) (length 0))
+  (let ((order (typecase order-by
+		 (cons `(string-array-lisp-to-c ,order-by))
+		 (string `(string-array-lisp-to-c '(,order-by)))
+		 (t '(null-pointer)))))
+    `(with-collection ((nc ,collection))
+		      (sync-exec #'xmmsc-coll-query-ids nc ,order ,start ,length))))
 
 (defun list-collections (&key (namespace "Collections") (show-hidden nil))
   (if show-hidden
