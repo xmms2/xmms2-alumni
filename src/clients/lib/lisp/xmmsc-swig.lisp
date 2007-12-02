@@ -647,7 +647,7 @@
 
 (cffi:defcfun ("xmmsc_playlist_set_next_rel" #.(my-lispify "xmmsc_playlist_set_next_rel" 'function)) :pointer
   (c :pointer)
-  (arg1 :pointer))
+  (arg1 :int))
 
 (cl:export '#.(my-lispify "xmmsc_playlist_set_next_rel" 'function))
 
@@ -970,7 +970,7 @@
   (c :pointer)
   (id :unsigned-int)
   (key :string)
-  (value :pointer))
+  (value :int))
 
 (cl:export '#.(my-lispify "xmmsc_medialib_entry_property_set_int" 'function))
 
@@ -979,7 +979,7 @@
   (id :unsigned-int)
   (source :string)
   (key :string)
-  (value :pointer))
+  (value :int))
 
 (cl:export '#.(my-lispify "xmmsc_medialib_entry_property_set_int_with_source" 'function))
 
