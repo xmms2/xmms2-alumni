@@ -293,9 +293,18 @@
 (defun pause ()
   (sync-exec #'xmmsc-playback-pause))
 
-(defun next()
-  (playlist-set-next 1 :relative t)
+(defun tickle ()
   (sync-exec #'xmmsc-playback-tickle))
 
 (defun stop ()
   (sync-exec #'xmmsc-playback-stop))
+
+(defun jump-to (pos &key (relative nil))
+  (playlist-set-next pos :relative relative)
+  (tickle))
+
+(defun next ()
+  (jump-to 1 :relative t))
+
+(defun back ()
+  (jump-to -1 :relative t))
