@@ -244,7 +244,13 @@
   (sync-exec #'xmmsc-coll-remove name namespace))
 
 (defun remove-playlist (name &key (namespace "Playlists"))
-  (remove-collection name namespace))
+  (remove-collection name :namespace namespace))
+
+(defun rename-collection (oldname newname &key (namespace "Collections"))
+  (sync-exec #'xmmsc-coll-rename oldname newname namespace))
+
+(defun rename-playlist (oldname newname &key (namespace "Playlists"))
+  (rename-collection oldname newname :namespace namespace))
 
 (defun list-collections (&key (namespace "Collections") (show-hidden nil))
   (if show-hidden
