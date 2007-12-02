@@ -204,28 +204,29 @@
 
 ;;; Highlevel structure generation
 (defmacro with-highlevel-bindings (&body body)
-  `(macrolet ((album (album &optional reference)
-		     (if (typep album 'cons)
-		       `(coll-union ,@(loop for name in album
-					    collect `(album ,name ,reference) into ret
-					    finally (return ret)))
-		       `(coll-match "album" ,(concatenate 'string "%" (string album) "%") ,reference)))
-	      (artist (artist &optional reference)
-		      (if (typep artist 'cons)
-			`(coll-union ,@(loop for name in artist
-					     collect `(artist ,name ,reference) into ret
-					     finally (return ret)))
-			`(coll-match "artist" ,(concatenate 'string "%" (string artist) "%") ,reference)))
-	      (song (song &optional reference)
-		    (if (typep song 'cons)
-		      `(coll-union ,@(loop for name in song
-					   collect `(song ,name ,reference) into ret
-					   finally (return ret)))
-		      `(coll-match "title" ,(concatenate 'string "%" (string song) "%") ,reference)))
-	      (collection (name &optional (namespace "Collections"))
-			  `(sync-exec #'xmmsc-coll-get ,name ,namespace))
-	      (playlist (name &optional (namespace "Playlists"))
-			`(sync-exec #'xmmsc-coll-get ,name ,namespace)))
+  `(macrolet
+     ((album (album &optional reference)
+	     (if (typep album 'cons)
+	       `(coll-union ,@(loop for name in album
+				    collect `(album ,name ,reference) into ret
+				    finally (return ret)))
+	       `(coll-match "album" ,(concatenate 'string "%" (string album) "%") ,reference)))
+      (artist (artist &optional reference)
+	      (if (typep artist 'cons)
+		`(coll-union ,@(loop for name in artist
+				     collect `(artist ,name ,reference) into ret
+				     finally (return ret)))
+		`(coll-match "artist" ,(concatenate 'string "%" (string artist) "%") ,reference)))
+      (song (song &optional reference)
+	    (if (typep song 'cons)
+	      `(coll-union ,@(loop for name in song
+				   collect `(song ,name ,reference) into ret
+				   finally (return ret)))
+	      `(coll-match "title" ,(concatenate 'string "%" (string song) "%") ,reference)))
+      (collection (name &optional (namespace "Collections"))
+		  `(sync-exec #'xmmsc-coll-get ,name ,namespace))
+      (playlist (name &optional (namespace "Playlists"))
+		`(sync-exec #'xmmsc-coll-get ,name ,namespace)))
      ,@body))
 
 (defmacro with-collection (name-structure &body body)
@@ -238,6 +239,14 @@
 (defmacro save-collection (collection-structure name &optional (namespace "Collections"))
   `(with-collection ((nc ,collection-structure))
 		    (sync-exec #'xmmsc-coll-save nc ,name ,namespace)))
+
+(defun list-collections (&key (namespace "Collections") (show-hidden nil))
+  (if show-hidden
+    (sync-exec #'xmmsc-coll-list namespace)
+    (remove-if #'(lambda (name) (char= (elt name 0) #\_)) (list-collections :namespace namespace :show-hidden t))))
+
+(defun list-playlists (&key (namespace "Playlists") (show-hidden nil))
+  (list-collections :namespace namespace :show-hidden show-hidden))
 
 ;;;; Playlist control
 (defun active-playlist ()
