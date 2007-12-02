@@ -134,13 +134,6 @@
 		 (get-indent-tabs indent-level)
 		 ")")))
 
-;; PlaybackControl
-
-(defun toggle-play ()
-  (if (equal :+XMMS-PLAYBACK-STATUS-PLAY+ (foreign-enum-keyword 'xmms-playback-status-t (sync-exec 'xmmsc-playback-status)))
-    (sync-exec 'xmmsc-playback-pause)
-    (sync-exec 'xmmsc-playback-start)))
-
 ;;;; Collections
 ;;; Lowlevel structure generation
 (defmacro collection-type (type)
@@ -272,6 +265,14 @@
 (defun active-playlist ()
   (sync-exec #'xmmsc-playlist-current-active))
 
+(defun playlist-list-entries (&optional (playlist (active-playlist)))
+  (sync-exec #'xmmsc-playlist-list-entries playlist))
+
+(defun playlist-set-next (pos &key (relative nil))
+  (if relative
+    (sync-exec #'xmmsc-playlist-set-next-rel pos) ;;Attention! requires patch in xmmsc-swig.lisp (replace :pointer with :int)
+    (sync-exec #'xmmsc-playlist-set-next pos)))
+
 (defmacro playlist-append-collection (collection-structure &key (order-by nil) (playlist (active-playlist)))
   (let ((order (typecase order-by
 		 (cons `(string-array-lisp-to-c ,order-by))
@@ -279,3 +280,23 @@
 		 (t '(null-pointer)))))
     `(with-collection ((nc ,collection-structure))
 		      (sync-exec #'xmmsc-playlist-add-collection ,playlist nc ,order))))
+
+(defun shuffle (&optional (playlist (active-playlist)))
+  (sync-exec #'xmmsc-playlist-shuffle playlist))
+
+;;;; PlaybackControl
+(defun toggle-play ()
+  (if (equal :+XMMS-PLAYBACK-STATUS-PLAY+ (foreign-enum-keyword 'xmms-playback-status-t (sync-exec #'xmmsc-playback-status)))
+    (sync-exec #'xmmsc-playback-pause)
+    (sync-exec #'xmmsc-playback-start)))
+
+(defun pause ()
+  (sync-exec #'xmmsc-playback-pause))
+
+;TODO:Find solution for signed int != int problem in the C header file
+;(defun next()
+;  (playlist-set-next 1 :relative t)
+;  (sync-exec #'xmmsc-playback-tickle))
+
+(defun stop ()
+  (sync-exec #'xmmsc-playback-stop))
