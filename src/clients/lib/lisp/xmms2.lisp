@@ -240,6 +240,12 @@
   `(with-collection ((nc ,collection-structure))
 		    (sync-exec #'xmmsc-coll-save nc ,name ,namespace)))
 
+(defun remove-collection (name &key (namespace "Collections"))
+  (sync-exec #'xmmsc-coll-remove name namespace))
+
+(defun remove-playlist (name &key (namespace "Playlists"))
+  (remove-collection name namespace))
+
 (defun list-collections (&key (namespace "Collections") (show-hidden nil))
   (if show-hidden
     (sync-exec #'xmmsc-coll-list namespace)
