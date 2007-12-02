@@ -270,7 +270,7 @@
 
 (defun playlist-set-next (pos &key (relative nil))
   (if relative
-    (sync-exec #'xmmsc-playlist-set-next-rel pos) ;;Attention! requires patch in xmmsc-swig.lisp (replace :pointer with :int)
+    (sync-exec #'xmmsc-playlist-set-next-rel pos)
     (sync-exec #'xmmsc-playlist-set-next pos)))
 
 (defmacro playlist-append-collection (collection-structure &key (order-by nil) (playlist (active-playlist)))
@@ -293,10 +293,9 @@
 (defun pause ()
   (sync-exec #'xmmsc-playback-pause))
 
-;TODO:Find solution for signed int != int problem in the C header file
-;(defun next()
-;  (playlist-set-next 1 :relative t)
-;  (sync-exec #'xmmsc-playback-tickle))
+(defun next()
+  (playlist-set-next 1 :relative t)
+  (sync-exec #'xmmsc-playback-tickle))
 
 (defun stop ()
   (sync-exec #'xmmsc-playback-stop))
