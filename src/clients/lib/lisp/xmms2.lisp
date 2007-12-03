@@ -152,8 +152,8 @@
     (sync-exec 'xmmsc-playback-pause)
     (sync-exec 'xmmsc-playback-start)))
 
-;; Collections
-
+;;;; Collections
+;;; Lowlevel structure generation
 (defmacro collection-type (type)
   `(foreign-enum-value 'XMMSC-COLL-TYPE-T ,(intern (concatenate 'string "+XMMS-COLLECTION-TYPE-" (string type) "+") (find-package :keyword))))
 
@@ -213,28 +213,80 @@
     (xmmsc-coll-attribute-set new-collection "field" key)
     (return-from coll-has new-collection)))
 
-(defun get-collection (name namespace)
-  (sync-exec #'xmmsc-coll-get name namespace))
+;;; Highlevel structure generation
+(defmacro with-highlevel-bindings (&body body)
+  `(macrolet
+     ((album (album &optional reference)
+	     (if (typep album 'cons)
+	       `(coll-union ,@(loop for name in album
+				    collect `(album ,name ,reference) into ret
+				    finally (return ret)))
+	       `(coll-match "album" ,(concatenate 'string "%" (string album) "%") ,reference)))
+      (artist (artist &optional reference)
+	      (if (typep artist 'cons)
+		`(coll-union ,@(loop for name in artist
+				     collect `(artist ,name ,reference) into ret
+				     finally (return ret)))
+		`(coll-match "artist" ,(concatenate 'string "%" (string artist) "%") ,reference)))
+      (song (song &optional reference)
+	    (if (typep song 'cons)
+	      `(coll-union ,@(loop for name in song
+				   collect `(song ,name ,reference) into ret
+				   finally (return ret)))
+	      `(coll-match "title" ,(concatenate 'string "%" (string song) "%") ,reference)))
+      (collection (name &optional (namespace "Collections"))
+		  `(sync-exec #'xmmsc-coll-get ,name ,namespace))
+      (playlist (name &optional (namespace "Playlists"))
+		`(sync-exec #'xmmsc-coll-get ,name ,namespace)))
+     ,@body))
 
-;;; Highlevel Collection
+(defmacro with-collection (name-structure &body body)
+  `(let (,@(loop for (name . structure) in name-structure
+		 collect `(,name (with-highlevel-bindings ,(car structure))) into ret
+		 finally (return ret)) )
+     ,@body))
 
-(defmacro album (album &optional reference)
-  (if (typep album 'cons)
-    `(coll-union ,@(loop for name in album
-			 collect `(album ,name ,reference) into ret
-			 finally (return ret)))
-    `(coll-match "album" ,(concatenate 'string "%" (string album) "%") ,reference)))
+;;; Collection Operations
+(defmacro save-collection (collection-structure name &optional (namespace "Collections"))
+  `(with-collection ((nc ,collection-structure))
+		    (sync-exec #'xmmsc-coll-save nc ,name ,namespace)))
 
-(defmacro artist (artist &optional reference)
-  (if (typep artist 'cons)
-    `(coll-union ,@(loop for name in artist
-			 collect `(artist ,name ,reference) into ret
-			 finally (return ret)))
-    `(coll-match "artist" ,(concatenate 'string "%" (string artist) "%") ,reference)))
+(defun remove-collection (name &key (namespace "Collections"))
+  (sync-exec #'xmmsc-coll-remove name namespace))
 
-(defmacro song (song &optional reference)
-  (if (typep song 'cons)
-    `(coll-union ,@(loop for name in song
-			 collect `(song ,name ,reference) into ret
-			 finally (return ret)))
-    `(coll-match "title" ,(concatenate 'string "%" (string song) "%") ,reference)))
+(defun remove-playlist (name &key (namespace "Playlists"))
+  (remove-collection name :namespace namespace))
+
+(defun rename-collection (oldname newname &key (namespace "Collections"))
+  (sync-exec #'xmmsc-coll-rename oldname newname namespace))
+
+(defun rename-playlist (oldname newname &key (namespace "Playlists"))
+  (rename-collection oldname newname :namespace namespace))
+
+(defmacro collection-query-ids (collection &key (order-by nil) (start 0) (length 0))
+  (let ((order (typecase order-by
+		 (cons `(string-array-lisp-to-c ,order-by))
+		 (string `(string-array-lisp-to-c '(,order-by)))
+		 (t '(null-pointer)))))
+    `(with-collection ((nc ,collection))
+		      (sync-exec #'xmmsc-coll-query-ids nc ,order ,start ,length))))
+
+(defun list-collections (&key (namespace "Collections") (show-hidden nil))
+  (if show-hidden
+    (sync-exec #'xmmsc-coll-list namespace)
+    (remove-if #'(lambda (name) (char= (elt name 0) #\_)) (list-collections :namespace namespace :show-hidden t))))
+
+(defun list-playlists (&key (namespace "Playlists") (show-hidden nil))
+  (list-collections :namespace namespace :show-hidden show-hidden))
+
+;;;; Playlist control
+(defun active-playlist ()
+  (sync-exec #'xmmsc-playlist-current-active))
+
+(defmacro playlist-append-collection (collection-structure &key (order-by nil) (playlist (active-playlist)))
+  (let ((order (typecase order-by
+		 (cons `(string-array-lisp-to-c ,order-by))
+		 (string `(string-array-lisp-to-c '(,order-by)))
+		 (t '(null-pointer)))))
+    `(with-collection ((nc ,collection-structure))
+		      (sync-exec #'xmmsc-playlist-add-collection ,playlist nc ,order))))
