@@ -324,7 +324,7 @@
 
 
 ;;;; Medialib
-(defun remove-entry (id)
+(defun mlib-remove-entry (id)
   (sync-exec #'xmmsc-medialib-remove-entry id))
 
 (defun mlib-entry-set-property (id key value &key (source nil))
