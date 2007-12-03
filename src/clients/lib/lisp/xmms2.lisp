@@ -28,6 +28,7 @@
 	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-DICT+) ;string
 	 (let ((result-list (list)))
 	   (defcallback dict-foreach :void ((key-pointer :pointer) (result-type :int) (value-pointer :pointer) (user-data :pointer))
+	    (declare (ignore user-data))
 			(let ((key (foreign-string-to-lisp key-pointer))
 			      (value (if (= result-type 3) (foreign-string-to-lisp value-pointer) (pointer-address value-pointer))))
 			 (setf result-list (cons (list key value) result-list))))
@@ -37,6 +38,7 @@
 	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-PROPDICT+) ;string
 	 (let ((result-list (list)))
 	   (defcallback propdict-foreach :void ((key-pointer :pointer) (result-type :int) (value-pointer :pointer) (source-pointer :pointer) (user-data :pointer))
+			(declare (ignore user-data))
 			(let ((key (foreign-string-to-lisp key-pointer))
 			      (source (foreign-string-to-lisp source-pointer))
 			      (value (if (= result-type 3) (foreign-string-to-lisp value-pointer) (pointer-address value-pointer))))
