@@ -319,3 +319,22 @@
 
 (defun back ()
   (jump-to -1 :relative t))
+
+
+;;;; Medialib
+(defun remove-entry (id)
+  (sync-exec #'xmmsc-medialib-remove-entry id))
+
+(defun mlib-entry-set-property (id key value &key (source nil))
+  (typecase value
+    (number (if source
+	      (sync-exec #'xmmsc-medialib-entry-property-set-int-with-source id source key value)
+	      (sync-exec #'xmmsc-medialib-entry-property-set-int id key value)))
+    (string (if source
+	      (sync-exec #'xmmsc-medialib-entry-property-set-str-with-source id source key value)
+	      (sync-exec #'xmmsc-medialib-entry-property-set-str id key value)))))
+
+(defun mlib-entry-remove-property (id key &key (source nil))
+  (if source
+    (sync-exec #'xmmsc-medialib-entry-property-remove-with-source id source key)
+    (sync-exec #'xmmsc-medialib-entry-property-remove id key)))
