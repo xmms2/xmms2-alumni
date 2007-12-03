@@ -1,7 +1,30 @@
 (load "xmmsc.lisp")
 
 (defpackage :xmms2
-  (:use :common-lisp :xmmsc :cffi))
+  (:use :common-lisp :xmmsc :cffi)
+  (:export
+    :save-collection
+    :remove-collection
+    :remove-playlist
+    :rename-collection
+    :rename-playlist
+    :collection-query-ids
+    :list-collections
+    :list-playlists
+    :active-playlist
+    :playlist-list-entries
+    :playlist-append-collection
+    :shuffle
+    :toggle-play
+    :pause
+    :tickle
+    :stop
+    :jump-to
+    :next
+    :back
+    :mlib-remove-entry
+    :mlib-entry-set-property
+    :mlib-entry-remove-property))
 
 (in-package :xmms2)
 
@@ -243,22 +266,38 @@
 
 ;;; Collection Operations
 (defmacro save-collection (collection-structure name &optional (namespace "Collections"))
+  "Save a the collection-structure on the server under the given name and optional namespace
+  Usage:
+  (save-collection (artist \"Katie Melua\") \"Katie\")"
   `(with-collection ((nc ,collection-structure))
 		    (sync-exec #'xmmsc-coll-save nc ,name ,namespace)))
 
 (defun remove-collection (name &key (namespace "Collections"))
+  "Removes the named collection from the server
+  Usage:
+  (remove-collection \"Katie\" :namespace \"Collections\")"
   (sync-exec #'xmmsc-coll-remove name namespace))
 
 (defun remove-playlist (name &key (namespace "Playlists"))
+  "Same as remove-collection but with default namespace \"Playlists\""
   (remove-collection name :namespace namespace))
 
 (defun rename-collection (oldname newname &key (namespace "Collections"))
+  "Rename a saved collection.
+  Usage:
+  (rename-collection \"Katie\" \"NewName\")"
   (sync-exec #'xmmsc-coll-rename oldname newname namespace))
 
 (defun rename-playlist (oldname newname &key (namespace "Playlists"))
+  "Same as rename-collection operates in defaul namespace \"Playlists\""
   (rename-collection oldname newname :namespace namespace))
 
 (defmacro collection-query-ids (collection &key (order-by nil) (start 0) (length 0))
+  "Returns a list containing IDs matching the given collection structure.
+  You can limit the entries by specifying :length and set an offset with :start.
+  Ordering is possible through :order-by. To sort by multiple keys provide a list.
+  Usage:
+  (collection-query-ids (artist \"Katie Melua\") :order-by (\"album\" \"tracknr\") :length 20)"
   (let ((order (typecase order-by
 		 (cons `(string-array-lisp-to-c ,order-by))
 		 (string `(string-array-lisp-to-c '(,order-by)))
