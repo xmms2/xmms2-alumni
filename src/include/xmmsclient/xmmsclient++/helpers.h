@@ -32,6 +32,7 @@
 #include <string>
 #include <list>
 #include <vector>
+#include <map>
 
 namespace Xmms
 {
@@ -161,6 +162,32 @@ namespace Xmms
 
 		for( i = 0, it = li.begin(); it != li.end(); ++i, ++it ) {
 			clist[i] = it->c_str();
+		}
+		clist[i] = NULL;
+
+		return clist;
+	}
+
+	/** Convenience function for converting an STL map of
+	 *  string-string to a NULL-terminated array of char* (key/values
+	 *  alternating).
+	 *
+	 *  @param ma the map to convert
+	 *  @return a pointer to the newly allocated array of char*, must
+	 *          be freed manually.
+	 */
+	inline const char** c_stringMapList( const
+	                                     std::map<std::string,std::string>&
+	                                     ma )
+	{
+		const char **clist = new const char*[ ma.size() * 2 + 1 ];
+
+		int i;
+		std::map<std::string,std::string>::const_iterator it;
+
+		for( i = 0, it = ma.begin(); it != ma.end(); ++it ) {
+			clist[i++] = it->first.c_str();
+			clist[i++] = it->second.c_str();
 		}
 		clist[i] = NULL;
 

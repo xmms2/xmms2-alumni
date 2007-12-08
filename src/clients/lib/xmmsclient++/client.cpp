@@ -109,6 +109,20 @@ namespace Xmms
 
 	}
 
+	UintResult Client::getVisualizationVersion()
+	{
+		xmmsc_result_t* res =
+		    call( connected_,
+		          boost::bind( xmmsc_visualization_version, conn_ ) );
+		return UintResult( res, mainloop_ );
+	}
+
+	VisualizationPtr Client::initVisualization()
+	{
+		return VisualizationPtr( new Visualization( conn_, connected_,
+		                                            mainloop_ ) );
+	}
+
 	MainloopInterface& Client::getMainLoop() 
 	{
 
