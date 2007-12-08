@@ -176,7 +176,7 @@ int xmmsc_visualization_init (xmmsc_connection_t *c);
 /* Returns 1 on success, 0 on failure. In that case, see xmmsc_get_last_error() */
 int xmmsc_visualization_start (xmmsc_connection_t *c, int v);
 xmmsc_result_t *xmmsc_visualization_property_set (xmmsc_connection_t *c, int v, const char *key, const char *value);
-xmmsc_result_t *xmmsc_visualization_properties_set (xmmsc_connection_t *c, int v, xmmsc_visualization_properties_t *prop);
+xmmsc_result_t *xmmsc_visualization_properties_set (xmmsc_connection_t *c, int v, xmmsc_visualization_properties_t prop);
 /*
  * drawtime: expected time needed to process the data in milliseconds after collecting it
     if >= 0, the data is returned as soon as currenttime >= (playtime - drawtime);
