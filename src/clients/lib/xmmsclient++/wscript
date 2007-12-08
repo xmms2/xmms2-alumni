@@ -21,6 +21,7 @@ def build(bld):
                   playlist.cpp
                   signal.cpp
                   stats.cpp
+                  visualization.cpp
                   xform.cpp""".split()
     obj.uselib_local = 'xmmsclient'
     obj.uselib = 'boosth boostl socket'

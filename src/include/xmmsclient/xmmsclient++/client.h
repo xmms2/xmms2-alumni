@@ -32,6 +32,7 @@
 #include <xmmsclient/xmmsclient++/signal.h>
 #include <xmmsclient/xmmsclient++/collection.h>
 #include <xmmsclient/xmmsclient++/result.h>
+#include <xmmsclient/xmmsclient++/visualization.h>
 
 #include <string>
 
@@ -111,6 +112,26 @@ namespace Xmms
 			const Stats      stats;
 			const Xform      xform;
 			const Collection collection;
+
+			/** Retrieve the version of the visualization plugin.
+			 *
+			 *  @throw connection_error If the client isn't connected.
+			 *  @throw mainloop_running_error If a mainloop is running -
+			 *  sync functions can't be called when mainloop is running. This
+			 *  is only thrown if the programmer is careless or doesn't know
+			 *  what he/she's doing. (logic_error)
+			 *  @throw result_error If the operation failed.
+			 */
+			UintResult getVisualizationVersion();
+
+			/** Create a new visualization instance and return it.
+			 *  Multiple visualization instances can be created.
+			 *  The visualization will be shutdown when the last copy
+			 *  of the smart pointer is freed.
+			 *
+			 *  @return Pointer to the new visualization instance.
+			 */
+			VisualizationPtr initVisualization();
 
 			/** Get the current mainloop.
 			 *  If no mainloop is set, it will create a default MainLoop.

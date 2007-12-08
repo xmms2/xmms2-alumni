@@ -23,10 +23,13 @@
 namespace Xmms 
 {
 
+	class Visualization;
+
 	namespace Coll {
 		class Coll;
 	}
 
+	typedef boost::shared_ptr< Visualization > VisualizationPtr;
 	typedef boost::shared_ptr< Coll::Coll > CollPtr;
 	typedef std::basic_string< unsigned char > bin;
 
