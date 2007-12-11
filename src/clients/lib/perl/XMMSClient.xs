@@ -74,10 +74,11 @@ new (class, clientname=NULL)
 		con = xmmsc_init (clientname);
 
 		if (con == NULL) {
-			XSRETURN_UNDEF;
+			RETVAL = &PL_sv_undef;
 		}
-
-		RETVAL = perl_xmmsclient_new_sv_from_ptr (con, class);
+		else {
+			RETVAL = perl_xmmsclient_new_sv_from_ptr (con, class);
+		}
 	OUTPUT:
 		RETVAL
 
@@ -548,7 +549,7 @@ Retrieve information about entry C<$id> from the medialib.
 
 =cut
 
-xmmsc_result_t_MedialibEntryStatus *
+xmmsc_result_t *
 xmmsc_medialib_get_info (c, id)
 		xmmsc_connection_t *c
 		uint32_t id
@@ -1346,7 +1347,7 @@ Request status for the mediainfo reader. It can be idle or working.
 
 =cut
 
-xmmsc_result_t_MediainfoReaderStatus *
+xmmsc_result_t *
 xmmsc_broadcast_mediainfo_reader_status (c)
 		xmmsc_connection_t *c
 
@@ -1791,7 +1792,7 @@ manipulate the playlist this will be emitted.
 
 =cut
 
-xmmsc_result_t_PlaylistChanged *
+xmmsc_result_t *
 xmmsc_broadcast_playlist_changed (c)
 		xmmsc_connection_t *c
 
