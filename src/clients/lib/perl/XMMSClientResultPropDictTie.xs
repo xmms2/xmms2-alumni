@@ -77,96 +77,48 @@ NEXTKEY (sv, lastkey)
 		iter = hv_iternext (keys);
 
 		if (iter == NULL) {
-			XSRETURN_UNDEF;
+			RETVAL = &PL_sv_undef;
 		}
-
-		key  = hv_iterkey (iter, &key_len);
-		RETVAL = newSVpv (key, key_len);
+		else {
+			key  = hv_iterkey (iter, &key_len);
+			RETVAL = newSVpv (key, key_len);
+		}
 	OUTPUT:
 		RETVAL
 
 SV *
-FETCH (sv, key)
-		SV *sv
+FETCH (res, key)
+		xmmsc_result_propdict_t *res
 		char *key
 	PREINIT:
 		int ret = 0;
-		MAGIC *mg;
-		xmmsc_result_propdict_t *res = NULL;
-		SV **overrides;
-	INIT:
-		RETVAL = NULL;
+		uint32_t uint32_val;
+		int32_t int32_val;
+		char *string_val;
 	CODE:
-		overrides = hv_fetch ((HV *)SvRV (sv), "overrides", 9, 0);
+		switch (xmmsc_result_get_dict_entry_type (res, key)) {
+			case XMMS_OBJECT_CMD_ARG_UINT32:
+				ret = xmmsc_result_get_dict_entry_uint (res, key, &uint32_val);
 
-		if (overrides && *overrides) {
-			SV **val = hv_fetch ((HV *)SvRV (*overrides), key, strlen (key), 0);
-
-			if (val) {
-				RETVAL = *val;
-			}
+				RETVAL = newSVuv (uint32_val);
+				break;
+			case XMMS_OBJECT_CMD_ARG_INT32:
+				ret = xmmsc_result_get_dict_entry_int (res, key, &int32_val);
+				RETVAL = newSViv (int32_val);
+				break;
+			case XMMS_OBJECT_CMD_ARG_STRING:
+				ret = xmmsc_result_get_dict_entry_string (res, key, &string_val);
+				RETVAL = newSVpv (string_val, 0);
+				break;
+			default:
+				RETVAL = &PL_sv_undef;
 		}
 
-		if (!RETVAL) {
-			if (!(mg = perl_xmmsclient_get_magic_from_sv (sv, "Audio::XMMSClient::Result::PropDict::Tie"))) {
-				croak ("This is a bug!");
-			}
-
-			res = (xmmsc_result_propdict_t *)mg->mg_ptr;
-
-			switch (xmmsc_result_get_dict_entry_type (res, key)) {
-				case XMMS_OBJECT_CMD_ARG_UINT32:
-					{
-						uint32_t val;
-						ret = xmmsc_result_get_dict_entry_uint (res, key, &val);
-						RETVAL = newSVuv (val);
-						break;
-					}
-				case XMMS_OBJECT_CMD_ARG_INT32:
-					{
-						int32_t val;
-						ret = xmmsc_result_get_dict_entry_int (res, key, &val);
-						RETVAL = newSViv (val);
-						break;
-					}
-				case XMMS_OBJECT_CMD_ARG_STRING:
-					{
-						char *val;
-						ret = xmmsc_result_get_dict_entry_string (res, key, &val);
-						RETVAL = newSVpv (val, 0);
-						break;
-					}
-				default:
-					RETVAL = &PL_sv_undef;
-			}
-
-			if (ret != 1) {
-				RETVAL = &PL_sv_undef;
-			}
+		if (ret != 1) {
+			RETVAL = &PL_sv_undef;
 		}
 	OUTPUT:
 		RETVAL
-
-void
-STORE (sv, key, value)
-		SV *sv
-		SV *key
-		SV *value
-	PREINIT:
-		SV **he;
-		HV *overrides;
-	CODE:
-		he = hv_fetch ((HV *)SvRV (sv), "overrides", 9, 0);
-
-		if (!he || !*he) {
-			overrides = newHV ();
-			hv_store ((HV *)SvRV (sv), "overrides", 9, newRV_inc ((SV *)overrides), 0);
-		}
-		else {
-			overrides = (HV *)SvRV (*he);
-		}
-
-		hv_store_ent (overrides, key, newSVsv (value), 0);
 
 BOOT:
 	PERL_UNUSED_VAR (items);
