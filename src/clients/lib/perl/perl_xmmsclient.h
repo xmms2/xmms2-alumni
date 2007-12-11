@@ -36,8 +36,6 @@
 
 #endif
 
-#define xmmsc_result_t_PlaybackStatus xmmsc_result_t
-
 typedef struct perl_xmmsclient_playlist_St {
 	xmmsc_connection_t *conn;
 	char *name;
