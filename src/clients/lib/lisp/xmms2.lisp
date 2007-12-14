@@ -32,54 +32,54 @@
   (if (= 1 (xmmsc-result-iserror result))
     (error (xmmsc-result-get-error result))
     (let ((result-type (foreign-enum-keyword '#.(my-lispify "xmmsc_result_value_type_t" 'enumname) (xmmsc-result-get-type result)))
-	  (result-pointer (foreign-alloc :pointer)))
+          (result-pointer (foreign-alloc :pointer)))
       (cond
-	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-NONE+) nil)
+        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-NONE+) nil)
 
-	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-UINT-32+) ; UINT
-	 (xmmsc-result-get-uint result result-pointer)
-	 (mem-ref result-pointer :unsigned-int 0))
+        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-UINT-32+) ; UINT
+         (xmmsc-result-get-uint result result-pointer)
+         (mem-ref result-pointer :unsigned-int 0))
 
-	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-INT-32+) ; INT
-	 (xmmsc-result-get-int result result-pointer)
-	 (mem-ref result-pointer :int 0))
+        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-INT-32+) ; INT
+         (xmmsc-result-get-int result result-pointer)
+         (mem-ref result-pointer :int 0))
 
-	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-STRING+) ;string
-	 (xmmsc-result-get-string result result-pointer)
-	 (foreign-string-to-lisp (mem-ref result-pointer :pointer 0)))
+        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-STRING+) ;string
+         (xmmsc-result-get-string result result-pointer)
+         (foreign-string-to-lisp (mem-ref result-pointer :pointer 0)))
 
-	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-DICT+) ;string
-	 (let ((result-list (list)))
-	   (defcallback dict-foreach :void ((key-pointer :pointer) (result-type :int) (value-pointer :pointer) (user-data :pointer))
-	    (declare (ignore user-data))
-			(let ((key (foreign-string-to-lisp key-pointer))
-			      (value (if (= result-type 3) (foreign-string-to-lisp value-pointer) (pointer-address value-pointer))))
-			 (setf result-list (cons (list key value) result-list))))
-	   (xmmsc-result-dict-foreach result (callback dict-foreach) (null-pointer))
-	 result-list))
+        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-DICT+) ;string
+         (let ((result-list (list)))
+           (defcallback dict-foreach :void ((key-pointer :pointer) (result-type :int) (value-pointer :pointer) (user-data :pointer))
+                        (declare (ignore user-data))
+                        (let ((key (foreign-string-to-lisp key-pointer))
+                              (value (if (= result-type 3) (foreign-string-to-lisp value-pointer) (pointer-address value-pointer))))
+                          (setf result-list (cons (list key value) result-list))))
+           (xmmsc-result-dict-foreach result (callback dict-foreach) (null-pointer))
+           result-list))
 
-	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-PROPDICT+) ;string
-	 (let ((result-list (list)))
-	   (defcallback propdict-foreach :void ((key-pointer :pointer) (result-type :int) (value-pointer :pointer) (source-pointer :pointer) (user-data :pointer))
-			(declare (ignore user-data))
-			(let ((key (foreign-string-to-lisp key-pointer))
-			      (source (foreign-string-to-lisp source-pointer))
-			      (value (if (= result-type 3) (foreign-string-to-lisp value-pointer) (pointer-address value-pointer))))
-			 (setf result-list (cons (list source key value) result-list))))
-	   (xmmsc-result-propdict-foreach result (callback propdict-foreach) (null-pointer))
-	 result-list))
+        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-PROPDICT+) ;string
+         (let ((result-list (list)))
+           (defcallback propdict-foreach :void ((key-pointer :pointer) (result-type :int) (value-pointer :pointer) (source-pointer :pointer) (user-data :pointer))
+                        (declare (ignore user-data))
+                        (let ((key (foreign-string-to-lisp key-pointer))
+                              (source (foreign-string-to-lisp source-pointer))
+                              (value (if (= result-type 3) (foreign-string-to-lisp value-pointer) (pointer-address value-pointer))))
+                          (setf result-list (cons (list source key value) result-list))))
+           (xmmsc-result-propdict-foreach result (callback propdict-foreach) (null-pointer))
+           result-list))
 
-	((equal result-type :+XMMSC-RESULT-VALUE-TYPE-COLL+) ;collection
-	 (xmmsc-result-get-collection result result-pointer)
-	 (mem-ref result-pointer :pointer 0))
-	; (collection-c-to-lisp (mem-ref result-pointer :pointer 0)))
-	(t (error (format nil "not yet implementet - result-type = ~a" (foreign-enum-value '#.(my-lispify "xmmsc_result_value_type_t" 'enumname) result-type))))))))
+        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-COLL+) ;collection
+         (xmmsc-result-get-collection result result-pointer)
+         (mem-ref result-pointer :pointer 0))
+        ; (collection-c-to-lisp (mem-ref result-pointer :pointer 0)))
+        (t (error (format nil "not yet implementet - result-type = ~a" (foreign-enum-value '#.(my-lispify "xmmsc_result_value_type_t" 'enumname) result-type))))))))
 
 (defun result-c-to-lisp (result)
   (if (= (xmmsc-result-is-list result) 1)
     (loop when (= (xmmsc-result-list-valid result) 0) do (return col)
-	  collect (get-value-from-result result) into col
-	  do (xmmsc-result-list-next result))
+          collect (get-value-from-result result) into col
+          do (xmmsc-result-list-next result))
     (get-value-from-result result)))
 
 (defctype result (:wrapper :pointer :from-c result-c-to-lisp))
@@ -106,69 +106,69 @@
 (defun get-indent-tabs (level)
   (list-to-string
     (loop for i from 1 upto level
-	  collect (string "  "))))
+          collect (string "  "))))
 
 (defun attribute-list-to-string (attribute-list &optional (indent-level 0))
   (if (equal attribute-list nil)
     nil
     (let ((pair (car attribute-list)))
       (concatenate 'string
-		   (string #\Newline)
-		   (get-indent-tabs indent-level)
-		   (car pair) ": " (cdr pair)
-		   (attribute-list-to-string (cdr attribute-list) indent-level)))))
+                   (string #\Newline)
+                   (get-indent-tabs indent-level)
+                   (car pair) ": " (cdr pair)
+                   (attribute-list-to-string (cdr attribute-list) indent-level)))))
 
 (defun collection-c-to-lisp (collection &optional (indent-level 0))
   (let ((coll-type (xmmsc-coll-get-type collection)))
     (xmmsc-coll-operand-list-first collection)
     (xmmsc-coll-attribute-list-first collection)
     (concatenate 'string (string #\Newline) (get-indent-tabs indent-level) "("
-		 (cond
-		   ((= coll-type 0) ;XMMS_COLLECTION_TYPE_REFERENCE
-		    "reference")
-		   ((= coll-type 1) ;XMMS_COLLECTION_TYPE_UNION
-		    "union")
-		   ((= coll-type 2) ;XMMS_COLLECTION_TYPE_INTERSECTION
-		    "intersection")
-		   ((= coll-type 3) ;XMMS_COLLECTION_TYPE_COMPLEMENT
-		    "complement")
-		   ((= coll-type 4) ;XMMS_COLLECTION_TYPE_HAS
-		    "has")
-		   ((= coll-type 5) ;XMMS_COLLECTION_TYPE_EQUALS
-		    "equals")
-		   ((= coll-type 6) ;XMMS_COLLECTION_TYPE_MATCH
-		    "match")
-		   ((= coll-type 7) ;XMMS_COLLECTION_TYPE_SMALLER
-		    "smaller")
-		   ((= coll-type 8) ;XMMS_COLLECTION_TYPE_GREATER
-		    "greater")
-		   ((= coll-type 9) ;XMMS_COLLECTION_TYPE_IDLIST
-		    "idlist")
-		   ((= coll-type 10) ;XMMS_COLLECTION_TYPE_QUEUE
-		    "queue")
-		   ((= coll-type 11) ;XMMS_COLLECTION_TYPE_PARTYSHUFFLE
-		    "partyshuffle"))
+                 (cond
+                   ((= coll-type 0) ;XMMS_COLLECTION_TYPE_REFERENCE
+                    "reference")
+                   ((= coll-type 1) ;XMMS_COLLECTION_TYPE_UNION
+                    "union")
+                   ((= coll-type 2) ;XMMS_COLLECTION_TYPE_INTERSECTION
+                    "intersection")
+                   ((= coll-type 3) ;XMMS_COLLECTION_TYPE_COMPLEMENT
+                    "complement")
+                   ((= coll-type 4) ;XMMS_COLLECTION_TYPE_HAS
+                    "has")
+                   ((= coll-type 5) ;XMMS_COLLECTION_TYPE_EQUALS
+                    "equals")
+                   ((= coll-type 6) ;XMMS_COLLECTION_TYPE_MATCH
+                    "match")
+                   ((= coll-type 7) ;XMMS_COLLECTION_TYPE_SMALLER
+                    "smaller")
+                   ((= coll-type 8) ;XMMS_COLLECTION_TYPE_GREATER
+                    "greater")
+                   ((= coll-type 9) ;XMMS_COLLECTION_TYPE_IDLIST
+                    "idlist")
+                   ((= coll-type 10) ;XMMS_COLLECTION_TYPE_QUEUE
+                    "queue")
+                   ((= coll-type 11) ;XMMS_COLLECTION_TYPE_PARTYSHUFFLE
+                    "partyshuffle"))
 
-		 ; retrieving attributes
-		 (attribute-list-to-string
-		   (loop with key-pointer = (foreign-alloc :pointer)
-			 with value-pointer = (foreign-alloc :pointer)
-			 while (= (xmmsc-coll-attribute-list-valid collection) 1)
-			 do (xmmsc-coll-attribute-list-entry collection key-pointer value-pointer)
-			 do (xmmsc-coll-attribute-list-next collection)
-			 collect (cons (foreign-string-to-lisp (mem-ref key-pointer :pointer 0))
-				       (foreign-string-to-lisp (mem-ref value-pointer :pointer 0))))
-		   (1+ indent-level))
-		 ; retrieving operands
-		 (list-to-string
-		   (loop with operand-pointer = (foreign-alloc :pointer)
-			 while (= (xmmsc-coll-operand-list-valid collection) 1)
-			 do (xmmsc-coll-operand-list-entry collection operand-pointer)
-			 do (xmmsc-coll-operand-list-next collection)
-			 collect (collection-c-to-lisp (mem-ref operand-pointer :pointer 0) (1+ indent-level))))
-		 (string #\Newline)
-		 (get-indent-tabs indent-level)
-		 ")")))
+                 ; retrieving attributes
+                 (attribute-list-to-string
+                   (loop with key-pointer = (foreign-alloc :pointer)
+                         with value-pointer = (foreign-alloc :pointer)
+                         while (= (xmmsc-coll-attribute-list-valid collection) 1)
+                         do (xmmsc-coll-attribute-list-entry collection key-pointer value-pointer)
+                         do (xmmsc-coll-attribute-list-next collection)
+                         collect (cons (foreign-string-to-lisp (mem-ref key-pointer :pointer 0))
+                                       (foreign-string-to-lisp (mem-ref value-pointer :pointer 0))))
+                   (1+ indent-level))
+                 ; retrieving operands
+                 (list-to-string
+                   (loop with operand-pointer = (foreign-alloc :pointer)
+                         while (= (xmmsc-coll-operand-list-valid collection) 1)
+                         do (xmmsc-coll-operand-list-entry collection operand-pointer)
+                         do (xmmsc-coll-operand-list-next collection)
+                         collect (collection-c-to-lisp (mem-ref operand-pointer :pointer 0) (1+ indent-level))))
+                 (string #\Newline)
+                 (get-indent-tabs indent-level)
+                 ")")))
 
 ;;;; Collections
 ;;; Lowlevel structure generation
@@ -178,13 +178,13 @@
 (defun coll-union (&rest collections)
   (let ((new-collection (xmmsc-coll-new (collection-type union))))
     (loop for (fun . nil) on collections
-	  do (xmmsc-coll-add-operand new-collection (eval fun)))
+          do (xmmsc-coll-add-operand new-collection (eval fun)))
     (return-from coll-union new-collection)))
 
 (defun coll-intersection (&rest collections)
   (let ((new-collection (xmmsc-coll-new (collection-type intersection))))
     (loop for (fun . nil) on collections
-	  do (xmmsc-coll-add-operand new-collection (eval fun)))
+          do (xmmsc-coll-add-operand new-collection (eval fun)))
     (return-from coll-intersection new-collection)))
 
 (defun coll-complement (&rest collections)
@@ -235,33 +235,33 @@
 (defmacro with-highlevel-bindings (&body body)
   `(macrolet
      ((album (album &optional reference)
-	     (if (typep album 'cons)
-	       `(coll-union ,@(loop for name in album
-				    collect `(album ,name ,reference) into ret
-				    finally (return ret)))
-	       `(coll-match "album" ,(concatenate 'string "%" (string album) "%") ,reference)))
+             (if (typep album 'cons)
+               `(coll-union ,@(loop for name in album
+                                    collect `(album ,name ,reference) into ret
+                                    finally (return ret)))
+               `(coll-match "album" ,(concatenate 'string "%" (string album) "%") ,reference)))
       (artist (artist &optional reference)
-	      (if (typep artist 'cons)
-		`(coll-union ,@(loop for name in artist
-				     collect `(artist ,name ,reference) into ret
-				     finally (return ret)))
-		`(coll-match "artist" ,(concatenate 'string "%" (string artist) "%") ,reference)))
+              (if (typep artist 'cons)
+                `(coll-union ,@(loop for name in artist
+                                     collect `(artist ,name ,reference) into ret
+                                     finally (return ret)))
+                `(coll-match "artist" ,(concatenate 'string "%" (string artist) "%") ,reference)))
       (song (song &optional reference)
-	    (if (typep song 'cons)
-	      `(coll-union ,@(loop for name in song
-				   collect `(song ,name ,reference) into ret
-				   finally (return ret)))
-	      `(coll-match "title" ,(concatenate 'string "%" (string song) "%") ,reference)))
+            (if (typep song 'cons)
+              `(coll-union ,@(loop for name in song
+                                   collect `(song ,name ,reference) into ret
+                                   finally (return ret)))
+              `(coll-match "title" ,(concatenate 'string "%" (string song) "%") ,reference)))
       (collection (name &optional (namespace "Collections"))
-		  `(sync-exec #'xmmsc-coll-get ,name ,namespace))
+                  `(sync-exec #'xmmsc-coll-get ,name ,namespace))
       (playlist (name &optional (namespace "Playlists"))
-		`(sync-exec #'xmmsc-coll-get ,name ,namespace)))
+                `(sync-exec #'xmmsc-coll-get ,name ,namespace)))
      ,@body))
 
 (defmacro with-collection (name-structure &body body)
   `(let (,@(loop for (name . structure) in name-structure
-		 collect `(,name (with-highlevel-bindings ,(car structure))) into ret
-		 finally (return ret)) )
+                 collect `(,name (with-highlevel-bindings ,(car structure))) into ret
+                 finally (return ret)) )
      ,@body))
 
 ;;; Collection Operations
@@ -270,7 +270,7 @@
   Usage:
   (save-collection (artist \"Katie Melua\") \"Katie\")"
   `(with-collection ((nc ,collection-structure))
-		    (sync-exec #'xmmsc-coll-save nc ,name ,namespace)))
+                    (sync-exec #'xmmsc-coll-save nc ,name ,namespace)))
 
 (defun remove-collection (name &key (namespace "Collections"))
   "Removes the named collection from the server
@@ -299,11 +299,11 @@
   Usage:
   (collection-query-ids (artist \"Katie Melua\") :order-by (\"album\" \"tracknr\") :length 20)"
   (let ((order (typecase order-by
-		 (cons `(string-array-lisp-to-c ,order-by))
-		 (string `(string-array-lisp-to-c '(,order-by)))
-		 (t '(null-pointer)))))
+                 (cons `(string-array-lisp-to-c ,order-by))
+                 (string `(string-array-lisp-to-c '(,order-by)))
+                 (t '(null-pointer)))))
     `(with-collection ((nc ,collection))
-		      (sync-exec #'xmmsc-coll-query-ids nc ,order ,start ,length))))
+                      (sync-exec #'xmmsc-coll-query-ids nc ,order ,start ,length))))
 
 (defun list-collections (&key (namespace "Collections") (show-hidden nil))
   (if show-hidden
@@ -327,11 +327,11 @@
 
 (defmacro playlist-append-collection (collection-structure &key (order-by nil) (playlist (active-playlist)))
   (let ((order (typecase order-by
-		 (cons `(string-array-lisp-to-c ,order-by))
-		 (string `(string-array-lisp-to-c '(,order-by)))
-		 (t '(null-pointer)))))
+                 (cons `(string-array-lisp-to-c ,order-by))
+                 (string `(string-array-lisp-to-c '(,order-by)))
+                 (t '(null-pointer)))))
     `(with-collection ((nc ,collection-structure))
-		      (sync-exec #'xmmsc-playlist-add-collection ,playlist nc ,order))))
+                      (sync-exec #'xmmsc-playlist-add-collection ,playlist nc ,order))))
 
 (defun shuffle (&optional (playlist (active-playlist)))
   (sync-exec #'xmmsc-playlist-shuffle playlist))
@@ -369,11 +369,11 @@
 (defun mlib-entry-set-property (id key value &key (source nil))
   (typecase value
     (number (if source
-	      (sync-exec #'xmmsc-medialib-entry-property-set-int-with-source id source key value)
-	      (sync-exec #'xmmsc-medialib-entry-property-set-int id key value)))
+              (sync-exec #'xmmsc-medialib-entry-property-set-int-with-source id source key value)
+              (sync-exec #'xmmsc-medialib-entry-property-set-int id key value)))
     (string (if source
-	      (sync-exec #'xmmsc-medialib-entry-property-set-str-with-source id source key value)
-	      (sync-exec #'xmmsc-medialib-entry-property-set-str id key value)))))
+              (sync-exec #'xmmsc-medialib-entry-property-set-str-with-source id source key value)
+              (sync-exec #'xmmsc-medialib-entry-property-set-str id key value)))))
 
 (defun mlib-entry-remove-property (id key &key (source nil))
   (if source
