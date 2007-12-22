@@ -361,6 +361,8 @@
 (defun back ()
   (jump-to -1 :relative t))
 
+(defun current-id ()
+  (sync-exec 'xmmsc-playback-current-id))
 
 ;;;; Medialib
 (defun mlib-remove-entry (id)
@@ -379,3 +381,6 @@
   (if source
     (sync-exec #'xmmsc-medialib-entry-property-remove-with-source id source key)
     (sync-exec #'xmmsc-medialib-entry-property-remove id key)))
+
+(defun mlib-get-info (&optional (id (current-id)))
+  (sync-exec 'xmmsc-medialib-get-info id))
