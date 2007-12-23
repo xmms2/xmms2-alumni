@@ -48,26 +48,29 @@
          (xmmsc-result-get-string result result-pointer)
          (foreign-string-to-lisp (mem-ref result-pointer :pointer 0)))
 
-        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-DICT+) ;string
-         (let ((result-list (list)))
+        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-DICT+) ;dict
+         (let ((result-table (make-hash-table :test 'equal)))
            (defcallback dict-foreach :void ((key-pointer :pointer) (result-type :int) (value-pointer :pointer) (user-data :pointer))
                         (declare (ignore user-data))
                         (let ((key (foreign-string-to-lisp key-pointer))
                               (value (if (= result-type 3) (foreign-string-to-lisp value-pointer) (pointer-address value-pointer))))
-                          (setf result-list (cons (list key value) result-list))))
+                          (setf (gethash key result-table) value)))
            (xmmsc-result-dict-foreach result (callback dict-foreach) (null-pointer))
-           result-list))
+           result-table))
 
-        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-PROPDICT+) ;string
-         (let ((result-list (list)))
+        ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-PROPDICT+) ;propdict
+         (let ((result-table (make-hash-table :test 'equal)))
            (defcallback propdict-foreach :void ((key-pointer :pointer) (result-type :int) (value-pointer :pointer) (source-pointer :pointer) (user-data :pointer))
                         (declare (ignore user-data))
                         (let ((key (foreign-string-to-lisp key-pointer))
                               (source (foreign-string-to-lisp source-pointer))
                               (value (if (= result-type 3) (foreign-string-to-lisp value-pointer) (pointer-address value-pointer))))
-                          (setf result-list (cons (list source key value) result-list))))
+                          (if (null (gethash source result-table))
+                            (setf (gethash source result-table) (make-hash-table :test 'equal)))
+
+                          (setf (gethash key (gethash source result-table)) value)))
            (xmmsc-result-propdict-foreach result (callback propdict-foreach) (null-pointer))
-           result-list))
+           result-table))
 
         ((equal result-type :+XMMSC-RESULT-VALUE-TYPE-COLL+) ;collection
          (xmmsc-result-get-collection result result-pointer)
