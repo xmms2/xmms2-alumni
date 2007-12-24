@@ -107,6 +107,10 @@ N: Karsten Krispin
 E: karsten@krispin.de
 D: Multiple socket support
 
+N: Alan LaMielle
+E: alan.lamielle@gmail.com
+D: 'playlist active' command in cli client.
+
 N: Tuure Laurinolli
 E: tuure@laurinolli.net
 D: Windows portability.
@@ -275,6 +279,10 @@ D: Stuff all over the place. Master bitch.
 N: Michael Walle
 E: michael@walle.cc
 D: playlists_list stuff
+
+N: Bert Wesarg
+E: Bert.Wesarg@googlemail.com
+D: Buildsystem fixes
 
 N: Rainer Wittmaack
 E: ningo@gmx.net
