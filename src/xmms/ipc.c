@@ -487,7 +487,6 @@ xmms_ipc_client_new (xmms_ipc_t *ipc, xmms_ipc_transport_t *transport)
 	client->ipc = ipc;
 	client->out_msg = g_queue_new ();
 	client->lock = g_mutex_new ();
-	client->thread = g_thread_create (xmms_ipc_client_thread, client, FALSE, NULL);
 
 	return client;
 }
@@ -599,6 +598,11 @@ xmms_ipc_source_accept (GIOChannel *chan, GIOCondition cond, gpointer data)
 	g_mutex_lock (ipc->mutex_lock);
 	ipc->clients = g_list_append (ipc->clients, client);
 	g_mutex_unlock (ipc->mutex_lock);
+
+	/* Now that the client has been registered in the ipc->clients list
+	 * we may safely start its thread.
+	 */
+	g_thread_create (xmms_ipc_client_thread, client, FALSE, NULL);
 
 	return TRUE;
 }
