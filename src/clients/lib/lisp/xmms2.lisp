@@ -368,6 +368,13 @@
   (sync-exec 'xmmsc-playback-current-id))
 
 ;;;; Medialib
+(defun mlib-add-entry (url)
+ (sync-exec #'xmmsc-medialib-add-entry
+	    (let ((position (search "://" url)))
+	      (if (or (null position) (= 0 position))
+		(concatenate 'string "file://" (namestring (truename url)))
+		url))))
+
 (defun mlib-remove-entry (id)
   (sync-exec #'xmmsc-medialib-remove-entry id))
 
