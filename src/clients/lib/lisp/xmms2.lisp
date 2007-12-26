@@ -336,6 +336,15 @@
     `(with-collection ((nc ,collection-structure))
                       (sync-exec #'xmmsc-playlist-add-collection ,playlist nc ,order))))
 
+(defun make-url-valid (url)
+  (let ((position (search "://" url)))
+    (if (or (null position) (= 0 position))
+      (concatenate 'string "file://" (namestring (truename url)))
+      url)))
+
+(defun add (url &optional (playlist (active-playlist))) ;TODO: fix this to use XMMS_ACTIVE_PLAYLIST-constant, because it's faster
+  (sync-exec #'xmmsc-playlist-add-url playlist (make-url-valid url)))
+
 (defun shuffle (&optional (playlist (active-playlist)))
   (sync-exec #'xmmsc-playlist-shuffle playlist))
 
@@ -369,11 +378,7 @@
 
 ;;;; Medialib
 (defun mlib-add-entry (url)
- (sync-exec #'xmmsc-medialib-add-entry
-	    (let ((position (search "://" url)))
-	      (if (or (null position) (= 0 position))
-		(concatenate 'string "file://" (namestring (truename url)))
-		url))))
+  (sync-exec #'xmmsc-medialib-add-entry (make-url-valid url)))
 
 (defun mlib-remove-entry (id)
   (sync-exec #'xmmsc-medialib-remove-entry id))
