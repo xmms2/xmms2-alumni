@@ -345,6 +345,9 @@
 (defun add (url &optional (playlist (active-playlist))) ;TODO: fix this to use XMMS_ACTIVE_PLAYLIST-constant, because it's faster
   (sync-exec #'xmmsc-playlist-add-url playlist (make-url-valid url)))
 
+(defun add-id (id &optional (playlist (active-playlist))) ;TODO: fix this to use XMMS_ACTIVE_PLAYLIST-constant, because it's faster
+  (sync-exec #'xmmsc-playlist-add-id playlist id))
+
 (defun shuffle (&optional (playlist (active-playlist)))
   (sync-exec #'xmmsc-playlist-shuffle playlist))
 
