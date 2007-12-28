@@ -281,19 +281,11 @@
   (remove-collection \"Katie\" :namespace \"Collections\")"
   (sync-exec #'xmmsc-coll-remove name namespace))
 
-(defun remove-playlist (name &key (namespace "Playlists"))
-  "Same as remove-collection but with default namespace \"Playlists\""
-  (remove-collection name :namespace namespace))
-
 (defun rename-collection (oldname newname &key (namespace "Collections"))
   "Rename a saved collection.
   Usage:
   (rename-collection \"Katie\" \"NewName\")"
   (sync-exec #'xmmsc-coll-rename oldname newname namespace))
-
-(defun rename-playlist (oldname newname &key (namespace "Playlists"))
-  "Same as rename-collection operates in defaul namespace \"Playlists\""
-  (rename-collection oldname newname :namespace namespace))
 
 (defmacro collection-query-ids (collection &key (order-by nil) (start 0) (length 0))
   "Returns a list containing IDs matching the given collection structure.
@@ -313,12 +305,20 @@
     (sync-exec #'xmmsc-coll-list namespace)
     (remove-if #'(lambda (name) (char= (elt name 0) #\_)) (list-collections :namespace namespace :show-hidden t))))
 
-(defun list-playlists (&key (namespace "Playlists") (show-hidden nil))
-  (list-collections :namespace namespace :show-hidden show-hidden))
-
 ;;;; Playlist control
 (defun active-playlist ()
   (sync-exec #'xmmsc-playlist-current-active))
+
+(defun list-playlists (&key (namespace "Playlists") (show-hidden nil))
+  (list-collections :namespace namespace :show-hidden show-hidden))
+
+(defun rename-playlist (oldname newname &key (namespace "Playlists"))
+  "Same as rename-collection operates in defaul namespace \"Playlists\""
+  (rename-collection oldname newname :namespace namespace))
+
+(defun remove-playlist (name &key (namespace "Playlists"))
+  "Same as remove-collection but with default namespace \"Playlists\""
+  (remove-collection name :namespace namespace))
 
 (defun playlist-list-entries (&optional (playlist (active-playlist)))
   (sync-exec #'xmmsc-playlist-list-entries playlist))
