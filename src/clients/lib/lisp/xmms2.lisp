@@ -343,13 +343,34 @@
       url)))
 
 (defun add (url &optional (playlist (active-playlist))) ;TODO: fix this to use XMMS_ACTIVE_PLAYLIST-constant, because it's faster
-  (sync-exec #'xmmsc-playlist-add-url playlist (make-url-valid url)))
+  (let ((valid-url (make-url-valid url)))
+    (if (eq #\/ (char valid-url (- (length valid-url) 1)))
+      (sync-exec #'xmmsc-playlist-radd    playlist valid-url)
+      (sync-exec #'xmmsc-playlist-add-url playlist valid-url))))
 
 (defun add-id (id &optional (playlist (active-playlist))) ;TODO: fix this to use XMMS_ACTIVE_PLAYLIST-constant, because it's faster
   (sync-exec #'xmmsc-playlist-add-id playlist id))
 
+(defun insert (url &optional position (playlist (active-playlist)))
+  (sync-exec #'xmmsc-playlist-insert-url playlist position url))
+
+(defun insert-id (id &optional position (playlist (active-playlist)))
+  (sync-exec #'xmmsc-playlist-insert-id playlist position id))
+
+(defun move (source destination &optional (playlist (active-playlist)))
+  (sync-exec 'xmmsc-playlist-move-entry playlist source destination))
+
+(defun clear (&optional (playlist (active-playlist)))
+  (sync-exec #'xmmsc-playlist-clear playlist))
+
 (defun shuffle (&optional (playlist (active-playlist)))
   (sync-exec #'xmmsc-playlist-shuffle playlist))
+
+(defun sort-playlist (&key (playlist (active-playlist)) order-by)
+  (if (null order-by)
+    (error "You didn't specify an list with properties so sort by")
+    (sync-exec #'xmmsc-playlist-sort playlist (string-array-lisp-to-c order-by))))
+
 
 ;;;; PlaybackControl
 (defun toggle-play ()
@@ -375,6 +396,17 @@
 
 (defun back ()
   (jump-to -1 :relative t))
+
+(defun seek (time &key relative)
+  (if relative
+    (sync-exec #'xmmsc-playback-seek-ms-rel (round (* time 1000)))
+    (sync-exec #'xmmsc-playback-seek-ms (round (* time 1000)))))
+
+(defun set-volume (volume &key relative)
+  (loop for channel being the hash-keys in (sync-exec 'xmmsc-playback-volume-get) using (hash-value value)
+        do (if relative
+             (sync-exec 'xmmsc-playback-volume-set channel (+ volume value))
+             (sync-exec 'xmmsc-playback-volume-set channel volume))))
 
 (defun current-id ()
   (sync-exec 'xmmsc-playback-current-id))
