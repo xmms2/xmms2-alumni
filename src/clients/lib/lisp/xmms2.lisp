@@ -247,6 +247,9 @@
   (rename-collection \"Katie\" \"NewName\")"
   (sync-exec #'xmmsc-coll-rename oldname newname namespace))
 
+(defun find-collection (id &optional (namespace "Collections"))
+  (sync-exec #'xmmsc-coll-find id namespace))
+
 (defmacro collection-query-ids (collection &key (order-by nil) (start 0) (length 0))
   "Returns a list containing IDs matching the given collection structure.
   You can limit the entries by specifying :length and set an offset with :start.
@@ -275,6 +278,11 @@
 (defun rename-playlist (oldname newname &key (namespace "Playlists"))
   "Same as rename-collection operates in defaul namespace \"Playlists\""
   (rename-collection oldname newname :namespace namespace))
+
+(defun create-playlist (name &optional)
+  (sync-exec 'xmmsc-playlist-create name))
+;(if (not (equal "list"))
+;(type-playlist name type)))
 
 (defun remove-playlist (name &key (namespace "Playlists"))
   "Same as remove-collection but with default namespace \"Playlists\""
