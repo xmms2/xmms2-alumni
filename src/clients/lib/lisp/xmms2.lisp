@@ -175,105 +175,65 @@
 
 ;;;; Collections
 ;;; Lowlevel structure generation
-(defmacro collection-type (type)
-  `(foreign-enum-value 'XMMSC-COLL-TYPE-T ,(intern (concatenate 'string "+XMMS-COLLECTION-TYPE-" (string type) "+") (find-package :keyword))))
+(defun collection-type (type)
+  (foreign-enum-value 'XMMSC-COLL-TYPE-T (intern (concatenate 'string "+XMMS-COLLECTION-TYPE-" (string type) "+") (find-package :keyword))))
 
 (defun coll-union (&rest collections)
-  (let ((new-collection (xmmsc-coll-new (collection-type union))))
-    (loop for (fun . nil) on collections
-          do (xmmsc-coll-add-operand new-collection (eval fun)))
-    (return-from coll-union new-collection)))
+  (let ((new-collection (xmmsc-coll-new (collection-type 'union))))
+    (loop for collection in collections
+          do (xmmsc-coll-add-operand new-collection collection))
+    new-collection))
 
 (defun coll-intersection (&rest collections)
-  (let ((new-collection (xmmsc-coll-new (collection-type intersection))))
-    (loop for (fun . nil) on collections
-          do (xmmsc-coll-add-operand new-collection (eval fun)))
-    (return-from coll-intersection new-collection)))
+  (let ((new-collection (xmmsc-coll-new (collection-type 'intersection))))
+    (loop for collection in collections
+          do (xmmsc-coll-add-operand new-collection collection))
+    new-collection))
 
 (defun coll-complement (&rest collections)
-  (let ((new-collection (xmmsc-coll-new (collection-type complement))))
-    (xmmsc-coll-add-operand new-collection (apply 'coll-union collections))
-    (return-from coll-complement new-collection)))
+  (let ((new-collection (xmmsc-coll-new (collection-type 'complement))))
+    (loop for collection in collections
+          do (xmmsc-coll-add-operand new-collection collection))
+    new-collection))
 
-;(defun coll-reference (collection)
-;(let ((new-collection (xmmsc-coll-new (collection-type reference))))
-;(xmmsc-coll-add-operand new-collection collection)
-;(return-from coll-reference new-collection)))
+(defun coll-reference (&optional (collection "All Media"))
+  (let ((new-collection (xmmsc-coll-new (collection-type 'reference))))
+    (xmmsc-coll-attribute-set new-collection "reference" collection)
+    (xmmsc-coll-attribute-set new-collection "namespace" "Collections")
+    new-collection))
 
-(defun coll-match (key value &optional reference)
-  (let ((new-collection (xmmsc-coll-new (collection-type match))))
-    (xmmsc-coll-add-operand new-collection (if reference (eval reference) (xmmsc-coll-universe)))
-    (xmmsc-coll-attribute-set new-collection "field" key)
-    (xmmsc-coll-attribute-set new-collection "value" value)
-    (return-from coll-match new-collection)))
+(defun coll-match (key &rest values)
+  (if (and (= 1 (length values)) (not (listp (car values))))
+    (let ((new-collection (xmmsc-coll-new (collection-type 'match))))
+      (xmmsc-coll-attribute-set new-collection "field" key)
+      (xmmsc-coll-attribute-set new-collection "value" (car values))
+      (xmmsc-coll-add-operand new-collection (coll-reference))
+      new-collection)
+    (loop for value in values
+          collect (coll-match key value) into collections
+          finally (return (apply #'coll-union collections)))))
 
-(defun coll-equals (key value &optional reference)
-  (let ((new-collection (xmmsc-coll-new (collection-type equals))))
-    (xmmsc-coll-add-operand new-collection (if reference (eval reference) (xmmsc-coll-universe)))
-    (xmmsc-coll-attribute-set new-collection "field" key)
-    (xmmsc-coll-attribute-set new-collection "value" value)
-    (return-from coll-equals new-collection)))
-
-(defun coll-smaller (key value &optional reference)
-  (let ((new-collection (xmmsc-coll-new (collection-type smaller))))
-    (xmmsc-coll-add-operand new-collection (if reference (eval reference) (xmmsc-coll-universe)))
-    (xmmsc-coll-attribute-set new-collection "field" key)
-    (xmmsc-coll-attribute-set new-collection "value" value)
-    (return-from coll-smaller new-collection)))
-
-(defun coll-greater (key value &optional reference)
-  (let ((new-collection (xmmsc-coll-new (collection-type greater))))
-    (xmmsc-coll-add-operand new-collection (if reference (eval reference) (xmmsc-coll-universe)))
-    (xmmsc-coll-attribute-set new-collection "field" key)
-    (xmmsc-coll-attribute-set new-collection "value" value)
-    (return-from coll-greater new-collection)))
-
-(defun coll-has (key &optional reference)
-  (let ((new-collection (xmmsc-coll-new (collection-type has))))
-    (xmmsc-coll-add-operand new-collection (if reference (eval reference) (xmmsc-coll-universe)))
-    (xmmsc-coll-attribute-set new-collection "field" key)
-    (return-from coll-has new-collection)))
-
-;;; Highlevel structure generation
-(defmacro with-highlevel-bindings (&body body)
-  `(macrolet
-     ((album (album &optional reference)
-             (if (typep album 'cons)
-               `(coll-union ,@(loop for name in album
-                                    collect `(album ,name ,reference) into ret
-                                    finally (return ret)))
-               `(coll-match "album" ,(concatenate 'string "%" (string album) "%") ,reference)))
-      (artist (artist &optional reference)
-              (if (typep artist 'cons)
-                `(coll-union ,@(loop for name in artist
-                                     collect `(artist ,name ,reference) into ret
-                                     finally (return ret)))
-                `(coll-match "artist" ,(concatenate 'string "%" (string artist) "%") ,reference)))
-      (song (song &optional reference)
-            (if (typep song 'cons)
-              `(coll-union ,@(loop for name in song
-                                   collect `(song ,name ,reference) into ret
-                                   finally (return ret)))
-              `(coll-match "title" ,(concatenate 'string "%" (string song) "%") ,reference)))
-      (collection (name &optional (namespace "Collections"))
-                  `(sync-exec #'xmmsc-coll-get ,name ,namespace))
-      (playlist (name &optional (namespace "Playlists"))
-                `(sync-exec #'xmmsc-coll-get ,name ,namespace)))
-     ,@body))
-
-(defmacro with-collection (name-structure &body body)
-  `(let (,@(loop for (name . structure) in name-structure
-                 collect `(,name (with-highlevel-bindings ,(car structure))) into ret
-                 finally (return ret)) )
-     ,@body))
+(defun coll-equals (key &rest values)
+  (if (and (= 1 (length values)) (not (listp (car values))))
+    (let ((new-collection (xmmsc-coll-new (collection-type 'equals))))
+      (xmmsc-coll-attribute-set new-collection "field" key)
+      (xmmsc-coll-attribute-set new-collection "value" (car values))
+      (xmmsc-coll-add-operand new-collection (coll-reference))
+      new-collection)
+    (loop for value in values
+          collect (coll-equals key value) into collections
+          finally (return (apply #'coll-union collections)))))
 
 ;;; Collection Operations
-(defmacro save-collection (collection-structure name &optional (namespace "Collections"))
+
+(defun get-collection (name &optional (namespace "Collections"))
+  (sync-exec #'xmmsc-coll-get name namespace))
+
+(defun save-collection (collection name &optional (namespace "Collections"))
   "Save a the collection-structure on the server under the given name and optional namespace
   Usage:
   (save-collection (artist \"Katie Melua\") \"Katie\")"
-  `(with-collection ((nc ,collection-structure))
-                    (sync-exec #'xmmsc-coll-save nc ,name ,namespace)))
+  (sync-exec #'xmmsc-coll-save collection name namespace))
 
 (defun remove-collection (name &key (namespace "Collections"))
   "Removes the named collection from the server
