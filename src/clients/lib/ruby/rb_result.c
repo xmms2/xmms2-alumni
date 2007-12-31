@@ -223,7 +223,7 @@ uint_get (RbResult *res)
 static VALUE
 string_get (RbResult *res)
 {
-	char *s = NULL;
+	const char *s = NULL;
 
 	if (!xmmsc_result_get_string (res->real, &s))
 		rb_raise (eValueError, "cannot retrieve value");
@@ -396,7 +396,7 @@ static VALUE
 c_get_error (VALUE self)
 {
 	RbResult *res;
-	char *error;
+	const char *error;
 
 	Data_Get_Struct (self, RbResult, res);
 
@@ -462,10 +462,9 @@ c_propdict_aref (VALUE self, VALUE key)
 	RbResult *res = NULL;
 	xmmsc_result_value_type_t type;
 	VALUE tmp;
-	const char *ckey;
+	const char *ckey, *vstr;
 	int32_t vint;
 	uint32_t vuint;
-	char *vstr;
 
 	Check_Type (key, T_SYMBOL);
 

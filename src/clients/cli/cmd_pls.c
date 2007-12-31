@@ -55,7 +55,7 @@ add_item_to_playlist (xmmsc_connection_t *conn, gchar *playlist, gchar *item)
 }
 
 
-static gchar *
+static const gchar *
 get_playlist_type_string (xmmsc_coll_type_t type)
 {
 	switch (type) {
@@ -546,14 +546,14 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 				                    "${channel}", info_res);
 			}
 		} else if (!res_has_key (info_res, "title")) {
-			gchar *url, *filename;
+			const gchar *url;
 		  	gchar dur[10];
 			
 			xmmsc_entry_format (dur, sizeof (dur),
 			                    "(${minutes}:${seconds})", info_res);
 			
 			if (xmmsc_result_get_dict_entry_string (info_res, "url", &url)) {
-				filename = g_path_get_basename (url);
+				gchar *filename = g_path_get_basename (url);
 				if (filename) {
 					g_snprintf (line, sizeof (line), "%s %s", filename, dur);
 					g_free (filename);
@@ -752,7 +752,7 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 void
 cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
-	gchar *active_name;
+	const gchar *active_name;
 	xmmsc_result_t *res, *active_res;
 
 	active_res = xmmsc_playlist_current_active (conn);
@@ -771,7 +771,7 @@ cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	while (xmmsc_result_list_valid (res)) {
-		gchar *name;
+		const gchar *name;
 
 		if (!xmmsc_result_get_string (res, &name)) {
 			print_error ("Broken resultset");
@@ -794,7 +794,7 @@ cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 void
 cmd_playlist_active (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
-	gchar *active_name;
+	const gchar *active_name;
 	xmmsc_result_t *active_res;
 
 	active_res = xmmsc_playlist_current_active (conn);

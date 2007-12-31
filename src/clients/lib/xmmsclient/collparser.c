@@ -175,6 +175,7 @@ xmmsc_coll_parse_custom (const char *pattern,
 		k = parse_f (pattern, &next);
 		if (k == NULL || k->type == XMMS_COLLECTION_TOKEN_INVALID) {
 			/* FIXME: Check for invalid token */
+			break;
 		}
 
 		if (!last)
@@ -221,6 +222,9 @@ xmmsc_coll_default_parse_tokens (const char *str, const char **newpos)
 	char quote;
 
 	while (*str == ' ') str++;
+	if (*str == '\0') {
+		return NULL;
+	}
 	tmp = str;
 
 	TOKEN_MATCH_CHAR ('(', XMMS_COLLECTION_TOKEN_GROUP_OPEN);
@@ -743,11 +747,14 @@ coll_parse_andop_append (xmmsc_coll_token_t *tokens, xmmsc_coll_t *operator,
 			*ret = first;
 		}
 		else {
+			xmmsc_coll_unref (first);
 			*ret = operator;
 		}
 	}
 	else {
 		xmmsc_coll_add_operand (operator, first);
+		xmmsc_coll_unref (first);
+
 		tk = coll_parse_andop_append (tk, operator, &tmp);
 		*ret = operator;
 	}
@@ -777,6 +784,7 @@ coll_parse_orop_append (xmmsc_coll_token_t *tokens, xmmsc_coll_t *operator,
 
 	if (operator) {
 		xmmsc_coll_add_operand (operator, first);
+		xmmsc_coll_unref (first);
 
 		if (tk && tk->type == XMMS_COLLECTION_TOKEN_OPSET_UNION) {
 			tk = coll_parse_orop_append (coll_next_token (tk), operator, ret);
@@ -1031,16 +1039,16 @@ coll_parse_prop (xmmsc_coll_token_t *token)
 	}
 
 	switch (token->type) {
-	case XMMS_COLLECTION_TOKEN_PROP_LONG:
-		return strdup (token->string);
-
 	case XMMS_COLLECTION_TOKEN_PROP_SHORT:
+		/* try to find short prop, else fallback to long prop */
 		for (i = 0; xmmsc_coll_prop_short[i].longstr; i++) {
 			if (*token->string == xmmsc_coll_prop_short[i].shortstr) {
 				return strdup (xmmsc_coll_prop_short[i].longstr);
 			}
 		}
-		break;
+
+	case XMMS_COLLECTION_TOKEN_PROP_LONG:
+		return strdup (token->string);
 
 	default:
 		break;

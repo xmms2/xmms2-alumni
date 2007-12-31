@@ -289,7 +289,6 @@ xmmsc_result_t *xmmsc_broadcast_collection_changed (xmmsc_connection_t *c);
 typedef void (*xmmsc_result_notifier_t) (xmmsc_result_t *res, void *user_data);
 
 xmmsc_result_t *xmmsc_result_restart (xmmsc_result_t *res);
-void xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg);
 xmmsc_result_type_t xmmsc_result_get_class (xmmsc_result_t *res);
 void xmmsc_result_disconnect (xmmsc_result_t *res);
 
@@ -305,7 +304,7 @@ const char * xmmsc_result_get_error (xmmsc_result_t *res);
 
 int xmmsc_result_get_int (xmmsc_result_t *res, int32_t *r);
 int xmmsc_result_get_uint (xmmsc_result_t *res, uint32_t *r);
-int xmmsc_result_get_string (xmmsc_result_t *res, char **r);
+int xmmsc_result_get_string (xmmsc_result_t *res, const char **r);
 int xmmsc_result_get_collection (xmmsc_result_t *conn, xmmsc_coll_t **coll);
 int xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen);
 
@@ -324,7 +323,7 @@ typedef void (*xmmsc_propdict_foreach_func) (const void *key, xmmsc_result_value
 typedef void (*xmmsc_dict_foreach_func) (const void *key, xmmsc_result_value_type_t type, const void *value, void *user_data);
 
 xmmsc_result_value_type_t xmmsc_result_get_dict_entry_type (xmmsc_result_t *res, const char *key);
-int xmmsc_result_get_dict_entry_string (xmmsc_result_t *res, const char *key, char **r);
+int xmmsc_result_get_dict_entry_string (xmmsc_result_t *res, const char *key, const char **r);
 int xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *r);
 int xmmsc_result_get_dict_entry_uint (xmmsc_result_t *res, const char *key, uint32_t *r);
 int xmmsc_result_get_dict_entry_collection (xmmsc_result_t *conn, const char *key, xmmsc_coll_t **coll);
