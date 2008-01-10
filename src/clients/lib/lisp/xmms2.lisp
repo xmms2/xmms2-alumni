@@ -346,6 +346,9 @@
     (sync-exec #'xmmsc-playback-pause)
     (sync-exec #'xmmsc-playback-start)))
 
+(defun play ()
+  (sync-exec #'xmmsc-playback-start))
+
 (defun pause ()
   (sync-exec #'xmmsc-playback-pause))
 
@@ -402,3 +405,7 @@
 
 (defun mlib-get-info (&optional (id (current-id)))
   (sync-exec 'xmmsc-medialib-get-info id))
+;;; config
+
+(defun config-list ()
+ (sync-exec #'xmmsc-configval-list))
