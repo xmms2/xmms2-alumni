@@ -99,7 +99,9 @@
 (defun sync-exec (function &rest arguments)
   (let ((result (apply function *default-connection* arguments)))
     (xmmsc-result-wait result)
-    (convert-from-foreign result 'result)))
+    (prog1
+      (convert-from-foreign result 'result)
+      (xmmsc-result-unref result))))
 
 (defun list-to-string (string-list &optional (string ""))
   (if (equal string-list nil)
