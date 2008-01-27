@@ -1,5 +1,6 @@
 xmms2 (0.4DrKosmos-1) unstable; urgency=low
 
+  [ Florian Ragwitz ]
   * New upstream test release.
     + Binds playlist_current_pos to Ruby (Closes: #450541).
   * Explicitly disable the mac plugin (Closes: #447927).
@@ -12,7 +13,14 @@ xmms2 (0.4DrKosmos-1) unstable; urgency=low
   * Update package names to reflect SONAME changes.
   * Build the python bindings for both 2.4 and 2.5 (Closes: #445409).
 
- -- Florian Ragwitz <rafl@debian.org>  Tue, 13 Nov 2007 11:38:58 +0100
+  [ Anders Waldenborg ]
+  * Add Vcs-* fields to control.
+  * Add asf, normalize and pulse to xmms2-plugin-all
+  * Change xmms2-plugin-avcodec to recommend xmms2-plugin-asf
+  * Make xmms2-plugin-curl recommend xmms2-plugin-icymetaint and 
+    xmms2-plugin-mad (Closes: 454072)
+
+ -- Anders Waldenborg <andersg@grandin.lan>  Sun, 27 Jan 2008 16:12:55 +0100
 
 xmms2 (0.2DrJekyll-4) unstable; urgency=low
 

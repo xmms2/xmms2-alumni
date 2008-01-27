@@ -5,6 +5,8 @@ Maintainer: Florian Ragwitz <rafl@debian.org>
 Uploaders: Jens Taprogge <jlt@taprogge.org>, Jonne Lehtinen <jms@modeemi.fi>, Thomas Jollans <thomas@jollans.com>
 Standards-Version: 3.7.2
 Build-Depends: debhelper (>= 5.0.37.2), dpatch, libsqlite3-dev, ruby, ruby1.8-dev, libperl-dev, python, python2.4-dev, python2.5-dev, libglib2.0-dev, libcurl4-openssl-dev, libsmbclient-dev, libgnomevfs2-dev, libvorbis-dev, libshout-dev, libflac-dev, libmodplug-dev, libmad0-dev, libasound2-dev [!kfreebsd-i386 !kfreebsd-amd64], libjack-dev, libavahi-client-dev, libgamin-dev, libmpcdec-dev, libmms-dev, libsidplay2-dev, libresid-builder-dev, libavformat-dev, libraw1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libdc1394-dev [!kfreebsd-i386 !kfreebsd-amd64], libboost-dev, libboost-signals-dev, python-support (>= 0.3), python-pyrex, libfaad-dev, fftw3-dev, libsamplerate-dev, libao-dev, libcdio-cdda-dev, libdiscid0-dev, libxml2-dev, libexpat1-dev, libofa0-dev, libpulse-dev
+Vcs-Git: git://git.xmms.se/xmms2/xmms2-rafl#debian
+Vcs-Browse: http://git.xmms.se/?p=xmms2-rafl.git;a=shortlog;h=debian
 
 Package: xmms2
 Architecture: all
@@ -23,7 +25,7 @@ Description: Client/server based media player system
 
 Package: xmms2-plugin-all
 Architecture: all
-Depends: xmms2-plugin-curl, xmms2-plugin-smb, xmms2-plugin-mms, xmms2-plugin-gnomevfs, xmms2-plugin-vorbis, xmms2-plugin-flac, xmms2-plugin-faad, xmms2-plugin-modplug, xmms2-plugin-mad, xmms2-plugin-musepack, xmms2-plugin-avformat, xmms2-plugin-avcodec, xmms2-plugin-wma, xmms2-plugin-sid, xmms2-plugin-oss, xmms2-plugin-alsa [!kfreebsd-i386 !kfreebsd-amd64], xmms2-plugin-jack, xmms2-plugin-id3v2, xmms2-plugin-icymetaint, xmms2-plugin-daap, xmms2-plugin-ices, xmms2-plugin-lastfm, xmms2-plugin-vocoder, xmms2-plugin-ao, xmms2-plugin-mp4, xmms2-plugin-xml, xmms2-plugin-xspf, xmms2-plugin-cdda, xmms2-plugin-cue, xmms2-plugin-pls, xmms2-plugin-asx, xmms2-plugin-rss, xmms2-plugin-m3u, xmms2-plugin-ofa
+Depends: xmms2-plugin-curl, xmms2-plugin-smb, xmms2-plugin-mms, xmms2-plugin-gnomevfs, xmms2-plugin-vorbis, xmms2-plugin-flac, xmms2-plugin-faad, xmms2-plugin-modplug, xmms2-plugin-mad, xmms2-plugin-musepack, xmms2-plugin-avformat, xmms2-plugin-avcodec, xmms2-plugin-wma, xmms2-plugin-sid, xmms2-plugin-oss, xmms2-plugin-alsa [!kfreebsd-i386 !kfreebsd-amd64], xmms2-plugin-jack, xmms2-plugin-id3v2, xmms2-plugin-icymetaint, xmms2-plugin-daap, xmms2-plugin-ices, xmms2-plugin-lastfm, xmms2-plugin-vocoder, xmms2-plugin-ao, xmms2-plugin-mp4, xmms2-plugin-xml, xmms2-plugin-xspf, xmms2-plugin-cdda, xmms2-plugin-cue, xmms2-plugin-pls, xmms2-plugin-asx, xmms2-plugin-rss, xmms2-plugin-m3u, xmms2-plugin-ofa, xmms2-plugin-asf, xmms2-plugin-normalize, xmms2-plugin-pulse
 Description: XMMS2 - all plugins
  This is a metapackage depending on all available XMMS2 plugins to make
  installation easier.
@@ -232,7 +234,7 @@ Description: XMMS2 - medialib-updater client
 Package: xmms2-plugin-curl
 Architecture: any
 Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
-Suggests: xmms2-plugin-icymetaint
+Recommends: xmms2-plugin-icymetaint, xmms2-plugin-mad
 Enhances: xmms2-core
 Description: XMMS2 - curl transport for HTTP
  This package contains a HTTP transport for xmms2.
@@ -316,7 +318,7 @@ Package: xmms2-plugin-avcodec
 Architecture: any
 Depends: xmms2-core (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Enhances: xmms2-core
-Recommends: xmms2-plugin-avformat, xmms2-plugin-mp4
+Recommends: xmms2-plugin-asf, xmms2-plugin-mp4
 Description: XMMS2 - avcodec decoder
  This package enables avcodec decoding for xmms2. Together with
  xmms2-plugin-avformat it's possible to decode .wma files. Combined with
