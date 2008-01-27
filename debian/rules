@@ -40,8 +40,7 @@ clean1:
 	rm -rf \
 		_build_ \
 		_build_default_ \
-		_build_python2.4_ \
-		_build_python2.5_ \
+		$(PYVERS:%=_build_python%_) \
 		waf-lightc
 	dh_clean
 
