@@ -24,8 +24,9 @@ xmms2 (0.4DrKosmos-1) unstable; urgency=low
   * Use --with-custom-version to append "Debian" to version.
   * Don't enforce GLib minor version,
     backported from xmms2-devel (Closes: #443082)
+  * Remove dpatch stuff as we now use git.
 
- -- Anders Waldenborg <andersg@0x63.nu>  Sun, 27 Jan 2008 20:50:01 +0100
+ -- Anders Waldenborg <anders@0x63.nu>  Mon, 28 Jan 2008 20:05:50 +0100
 
 xmms2 (0.2DrJekyll-4) unstable; urgency=low
 

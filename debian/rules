@@ -9,7 +9,7 @@ WAFFLAGS=--without-plugins=mac --with-mandir=/usr/share/man --prefix=/usr --with
 
 export NOCOLOR=1
 
-build: patch-stamp build-stamp $(PYVERS:%=build-python%)
+build: build-stamp $(PYVERS:%=build-python%)
 build-stamp:
 	dh_testdir
 	./waf configure $(WAFFLAGS)
@@ -31,7 +31,7 @@ install-python%:
 	./waf install --destdir=$(CURDIR)/debian/tmp
 	mv _build_ _build_python$*_
 
-clean: clean1 unpatch
+clean: clean1
 clean1:
 	dh_testdir
 	dh_testroot
@@ -110,15 +110,6 @@ binary-arch: build install
 	dh_md5sums -s
 	dh_builddeb -s
 
-patch: patch-stamp
-patch-stamp:
-	dpatch apply-all
-	touch patch-stamp
-
-unpatch:
-	dpatch deapply-all
-	rm -rf patch-stamp debian/patched
-
 binary: binary-indep binary-arch
 
-.PHONY: binary binary-arch binary-indep clean patch unpatch clean1
+.PHONY: binary binary-arch binary-indep clean clean1
