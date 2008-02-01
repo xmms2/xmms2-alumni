@@ -1,9 +1,11 @@
 xmms2 (0.4DrKosmos-1) unstable; urgency=low
 
   [ Florian Ragwitz ]
-  * New upstream release.
+  * New upstream release (Closes: #457734).
     + Binds playlist_current_pos to Ruby (Closes: #450541).
-    + daap DWIM/error reporting improved (Closes: ##460707).
+    + daap DWIM/error reporting improved (Closes: #460707).
+    + support for newer pyrex (Closes: #461040).
+    + Fix NAME section of manpages (Closes: #463017).
   * Explicitly disable the mac plugin (Closes: #447927).
   * Fix bad curl dependency (Closes: #427261).
   * Remove obsolete patches.
@@ -21,12 +23,11 @@ xmms2 (0.4DrKosmos-1) unstable; urgency=low
   * Make xmms2-plugin-curl recommend xmms2-plugin-icymetaint and
     xmms2-plugin-mad (Closes: #454072)
   * Add Python-Version fields.
-  * Use --with-custom-version to append "Debian" to version.
   * Don't enforce GLib minor version,
     backported from xmms2-devel (Closes: #443082)
   * Remove dpatch stuff as we now use git.
 
- -- Anders Waldenborg <anders@0x63.nu>  Mon, 28 Jan 2008 20:05:50 +0100
+ -- Anders Waldenborg <anders@0x63.nu>  Fri, 01 Feb 2008 20:40:38 +0100
 
 xmms2 (0.2DrJekyll-4) unstable; urgency=low
 
