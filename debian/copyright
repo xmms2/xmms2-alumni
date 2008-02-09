@@ -37,7 +37,7 @@ manpages (doc/):
 	Licensed under BSD license.
 
 src/plugins/faad/faad.c:
-	Copyright (C) 2005 Juho V‰h‰-Herttua, <juhovh@iki.fi>
+	Copyright (C) 2005 Juho V√§h√§-Herttua, <juhovh@iki.fi>
 	Licensed under GPL license.
 
 src/plugins/mad/*:

@@ -15,6 +15,7 @@ xmms2 (0.4DrKosmos-1) unstable; urgency=low
   * Fix debian/NEWS syntax.
   * Update package names to reflect SONAME changes.
   * Build the python bindings for both 2.4 and 2.5 (Closes: #445409).
+  * Encode debian/copyright with utf-8.
 
   [ Anders Waldenborg ]
   * Add Vcs-* fields to control.
@@ -27,7 +28,7 @@ xmms2 (0.4DrKosmos-1) unstable; urgency=low
     backported from xmms2-devel (Closes: #443082)
   * Remove dpatch stuff as we now use git.
 
- -- Anders Waldenborg <anders@0x63.nu>  Fri, 01 Feb 2008 20:40:38 +0100
+ -- Florian Ragwitz <rafl@debian.org>  Sat, 09 Feb 2008 21:52:06 +0100
 
 xmms2 (0.2DrJekyll-4) unstable; urgency=low
 
