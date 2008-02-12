@@ -1,3 +1,9 @@
+xmms2 (0.4DrKosmos-2) unstable; urgency=low
+
+  * Replace build-dep on libraw1394-dev and libdc1394-dev with libavcodec-dev.
+
+ -- Anders Waldenborg <anders@0x63.nu>  Tue, 12 Feb 2008 21:07:45 +0100
+
 xmms2 (0.4DrKosmos-1) unstable; urgency=low
 
   [ Florian Ragwitz ]
