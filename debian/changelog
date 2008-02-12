@@ -1,8 +1,10 @@
 xmms2 (0.4DrKosmos-2) unstable; urgency=low
 
   * Replace build-dep on libraw1394-dev and libdc1394-dev with libavcodec-dev.
+  * Backport 0.4DrKosmos-47-g2dd188f
+    + Fix possible race condition causing segfault (Closes: #463415).
 
- -- Anders Waldenborg <anders@0x63.nu>  Tue, 12 Feb 2008 21:07:45 +0100
+ -- Anders Waldenborg <anders@0x63.nu>  Tue, 12 Feb 2008 22:05:10 +0100
 
 xmms2 (0.4DrKosmos-1) unstable; urgency=low
 
