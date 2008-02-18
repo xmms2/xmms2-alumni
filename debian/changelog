@@ -1,9 +1,19 @@
 xmms2 (0.4DrKosmos-2) unstable; urgency=low
 
+  [ Anders Waldenborg ]
   * Replace build-dep on libraw1394-dev and libdc1394-dev with libavcodec-dev.
   * Backport 0.4DrKosmos-47-g2dd188f
     + Fix possible race condition causing segfault (Closes: #463415).
   * Make .install files for plugins uniform.
+
+  [ Deng Xiyue ]
+  * Wrap all fields in debian/control to make it more readable and easier
+    to patch.
+  * Added ${misc:Depends} and ${shlibs:Depends} to the "Depends:" fields
+    of all packages, which of the former is recommended, and the latter
+    will be useful when -dev comtains a binary or it'll have no effect,
+    which seems a safe bet.
+  * Replace build-dep fftw3-dev with libfftw3-dev.
 
  -- Anders Waldenborg <anders@0x63.nu>  Tue, 12 Feb 2008 22:23:58 +0100
 
