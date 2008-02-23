@@ -33,7 +33,7 @@ source = """config.c
             bindata.c
             sample.genpy
             utils.c
-	    service.c""".split()
+            service.c""".split()
 
 def build(bld):
     env = bld.env()

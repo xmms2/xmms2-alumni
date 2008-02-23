@@ -94,6 +94,7 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
 	xmms_ipc_msg_put_uint32 (msg, service->major_version);
 	xmms_ipc_msg_put_uint32 (msg, service->minor_version);
 
+	/* REVIEW: what are we registering if method is NULL? */
 	if (method) {
 		xmms_ipc_msg_put_string (msg, method->name);
 		xmms_ipc_msg_put_string (msg, method->description);
@@ -117,10 +118,7 @@ xmmsc_service_register_full (xmmsc_connection_t *conn,
 
 	res = xmmsc_send_msg (conn, msg);
 
-	if (xmmsc_result_iserror (res))
-		return res;
-
-	if (method) {
+	if (!xmmsc_result_iserror (res) && method) {
 		xmmsc_result_restartable (res, XMMS_IPC_SIGNAL_SERVICE);
 		xmmsc_result_notifier_set_full (res, method->func, user_data, free_func);
 	}
@@ -152,8 +150,9 @@ xmmsc_service_unregister (xmmsc_connection_t *conn,
 	                        XMMS_IPC_CMD_SERVICE_UNREGISTER);
 	xmms_ipc_msg_put_string (msg, service);
 
-	if (method)
+	if (method) {
 		xmms_ipc_msg_put_string (msg, method);
+	}
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -232,6 +231,7 @@ xmmsc_service_method_list (xmmsc_connection_t *conn, const char *service,
 	                        XMMS_IPC_CMD_SERVICE_METHOD_LIST);
 	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method);
+	/* REVIEW: Use an id from an enum! */
 	xmms_ipc_msg_put_uint32 (msg, 0);
 
 	return xmmsc_send_msg (conn, msg);
@@ -256,6 +256,7 @@ xmmsc_service_method_args_list (xmmsc_connection_t *conn, const char *service,
 	                        XMMS_IPC_CMD_SERVICE_METHOD_LIST);
 	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method);
+	/* REVIEW: Use an id from an enum! */
 	xmms_ipc_msg_put_uint32 (msg, 1);
 
 	return xmmsc_send_msg (conn, msg);
@@ -286,6 +287,7 @@ xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
 	                        XMMS_IPC_CMD_SERVICE_REQUEST);
 	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method);
+	/* REVIEW: extract in argdump function */
 	if (arg_list) {
 		for (i = 0; i < arg_list->size; i++) {
 			xmms_ipc_msg_put_string (msg, arg_list->args[i].name);
@@ -327,6 +329,7 @@ xmmsc_result_t *xmmsc_service_return (xmmsc_connection_t *conn,
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_RETURN);
 	xmms_ipc_msg_put_uint32 (msg, cookie);
+	/* REVIEW: extract in argdump function */
 	if (arg_list->args) {
 		for (i = 0; i < arg_list->size; i++) {
 			xmms_ipc_msg_put_string (msg, arg_list->args[i].name);
@@ -898,7 +901,7 @@ xmmsc_service_argument_write (xmms_ipc_msg_t *msg, xmmsc_service_argument_t *arg
 		break;
 	case XMMSC_SERVICE_ARG_TYPE_BIN:
 		xmms_ipc_msg_put_bin (msg, arg->value.bin,
-							  arg->len);
+		                      arg->len);
 		break;
 	default:
 		return 0;

@@ -806,7 +806,7 @@ xmmsc_result_get_service (xmmsc_result_t *res, xmmsc_service_t **service)
 		return 0;
 	}
 	if (!xmmsc_result_get_dict_entry_uint (res, "minor_version",
-										   &(*service)->minor_version)) {
+	                                       &(*service)->minor_version)) {
 		free (*service);
 		return 0;
 	}
@@ -814,6 +814,8 @@ xmmsc_result_get_service (xmmsc_result_t *res, xmmsc_service_t **service)
 		free (*service);
 		return 0;
 	}
+	/* REVIEW: free the value before (default NULL), to avoid leaks? */
+	/* REVIEW: why not use strdup? */
 	(*service)->name = x_new0 (char, strlen (name) + 1);
 	strcpy ((*service)->name, name);
 	(*service)->description = x_new0 (char, strlen (desc) + 1);
@@ -853,6 +855,8 @@ xmmsc_result_get_service_method (xmmsc_result_t *res,
 		free (*method);
 		return 0;
 	}
+	/* REVIEW: free the value before (default NULL), to avoid leaks? */
+	/* REVIEW: why not use strdup? */
 	(*method)->name = x_new0 (char, strlen (name) + 1);
 	strcpy ((*method)->name, name);
 	(*method)->description = x_new0 (char, strlen (desc) + 1);
@@ -882,16 +886,19 @@ xmmsc_result_get_service_arg_types (xmmsc_result_t *res,
 		return 0;
 	}
 
+	/* REVIEW: free the value before (default NULL), to avoid leaks? */
 	*arg_list = x_new0 (xmmsc_service_arg_list_t, 1);
 
 	for (; xmmsc_result_list_valid (res); i++, xmmsc_result_list_next (res)) ;
-	xmmsc_result_list_first (res);
 	(*arg_list)->size = i;
+	/* REVIEW: free the value before (default NULL), to avoid leaks? */
 	(*arg_list)->args = x_new0 (xmmsc_service_argument_t, i);
 
 	i = 0;
+	xmmsc_result_list_first (res);
 	while (xmmsc_result_list_valid (res)) {
 		if (!xmmsc_result_get_dict_entry_string (res, "name", &name)) {
+			/* REVIEW: goto or function to avoid code duplication? */
 			while (i-- > 0)
 				free ((*arg_list)->args[i].name);
 			free ((*arg_list)->args);
@@ -914,6 +921,8 @@ xmmsc_result_get_service_arg_types (xmmsc_result_t *res,
 			free (*arg_list);
 			return 0;
 		}
+		/* REVIEW: free the value before (default NULL), to avoid leaks? */
+		/* REVIEW: why not use strdup? */
 		(*arg_list)->args[i].name = x_new0 (char, strlen (name) + 1);
 		strcpy ((*arg_list)->args[i].name, name);
 
@@ -926,7 +935,7 @@ xmmsc_result_get_service_arg_types (xmmsc_result_t *res,
 
 /**
  * Retrieve service method request cookie.
- * 
+ *
  * @param res The #xmmsc_result_t containing the cookie.
  * @param cookie The return cookie.
  * @return 1 for success, 0 otherwise.
