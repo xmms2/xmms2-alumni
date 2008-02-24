@@ -2,88 +2,72 @@
 # encoding: utf-8
 # Thomas Nagy, 2006 (ita)
 
-"LaTeX/PDFLaTeX support"
+"TeX/LaTeX/PDFLaTeX support"
 
 import os, re
 import Utils, Params, Action, Object, Runner, Scan
 from Params import error, warning, debug, fatal
 
-tex_regexp = re.compile('^\\\\include{(.*)}', re.M)
-#tex_regexp = re.compile('^[^%]*\\\\bringin{(.*)}', re.M)
+re_tex = re.compile(r'\\(?P<type>include|import|bringin){(?P<file>[^{}]*)}', re.M)
 class tex_scanner(Scan.scanner):
 	def __init__(self):
 		Scan.scanner.__init__(self)
-	def scan(self, node, env, curdirnode):
-		variant = node.variant(env)
-		fi = open(node.abspath(env), 'r')
-		content = fi.read()
-		fi.close()
 
-		found = tex_regexp.findall(content)
+	def scan(self, task, node):
+		env = task.env()
 
 		nodes = []
 		names = []
 		if not node: return (nodes, names)
 
+		fi = open(node.abspath(env), 'r')
+		code = fi.read()
+		fi.close()
+
+		curdirnode = task.curdirnode
 		abs = curdirnode.abspath()
-		for path in found:
-			#print 'boo', name
-
-			filepath = os.path.join(abs, path)
-
-			ok = 0
-			try:
-				os.stat(filepath)
-				ok = filepath
-			except:
-				pass
-
-			if not ok:
-				for k in ['.tex', '.ltx']:
+		for match in re_tex.finditer(code):
+			path = match.group('file')
+			if path:
+				for k in ['', '.tex', '.ltx']:
+					# add another loop for the tex include paths?
+					debug("trying %s%s" % (path, k), 'tex')
 					try:
-						debug("trying %s%s" % (filepath, k), 'tex')
-						os.stat(filepath+k)
-						ok = filepath+k
-						path = path+k
-					except:
-						pass
-
-			if ok:
-				node = curdirnode.find_source(path)
-				nodes.append(node)
-			else:
-				print 'could not find', filepath
-				names.append(path)
+						os.stat(abs+os.sep+path+k)
+					except OSError:
+						continue
+					found = path+k
+					node = curdirnode.find_resource(found)
+					if node:
+						nodes.append(node)
+				else:
+					debug('could not find %s' % path, 'tex')
+					names.append(path)
 
 		debug("found the following : %s and names %s" % (nodes, names), 'tex')
 		return (nodes, names)
 
 g_tex_scanner = tex_scanner()
 
-
 g_bibtex_re = re.compile('bibdata', re.M)
 def tex_build(task, command='LATEX'):
-	env = task.m_env
+	env = task.env()
 
 	if env['PROMPT_LATEX']:
-		exec_cmd = Runner.exec_command_interact
+		Runner.set_exec('noredir')
 		com = '%s %s' % (env[command], env.get_flat(command+'FLAGS'))
 	else:
-		exec_cmd = Runner.exec_command
 		com = '%s %s %s' % (env[command], env.get_flat(command+'FLAGS'), '-interaction=batchmode')
-
 
 	node = task.m_inputs[0]
 	reldir  = node.bld_dir(env)
-
-
 	srcfile = node.srcpath(env)
 
 	lst = []
 	for c in Utils.split_path(reldir):
 		if c: lst.append('..')
-	sr = os.path.join(lst + [srcfile])
-	sr2 = os.path.join(lst + [node.m_parent.srcpath(env)])
+	sr = os.path.join(*(lst + [srcfile]))
+	sr2 = os.path.join(*(lst + [node.m_parent.srcpath(env)]))
 
 	aux_node = node.change_ext('.aux')
 	idx_node = node.change_ext('.idx')
@@ -91,25 +75,22 @@ def tex_build(task, command='LATEX'):
 	hash     = ''
 	old_hash = ''
 
-
-
-
 	nm = aux_node.m_name
 	docuname = nm[ : len(nm) - 4 ] # 4 is the size of ".aux"
 
 	latex_compile_cmd = 'cd %s && TEXINPUTS=%s:$TEXINPUTS %s %s' % (reldir, sr2, com, sr)
 	warning('first pass on %s' % command)
-	ret = exec_cmd(latex_compile_cmd)
+	ret = Runner.exec_command(latex_compile_cmd)
 	if ret: return ret
 
 	# look in the .aux file if there is a bibfile to process
 	try:
 		file = open(aux_node.abspath(env), 'r')
-
 		ct = file.read()
 		file.close()
-		#print '---------------------------', ct, '---------------------------'
-
+	except (OSError, IOError):
+		error('erreur bibtex scan')
+	else:
 		fo = g_bibtex_re.findall(ct)
 
 		# yes, there is a .aux file to process
@@ -117,29 +98,24 @@ def tex_build(task, command='LATEX'):
 			bibtex_compile_cmd = 'cd %s && BIBINPUTS=%s:$BIBINPUTS %s %s' % (reldir, sr2, env['BIBTEX'], docuname)
 
 			warning('calling bibtex')
-			ret = exec_cmd(bibtex_compile_cmd)
+			ret = Runner.exec_command(bibtex_compile_cmd)
 			if ret:
 				error('error when calling bibtex %s' % bibtex_compile_cmd)
 				return ret
-
-	except:
-		error('erreur bibtex scan')
-		pass
 
 	# look on the filesystem if there is a .idx file to process
 	try:
 		idx_path = idx_node.abspath(env)
 		os.stat(idx_path)
-
+	except OSError:
+		error('erreur file.idx scan')
+	else:
 		makeindex_compile_cmd = 'cd %s && %s %s' % (reldir, env['MAKEINDEX'], idx_path)
 		warning('calling makeindex')
-		ret = exec_cmd(makeindex_compile_cmd)
+		ret = Runner.exec_command(makeindex_compile_cmd)
 		if ret:
 			error('error when calling makeindex %s' % makeindex_compile_cmd)
 			return ret
-	except:
-		error('erreur file.idx scan')
-		pass
 
 	i = 0
 	while i < 10:
@@ -149,8 +125,8 @@ def tex_build(task, command='LATEX'):
 		# watch the contents of file.aux
 		old_hash = hash
 		try:
-			hash = Params.h_md5_file(aux_node.abspath(env))
-		except:
+			hash = Params.h_file(aux_node.abspath(env))
+		except KeyError:
 			error('could not read aux.h -> %s' % aux_node.abspath(env))
 			pass
 
@@ -162,7 +138,7 @@ def tex_build(task, command='LATEX'):
 
 		# run the command
 		warning('calling %s' % command)
-		ret = exec_cmd(latex_compile_cmd)
+		ret = Runner.exec_command(latex_compile_cmd)
 		if ret:
 			error('error when calling %s %s' % (command, latex_compile_cmd))
 			return ret
@@ -179,20 +155,18 @@ def pdflatex_build(task):
 	return tex_build(task, 'PDFLATEX')
 
 g_texobjs = ['latex','pdflatex']
-class texobj(Object.genobj):
+class tex_taskgen(Object.task_gen):
 	s_default_ext = ['.tex', '.ltx']
-	def __init__(self, type='latex'):
-		Object.genobj.__init__(self, 'other')
+	def __init__(self, *k, **kw):
+		Object.task_gen.__init__(self, *k)
 
 		global g_texobjs
-		if not type in g_texobjs:
-			Params.niceprint('type %s not supported for texobj' % type, 'ERROR', 'texobj')
-			import sys
-			sys.exit(1)
-		self.m_type   = type
-		self.outs     = '' # example: "ps pdf"
-		self.prompt   = 1  # prompt for incomplete files (else the batchmode is used)
-		self.deps     = ''
+		self.m_type = kw['type']
+		if not self.m_type in g_texobjs:
+			fatal('type %s not supported for texobj' % type)
+		self.outs = '' # example: "ps pdf"
+		self.prompt = 1  # prompt for incomplete files (else the batchmode is used)
+		self.deps = ''
 	def apply(self):
 
 		tree = Params.g_build
@@ -204,77 +178,70 @@ class texobj(Object.genobj):
 		if self.deps:
 			deps = self.to_list(self.deps)
 			for filename in deps:
-				n = self.path.find_source(filename)
+				n = self.path.find_resource(filename)
 				if not n in deps_lst: deps_lst.append(n)
 
 		for filename in self.source.split():
 			base, ext = os.path.splitext(filename)
 			if not ext in self.s_default_ext: continue
 
-			node = self.path.find_source(filename)
+			node = self.path.find_resource(filename)
 			if not node: fatal('cannot find %s' % filename)
 
 			if self.m_type == 'latex':
-				task = self.create_task('latex', self.env, 20)
+				task = self.create_task('latex', self.env)
 				task.set_inputs(node)
 				task.set_outputs(node.change_ext('.dvi'))
 			elif self.m_type == 'pdflatex':
-				task = self.create_task('pdflatex', self.env, 20)
+				task = self.create_task('pdflatex', self.env)
 				task.set_inputs(node)
 				task.set_outputs(node.change_ext('.pdf'))
 			else:
 				fatal('no type or invalid type given in tex object (should be latex or pdflatex)')
 
 			task.m_scanner = g_tex_scanner
-			task.m_env     = self.env
-			task.m_scanner_params = {'curdirnode':self.path}
+			task.m_env = self.env
+			task.curdirnode = self.path
 
 			# add the manual dependencies
 			if deps_lst:
 				variant = node.variant(self.env)
-				outnode = task.m_outputs[0]
 				try:
-					lst = tree.m_depends_on[variant][node]
+					lst = tree.node_deps[variant][node.id]
 					for n in deps_lst:
 						if not n in lst:
 							lst.append(n)
-				except:
-					tree.m_depends_on[variant][node] = deps_lst
+				except KeyError:
+					tree.node_deps[variant][node.id] = deps_lst
 
 			if self.m_type == 'latex':
 				if 'ps' in outs:
-					pstask = self.create_task('dvips', self.env, 40)
+					pstask = self.create_task('dvips', self.env)
 					pstask.set_inputs(task.m_outputs)
 					pstask.set_outputs(node.change_ext('.ps'))
 				if 'pdf' in outs:
-					pdftask = self.create_task('dvipdf', self.env, 40)
+					pdftask = self.create_task('dvipdf', self.env)
 					pdftask.set_inputs(task.m_outputs)
 					pdftask.set_outputs(node.change_ext('.pdf'))
 			elif self.m_type == 'pdflatex':
 				if 'ps' in outs:
-					pstask = self.create_task('pdf2ps', self.env, 40)
+					pstask = self.create_task('pdf2ps', self.env)
 					pstask.set_inputs(task.m_outputs)
 					pstask.set_outputs(node.change_ext('.ps'))
 
 def detect(conf):
 	v = conf.env
-
 	for p in 'tex latex pdflatex bibtex dvips dvipdf ps2pdf makeindex'.split():
 		conf.find_program(p, var=p.upper())
 		v[p.upper()+'FLAGS'] = ''
 	v['DVIPSFLAGS'] = '-Ppdf'
-	return 1
 
-def setup(env):
-	Action.simple_action('tex', '${TEX} ${TEXFLAGS} ${SRC}', color='BLUE')
-	Action.simple_action('bibtex', '${BIBTEX} ${BIBTEXFLAGS} ${SRC}', color='BLUE')
-	Action.simple_action('dvips', '${DVIPS} ${DVIPSFLAGS} ${SRC} -o ${TGT}', color='BLUE')
-	Action.simple_action('dvipdf', '${DVIPDF} ${DVIPDFFLAGS} ${SRC} ${TGT}', color='BLUE')
-	Action.simple_action('pdf2ps', '${PDF2PS} ${PDF2PSFLAGS} ${SRC} ${TGT}', color='BLUE')
+Action.simple_action('tex', '${TEX} ${TEXFLAGS} ${SRC}', color='BLUE', prio=60)
+Action.simple_action('bibtex', '${BIBTEX} ${BIBTEXFLAGS} ${SRC}', color='BLUE', prio=60)
+Action.simple_action('dvips', '${DVIPS} ${DVIPSFLAGS} ${SRC} -o ${TGT}', color='BLUE', prio=60)
+Action.simple_action('dvipdf', '${DVIPDF} ${DVIPDFFLAGS} ${SRC} ${TGT}', color='BLUE', prio=60)
+Action.simple_action('pdf2ps', '${PDF2PS} ${PDF2PSFLAGS} ${SRC} ${TGT}', color='BLUE', prio=60)
 
-	Action.Action('latex', vars=latex_vardeps, func=latex_build)
-	Action.Action('pdflatex', vars=pdflatex_vardeps, func=pdflatex_build)
-
-	Object.register('tex', texobj)
-
+Action.Action('latex', vars=latex_vardeps, func=latex_build, prio=40)
+Action.Action('pdflatex', vars=pdflatex_vardeps, func=pdflatex_build, prio=40)
 

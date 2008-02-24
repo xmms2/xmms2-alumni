@@ -2,30 +2,35 @@
 # encoding: utf-8
 # Thomas Nagy, 2006 (ita)
 
-"Additional configuration checks hooked on the configuration class"
+"""
+Additional configuration checks hooked on the configuration class
+we use the decorator notation: @conf
+to attach the functions as methods on the Configure class (the conf object)
+"""
 
-import Utils, Configure
+import Utils, Configure, config_c
+from Configure import conf
 from Params import error, fatal
 
 endian_str = '''
 #include <stdio.h>
-int am_big_endian()
+int is_big_endian()
 {
 	long one = 1;
 	return !(*((char *)(&one)));
 }
 int main()
 {
-	if (am_big_endian()) printf("bigendian=1\\n");
+	if (is_big_endian()) printf("bigendian=1\\n");
 	else printf("bigendian=0\\n");
 	return 0;
 }
 '''
 
-class compile_configurator(Configure.configurator_base):
+class compile_configurator(config_c.configurator_base):
 	"inheritance demo"
 	def __init__(self, conf):
-		Configure.configurator_base.__init__(self, conf)
+		config_c.configurator_base.__init__(self, conf)
 		self.name = ''
 		self.code = ''
 		self.flags = ''
@@ -47,7 +52,7 @@ class compile_configurator(Configure.configurator_base):
 			fatal('test configurator needs code to compile and run!')
 
 	def run_test(self):
-		obj = Configure.check_data()
+		obj = config_c.check_data()
 		obj.code = self.code
 		obj.env  = self.env
 		obj.uselib = self.uselib
@@ -60,10 +65,15 @@ class compile_configurator(Configure.configurator_base):
 
 		return ret
 
+@conf
 def create_compile_configurator(self):
 	return compile_configurator(self)
 
+@conf
 def checkEndian(self, define='', pathlst=[]):
+	"""the point of checkEndian is to make an example, the following is better
+	if sys.byteorder == "little":"""
+
 	if define == '': define = 'IS_BIGENDIAN'
 
 	if self.is_defined(define): return self.get_define(define)
@@ -74,33 +84,29 @@ def checkEndian(self, define='', pathlst=[]):
 	test.code = endian_str
 	code = test.run()['result']
 
-	#code = self.TryRun(endian_str, pathlst=pathlst)
-
+	t = Utils.to_hashtable(code)
 	try:
-		t = Utils.to_hashtable(code)
 		is_big = int(t['bigendian'])
-	except:
-		error('endian test failed '+code)
-		is_big = 0
-		raise
+	except KeyError:
+		raise Configure.ConfigurationError('endian test failed '+code)
 
 	if is_big: strbig = 'big endian'
-	else:      strbig = 'little endian'
-
+	else: strbig = 'little endian'
 	self.check_message_custom('endianness', '', strbig)
-	self.add_define(define, is_big)
+
+	self.define_cond(define, is_big)
 	return is_big
 
 features_str = '''
 #include <stdio.h>
-int am_big_endian()
+int is_big_endian()
 {
 	long one = 1;
 	return !(*((char *)(&one)));
 }
 int main()
 {
-	if (am_big_endian()) printf("bigendian=1\\n");
+	if (is_big_endian()) printf("bigendian=1\\n");
 	else printf("bigendian=0\\n");
 	printf("int_size=%d\\n", sizeof(int));
 	printf("long_int_size=%d\\n", sizeof(long int));
@@ -110,6 +116,7 @@ int main()
 }
 '''
 
+@conf
 def checkFeatures(self, lst=[], pathlst=[]):
 
 	global endian
@@ -117,20 +124,15 @@ def checkFeatures(self, lst=[], pathlst=[]):
 	test = self.create_test_configurator()
 	test.code = features_str
 	code = test.run()['result']
-	#code = self.TryRun(features_str, pathlst=pathlst)
 
+	t = Utils.to_hashtable(code)
 	try:
-		t = Utils.to_hashtable(code)
 		is_big = int(t['bigendian'])
-	except:
-		error('endian test failed '+code)
-		is_big = 0
-		raise
+	except KeyError:
+		raise Configure.ConfigurationError('endian test failed '+code)
 
 	if is_big: strbig = 'big endian'
-	else:      strbig = 'little endian'
-
-
+	else: strbig = 'little endian'
 	self.check_message_custom('endianness', '', strbig)
 
 	self.check_message_custom('int size', '', t['int_size'])
@@ -138,21 +140,19 @@ def checkFeatures(self, lst=[], pathlst=[]):
 	self.check_message_custom('long long int size', '', t['long_long_int_size'])
 	self.check_message_custom('double size', '', t['double_size'])
 
-	self.add_define('IS_BIGENDIAN', is_big)
-	self.add_define('INT_SIZE', int(t['int_size']))
-	self.add_define('LONG_INT_SIZE', int(t['long_int_size']))
-	self.add_define('LONG_LONG_INT_SIZE', int(t['long_long_int_size']))
-	self.add_define('DOUBLE_SIZE', int(t['double_size']))
+	self.define_cond('IS_BIGENDIAN', is_big)
+	self.define_cond('INT_SIZE', int(t['int_size']))
+	self.define_cond('LONG_INT_SIZE', int(t['long_int_size']))
+	self.define_cond('LONG_LONG_INT_SIZE', int(t['long_long_int_size']))
+	self.define_cond('DOUBLE_SIZE', int(t['double_size']))
 
 	return is_big
 
+@conf
 def detect_platform(self):
 	"""adapted from scons"""
 	import os, sys
-	osname = os.name
-	if osname == 'java':
-		osname = os._osType
-	if osname == 'posix':
+	if os.name == 'posix':
 		if sys.platform == 'cygwin':
 			return 'cygwin'
 		if str.find(sys.platform, 'linux') != -1:
@@ -170,12 +170,15 @@ def detect_platform(self):
 		return 'posix'
 	elif os.name == 'os2':
 		return 'os2'
+	elif os.name == 'java':
+		return 'java'
 	else:
 		return sys.platform
 
+@conf
 def find_header(self, header, define='', paths=''):
 	if not define:
-		define = 'HAVE_' + header.upper().replace('/', '_').replace('.', '_')
+		define = self.have_define(header)
 	test = self.create_header_enumerator()
 	test.mandatory = 1
 	test.name = header
@@ -183,9 +186,10 @@ def find_header(self, header, define='', paths=''):
 	test.define = define
 	return test.run()
 
+@conf
 def check_header(self, header, define='', mandatory=0):
 	if not define:
-		define = 'HAVE_' + header.upper().replace('/', '_').replace('.', '_')
+		define = self.have_define(header)
 
 	test = self.create_header_configurator()
 	test.name = header
@@ -193,6 +197,7 @@ def check_header(self, header, define='', mandatory=0):
 	test.mandatory = mandatory
 	return test.run()
 
+@conf
 def try_build_and_exec(self, code, uselib=''):
 	test = self.create_test_configurator()
 	test.uselib = uselib
@@ -201,6 +206,7 @@ def try_build_and_exec(self, code, uselib=''):
 	if ret: return ret['result']
 	return None
 
+@conf
 def try_build(self, code, uselib='', msg='', force_compiler = ''):
 	test = self.create_compile_configurator()
 	test.uselib = uselib
@@ -213,10 +219,12 @@ def try_build(self, code, uselib='', msg='', force_compiler = ''):
 	ret = test.run()
 	return ret
 
-def check_flags(self, flags, uselib='', options='', msg=1):
+@conf
+def check_flags(self, flags, uselib='', options='', kind='cc', msg=1):
 	test = self.create_test_configurator()
 	test.uselib = uselib
 	test.code = 'int main() {return 0;}\n'
+	test.force_compiler = kind
 	test.flags = flags
 	ret = test.run()
 
@@ -225,21 +233,19 @@ def check_flags(self, flags, uselib='', options='', msg=1):
 	if ret: return 1
 	return None
 
-def setup(env):
-	pass
-
-
 # function wrappers for convenience
+@conf
 def check_header2(self, name, mandatory=1, define=''):
 	import os
 	ck_hdr = self.create_header_configurator()
 	if define: ck_hdr.define = define
 	# header provides no fallback for define:
-	else: ck_hdr.define = 'HAVE_' + os.path.basename(name).replace('.','_').upper()
+	else: ck_hdr.define = self.have_define(os.path.basename(name))
 	ck_hdr.mandatory = mandatory
 	ck_hdr.name = name
 	return ck_hdr.run()
 
+@conf
 def check_library2(self, name, mandatory=1, uselib=''):
 	ck_lib = self.create_library_configurator()
 	if uselib: ck_lib.uselib = uselib
@@ -247,6 +253,7 @@ def check_library2(self, name, mandatory=1, uselib=''):
 	ck_lib.name = name
 	return ck_lib.run()
 
+@conf
 def check_pkg2(self, name, version, mandatory=1, uselib=''):
 	ck_pkg = self.create_pkgconfig_configurator()
 	if uselib: ck_pkg.uselib = uselib
@@ -255,6 +262,7 @@ def check_pkg2(self, name, version, mandatory=1, uselib=''):
 	ck_pkg.name = name
 	return ck_pkg.run()
 
+@conf
 def check_cfg2(self, name, mandatory=1, define='', uselib=''):
 	ck_cfg = self.create_cfgtool_configurator()
 	if uselib: ck_cfg.uselib = uselib
@@ -263,28 +271,4 @@ def check_cfg2(self, name, mandatory=1, define='', uselib=''):
 	ck_cfg.mandatory = mandatory
 	ck_cfg.binary = name + '-config'
 	return ck_cfg.run()
-
-def detect(conf):
-	"attach the checks to the conf object"
-
-	conf.hook(find_header)
-	conf.hook(check_header)
-	conf.hook(create_compile_configurator)
-	conf.hook(try_build)
-	conf.hook(try_build_and_exec)
-	conf.hook(check_flags)
-
-	# additional methods
-	conf.hook(check_header2)
-	conf.hook(check_library2)
-	conf.hook(check_pkg2)
-	conf.hook(check_cfg2)
-
-	# the point of checkEndian is to make an example, the following is better
-	# if sys.byteorder == "little":
-	conf.hook(checkEndian)
-	conf.hook(checkFeatures)
-	conf.hook(detect_platform)
-
-	return 1
 

@@ -1,13 +1,16 @@
 #! /usr/bin/env python
 # encoding: utf-8
 # Carlos Rafael Giani, 2007 (dv)
-# Thomas Nagy, 2007 (ita)
+# Thomas Nagy, 2007-2008 (ita)
 
 import os, sys, re, optparse
-if __name__ == "__main__":
-	sys.path.append(os.path.abspath('..'))
+import ccroot # <- leave this
 import Object, Utils, Action, Params, checks, Configure, Scan
 from Params import debug, error
+from Object import taskgen, feature, after, before, extension
+
+EXT_D = ['.d', '.di', '.D']
+D_METHS = ['apply_core', 'apply_vnum', 'apply_objdeps'] # additional d methods
 
 def filter_comments(filename):
 	f = open(filename, 'r')
@@ -36,6 +39,7 @@ def filter_comments(filename):
 						else: break
 					#print "cnt is ", str(cnt)
 					if (cnt%2)==0: break
+		# i -= 1 # <- useless in practice
 		# skip a char
 		elif c == "'":
 			i += 1
@@ -98,13 +102,14 @@ def filter_comments(filename):
 				c = txt[i]
 				while i < max and c != '\n':
 					i += 1
+					c = txt[i]
 		# a valid char, add it to the buffer
 		else:
 			buf.append(c)
 		i += 1
 	return buf
 
-class parser:
+class d_parser(object):
 	def __init__(self, env, incpaths):
 		#self.code = ''
 		#self.module = ''
@@ -127,7 +132,7 @@ class parser:
 	def tryfind(self, filename):
 		found = 0
 		for n in self.incpaths:
-			found = n.find_source(filename.replace('.', '/')+'.d', create=0)
+			found = n.find_resource(filename.replace('.', '/') + '.d')
 			if found:
 				self.m_nodes.append(found)
 				self.waiting.append(found)
@@ -174,7 +179,7 @@ class parser:
 					lst.append(match)
 		return lst
 
-	def start2(self, node):
+	def start(self, node):
 		self.waiting = [node]
 		# while the stack is not empty, add the dependencies
 		while self.waiting:
@@ -197,14 +202,12 @@ class d_scanner(Scan.scanner):
 	"scanner for d files"
 	def __init__(self):
 		Scan.scanner.__init__(self)
-		self.do_scan = self.do_scan_new
-		self.get_signature = self.get_signature_rec
 
 	def scan(self, task, node):
 		"look for .d/.di the .d source need"
 		debug("_scan_preprocessor(self, node, env, path_lst)", 'ccroot')
-		gruik = parser(task.m_env, task.inc_paths)
-		gruik.start2(node)
+		gruik = d_parser(task.env(), task.path_lst)
+		gruik.start(node)
 
 		if Params.g_verbose:
 			debug("nodes found for %s: %s %s" % (str(node), str(gruik.m_nodes), str(gruik.m_names)), 'deps')
@@ -214,13 +217,37 @@ class d_scanner(Scan.scanner):
 g_d_scanner = d_scanner()
 "scanner for d programs"
 
-class dobj(Object.genobj):
+def get_target_name(self):
+	"for d programs and libs"
+	v = self.env
+	return v['D_%s_PATTERN' % self.m_type] % self.target
 
-	s_default_ext = ['.d', '.di', '.D']
-	def __init__(self, type='program'):
-		Object.genobj.__init__(self, type)
+d_params = {
+'dflags': {'gdc':'', 'dmd':''},
+'importpaths':'',
+'libs':'',
+'libpaths':'',
+'generate_headers':False,
+}
 
-		self.dflags = ''
+@taskgen
+@before('apply_type_vars')
+@feature('d')
+def init_d(self):
+	for x in d_params:
+		setattr(self, x, getattr(self, x, d_params[x]))
+
+class d_taskgen(Object.task_gen):
+	def __init__(self, *k):
+		Object.task_gen.__init__(self, *k)
+
+		# TODO m_type is obsolete
+		if len(k)>1: self.m_type = k[1]
+		else: self.m_type = ''
+		if self.m_type:
+			self.features.append('d' + self.m_type)
+
+		self.dflags = {'gdc':'', 'dmd':''}
 		self.importpaths = ''
 		self.libs = ''
 		self.libpaths = ''
@@ -228,232 +255,238 @@ class dobj(Object.genobj):
 		self.uselib_local = ''
 		self.inc_paths = []
 
-	def apply(self):
+		self.generate_headers = False # set to true if you want .di files as well as .o
 
-		global g_d_scanner
+		self.compiled_tasks = []
 
-		#initialization
-		if self.m_type == 'objects':
-			type = 'program'
+		self.add_objects = []
+
+		self.vnum = '1.0.0'
+
+Object.add_feature('d', D_METHS)
+
+@taskgen
+@feature('d')
+@after('apply_d_link')
+@before('apply_vnum')
+def apply_d_libs(self):
+	uselib = self.to_list(self.uselib)
+	seen = []
+	local_libs = self.to_list(self.uselib_local)
+	libs = []
+	libpaths = []
+	env = self.env
+	while local_libs:
+		x = local_libs.pop()
+
+		# visit dependencies only once
+		if x in seen:
+			continue
 		else:
-			type = self.m_type
-
-		env = self.env
-		dpath_st         = env['DPATH_ST']
-		lib_st           = env['DLIB_ST']
-		libpath_st       = env['DLIBPATH_ST']
-
-		dflags = []
-		importpaths = []
-		libpaths = []
-		libs = []
-
-		if type == 'staticlib':
-			linktask = self.create_task('ar_link_static', self.env, 101)
-		else:
-			linktask = self.create_task('d_link', self.env, 101)
-
-
-		uselib = self.to_list(self.uselib)
-		seen = []
-		names = self.to_list(self.uselib_local)
-		while names:
-			x = names[0]
-
-			# visit dependencies only once
-			if x in seen:
-				names = names[1:]
-				continue
-
-			# object does not exist ?
-			y = Object.name_to_obj(x)
-			if not y:
-				fatal('object not found in uselib_local: obj %s uselib %s' % (self.name, x))
-				names = names[1:]
-				continue
-
-			# object has ancestors to process first ? update the list of names
-			if y.uselib_local:
-				added = 0
-				lst = y.to_list(y.uselib_local)
-				lst.reverse()
-				for u in lst:
-					if u in seen: continue
-					added = 1
-					names = [u]+names
-				if added: continue # list of names modified, loop
-
-			# safe to process the current object
-			if not y.m_posted: y.post()
 			seen.append(x)
 
-			if y.m_type == 'shlib':
-				libs = libs + [y.target]
-			elif y.m_type == 'staticlib':
-				libs = libs + [y.target]
-			elif y.m_type == 'objects':
-				pass
-			else:
-				error('%s has unknown object type %s, in apply_lib_vars, uselib_local.'
-				      % (y.name, y.m_type))
+		# object does not exist ?
+		y = Object.name_to_obj(x)
+		if not y:
+			fatal('object not found in uselib_local: obj %s uselib %s' % (self.name, x))
 
-			# add the link path too
-			tmp_path = y.path.bldpath(self.env)
-			if not tmp_path in libpaths: libpaths = [tmp_path] + libpaths
+		# object has ancestors to process first ? update the list of names
+		if y.uselib_local:
+			added = 0
+			lst = y.to_list(y.uselib_local)
+			lst.reverse()
+			for u in lst:
+				if u in seen: continue
+				added = 1
+				local_libs = [u]+local_libs
+			if added: continue # list of names modified, loop
 
-			# set the dependency over the link task
-			if y.m_linktask is not None:
-				linktask.set_run_after(y.m_linktask)
-				dep_nodes = getattr(linktask, 'dep_nodes', [])
-				dep_nodes += y.m_linktask.m_outputs
-				linktask.dep_nodes = dep_nodes
+		# safe to process the current object
+		if not y.m_posted: y.post()
+		seen.append(x)
 
-			# add ancestors uselib too
-			# TODO potential problems with static libraries ?
-			morelibs = y.to_list(y.uselib)
-			for v in morelibs:
-				if v in uselib: continue
-				uselib = [v]+uselib
-			names = names[1:]
+		if 'dshlib' in y.features or 'dstaticlib' in y.features:
+			libs.append(y.target)
 
+		# add the link path too
+		tmp_path = y.path.bldpath(env)
+		if not tmp_path in libpaths: libpaths = [tmp_path] + libpaths
 
+		# set the dependency over the link task
+		if y.link_task is not None:
+			self.link_task.set_run_after(y.link_task)
+			dep_nodes = getattr(self.link_task, 'dep_nodes', [])
+			self.link_task.dep_nodes = dep_nodes + y.link_task.m_outputs
 
-		# add compiler flags
-		for i in uselib:
-			if self.env['DFLAGS_' + i]:
-				for dflag in self.to_list(self.env['DFLAGS_' + i]):
-					if not dflag in dflags:
-						dflags += [dflag]
-		dflags = self.to_list(self.dflags) + dflags
+		# add ancestors uselib too
+		# TODO potential problems with static libraries ?
+		morelibs = y.to_list(y.uselib)
+		for v in morelibs:
+			if v in uselib: continue
+			uselib = [v]+uselib
+	self.uselib = uselib
 
-		for dflag in dflags:
-			if not dflag in self.env['DFLAGS']:
-				self.env['DFLAGS'] += [dflag]
+@taskgen
+@feature('dprogram', 'dshlib', 'dstaticlib')
+@after('apply_core')
+def apply_d_link(self):
+	link = getattr(self, 'link', None)
+	if not link:
+		if 'dstaticlib' in self.features: link = 'ar_link_static'
+		else: link = 'd_link'
+	linktask = self.create_task(link, self.env)
+	outputs = [t.m_outputs[0] for t in self.compiled_tasks]
+	linktask.set_inputs(outputs)
+	linktask.set_outputs(self.path.find_or_declare(get_target_name(self)))
 
+	self.link_task = linktask
 
-		d_shlib_dflags = self.env['D_' + type + '_DFLAGS']
-		if d_shlib_dflags:
-			for dflag in d_shlib_dflags:
-				if not dflag in self.env['DFLAGS']:
-					self.env['DFLAGS'] += [dflag]
+@taskgen
+@feature('d')
+@after('apply_core')
+def apply_d_vars(self):
+	env = self.env
+	dpath_st   = env['DPATH_ST']
+	lib_st     = env['DLIB_ST']
+	libpath_st = env['DLIBPATH_ST']
 
+	dflags = {'gdc':[], 'dmd':[]}
+	importpaths = self.to_list(self.importpaths)
+	libpaths = []
+	libs = []
+	uselib = self.to_list(self.uselib)
 
-		# add import paths
-		for i in uselib:
-			if self.env['DPATH_' + i]:
-				for entry in self.to_list(self.env['DPATH_' + i]):
-					if not entry in importpaths:
-						importpaths += [entry]
-		importpaths = self.to_list(self.importpaths) + importpaths
+	# add compiler flags
+	for i in uselib:
+		if env['DFLAGS_' + i]:
+			for dflag in self.to_list(env['DFLAGS_' + i][env['COMPILER_D']]):
+				if not dflag in dflags[env['COMPILER_D']]:
+					dflags[env['COMPILER_D']] += [dflag]
+	dflags[env['COMPILER_D']] = self.to_list(self.dflags[env['COMPILER_D']]) + dflags[env['COMPILER_D']]
 
-		# now process the import paths
-		for path in importpaths:
-			if Utils.is_absolute_path(path):
-				imppath = path
-			else:
-				node = self.path.find_source_lst(Utils.split_path(path))
-				self.inc_paths.append(node)
-				imppath = node.srcpath(self.env)
-			self.env.append_unique('_DIMPORTFLAGS', dpath_st % imppath)
+	for dflag in dflags[env['COMPILER_D']]:
+		if not dflag in env['DFLAGS'][env['COMPILER_D']]:
+			env['DFLAGS'][env['COMPILER_D']] += [dflag]
 
+	d_shlib_dflags = env['D_' + self.m_type + '_DFLAGS']
+	if d_shlib_dflags:
+		for dflag in d_shlib_dflags:
+			if not dflag in env['DFLAGS'][env['COMPILER_D']]:
+				env['DFLAGS'][env['COMPILER_D']] += [dflag]
 
-		# add library paths
-		for i in uselib:
-			if self.env['LIBPATH_' + i]:
-				for entry in self.to_list(self.env['LIBPATH_' + i]):
-					if not entry in libpaths:
-						libpaths += [entry]
-		libpaths = self.to_list(self.libpaths) + libpaths
+	env['_DFLAGS'] = env['DFLAGS'][env['COMPILER_D']]
 
-		# now process the library paths
-		for path in libpaths:
-			self.env.append_unique('_DLIBDIRFLAGS', libpath_st % path)
+	# add import paths
+	for i in uselib:
+		if env['DPATH_' + i]:
+			for entry in self.to_list(env['DPATH_' + i]):
+				if not entry in importpaths:
+					importpaths.append(entry)
 
+	# now process the import paths
+	for path in importpaths:
+		if os.path.isabs(path):
+			env.append_unique('_DIMPORTFLAGS', dpath_st % path)
+		else:
+			node = self.path.find_dir(path)
+			self.inc_paths.append(node)
+			env.append_unique('_DIMPORTFLAGS', dpath_st % node.srcpath(env))
+			env.append_unique('_DIMPORTFLAGS', dpath_st % node.bldpath(env))
 
-		# add libraries
-		for i in uselib:
-			if self.env['LIB_' + i]:
-				for entry in self.to_list(self.env['LIB_' + i]):
-					if not entry in libs:
-						libs += [entry]
-		libs = libs + self.to_list(self.libs)
+	# add library paths
+	for i in uselib:
+		if env['LIBPATH_' + i]:
+			for entry in self.to_list(env['LIBPATH_' + i]):
+				if not entry in libpaths:
+					libpaths += [entry]
+	libpaths = self.to_list(self.libpaths) + libpaths
 
-		# now process the libraries
-		for lib in libs:
-			self.env.append_unique('_DLIBFLAGS', lib_st % lib)
+	# now process the library paths
+	for path in libpaths:
+		env.append_unique('_DLIBDIRFLAGS', libpath_st % path)
 
+	# add libraries
+	for i in uselib:
+		if env['LIB_' + i]:
+			for entry in self.to_list(env['LIB_' + i]):
+				if not entry in libs:
+					libs += [entry]
+	libs = libs + self.to_list(self.libs)
 
-		# add linker flags
-		for i in uselib:
-			dlinkflags = self.env['DLINKFLAGS_' + i]
-			if dlinkflags:
-				for linkflag in dlinkflags:
-					self.env.append_unique('DLINKFLAGS', linkflag)
+	# now process the libraries
+	for lib in libs:
+		env.append_unique('_DLIBFLAGS', lib_st % lib)
 
-		d_shlib_linkflags = self.env['D_' + type + '_LINKFLAGS']
-		if d_shlib_linkflags:
-			for linkflag in d_shlib_linkflags:
-				self.env.append_unique('DLINKFLAGS', linkflag)
+	# add linker flags
+	for i in uselib:
+		dlinkflags = env['DLINKFLAGS_' + i]
+		if dlinkflags:
+			for linkflag in dlinkflags:
+				env.append_unique('DLINKFLAGS', linkflag)
 
+@taskgen
+@after('apply_d_vars')
+@feature('dshlib')
+def add_shlib_d_flags(self):
+	for linkflag in self.env['D_shlib_LINKFLAGS']:
+		self.env.append_unique('DLINKFLAGS', linkflag)
 
-		# create compile tasks
+@extension(EXT_D)
+def d_hook(self, node):
+	# create the compilation task: cpp or cc
+	task = self.create_task('d', self.env)
+	try: obj_ext = self.obj_ext
+	except AttributeError: obj_ext = '_%d.o' % self.idx
 
-		compiletasks = []
+	global g_d_scanner
+	task.m_scanner = g_d_scanner
+	task.path_lst = self.inc_paths
+	#task.defines  = self.scanner_defines
 
-		obj_ext = self.env['D_' + type + '_obj_ext'][0]
+	task.m_inputs = [node]
+	task.m_outputs = [node.change_ext(obj_ext)]
+	self.compiled_tasks.append(task)
 
-		find_source_lst = self.path.find_source_lst
+	if self.generate_headers:
+		task.m_action = Action.g_actions['d_with_header']
+		header_node = node.change_ext(self.env['DHEADER_ext'])
+		task.m_outputs += [header_node]
 
-		for filename in self.to_list(self.source):
-			node = find_source_lst(Utils.split_path(filename))
-			base, ext = os.path.splitext(filename)
+d_str = '${D_COMPILER} ${_DFLAGS} ${_DIMPORTFLAGS} ${D_SRC_F}${SRC} ${D_TGT_F}${TGT}'
+d_with_header_str = '${D_COMPILER} ${_DFLAGS} ${_DIMPORTFLAGS} \
+${D_HDR_F}${TGT[1].bldpath(env)} \
+${D_SRC_F}${SRC} \
+${D_TGT_F}${TGT[0].bldpath(env)}'
+link_str = '${D_LINKER} ${DLNK_SRC_F}${SRC} ${DLNK_TGT_F}${TGT} ${DLINKFLAGS} ${_DLIBDIRFLAGS} ${_DLIBFLAGS}'
 
-			if not ext in self.s_default_ext:
-				fatal("unknown file " + filename)
+Action.simple_action('d', d_str, 'GREEN', prio=100)
+Action.simple_action('d_with_header', d_with_header_str, 'GREEN', prio=100)
+Action.simple_action('d_link', link_str, color='YELLOW', prio=101)
 
-			task = self.create_task('d', self.env, 10)
-			task.set_inputs(node)
-			task.set_outputs(node.change_ext(obj_ext))
-			task.m_scanner = g_d_scanner
-			task.inc_paths = self.inc_paths
+# for feature request #104
+@taskgen
+def generate_header(self, filename, inst_var, inst_dir):
+	if not hasattr(self, 'header_lst'): self.header_lst = []
+	self.meths.add('process_header')
+	self.header_lst.append([filename, inst_var, inst_dir])
 
-			compiletasks.append(task)
+@taskgen
+@before('apply_core')
+def process_header(self):
+	env = self.env
+	for i in getattr(self, 'header_lst', []):
+		node = self.path.find_resource(i[0])
 
-		# and after the objects, the remaining is the link step
-		# link in a lower priority (101) so it runs alone (default is 10)
-		global g_prio_link
+		if not node:
+			fatal('file not found on d obj '+i[0])
 
-		outputs = []
-		for t in compiletasks: outputs.append(t.m_outputs[0])
-		linktask.set_inputs(outputs)
-		linktask.set_outputs(self.path.find_build(self.get_target_name()))
+		task = self.create_task('d_header', env, 2)
+		task.set_inputs(node)
+		task.set_outputs(node.change_ext('.di'))
 
-		self.m_linktask = linktask
+d_header_str = '${D_COMPILER} ${D_HEADER} ${SRC}'
+Action.simple_action('d_header', d_header_str, color='BLUE', prio=80)
 
-	def get_target_name(self):
-		v = self.env
-
-		prefix = v['D_' + self.m_type + '_PREFIX']
-		suffix = v['D_' + self.m_type + '_SUFFIX']
-
-		if not prefix: prefix=''
-		if not suffix: suffix=''
-		return ''.join([prefix, self.target, suffix])
-
-	def install(self):
-		pass
-
-def setup(env):
-	d_str = '${D_COMPILER} ${DFLAGS} ${_DIMPORTFLAGS} ${D_SRC_F}${SRC} ${D_TGT_F}${TGT}'
-	link_str = '${D_LINKER} ${DLNK_SRC_F}${SRC} ${DLNK_TGT_F}${TGT} ${DLINKFLAGS} ${_DLIBDIRFLAGS} ${_DLIBFLAGS}'
-
-	Action.simple_action('d', d_str, 'GREEN')
-	Action.simple_action('d_link', link_str, color='YELLOW')
-
-	Object.register('d', dobj)
-
-def detect(conf):
-	return 1
 
 # quick test #
 if __name__ == "__main__":
@@ -465,7 +498,7 @@ if __name__ == "__main__":
 	#Params.g_build = dum()
 
 	try: arg = sys.argv[1]
-	except: arg = "file.d"
+	except IndexError: arg = "file.d"
 
 	print "".join(filter_comments(arg))
 	# TODO
@@ -481,8 +514,8 @@ if __name__ == "__main__":
 
 	#print "now parsing"
 	#print "-------------------------------------------"
-	'''
-	parser_ = parser()
+	"""
+	parser_ = d_parser()
 	parser_.start(arg)
 
 	print "module: %s" % parser_.module
@@ -490,4 +523,5 @@ if __name__ == "__main__":
 	for imp in parser_.imports:
 		print imp + " ",
 	print
-'''
+"""
+

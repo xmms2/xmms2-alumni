@@ -1,89 +1,113 @@
 #! /usr/bin/env python
 # encoding: utf-8
-# Thomas Nagy, 2005 (ita)
+# Thomas Nagy, 2005-2008 (ita)
 
 "Atomic operations that create nodes or execute commands"
 
 import os, types, shutil
-try: from hashlib import md5
-except ImportError: from md5 import md5
-
-import Params, Scan, Action, Runner, Object
+from Utils import md5
+import Params, Action, Runner, Common, Scan
 from Params import debug, error, warning
+from Constants import *
 
-g_tasks_done    = []
-"tasks that have been run, this is used in tests to check which tasks were actually launched"
-
-g_default_param = {'path_lst':[]}
-"the default scanner parameter"
-
-class TaskManager:
-	"""There is a single instance of TaskManager held by Task.py:g_tasks
-	The manager holds a list of TaskGroup
+class TaskManager(object):
+	"""The manager is attached to the build object, it holds a list of TaskGroup
 	Each TaskGroup contains a map(priority, list of tasks)"""
 	def __init__(self):
 		self.groups = []
-		self.idx    = 0
+		self.idx = 0
+		self.tasks_done = []
+	def flush(self):
+		for k in self.groups:
+			k.flush()
 	def add_group(self, name=''):
 		if not name:
-			try: size = len(self.groups)
-			except: size = 0
+			size = len(self.groups)
 			name = 'group-%d' % size
 		if not self.groups:
 			self.groups = [TaskGroup(name)]
 			return
-		if not self.groups[0].prio:
+		if not self.groups[0].tasks:
 			warning('add_group: an empty group is already present')
 			return
 		self.groups = self.groups + [TaskGroup(name)]
-	def add_task(self, task, prio):
+	def add_task(self, task):
 		if not self.groups: self.add_group('group-0')
 		task.m_idx = self.idx
 		self.idx += 1
-		self.groups[-1].add_task(task, prio)
+		self.groups[-1].add_task(task)
 	def total(self):
 		total = 0
 		if not self.groups: return 0
 		for group in self.groups:
-			for p in group.prio:
-				total += len(group.prio[p])
+			total += len(group.tasks)
+			#for p in group.prio:
+			#	total += len(group.prio[p])
 		return total
 	def debug(self):
 		for i in self.groups:
 			print "-----group-------", i.name
 			for j in i.prio:
 				print "prio: ", j, str(i.prio[j])
+	def add_finished(self, tsk):
+		self.tasks_done.append(tsk)
+		# TODO we could install using threads here
+		if Params.g_install and hasattr(tsk, 'install'):
+			d = tsk.install
 
-"the container of all tasks (instance of TaskManager)"
-g_tasks = TaskManager()
+			if type(d) is types.FunctionType:
+				d(tsk)
+			elif type(d) is types.StringType:
+				if not tsk.env()[d]: return
+				lst = [a.relpath_gen(Params.g_build.m_srcnode) for a in tsk.m_outputs]
+				Common.install_files(tsk.env()[d], '', lst, chmod=0644, env=tsk.env())
+			else:
+				if not d['var']: return
+				lst = [a.relpath_gen(Params.g_build.m_srcnode) for a in tsk.m_outputs]
+				if d.get('src', 0): lst += [a.relpath_gen(Params.g_build.m_srcnode) for a in tsk.m_inputs]
+				# TODO ugly hack
+				if d.get('as', ''):
+					Common.install_as(d['var'], d['dir']+d['as'], lst[0], chmod=d.get('chmod', 0644), env=tsk.env())
+				else:
+					Common.install_files(d['var'], d['dir'], lst, chmod=d.get('chmod', 0644), env=tsk.env())
 
-class TaskGroup:
+class TaskGroup(object):
 	"A TaskGroup maps priorities (integers) to lists of tasks"
 	def __init__(self, name):
 		self.name = name
 		self.info = ''
-		self.prio = {} # map priority numbers to tasks
-	def add_task(self, task, prio):
-		try: self.prio[prio].append(task)
-		except: self.prio[prio] = [task]
+		self.tasks = []
+		self.prio = {}
+	def add_task(self, task):
+		try: self.tasks.append(task)
+		except KeyError: self.tasks = [task]
+	def flush(self):
+		# FIXME TODO in the future we will allow to go back in the past
+		for x in self.tasks:
+			try: p = getattr(x, 'prio')
+			except AttributeError:
+				try: p = x.m_action.prio
+				except AttributeError: p = 100
+			try: self.prio[p].append(x)
+			except KeyError: self.prio[p] = [x]
 
-class TaskBase:
+class TaskBase(object):
 	"TaskBase is the base class for task objects"
-	def __init__(self, priority, normal=1):
+	def __init__(self, normal=1):
 		self.m_display = ''
 		self.m_hasrun=0
-		global g_tasks
+
+		manager = Params.g_build.task_manager
 		if normal:
-			# add to the list of tasks
-			g_tasks.add_task(self, priority)
+			manager.add_task(self)
 		else:
-			self.m_idx = g_tasks.idx
-			g_tasks.idx += 1
+			self.m_idx = manager.idx
+			manager.idx += 1
 	def may_start(self):
-		"return non-zero if the task may is ready"
+		"non-zero if the task is ready"
 		return 1
 	def must_run(self):
-		"return 0 if the task does not need to run"
+		"0 if the task does not need to run"
 		return 1
 	def prepare(self):
 		"prepare the task for further processing"
@@ -101,7 +125,7 @@ class TaskBase:
 		"process the task"
 		pass
 	def color(self):
-		"return the color to use for the console messages"
+		"color to use for the console messages"
 		return 'BLUE'
 	def set_display(self, v):
 		self.m_display = v
@@ -109,12 +133,13 @@ class TaskBase:
 		return self.m_display
 
 class Task(TaskBase):
-	"Task is the more common task. It has input nodes and output nodes"
-	def __init__(self, action_name, env, priority=5, normal=1):
-		TaskBase.__init__(self, priority, normal)
+	"The most common task, it has input and output nodes"
+	def __init__(self, action_name, env, normal=1, prio=None):
+		TaskBase.__init__(self, normal=normal)
 
 		# name of the action associated to this task type
 		self.m_action = Action.g_actions[action_name]
+		if not (prio is None): self.prio = prio
 
 		# environment in use
 		self.m_env = env
@@ -124,32 +149,33 @@ class Task(TaskBase):
 		self.m_inputs  = []
 		self.m_outputs = []
 
-		# scanner function
-		self.m_scanner        = Scan.g_default_scanner
+		self.m_deps_nodes = []
+		self.m_run_after = []
 
-		# TODO get rid of this:
-		# default scanner parameter
-		global g_default_param
-		self.m_scanner_params = g_default_param
+		# Additionally, you may define the following
+		#self.dep_vars  = 'PREFIX DATADIR'
+		#self.m_scanner = some_scanner_object
 
-		# additionally, you may define the following
-		# self.dep_vars = 'some_env_var'
+	def env(self):
+		# TODO IDEA in the future, attach the task generator instead of the env
+		return self.m_env
 
+	def __repr__(self):
+		return "".join(['\n\t{task: ', self.m_action.m_name, " ", ",".join([x.m_name for x in self.m_inputs]), " -> ", ",".join([x.m_name for x in self.m_outputs]), '}'])
 
 	def set_inputs(self, inp):
-		if type(inp) is types.ListType: self.m_inputs = inp
-		else: self.m_inputs = [inp]
+		if type(inp) is types.ListType: self.m_inputs += inp
+		else: self.m_inputs.append(inp)
 
 	def set_outputs(self, out):
-		if type(out) is types.ListType: self.m_outputs = out
-		else: self.m_outputs = [out]
+		if type(out) is types.ListType: self.m_outputs += out
+		else: self.m_outputs.append(out)
 
 	def set_run_after(self, task):
 		"set (scheduler) dependency on another task"
 		# TODO: handle list or object
 		assert isinstance(task, TaskBase)
-		try: self.m_run_after.append(task)
-		except AttributeError: self.m_run_after = [task]
+		self.m_run_after.append(task)
 
 	def get_run_after(self):
 		try: return self.m_run_after
@@ -157,63 +183,77 @@ class Task(TaskBase):
 
 	def add_file_dependency(self, filename):
 		"TODO user-provided file dependencies"
-		node = Params.g_build.m_current.find_build(filename)
-		try: self.m_deps_nodes.append(node)
-		except: self.m_deps_nodes = [node]
+		node = Params.g_build.m_current.find_resource(filename)
+		self.m_deps_nodes.append(node)
 
 	#------------ users are probably less interested in the following methods --------------#
 
 	def signature(self):
 		# compute the result one time, and suppose the scanner.get_signature will give the good result
-		try: return self._sign_all
+		try: return self.sign_all
 		except AttributeError: pass
 
+		env = self.env()
 		tree = Params.g_build
 
 		m = md5()
 
-		dep_sig = Params.sig_nil
-		scan = None
-		try:
-			scan = self.m_scanner
-		except AttributeError: # there is no scanner for the task
-			for x in self.m_inputs:
-				variant = x.variant(self.m_env)
-				v = tree.m_tstamp_variants[variant][x]
-				dep_sig = hash( (dep_sig, v) )
-				m.update(v)
+		# TODO maybe we could split this dep sig into two parts (nodes, dependencies)
+		# this would only help for debugging though
+		dep_sig = SIG_NIL
+		scan = getattr(self, 'm_scanner', None)
 		if scan:
 			dep_sig = scan.get_signature(self)
-			m.update(dep_sig)
+			try: m.update(dep_sig)
+			except TypeError: raise Scan.ScannerError, "failure to compute the signature"
+		else:
+			# compute the signature from the inputs (no scanner)
+			for x in self.m_inputs:
+				v = tree.m_tstamp_variants[x.variant(env)][x.id]
+				dep_sig = hash( (dep_sig, v) )
+				m.update(v)
 
-		act_sig = None
-		try: act_sig = self.m_action.signature(self)
-		except AttributeError: act_sig = Object.sign_env_vars(self.m_env, self.m_action.m_vars)
+		# manual dependencies, they can slow down the builds
+		try:
+			additional_deps = tree.deps_man
+			for x in self.m_inputs + self.m_outputs:
+				try:
+					d = additional_deps[x]
+				except KeyError:
+					continue
+				if callable(d): d = d() # dependency is a function, call it
+				dep_sig = hash( (dep_sig, d) )
+				m.update(d)
+		except AttributeError:
+			pass
+
+		# dependencies on the environment vars
+		fun = getattr(self.m_action, 'signature', None)
+		if fun: act_sig = self.m_action.signature(self)
+		else: act_sig = env.sign_vars(self.m_action.m_vars)
 		m.update(act_sig)
 
+		# additional variable dependencies, if provided
 		var_sig = None
-		try:
-			var_sig = Object.sign_env_vars(self.m_env, self.dep_vars)
+		dep_vars = getattr(self, 'dep_vars', None)
+		if dep_vars:
+			var_sig = env.sign_vars(dep_vars)
 			m.update(var_sig)
-		except AttributeError:
-			pass
 
-		node_sig = Params.sig_nil
-		try:
-			for x in self.dep_nodes:
-				variant = x.variant(self.m_env)
-				v = tree.m_tstamp_variants[variant][x]
-				node_sig = hash( (node_sig, v) )
-				m.update(v)
-		except AttributeError:
-			pass
+		# additional nodes to depend on, if provided
+		node_sig = SIG_NIL
+		dep_nodes = getattr(self, 'dep_nodes', [])
+		for x in dep_nodes:
+			variant = x.variant(env)
+			v = tree.m_tstamp_variants[variant][x.id]
+			node_sig = hash( (node_sig, v) )
+			m.update(v)
 
-		# hash additional node dependencies
+		# we now have the array of signatures
 		ret = m.digest()
+		self.cache_sig = (ret, dep_sig, act_sig, var_sig, node_sig)
 
-		self.cache_sig = [ret, dep_sig, act_sig, var_sig, node_sig]
-
-		self._sign_all = ret
+		self.sign_all = ret
 		return ret
 
 	def may_start(self):
@@ -224,11 +264,12 @@ class Task(TaskBase):
 				self.debug()
 
 		# the scanner has its word to say
-		try:
-			if not self.m_scanner.may_start(self):
-				return 1
-		except AttributeError:
-			pass
+		scan = getattr(self, 'm_scanner', None)
+		if scan:
+			fun = getattr(scan, 'may_start', None)
+			if fun:
+				if not fun(self):
+					return 0
 
 		# this is a dependency using the scheduler, as opposed to hash-based ones
 		for t in self.get_run_after():
@@ -240,47 +281,48 @@ class Task(TaskBase):
 		"see if the task must be run or not"
 		#return 0 # benchmarking
 
+		env = self.env()
 		tree = Params.g_build
-		ret = 0
 
-		# for tasks that have no inputs or outputs and are run all the time
+		# tasks that have no inputs or outputs are run each time
 		if not self.m_inputs and not self.m_outputs:
-			self.m_dep_sig = Params.sig_nil
+			self.m_dep_sig = SIG_NIL
 			return 1
 
 		# look at the previous signature first
+		node = self.m_outputs[0]
+		variant = node.variant(env)
 		try:
-			node = self.m_outputs[0]
-			variant = node.variant(self.m_env)
-			time = tree.m_tstamp_variants[variant][node]
-			key = hash( (variant, node, time, self.m_scanner.__class__.__name__) )
-			prev_sig = tree.m_sig_cache[key][0]
+			time = tree.m_tstamp_variants[variant][node.id]
 		except KeyError:
-			# an exception here means the object files do not exist
 			debug("task #%d should run as the first node does not exist" % self.m_idx, 'task')
+			try: new_sig = self.signature()
+			except KeyError:
+				print "TODO - computing the signature failed"
+				return 1
 
-			# maybe we can just retrieve the object files from the cache then
-			ret = self.can_retrieve_cache(self.signature())
+			ret = self.can_retrieve_cache(new_sig)
 			return not ret
 
+		key = hash( (variant, node.m_name, time, getattr(self, 'm_scanner', self).__class__.__name__) )
+		prev_sig = tree.bld_sigs[key][0]
+		#print "prev_sig is ", prev_sig
 		new_sig = self.signature()
 
 		# debug if asked to
-		if Params.g_zones:
-			self.debug_why(tree.m_sig_cache[key])
-
+		if Params.g_zones: self.debug_why(tree.bld_sigs[key])
 
 		if new_sig != prev_sig:
-			# if the node has not changed, try to use the cache
+			# try to retrieve the file from the cache
 			ret = self.can_retrieve_cache(new_sig)
 			return not ret
 
 		return 0
 
 	def update_stat(self):
-		"this is called after a sucessful task run"
+		"called after a successful task run"
 		tree = Params.g_build
-		env  = self.m_env
+		env = self.env()
 		sig = self.signature()
 
 		cnt = 0
@@ -288,34 +330,29 @@ class Task(TaskBase):
 			variant = node.variant(env)
 			#if node in tree.m_tstamp_variants[variant]:
 			#	print "variant is ", variant
-			#	print "self sig is ", Params.vsig(tree.m_tstamp_variants[variant][node])
+			#	print "self sig is ", Params.view_sig(tree.m_tstamp_variants[variant][node])
 
 			# check if the node exists ..
-			try:
-				os.stat(node.abspath(env))
-			except:
-				error('a node was not produced for task %s %s' % (str(self.m_idx), node.abspath(env)))
-				raise
+			os.stat(node.abspath(env))
 
 			# important, store the signature for the next run
-			tree.m_tstamp_variants[variant][node] = sig
+			tree.m_tstamp_variants[variant][node.id] = sig
 
 			# We could re-create the signature of the task with the signature of the outputs
 			# in practice, this means hashing the output files
 			# this is unnecessary
-
-			if Params.g_usecache:
+			if Params.g_cache_global:
 				ssig = sig.encode('hex')
-				dest = os.path.join(Params.g_usecache, ssig+'-'+str(cnt))
+				dest = os.path.join(Params.g_cache_global, ssig+'-'+str(cnt))
 				try: shutil.copy2(node.abspath(env), dest)
 				except IOError: warning('could not write the file to the cache')
 				cnt += 1
 
 		# keep the signatures in the first node
 		node = self.m_outputs[0]
-		variant = node.variant(self.m_env)
-		time = tree.m_tstamp_variants[variant][node]
-		key = hash( (variant, node, time, self.m_scanner.__class__.__name__) )
+		variant = node.variant(env)
+		time = tree.m_tstamp_variants[variant][node.id]
+		key = hash( (variant, node.m_name, time, getattr(self, 'm_scanner', self).__class__.__name__) )
 		val = self.cache_sig
 		tree.set_sig_cache(key, val)
 
@@ -324,33 +361,29 @@ class Task(TaskBase):
 	def can_retrieve_cache(self, sig):
 		"""Retrieve build nodes from the cache - the file time stamps are updated
 		for cleaning the least used files from the cache dir - be careful when overriding"""
-		if not Params.g_usecache: return None
+		if not Params.g_cache_global: return None
 		if Params.g_options.nocache: return None
 
-		env  = self.m_env
+		env = self.env()
 		sig = self.signature()
 
-		try:
-			cnt = 0
-			for node in self.m_outputs:
-				variant = node.variant(env)
+		cnt = 0
+		for node in self.m_outputs:
+			variant = node.variant(env)
 
-				ssig = sig.encode('hex')
-				orig = os.path.join(Params.g_usecache, ssig+'-'+str(cnt))
+			ssig = sig.encode('hex')
+			orig = os.path.join(Params.g_cache_global, ssig+'-'+str(cnt))
+			try:
 				shutil.copy2(orig, node.abspath(env))
-
-				# touch the file
-				# what i would like to do is to limit the max size of the cache, using either
-				# df (file system full) or a fixed size (like say no more than 400Mb of cache)
-				# removing the files would be done by order of timestamps (TODO ITA)
 				os.utime(orig, None)
+				# mark the cache file as used recently (modified)
+			except (OSError, IOError):
+				debug("failed retrieving file", 'task')
+				return None
+			else:
 				cnt += 1
-
-				Params.g_build.m_tstamp_variants[variant][node] = sig
+				Params.g_build.m_tstamp_variants[variant][node.id] = sig
 				if not Runner.g_quiet: Params.pprint('GREEN', 'restored from cache %s' % node.bldpath(env))
-		except:
-			debug("failed retrieving file", 'task')
-			return None
 		return 1
 
 	def prepare(self):
@@ -362,7 +395,7 @@ class Task(TaskBase):
 
 	def get_display(self):
 		if self.m_display: return self.m_display
-		self.m_display=self.m_action.get_str(self)
+		self.m_display = self.m_action.get_str(self)
 		return self.m_display
 
 	def color(self):
@@ -379,15 +412,15 @@ class Task(TaskBase):
 		return '\n'.join(ret)
 
 	def debug(self, level=0):
-		fun=Params.debug
-		if level>0: fun=Params.error
+		fun = Params.debug
+		if level>0: fun = Params.error
 		fun(self.debug_info())
 
 	def debug_why(self, old_sigs):
 		"explains why a task is run"
 
 		new_sigs = self.cache_sig
-		v = Params.vsig
+		v = Params.view_sig
 
 		debug("Task %s must run: %s" % (self.m_idx, old_sigs[0] != new_sigs[0]), 'task')
 		if (new_sigs[1] != old_sigs[1]):
@@ -400,17 +433,19 @@ class Task(TaskBase):
 			debug(' -> A user-given environment variable has changed %s %s' % (v(old_sigs[4]), v(new_sigs[4])), 'task')
 
 class TaskCmd(TaskBase):
-	"TaskCmd executes commands. Instances always execute their function."
-	def __init__(self, fun, env, priority):
-		TaskBase.__init__(self, priority)
+	"TaskCmd executes commands. Instances always execute their function"
+	def __init__(self, fun, env):
+		TaskBase.__init__(self)
 		self.fun = fun
-		self.env = env
+		self.m_env = env
 	def prepare(self):
-		self.display = "* executing: "+self.fun.__name__
+		self.m_display = "* executing: %s" % self.fun.__name__
 	def debug_info(self):
 		return 'TaskCmd:fun %s' % self.fun.__name__
 	def debug(self):
 		return 'TaskCmd:fun %s' % self.fun.__name__
 	def run(self):
 		self.fun(self)
+	def env(self):
+		return self.m_env
 

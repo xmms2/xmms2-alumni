@@ -4,183 +4,135 @@
 
 "Execute the tasks"
 
-import sys, time, random
-import Params, Task, Utils
+import sys, random, time, threading, Queue, traceback
+import Params, Utils
+import pproc as subprocess
 from Params import debug, error
-
-dostat=0
-"""
-output a stat file (data for gnuplot) when running tasks in parallel
-
-#! /usr/bin/gnuplot -persist
-set terminal png
-set output "output.png"
-set yrange [-1:6]
-plot 'test.dat' using 1:3 with linespoints
-"""
-
-g_initial = time.time()
-"time since the start of the build"
 
 g_quiet = 0
 "do not output anything"
 
-g_ind_idx = 0
-g_ind = ['\\', '|', '/', '-']
-"the rotation thing"
+log_file = None
+"output to a config.log file, see Configure.py {mute,restore}_logging"
 
-class CompilationError(Exception):
-	pass
+missing = 1
+crashed = 2
+skipped = 8
+success = 9
 
-exetor = None
-"subprocess"
-#try:
-#	import subprocess
-#	exetor = subprocess
-#except ImportError:
-# Python < 2.5 is way buggy
-import pproc
-exetor = pproc
+def print_log(msg, nl='\n'):
+	if log_file:
+		log_file.write(msg)
+		log_file.write(nl)
+		log_file.flush()
 
-def write_progress(s):
-	if Params.g_options.progress_bar == 1:
-		sys.stdout.write(s + '\r')
+def printout(s):
+	if not g_quiet:
+		sys.stdout.write(s)
 		sys.stdout.flush()
-	else: #if Params.g_options.progress_bar == 2:
-		# do not display anything if there is nothing to display
-		if s:
-			print s
-			sys.stdout.flush()
+	print_log(s, nl='')
 
-def progress_line(s, t, col1, task, col2):
+def progress_line(state, total, col1, task, col2):
 	"do not print anything if there is nothing to display"
-	disp = task.get_display()
-	if not disp: return ''
-	global g_initial
-
-	n=0; k=t
-	while k>=10: k=k/10; n+=1
-	n+=1
-
 	if Params.g_options.progress_bar == 1:
-		global g_ind, g_ind_idx
-		g_ind_idx += 1
-		ind = g_ind[g_ind_idx % 4]
+		return Utils.progress_line(state, total, col1, col2)
 
-		pc = (100.*s)/t
-		eta = time.strftime('%H:%M:%S', time.gmtime(time.time() - g_initial))
-		fs = "[%%%dd/%%%dd][%%s%%2d%%%%%%s][%s][" % (n, n, ind)
-		left = fs % (s, t, col1, pc, col2)
-		right = '][%s%s%s]' % (col1, eta, col2)
-
-		cols = Utils.get_term_cols() - len(left) - len(right) + 2*len(col1) + 2*len(col2)
-		if cols < 7: cols = 7
-
-		ratio = int((cols*s)/t) - 1
-
-		bar = ('='*ratio+'>').ljust(cols)
-		disp = '%s%s%s' % (left, bar, right)
-
-		return disp
-
-	elif Params.g_options.progress_bar == 2:
-		eta = time.strftime('%H:%M:%S', time.gmtime(time.time() - g_initial))
+	if Params.g_options.progress_bar == 2:
+		try: ini = Params.g_build.ini
+		except AttributeError: ini = Params.g_build.ini = time.time()
+		ela = time.strftime('%H:%M:%S', time.gmtime(time.time() - ini))
 		ins  = ','.join([n.m_name for n in task.m_inputs])
 		outs = ','.join([n.m_name for n in task.m_outputs])
-		return '|Total %s|Current %s|Inputs %s|Outputs %s|Time %s|' % (t, s, ins, outs, eta)
+		return '|Total %s|Current %s|Inputs %s|Outputs %s|Time %s|\n' % (total, state, ins, outs, ela)
 
-	fs = "[%%%dd/%%%dd] %%s%%s%%s" % (n, n)
-	return fs % (s, t, col1, disp, col2)
+	n = len(str(total))
+	fs = '[%%%dd/%%%dd] %%s%%s%%s' % (n, n)
+	return fs % (state, total, col1, task.get_display(), col2)
 
-def process_cmd_output(cmd_stdout, cmd_stderr):
-	stdout_eof = stderr_eof = 0
-	while not (stdout_eof and stderr_eof):
-		if not stdout_eof:
-			str = cmd_stdout.read()
-			if not str: stdout_eof = 1
-			elif not g_quiet:
-				sys.stdout.write(str)
-				sys.stdout.flush()
-		if not stderr_eof:
-			str = cmd_stderr.read()
-			if not str: stderr_eof = 1
-			elif not g_quiet:
-				sys.stderr.write('\n')
-				sys.stderr.write(str)
-		#time.sleep(0.1)
+def process_cmd_output(proc):
+	"""calling communicate to avoid race-condition between stdout and stderr"""
+	(cmd_stdout, cmd_stderr) = proc.communicate()
+	if cmd_stdout:
+		printout(cmd_stdout)
+	if cmd_stderr:
+		if g_quiet:
+			printout(cmd_stderr)
+		else:
+			sys.stderr.write(cmd_stderr)
+			sys.stderr.flush()
 
-def exec_command_normal(str):
+def _exec_command_normal(s):
 	"run commands in a portable way the subprocess module backported from python 2.4 and should work on python >= 2.2"
-	debug("system command -> "+ str, 'runner')
-	if Params.g_verbose>=1: print str
+	debug("system command -> "+ s, 'runner')
+	if Params.g_verbose or g_quiet: printout(s+'\n')
 	# encase the command in double-quotes in windows
-	if sys.platform == 'win32' and not str.startswith('""'):
-		str = '"%s"' % str
-	proc = exetor.Popen(str, shell=1, stdout=exetor.PIPE, stderr=exetor.PIPE)
-	process_cmd_output(proc.stdout, proc.stderr)
+	if sys.platform == 'win32' and not s.startswith('""'):
+		s = '"%s"' % s
+	proc = subprocess.Popen(s, shell=1, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	process_cmd_output(proc)
 	stat = proc.wait()
 	if stat & 0xff: return stat | 0x80
 	return stat >> 8
 
-def exec_command_interact(str):
+def _exec_command_interact(s):
 	"this one is for the latex output, where we cannot capture the output while the process waits for stdin"
-	debug("system command (interact) -> "+ str, 'runner')
-	if Params.g_verbose>=1: print str
+	debug("system command (interact) -> "+ s, 'runner')
+	if Params.g_verbose or g_quiet: printout(s+'\n')
 	# encase the command in double-quotes in windows
-	if sys.platform == 'win32' and not str.startswith('""'):
-		str = '"%s"' % str
-	proc = exetor.Popen(str, shell=1)
+	if sys.platform == 'win32' and not s.startswith('""'):
+		s = '"%s"' % s
+	proc = subprocess.Popen(s, shell=1)
 	stat = proc.wait()
 	if stat & 0xff: return stat | 0x80
 	return stat >> 8
 
-exec_command = exec_command_interact # python bug on stdout overload
+exec_command = _exec_command_interact # python bug on stdout overload
 def set_exec(mode):
 	global exec_command
-	if mode == 'normal': exec_command = exec_command_normal
-	elif mode == 'noredir': exec_command = exec_command_interact
+	if mode == 'normal': exec_command = _exec_command_normal
+	elif mode == 'noredir': exec_command = _exec_command_interact
 	else: error('set_runner_mode')
 
-class JobGenerator:
-	"kind of iterator - the data structure is a bit complicated (price to pay for flexibility)"
-	def __init__(self, tree):
-		self.m_tree = tree
+class Serial(object):
+	def __init__(self, bld):
+		self.error = 0
+
+		self.manager = bld.task_manager
 
 		self.curgroup = 0
 		self.curprio = -1
-		self.m_outstanding = [] # list of tasks in the current priority
+		self.outstanding = [] # list of tasks in the current priority
 
 		self.priolst = []
 
 		# progress bar
-		self.m_total = Task.g_tasks.total()
-		self.m_processed = 0
+		self.total = self.manager.total()
+		self.processed = 0
 
-		self.m_switchflag = 1 # postpone
-		#Task.g_tasks.debug()
+		self.switchflag = 1 # postpone
+		# self.manager.debug()
 
 	# warning, this one is recursive ..
 	def get_next(self):
-		if self.m_outstanding:
-			t = self.m_outstanding[0]
-			self.m_outstanding=self.m_outstanding[1:]
-			self.m_processed += 1
+		if self.outstanding:
+			t = self.outstanding.pop(0)
+			self.processed += 1
 			return t
 
 		# handle case where only one wscript exist
 		# that only install files
-		if not Task.g_tasks.groups:
+		if not self.manager.groups:
 			return None
 
 		# stop condition
-		if self.curgroup >= len(Task.g_tasks.groups):
+		if self.curgroup >= len(self.manager.groups):
 			return None
 
 		# increase the priority value
 		self.curprio += 1
 
 		# there is no current list
-		group = Task.g_tasks.groups[self.curgroup]
+		group = self.manager.groups[self.curgroup]
 		if self.curprio >= len(group.prio.keys()):
 			self.curprio = -1
 			self.curgroup += 1
@@ -191,318 +143,195 @@ class JobGenerator:
 			self.priolst = group.prio.keys()
 			self.priolst.sort()
 
-		# now fill m_outstanding
+		# now fill outstanding
 		id = self.priolst[self.curprio]
-		self.m_outstanding = group.prio[id]
+		self.outstanding = group.prio[id]
 
+		if Params.g_verbose:
+			debug("Preparing to run prio %i tasks: [\n%s\n\t]" %
+			      (id, ',\n'.join(["\t#%i: %s" % (tsk.m_idx, repr(tsk).strip())
+					       for tsk in self.outstanding])),
+			      'runner')
 		return self.get_next()
 
 	def progress(self):
-		return (self.m_processed, self.m_total)
+		return (self.processed, self.total)
 
-	def postpone(self, task):
-		self.m_processed -= 1
-		# shuffle the list - some fanciness of mine (ita)
-		self.m_switchflag=-self.m_switchflag
-		if self.m_switchflag>0: self.m_outstanding = [task]+self.m_outstanding
-		else:                   self.m_outstanding.append(task)
-		#self.m_current_task_lst = [task]+self.m_current_task_lst
+	def postpone(self, tsk):
+		self.processed -= 1
+		# shuffle the list - why it does work is left as an exercise for the reader
+		self.switchflag *= -1
+		if self.switchflag>0: self.outstanding.insert(0, tsk)
+		else:                 self.outstanding.append(tsk)
 
 	# TODO FIXME
 	def debug(self):
 		debug("debugging a task: something went wrong:", 'runner')
-		s=""
-		for t in Task.g_tasks:
-			s += str(t.m_idx)+" "
+		s = " ".join([str(t.m_idx) for t in self.manager])
 		debug(s, 'runner')
 
 	# skip a group and report the failure
-	def skip_group(self, reason):
-		Task.g_tasks.groups[self.curgroup].info = reason
+	def skip_group(self):
 		self.curgroup += 1
 		self.curprio = -1
-		self.m_outstanding = []
-		try: Task.g_tasks.groups[self.curgroup].prio.sort()
-		except: pass
+		self.outstanding = []
+		try: self.manager.groups[self.curgroup].prio.sort()
+		except KeyError: pass
 
-class Serial:
-	def __init__(self, generator):
-		self.m_generator = generator
 	def start(self):
+		global g_quiet
 		debug("Serial start called", 'runner')
-		#self.m_generator.debug()
+		#self.debug()
 		while 1:
 			# get next Task
-			proc = self.m_generator.get_next()
-			if proc is None: break
+			tsk = self.get_next()
+			if tsk is None: break
 
-			debug("retrieving #"+str(proc.m_idx), 'runner')
+			debug("retrieving #%i (%r)" % (tsk.m_idx, tsk), 'runner')
 
 			# # =======================
-			#if proc.m_hasrun:
-			#	error("task has already run! "+str(proc.m_idx))
+			#if tsk.m_hasrun:
+			#	error("task has already run! "+str(tsk.m_idx))
 
-			if not proc.may_start():
-				debug("delaying   #"+str(proc.m_idx), 'runner')
-				self.m_generator.postpone(proc)
-				#self.m_generator.debug()
-				#proc = None
+			if not tsk.may_start():
+				debug("delaying   #"+str(tsk.m_idx), 'runner')
+				self.postpone(tsk)
+				#self.debug()
+				#tsk = None
 				continue
 			# # =======================
 
-			proc.prepare()
-			#proc.debug()
+			tsk.prepare()
+			#tsk.debug()
 
-			#debug("m_sig is "+str(proc.m_sig), 'runner')
-			#debug("obj output m_sig is "+str(proc.m_outputs[0].get_sig()), 'runner')
+			#debug("m_sig is "+str(tsk.m_sig), 'runner')
+			#debug("obj output m_sig is "+str(tsk.m_outputs[0].get_sig()), 'runner')
 
 			#continue
-			if not proc.must_run():
-				proc.m_hasrun=2
-				#debug("task is up-to_date "+str(proc.m_idx), 'runner')
+			if not tsk.must_run():
+				tsk.m_hasrun = skipped
+				self.manager.add_finished(tsk)
+				#debug("task is up-to_date "+str(tsk.m_idx), 'runner')
 				continue
 
-			debug("executing  #"+str(proc.m_idx), 'runner')
+			debug("executing  #"+str(tsk.m_idx), 'runner')
 
 			# display the command that we are about to run
-			if not Params.g_commands['configure']:
-				(s, t) = self.m_generator.progress()
-				col1=''
-				col2=''
-				try:
-					col1=Params.g_colors[proc.color()]
-					col2=Params.g_colors['NORMAL']
-				except: pass
-				write_progress(progress_line(s, t, col1, proc, col2))
+			if not g_quiet:
+				(s, t) = self.progress()
+				cl = Params.g_colors
+				printout(progress_line(s, t, cl[tsk.color()], tsk, cl['NORMAL']))
 
 			# run the command
-			ret = proc.run()
+			ret = tsk.run()
+			self.manager.add_finished(tsk)
 
 			# non-zero means something went wrong
 			if ret:
-				if Params.g_options.keep:
-					self.m_generator.skip_group('non-zero return code\n' + proc.debug_info())
-					continue
-				else:
-					if Params.g_verbose:
-						error("task failed! (return code %s for #%s)"%(str(ret), str(proc.m_idx)))
-						proc.debug(1)
-					return ret
+				self.error = 1
+				tsk.m_hasrun = crashed
+				tsk.err_code = ret
+				if Params.g_options.keep: continue
+				else: return -1
 
 			try:
-				proc.update_stat()
-			except:
-				if Params.g_options.keep:
-					self.m_generator.skip_group('missing nodes\n' + proc.debug_info())
-					continue
-				else:
-					if Params.g_verbose:
-						error('the nodes have not been produced !')
-					raise CompilationError()
-			proc.m_hasrun=1
+				tsk.update_stat()
+			except OSError:
+				traceback.print_stack()
+				self.error = 1
+				tsk.m_hasrun = missing
+				if Params.g_options.keep: continue
+				else: return -1
+			else:
+				tsk.m_hasrun = success
 
-			# register the task to the ones that have run - useful for debugging purposes
-			Task.g_tasks_done.append(proc)
-
-			"""try:
-				proc.apply()
-			except KeyboardInterrupt:
-				raise
-			except:
-				print "hum hum .. task failed!"
-			"""
-
-		debug("Serial end", 'runner')
-		return 0
-
-import threading
-import Queue
-
-
-lock = None
-condition = None
-count = 0
-stop = 0
-running = 0
-failed = 0
-
-
-stat = []
-class TaskPrinter(threading.Thread):
-	def __init__(self, id, master):
-		threading.Thread.__init__(self)
-		self.setDaemon(1)
-		self.m_master = master
-		self.start()
-
-	def run(self):
-		global count, lock, running, stat
-		while 1:
-			lock.acquire()
-			stat.append( (time.time(), count, running) )
-			lock.release()
-			time.sleep(0.1)
+		if self.error:
+			return -1
 
 class TaskConsumer(threading.Thread):
-	def __init__(self, id, master):
+	def __init__(self, i, m):
 		threading.Thread.__init__(self)
 		self.setDaemon(1)
-		self.m_master = master
-		self.m_id     = id
+		self.id     = i
+		self.master = m
 		self.start()
 
-		self.m_count = 0
-		self.m_stop  = 0
-
-	def notify(self):
-		global condition
-		condition.acquire()
-		condition.notify()
-		condition.release()
-
-	def do_stat(self, num):
-		global running
-		lock.acquire()
-		running += num
-		lock.release()
-
 	def run(self):
-		global lock, count, stop, running, failed
+		do_stat = getattr(self, 'do_stat', None)
+		m = self.master
+
 		while 1:
-			lock.acquire()
-			self.m_stop  = stop
-			lock.release()
-
-			if self.m_stop:
-				while 1:
-					if failed > 0: count = 0 # force the scheduler to check for failure
-					time.sleep(1)
-
-			# take the next task
-			proc = self.m_master.m_ready.get(block=1)
-
-			self.do_stat(1)
-
-			# display the label for the command executed
-			write_progress(proc.get_display())
-
-			# run the command
-			ret = proc.run()
-
-			self.do_stat(-1)
-
-			if ret:
-				lock.acquire()
-				if Params.g_verbose:
-					error("task failed! (return code %s and task id %s)"%(str(ret), str(proc.m_idx)))
-					proc.debug(1)
-				count -= 1
-				stop   = 1
-				failed = 1
-				self.notify()
-				lock.release()
+			tsk = m.ready.get()
+			if m.failed and not m.running:
+				m.out.put(tsk)
 				continue
 
-			try:
-				proc.update_stat()
-			except:
-				lock.acquire()
-				if Params.g_verbose:
-					error('the nodes have not been produced !')
-				count -= 1
-				stop   = 1
-				failed = 1
-				self.notify()
-				lock.release()
+			if do_stat: do_stat(1)
 
-			proc.m_hasrun = 1
+			printout(tsk.get_display())
+			ret = tsk.run()
 
-			lock.acquire()
-			count -= 1
-			lock.release()
-			self.notify()
+			if do_stat: do_stat(-1)
 
-class Parallel:
+			if ret:
+				tsk.err_code = ret
+				tsk.m_hasrun = crashed
+			else:
+				try:
+					tsk.update_stat()
+				except OSError:
+					tsk.m_hasrun = missing
+				else:
+					tsk.m_hasrun = success
+			if tsk.m_hasrun != success: # TODO for now, do no keep running in parallel  and not Params.g_options.keep:
+				m.failed = 1
+
+			m.out.put(tsk)
+
+class Parallel(object):
 	"""
-	The following is a small scheduler, using an agressive scheme
-	for making as many tasks available to the consumer threads
-	Someone may come with a much better scheme, as i do not have too much
-	time to spend on this (ita)
+	The following is a small scheduler for making as many tasks available to the consumer threads
+	It uses the serial shuffling system
 	"""
-	def __init__(self, tree, numjobs):
-		# the tree we are working on
-		self.m_tree = tree
+	def __init__(self, bld, j=2):
 
 		# number of consumers
-		self.m_numjobs = numjobs
+		self.numjobs = j
 
-		# the container of all tasks: a list of hashtables containing lists of tasks
-		self.m_tasks = Task.g_tasks
+		self.manager = bld.task_manager
 
 		# progress bar
-		self.m_total = Task.g_tasks.total()
-		self.m_processed = 1
+		self.total = self.manager.total()
+		self.processed = 0
 
 		# tasks waiting to be processed - IMPORTANT
-		self.m_outstanding = []
-		# tasks waiting to be run by the consumers
-		self.m_ready = Queue.Queue(150)
+		self.outstanding = []
 		# tasks that are awaiting for another task to complete
-		self.m_frozen = []
+		self.frozen = []
 
-		# lock for self.m_count - count the amount of tasks active
-		self.m_count = 0
-		self.m_stop = 0
-		self.m_failed = 0
-		self.m_running = 0
+		# tasks waiting to be run by the consumers
+		self.ready = Queue.Queue(0)
+		self.out = Queue.Queue(0)
+
+		self.count = 0 # tasks not in the producer area
+		self.failed = 0 # some task has failed
+		self.running = 0 # keep running ?
+		self.progress = 0 # progress indicator
 
 		self.curgroup = 0
 		self.curprio = -1
 		self.priolst = []
 
-		global condition
-		condition = threading.Condition()
-
-		global lock
-		lock = threading.Lock()
-
-		# for consistency
-		self.m_generator = self
-
-	def read_values(self):
-		#print "read values acquire lock"
-		global lock, stop, count, failed
-		lock.acquire()
-		self.m_stop = stop
-		self.m_count = count
-		self.m_failed = failed
-		self.m_running = running
-		lock.release()
-		#print "read values release lock"
-
-	def wait_all_finished(self):
-		global condition
-		condition.acquire()
-		while self.m_count>0:
-			condition.wait()
-			self.read_values()
-		condition.release()
-		if self.m_failed:
-			while 1:
-				self.read_values()
-				if self.m_running == 0: raise CompilationError()
-				time.sleep(0.5)
-
 	def get_next_prio(self):
 		# stop condition
-		if self.curgroup >= len(Task.g_tasks.groups):
+		if self.curgroup >= len(self.manager.groups):
 			return (None, None)
 
 		# increase the priority value
 		self.curprio += 1
 
 		# there is no current list
-		group = Task.g_tasks.groups[self.curgroup]
+		group = self.manager.groups[self.curgroup]
 		if self.curprio >= len(group.prio.keys()):
 			self.curprio = -1
 			self.curgroup += 1
@@ -517,106 +346,62 @@ class Parallel:
 		return (id, group.prio[id])
 
 	def start(self):
-		global count, lock, stop, condition, dostat
-
-		# unleash the consumers
-		for i in range(self.m_numjobs): TaskConsumer(i, self)
-
-		if dostat: TaskPrinter(-1, self)
+		for i in range(self.numjobs): TaskConsumer(i, self)
 
 		# the current group
 		#group = None
 
-		# current priority
+		def get_out():
+			self.manager.add_finished(self.out.get())
+			self.count -= 1
+
+		lastfailput = 0
+
+		# iterate over all tasks at most one time for each task run
+		penalty = 0
 		currentprio = 0
-
-		loop=0
-
-		# add the tasks to the queue
+		#loop=0
 		while 1:
-			self.read_values()
-			if self.m_stop:
-				self.wait_all_finished()
-				break
+			#loop += 1
+			if self.failed and not self.running:
+				while self.count > 0: get_out()
+				if self.failed: return -1
 
-			# if there are no tasks to run, wait for the consumers to eat all of them
-			# and then skip to the next priority group
-			if (not self.m_frozen) and (not self.m_outstanding):
-				self.wait_all_finished()
-				(currentprio, self.m_outstanding) = self.get_next_prio()
+			if 1 == currentprio % 2:
+				# allow only one process at a time in priority 'even'
+				while self.count > 0: get_out()
+			else:
+				# not too many jobs in the queue
+				while self.count > self.numjobs + 10: get_out()
+
+			# empty the returned tasks as much as possible
+			while not self.out.empty(): get_out()
+
+			if not self.outstanding:
+				if self.count > 0: get_out()
+				self.outstanding = self.frozen
+				self.frozen = []
+			if not self.outstanding:
+				while self.count > 0: get_out()
+				(currentprio, self.outstanding) = self.get_next_prio()
+				#if self.outstanding: random.shuffle(self.outstanding)
 				if currentprio is None: break
 
-			# for tasks that must run sequentially
-			# (linking object files uses a lot of memory for example)
-			if (currentprio%2)==1:
-				# make sure there is no more than one task in the queue
-				condition.acquire()
-				while self.m_count>0:
-					condition.wait()
-					self.read_values()
-				condition.release()
+			# consider the next task
+			tsk = self.outstanding.pop(0)
+			if tsk.may_start():
+				tsk.prepare()
+				self.progress += 1
+				if not tsk.must_run():
+					tsk.m_hasrun = skipped
+					self.manager.add_finished(tsk)
+					continue
+				cl = Params.g_colors
+				tsk.set_display(progress_line(self.progress, self.total, cl[tsk.color()], tsk, cl['NORMAL']))
+				self.count += 1
+				self.ready.put(tsk)
 			else:
-				# wait a little bit if there are enough jobs for the consumer threads
-				condition.acquire()
-				while self.m_count>self.m_numjobs+10:
-					condition.wait()
-					self.read_values()
-				condition.release()
-
-			loop += 1
-
-			if not self.m_outstanding:
-				self.m_outstanding = self.m_frozen
-				self.m_frozen = []
-
-			# now we are certain that there are outstanding or frozen threads
-			if self.m_outstanding:
-				proc = self.m_outstanding.pop(0)
-				if not proc.may_start():
-					# shuffle
-					#print "shuf0"
-					#self.m_frozen.append(proc)
-					#self.m_frozen = [proc]+self.m_frozen
-					if random.randint(0,1):
-						#print "shuf1"
-						self.m_frozen.append(proc)
-					else:
-						#print "shuf2"
-						self.m_frozen = [proc]+self.m_frozen
-					if not self.m_outstanding:
-						condition.acquire()
-						condition.wait()
-						condition.release()
-
-				else:
-					proc.prepare()
-					if not proc.must_run():
-						proc.m_hasrun=2
-						self.m_processed += 1
-						continue
-
-					# display the command that we are about to run
-					col1=''
-					col2=''
-					try:
-						col1=Params.g_colors[proc.color()]
-						col2=Params.g_colors['NORMAL']
-					except: pass
-					proc.set_display(progress_line(self.m_processed, self.m_total, col1, proc, col2))
-
-					lock.acquire()
-					count += 1
-					self.m_processed += 1
-					lock.release()
-
-					self.m_ready.put(proc, block=1)
-
-		debug("amount of loops "+str(loop), 'runner')
-		global stat
-		if dostat and stat:
-			file = open('test.dat', 'w')
-			(t1, queue, run) = stat[0]
-			for (time, queue, run) in stat:
-				file.write("%f %f %f\n" % (time-t1, queue, run))
-			file.close()
+				if random.randint(0,1): self.frozen.insert(0, tsk)
+				else: self.frozen.append(tsk)
+		#print loop
 

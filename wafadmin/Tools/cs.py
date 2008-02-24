@@ -8,26 +8,24 @@ import Params, Action, Object, Utils
 from Params import error
 
 g_types_lst = ['program', 'library']
-class csobj(Object.genobj):
-	def __init__(self, type='program'):
-		Object.genobj.__init__(self, 'other')
+class cs_taskgen(Object.task_gen):
+	def __init__(self, *k):
+		Object.task_gen.__init__(self, *k)
 
-		self.m_type       = type
+		self.m_type     = k[1]
 
-		self.source       = ''
-		self.target       = ''
+		self.source     = ''
+		self.target     = ''
 
-		self.flags        = ''
-		self.assemblies   = ''
-		self.resources    = ''
+		self.flags      = ''
+		self.assemblies = ''
+		self.resources  = ''
 
-		self.uselib       = ''
+		self.uselib     = ''
 
 		self._flag_vars = ['FLAGS', 'ASSEMBLIES']
 
-		if not self.env: self.env = Params.g_build.m_allenvs['default']
-
-		if not type in g_types_lst:
+		if not self.m_type in g_types_lst:
 			error('type for csobj is undefined '+type)
 			type='program'
 
@@ -52,10 +50,10 @@ class csobj(Object.genobj):
 		# process the sources
 		nodes = []
 		for i in self.to_list(self.source):
-			nodes.append(curnode.find_source(i))
+			nodes.append(curnode.find_resource(i))
 
 		# create the task
-		task = self.create_task('mcs', self.env, 101)
+		task = self.create_task('mcs', self.env)
 		task.m_inputs  = nodes
 		task.set_outputs(self.path.find_build(self.target))
 
@@ -64,17 +62,12 @@ class csobj(Object.genobj):
 			return
 		for var in self.to_list(self.uselib):
 			for v in self._flag_vars:
-				val=''
-				try:    val = self.env[v+'_'+var]
-				except: pass
+				val = self.env[v+'_'+var]
 				if val: self.env.append_value(v, val)
 
-def setup(env):
-	Object.register('cs', csobj)
-	Action.simple_action('mcs', '${MCS} ${SRC} /out:${TGT} ${_FLAGS} ${_ASSEMBLIES} ${_RESOURCES}', color='YELLOW')
+Action.simple_action('mcs', '${MCS} ${SRC} /out:${TGT} ${_FLAGS} ${_ASSEMBLIES} ${_RESOURCES}', color='YELLOW', prio=101)
 
 def detect(conf):
 	mcs = conf.find_program('mcs', var='MCS')
 	if not mcs: mcs = conf.find_program('gmcs', var='MCS')
-	return 1
 

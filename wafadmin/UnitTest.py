@@ -17,10 +17,11 @@ In the shutdown method, add the following code:
 
 Each object to use as a unit test must be a program and must have X{obj.unit_test=1}
 """
-import os
-import Params, Object, pproc
+import os, sys
+import Params, Object, Utils
+import pproc as subprocess
 
-class unit_test:
+class unit_test(object):
 	"Unit test representation"
 	def __init__(self):
 		self.returncode_ok = 0		# Unit test returncode considered OK. All returncodes differing from this one
@@ -72,26 +73,41 @@ class unit_test:
 			if not unit_test: continue
 			try:
 				if obj.m_type == 'program':
-					filename = obj.m_linktask.m_outputs[0].abspath(obj.env)
-					label = obj.m_linktask.m_outputs[0].bldpath(obj.env)
+					output = obj.path
+					filename = os.path.join(output.abspath(obj.env), obj.target)
+					srcdir = output.abspath()
+					label = os.path.join(output.bldpath(obj.env), obj.target)
 					self.max_label_length = max(self.max_label_length, len(label))
-					self.unit_tests[label] = filename
-			except:
+					self.unit_tests[label] = (filename, srcdir)
+			except KeyError:
 				pass
 		self.total_num_tests = len(self.unit_tests)
 		# Now run the unit tests
+		col1=Params.g_colors['GREEN']
+		col2=Params.g_colors['NORMAL']
+		Params.pprint('GREEN', 'Running the unit tests')
+		count = 0
+		result = 1
+
 		curdir = os.getcwd() # store the current dir (only if self.change_to_testfile_dir)
-		for label, filename in self.unit_tests.iteritems():
+		for label, file_and_src in self.unit_tests.iteritems():
+			filename = file_and_src[0]
+			srcdir = file_and_src[1]
+			count += 1
+			line = Utils.progress_line(count, self.total_num_tests, col1, col2)
+			if Params.g_options.progress_bar and line:
+				sys.stdout.write(line)
+				sys.stdout.flush()
 			try:
 				if self.change_to_testfile_dir:
-					os.chdir(os.path.dirname(filename))
+					os.chdir(srcdir)
 
 				kwargs = dict()
 				if not self.want_to_see_test_output:
-					kwargs['stdout'] = pproc.PIPE  # PIPE for ignoring output
+					kwargs['stdout'] = subprocess.PIPE  # PIPE for ignoring output
 				if not self.want_to_see_test_error:
-					kwargs['stderr'] = pproc.PIPE  # PIPE for ignoring output
-				pp = pproc.Popen(filename, **kwargs)
+					kwargs['stderr'] = subprocess.PIPE  # PIPE for ignoring output
+				pp = subprocess.Popen(filename, **kwargs)
 				pp.wait()
 
 				if self.change_to_testfile_dir:
@@ -109,6 +125,9 @@ class unit_test:
 			except OSError:
 				self.unit_test_erroneous[label] = 1
 				self.num_tests_err += 1
+			except KeyboardInterrupt:
+				pass
+		if Params.g_options.progress_bar: sys.stdout.write(Params.g_cursor_on)
 
 	def print_results(self):
 		"Pretty-prints a summary of all unit tests, along with some statistics"
@@ -150,12 +169,13 @@ class unit_test:
 		percentage_failed = float(self.num_tests_failed) / float(self.total_num_tests) * 100.0
 		percentage_erroneous = float(self.num_tests_err) / float(self.total_num_tests) * 100.0
 
-		print
-		print "Successful tests:      %i (%.1f%%)" % (self.num_tests_ok, percentage_ok)
-		print "Failed tests:          %i (%.1f%%)" % (self.num_tests_failed, percentage_failed)
-		print "Erroneous tests:       %i (%.1f%%)" % (self.num_tests_err, percentage_erroneous)
-		print
-		print "Total number of tests: %i" % self.total_num_tests
-		print
+		print '''
+Successful tests:      %i (%.1f%%)
+Failed tests:          %i (%.1f%%)
+Erroneous tests:       %i (%.1f%%)
+
+Total number of tests: %i
+''' % (self.num_tests_ok, percentage_ok, self.num_tests_failed, percentage_failed,
+		self.num_tests_err, percentage_erroneous, self.total_num_tests)
 		p('GREEN', 'Unit tests finished')
 

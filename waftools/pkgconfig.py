@@ -6,9 +6,9 @@ import Utils
 import Params
 import Node
 import os
-from misc import copyobj, subst_func
+from misc import copy_taskgen, subst_func
 
-class pkgcobj(copyobj):
+class pkgcobj(copy_taskgen):
     def __init__(self, type='none'):
         copyobj.__init__(self, type)
         self.fun = subst_func

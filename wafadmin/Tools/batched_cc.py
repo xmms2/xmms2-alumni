@@ -3,7 +3,7 @@
 # Thomas Nagy, 2006 (ita)
 
 """
-Batched builds
+Batched builds - compile faster
 instead of compiling object files one by one, c/c++ compilers are often able to compile at once:
 cc -c ../file1.c ../file2.c ../file3.c
 
@@ -19,12 +19,15 @@ To set this up, the method ccroot::create_task is replaced by a new version, to 
 it is only necessary to import this module in the configuration (no other change required)
 """
 
-import shutil
-import Action, Object, Task, ccroot
+EXT_C = ['.c', '.cc', '.cpp', '.cxx']
+
+import shutil, os
+import Action, Object, Task, ccroot, Params
+from Object import extension
 
 class TaskMaster(Task.Task):
-	def __init__(self, action_name, env, priority=5, normal=1, master=None):
-		Task.Task.__init__(self, action_name, env, priority, normal)
+	def __init__(self, action_name, env, priority=92, normal=1, master=None):
+		Task.Task.__init__(self, action_name, env, prio=priority, normal=normal)
 		self.slaves=[]
 		self.m_inputs2=[]
 		self.m_outputs2=[]
@@ -52,13 +55,16 @@ class TaskMaster(Task.Task):
 		self.m_outputs = self.m_outputs2
 
 		ret = self.m_action.run(self)
+		env = self.env()
+
+		rootdir = Params.g_build.m_srcnode.abspath(env)
 
 		# unfortunately building the files in batch mode outputs them in the current folder (the build dir)
 		# now move the files from the top of the builddir to the correct location
 		for i in self.m_outputs:
 			name = i.m_name
 			if name[-1] == "s": name = name[:-1] # extension for shlib is .os, remove the s
-			shutil.move(name, i.bldpath(self.m_env))
+			shutil.move(name, i.bldpath(env))
 
 		self.m_inputs = tmpinputs
 		self.m_outputs = tmpoutputs
@@ -66,13 +72,12 @@ class TaskMaster(Task.Task):
 		return ret
 
 class TaskSlave(Task.Task):
-	def __init__(self, action_name, env, priority=5, normal=1, master=None):
+	def __init__(self, action_name, env, priority=90, normal=1, master=None):
 		Task.Task.__init__(self, action_name, env, priority, normal)
 		self.m_master = master
 
 	def get_display(self):
-		self.m_display=""
-		return ""
+		return "* skipping "+ self.m_inputs[0].m_name
 
 	def update_stat(self):
 		self.m_executed=1
@@ -87,39 +92,26 @@ class TaskSlave(Task.Task):
 	def can_retrieve_cache(self, sig):
 		return None
 
-def create_task_new(self, type, env=None, nice=100):
-	if type == "cc" or type == "cpp":
+@extension(EXT_C)
+def create_task_cxx_new(self, node):
+	try:
+		mm = self.mastertask
+	except AttributeError:
+		mm = TaskMaster("all_"+self.m_type_initials, self.env)
+		self.mastertask = mm
 
-		if env is None: env=self.env
-		try:
-			mm = self.mastertask
-		except AttributeError:
-			mm = TaskMaster("all_"+type, env, nice)
-			self.mastertask = mm
+	task = TaskSlave(self.m_type_initials, self.env, 40, master=mm)
+	self.m_tasks.append(task)
+	mm.add_slave(task)
 
-		task = TaskSlave(type, env, nice, master=mm)
-		self.m_tasks.append(task)
+	task.set_inputs(node)
+	task.set_outputs(node.change_ext('.o'))
 
-		mm.add_slave(task)
+	self.compiled_tasks.append(task)
 
-		if type == self.m_type_initials:
-			self.p_compiletasks.append(task)
-		return task
+cc_str = '${CC} ${CCFLAGS} ${CPPFLAGS} ${_CCINCFLAGS} ${_CCDEFFLAGS} -c ${SRC}'
+Action.simple_action('all_cc', cc_str, 'GREEN')
 
-	task = Object.genobj.create_task(self, type, env, nice)
-	if type == self.m_type_initials:
-		self.p_compiletasks.append(task)
-	return task
-
-def detect(conf):
-	return 1
-
-def setup(env):
-	cc_str = '${CC} ${CCFLAGS} ${CPPFLAGS} ${_CCINCFLAGS} ${_CCDEFFLAGS} -c ${SRC}'
-	Action.simple_action('all_cc', cc_str, 'GREEN')
-
-	cpp_str = '${CXX} ${CXXFLAGS} ${CPPFLAGS} ${_CXXINCFLAGS} ${_CXXDEFFLAGS} -c ${SRC}'
-	Action.simple_action('all_cpp', cpp_str, color='GREEN')
-
-	ccroot.ccroot.create_task = create_task_new
+cpp_str = '${CXX} ${CXXFLAGS} ${CPPFLAGS} ${_CXXINCFLAGS} ${_CXXDEFFLAGS} -c ${SRC}'
+Action.simple_action('all_cpp', cpp_str, color='GREEN')
 

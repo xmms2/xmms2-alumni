@@ -99,7 +99,7 @@ def docb_file(obj, node):
 # docbook objects
 class docbookobj(Object.genobj):
 	def __init__(self, type='html'):
-		Object.genobj.__init__(self, type)
+		Object.genobj.__init__(self, 'other')
 		self.stylesheet = None
 
 		self.ext = ['html', 'pdf', 'txt', 'ps']
@@ -165,6 +165,4 @@ def detect(conf):
 		conf.env['DB2PDF']  = "jw -f docbook -b pdf -o %s %s"
 		conf.env['DB2PS']   = "jw -f docbook -b ps -o %s %s"
 		conf.env['DB2TXT']  = "jw -f docbook -b txt -o %s %s"
-
-	return 1
 

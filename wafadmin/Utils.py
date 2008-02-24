@@ -4,43 +4,89 @@
 
 "Utility functions"
 
-import os, sys, imp, types, string, re
+import os, sys, imp, types, string, time, errno
+from UserDict import UserDict
 import Params
+from Constants import *
+
+try:
+	import hashlib
+	md5 = hashlib.md5
+except ImportError:
+	import md5
+	md5 = md5.md5
 
 g_trace = 0
 g_debug = 0
 g_error = 0
 
-def waf_version(mini = "0.0.1", maxi = "100.0.0"):
+g_ind_idx = 0
+g_ind = ['\\', '|', '/', '-']
+"the rotation thing"
+
+def test_full():
+	try:
+		f=open('.waf-full','w')
+		f.write('test')
+		f.close()
+		os.unlink('.waf-full')
+	except IOError, e:
+		import errno
+		if e.errno == errno.ENOSPC:
+			Params.fatal('filesystem full', e.errno)
+		else:
+			Params.fatal(str(e), e.errno)
+
+class ordered_dict(UserDict):
+	def __init__(self, dict = None):
+		self.allkeys = []
+		UserDict.__init__(self, dict)
+
+	def __delitem__(self, key):
+		self.allkeys.remove(key)
+		UserDict.__delitem__(self, key)
+
+	def __setitem__(self, key, item):
+		if key not in self.allkeys: self.allkeys.append(key)
+		UserDict.__setitem__(self, key, item)
+
+listdir = os.listdir
+if sys.platform == "win32":
+	def listdir_win32(s):
+		if not os.path.isdir(s):
+			e = OSError()
+			e.errno = errno.ENOENT
+			raise e
+		return os.listdir(s)
+	listdir = listdir_win32
+
+def to_int(s):
+	lst = s.split(".")
+
+def waf_version(mini = 0x010000, maxi = 0x100000):
 	"throws an exception if the waf version is wrong"
-	min_lst = map(int, mini.split('.'))
-	max_lst = map(int, maxi.split('.'))
-	waf_lst = map(int, Params.g_version.split('.'))
+	ver = HEXVERSION
+	try: min_val = mini + 0
+	except TypeError: min_val = int(mini.replace('.', '0'), 16)
 
-	mm = min(len(min_lst), len(waf_lst))
-	for (a, b) in zip(min_lst[:mm], waf_lst[:mm]):
-		if a < b:
-			break
-		if a > b:
-			Params.fatal("waf version should be at least %s (%s found)" % (mini, Params.g_version))
+	if min_val > ver:
+		Params.fatal("waf version should be at least %s (%x found)" % (mini, ver))
 
-	mm = min(len(max_lst), len(waf_lst))
-	for (a, b) in zip(max_lst[:mm], waf_lst[:mm]):
-		if a > b:
-			break
-		if a < b:
-			Params.fatal("waf version should be at most %s (%s found)" % (maxi, Params.g_version))
+	try: max_val = maxi + 0
+	except TypeError: max_val = int(maxi.replace('.', '0'), 16)
 
-def error(msg):
-	Params.niceprint(msg, 'ERROR', 'Configuration')
+	if max_val < ver:
+		Params.fatal("waf version should be at most %s (%x found)" % (maxi, ver))
+
+def python_24_guard():
+	if sys.hexversion<0x20400f0:
+		raise ImportError,"Waf requires Python >= 2.3 but the raw source requires Python 2.4"
 
 def reset():
-	import Params, Task, preproc, Scripting, Object
+	import Params, Object, Environment
 	Params.g_build = None
-	Task.g_tasks_done = []
-	Task.g_tasks = Task.TaskManager()
-	Scripting.g_inroot = 1
 	Object.g_allobjs = []
+	Environment.g_cache_max = {}
 
 def to_list(sth):
 	if type(sth) is types.ListType:
@@ -48,16 +94,13 @@ def to_list(sth):
 	else:
 		return sth.split()
 
-def options(**kwargs):
-	pass
-
 g_loaded_modules = {}
 "index modules by absolute path"
 
 g_module=None
 "the main module is special"
 
-def load_module(file_path, name='wscript'):
+def load_module(file_path, name=WSCRIPT_FILE):
 	"this function requires an absolute path"
 	try:
 		return g_loaded_modules[file_path]
@@ -68,11 +111,11 @@ def load_module(file_path, name='wscript'):
 
 	try:
 		file = open(file_path, 'r')
-	except OSError:
+	except (IOError, OSError):
 		Params.fatal('The file %s could not be opened!' % file_path)
 
-	import Common
 	d = module.__dict__
+	import Common
 	d['install_files'] = Common.install_files
 	d['install_as'] = Common.install_as
 	d['symlink_as'] = Common.symlink_as
@@ -104,57 +147,82 @@ def to_hashtable(s):
 		tbl[mems[0]] = mems[1]
 	return tbl
 
-def get_term_cols():
-	return 55
-
 try:
 	import struct, fcntl, termios
-	def machin():
-		lines, cols = struct.unpack("HHHH", \
+except ImportError:
+	def get_term_cols():
+		return 55
+else:
+	def get_term_cols():
+		dummy_lines, cols = struct.unpack("HHHH", \
 		fcntl.ioctl(sys.stdout.fileno(),termios.TIOCGWINSZ , \
 		struct.pack("HHHH", 0, 0, 0, 0)))[:2]
 		return cols
-	get_term_cols = machin
-except:
-	pass
+
+def progress_line(state, total, col1, col2):
+	n = len(str(total))
+
+	global g_ind, g_ind_idx
+	g_ind_idx += 1
+	ind = g_ind[g_ind_idx % 4]
+
+	if hasattr(Params.g_build, 'ini'):
+		ini = Params.g_build.ini
+	else:
+		ini = Params.g_build.ini = time.time()
+
+	pc = (100.*state)/total
+	eta = time.strftime('%H:%M:%S', time.gmtime(time.time() - ini))
+	fs = "[%%%dd/%%%dd][%%s%%2d%%%%%%s][%s][" % (n, n, ind)
+	left = fs % (state, total, col1, pc, col2)
+	right = '][%s%s%s]' % (col1, eta, col2)
+
+	cols = get_term_cols() - len(left) - len(right) + 2*len(col1) + 2*len(col2)
+	if cols < 7: cols = 7
+
+	ratio = int((cols*state)/total) - 1
+
+	bar = ('='*ratio+'>').ljust(cols)
+	msg = Params.g_progress % (left, bar, right)
+
+	return msg
 
 def split_path(path):
-	"Split path into components. Supports UNC paths on Windows"
-	if 'win' == sys.platform[:3] :
+	if not path: return ['']
+	return path.split('/')
+
+if sys.platform == 'win32':
+	def split_path(path):
 		h,t = os.path.splitunc(path)
 		if not h: return __split_dirs(t)
 		return [h] + __split_dirs(t)[1:]
-	return __split_dirs(path)
 
-def __split_dirs(path):
-	h,t = os.path.split(path)
-	if not h: return [t]
-	if h == path: return [h]
-	if not t: return __split_dirs(h)
-	else: return __split_dirs(h) + [t]
+	def __split_dirs(path):
+		h,t = os.path.split(path)
+		if not h: return [t]
+		if h == path: return [h.replace('\\', '')]
+		if not t: return __split_dirs(h)
+		else: return __split_dirs(h) + [t]
 
-def is_absolute_path(path):
-	""" more thorough absoluate path check <- how am i supposed to understand what this does exactly ????? what does the re do ?  and why is this needed ? (ita)"""
-	isabs = os.path.isabs(path)
-	if not isabs and sys.platform == 'win32':
-		isabs = (len(path) > 1 and path.find(':') > 0)
-	elif not isabs and sys.platform != 'win32':
-		isabs = re.search(r'^[\"\']/', path.strip(), re.M) != None
-	return isabs
+_quote_define_name_translation = None
+"lazily construct a translation table for mapping invalid characters to valid ones"
 
-"why this complexity ? (ita)"
-_path_to_define_name_translation = None
-def path_to_define_name(path):
-	"""Converts a file path like foo/zbr-xpto.h to a C preprocessor
-	name like FOO_ZBR_XPTO_H"""
-	global _path_to_define_name_translation
-	if _path_to_define_name_translation is None:
-		## make a translation table mapping everything except
-		## alfanumeric chars to '_'
+def quote_define_name(path):
+	"Converts a string to a constant name, foo/zbr-xpto.h -> FOO_ZBR_XPTO_H"
+	global _quote_define_name_translation
+	if _quote_define_name_translation is None:
 		invalid_chars = [chr(x) for x in xrange(256)]
-		for valid in string.digits + string.uppercase:
-			invalid_chars.remove(valid)
-		_path_to_define_name_translation = string.maketrans(''.join(invalid_chars), '_'*len(invalid_chars))
+		for valid in string.digits + string.uppercase: invalid_chars.remove(valid)
+		_quote_define_name_translation = string.maketrans(''.join(invalid_chars), '_'*len(invalid_chars))
 
-	return string.translate(string.upper(path), _path_to_define_name_translation)
+	return string.translate(string.upper(path), _quote_define_name_translation)
+
+def quote_whitespace(path):
+	return (path.strip().find(' ') > 0 and '"%s"' % path or path).replace('""', '"')
+
+def trimquotes(s):
+	if not s: return ''
+	s = s.rstrip()
+	if s[0] == "'" and s[-1] == "'": return s[1:-1]
+	return s
 

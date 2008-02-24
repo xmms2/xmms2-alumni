@@ -1,7 +1,7 @@
 import Common, Object, Utils, Node, Params
 import sys, os
 import gzip
-from misc import copyobj
+from misc import copy_taskgen
 
 def gzip_func(task):
     env = task.m_env
@@ -14,7 +14,7 @@ def gzip_func(task):
 
     return 0
 
-class manobj(copyobj):
+class manobj(copy_taskgen):
     def __init__(self, section=1, type='none'):
         copyobj.__init__(self, type)
         self.fun = gzip_func

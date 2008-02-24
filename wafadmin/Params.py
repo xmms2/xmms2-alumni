@@ -1,45 +1,28 @@
 #! /usr/bin/env python
 # encoding: utf-8
-# Thomas Nagy, 2005 (ita)
+# Thomas Nagy, 2005-2008 (ita)
 
 "Main parameters"
 
-import os, sys, types, inspect, base64, stat
-try: from hashlib import md5
-except ImportError: from md5 import md5
+import os, sys, types, inspect, base64, time
+from Utils import md5
+import Constants, Utils
 
-import Utils
+# updated from the top-level wscript
+g_version="1.4.2"
 
-# =================================== #
-# Fixed constants, change with care
-
-g_version="1.2.0"
 g_rootname = ''
+g_progress = '\x1b[K%s%s%s\r'
 if sys.platform=='win32':
 	# get the first two letters (c:)
 	g_rootname = os.getcwd()[:2]
-
-g_dbfile='.wafpickle'
-"name of the db file"
-
-g_excludes = ['.svn', 'CVS', 'wafadmin', '.arch-ids']
-"exclude from dist"
+	g_progress = '\x1b[A\x1b[K%s%s%s\r'
 
 g_autoconfig = 0
 "reconfigure the project automatically"
 
-sig_nil = 'iluvcuteoverload'
-
 # =================================== #
 # Constants set on runtime
-
-g_globals = {}
-"global vars"
-
-def set_globals(name, value):
-	g_globals[name] = value
-def globals(name):
-	return g_globals.get(name, [])
 
 g_cwd_launch = None
 "directory from which waf was called"
@@ -54,7 +37,7 @@ g_commands = {}
 "build, configure, .."
 
 g_verbose = 0
-"-v: warnings, -vv: developer info"
+"-v: warnings, -vv: developer info, -vvv: all info"
 
 g_build = None
 "only one build object is active at a time"
@@ -62,26 +45,19 @@ g_build = None
 g_platform = sys.platform
 "current platform"
 
-g_cachedir = ''
+g_cache_global = ''
 "config cache directory"
 
-g_homedir=''
-for var in ['WAF_HOME', 'HOME', 'HOMEPATH']:
-	if var in os.environ:
-		#In windows, the home path is split into HOMEDRIVE and HOMEPATH
-		if var == 'HOMEPATH' and 'HOMEDRIVE' in os.environ:
-			g_homedir='%s%s' % (os.environ['HOMEDRIVE'], os.environ['HOMEPATH'])
-		else:
-			g_homedir=os.environ[var]
-		break
-g_homedir=os.path.abspath(g_homedir)
-g_usecache = ''
-try: g_usecache = os.path.abspath(os.environ['WAFCACHE'])
+g_conf_name = 'conf-runs-%s-%d.pickle' % (sys.platform, Constants.ABI)
+
+g_install = 0
+"true if install or uninstall is set"
+
+try: g_cache_global = os.path.abspath(os.environ['WAFCACHE'])
 except KeyError: pass
 
-# allow different names for lockfile
 try: g_lockfile = os.environ['WAFLOCK']
-except: g_lockfile = '.lock-wscript'
+except KeyError: g_lockfile = '.lock-wscript'
 
 # =================================== #
 # HELPERS
@@ -97,8 +73,9 @@ g_colors = {
 'REDP'  :'\033[01;33m',
 'GREEN' :'\033[01;92m',
 'YELLOW':'\033[00;33m',
-'BLUE'  :'\033[01;94m',
-'CYAN'  :'\033[01;96m',
+'PINK'  :'\033[00;35m',
+'BLUE'  :'\033[01;34m',
+'CYAN'  :'\033[01;36m',
 'NORMAL':'\033[0m'
 }
 "colors used for printing messages"
@@ -110,17 +87,17 @@ def reset_colors():
 	global g_colors
 	for k in g_colors.keys():
 		g_colors[k]=''
-	g_cursor_on=''
-	g_cursor_off=''
+		g_cursor_on=''
+		g_cursor_off=''
 
 if (sys.platform=='win32') or ('NOCOLOR' in os.environ) \
-	or (os.environ.get('TERM', 'dumb') == 'dumb') \
+	or (os.environ.get('TERM', 'dumb') in ['dumb', 'emacs']) \
 	or (not sys.stdout.isatty()):
 	reset_colors()
 
 def pprint(col, str, label=''):
 	try: mycol=g_colors[col]
-	except: mycol=''
+	except KeyError: mycol=''
 	print "%s%s%s %s" % (mycol, str, g_colors['NORMAL'], label)
 
 g_levels={
@@ -148,23 +125,23 @@ def niceprint(msg, type='', module=''):
 	#if not module:
 	#	print '%s: %s'% (type, msg)
 	#	return
-	if type=='ERROR':
-		print '%s: %s == %s == %s %s'% (type, g_colors['RED'], module, g_colors['NORMAL'], msg)
-		return
-	if type=='WARNING':
-		print '%s: %s == %s == %s %s'% (type, g_colors['RED'], module, g_colors['NORMAL'], msg)
+	def print_pat(color):
+		print '%s %s<%s>%s %s' % (type, g_colors[color], module, g_colors['NORMAL'], msg)
+
+	if type == 'ERROR' or type == 'WARNING':
+		print_pat('RED')
 		return
 	if type=='DEBUG':
-		print '%s: %s == %s == %s %s'% (type, g_colors['CYAN'], module, g_colors['NORMAL'], msg)
+		print_pat('CYAN')
 		return
 	if module in g_levels:
-		print '%s: %s == %s == %s %s'% (type, g_colors[g_levels[module]], module, g_colors['NORMAL'], msg)
+		print_pat(g_levels[module])
 		return
-	print 'TRACE: == %s == %s'% (module, msg)
+	print 'TRACE <%s> %s'% (module, msg)
 
 def __get_module():
 	try: return inspect.stack()[2][0].f_globals['__name__']
-	except: return "unknown"
+	except (IndexError, KeyError): return "unknown"
 
 def debug(msg, zone=None):
 	global g_zones, g_verbose
@@ -174,6 +151,8 @@ def debug(msg, zone=None):
 	elif not g_verbose>2:
 		return
 	module = __get_module()
+
+	msg = time.strftime('%%X %s' % msg)
 	niceprint(msg, 'DEBUG', module)
 
 def warning(msg, zone=0):
@@ -196,8 +175,7 @@ def fatal(msg, ret=1):
 		traceback.print_stack()
 	sys.exit(ret)
 
-# TODO rename vsig in view_sig
-def vsig(s):
+def view_sig(s):
 	"used for displaying signatures"
 	if type(s) is types.StringType:
 		n = base64.encodestring(s)
@@ -215,13 +193,24 @@ def hash_sig(o1, o2):
 def h_file(filename):
 	f = file(filename,'rb')
 	m = md5()
-	readBytes = 1024 # read 1024 bytes per time
+	readBytes = 100000
 	while (readBytes):
 		readString = f.read(readBytes)
 		m.update(readString)
 		readBytes = len(readString)
 	f.close()
 	return m.digest()
+
+# Another possibility, faster (projects with more than 15000 files) but less accurate (cache)
+# based on the path, md5 hashing can be used for some files and timestamp for others
+#def h_file(filename):
+#	st = os.stat(filename)
+#	import stat
+#	if stat.S_ISDIR(st): raise IOError, 'not a file'
+#	m = md5()
+#	m.update(st.st_mtime)
+#	m.update(st.st_size)
+#	return m.digest()
 
 def h_string(str):
 	m = md5()
@@ -232,6 +221,15 @@ def h_list(lst):
 	m = md5()
 	m.update(str(lst))
 	return m.digest()
+
+_hash_blacklist_types = (
+	types.BuiltinFunctionType,
+	types.ModuleType,
+	types.FunctionType,
+	types.ClassType,
+	types.TypeType,
+	types.NoneType,
+	)
 
 def hash_function_with_globals(prevhash, func):
 	"""
@@ -245,11 +243,15 @@ def hash_function_with_globals(prevhash, func):
 	"""
 	assert type(func) is types.FunctionType
 	for name, value in func.func_globals.iteritems():
-		if type(value) in (types.BuiltinFunctionType, types.ModuleType, types.FunctionType, types.ClassType, types.TypeType):
+		if type(value) in _hash_blacklist_types:
+			continue
+		if isinstance(value, type):
 			continue
 		try:
 			prevhash = hash( (prevhash, name, value) )
 		except TypeError: # raised for unhashable elements
 			pass
+		#else:
+		#	print "hashed: ", name, " => ", value, " => ", hash(value)
 	return hash( (prevhash, inspect.getsource(func)) )
 

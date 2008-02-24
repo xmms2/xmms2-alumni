@@ -1,6 +1,6 @@
 import Action
 import Node
-from Params import error
+import Object
 import sys
 
 genpy_str = '${PYTHON} ${SRC} -> ${TGT}'
@@ -17,7 +17,7 @@ def genpy_file(self, node):
 def setup(env):
     Action.simple_action('genpy', genpy_str, color='BLUE')
 
-    env.hook('cc', 'GENPY_EXT', genpy_file)
+    Object.hook('cc', 'GENPY_EXT', genpy_file)
 
 def detect(conf):
     conf.env['PYTHON'] = sys.executable
