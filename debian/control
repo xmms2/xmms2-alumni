@@ -46,6 +46,7 @@ Build-Depends: debhelper (>= 5.0.37.2),
                libpulse-dev
 Vcs-Git: git://git.debian.org/git/pkg-xmms2/xmms2
 Vcs-Browser: http://git.debian.org/?p=pkg-xmms2/xmms2.git
+Homepage: http://xmms2.xmms.se/
 XS-Python-Version: all
 
 Package: xmms2
