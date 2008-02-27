@@ -55,7 +55,12 @@ void xmms2_init ()
 		x_exit ("couldn't connect to xmms2d!");
 	}
 
-	x_vis = xmmsc_visualization_init (x_connection);
+	res = xmmsc_visualization_init (x_connection);
+	xmms_result_wait (res);
+	if (xmmsc_result_iserror (res)) {
+		x_exit (xmmsc_result_get_error (res));
+	}
+	x_vis = xmmsc_visualization_init_handle (res);
 	res = xmmsc_visualization_properties_set (x_connection, x_vis, &x_config);
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {

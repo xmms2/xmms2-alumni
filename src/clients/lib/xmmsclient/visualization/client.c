@@ -43,6 +43,8 @@ struct xmmsc_visualization_St {
 	xmmsc_vis_transport_t type;
 	/** server side identifier */
 	int32_t id;
+	/** client side array index */
+	int idx;
 };
 
 static xmmsc_visualization_t *
@@ -68,9 +70,9 @@ xmmsc_visualization_version (xmmsc_connection_t *c) {
  * Initializes a new visualization dataset
  */
 
-int
+xmmsc_result_t *
 xmmsc_visualization_init (xmmsc_connection_t *c) {
-	xmmsc_result_t *res;
+	xmmsc_result_t *res = NULL;
 
 	x_check_conn (c, 0);
 
@@ -85,20 +87,34 @@ xmmsc_visualization_init (xmmsc_connection_t *c) {
 		if (!(c->visv[vv] = x_new0 (xmmsc_visualization_t, 1))) {
 			x_oom ();
 		} else {
+			c->visv[vv]->idx = vv;
 			res = xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_REGISTER);
-			xmmsc_result_wait (res);
-			if (xmmsc_result_iserror (res)) {
-				c->error = strdup("Couldn't register to the server!");
-				return -1;
+			if (res) {
+				xmmsc_result_visc_set (res, c->visv[vv]);
 			}
-			xmmsc_result_get_int (res, &c->visv[vv]->id);
-			c->visv[vv]->type = VIS_NONE;
-			xmmsc_result_unref (res);
 		}
 	}
-	return c->visc-1;
+	return res;
 }
 
+int
+xmmsc_visualization_init_handle (xmmsc_result_t *res)
+{
+	xmmsc_visualization_t *visc;
+
+	if (xmmsc_result_iserror (res)) {
+		return -1;
+	}
+	visc = xmmsc_result_visc_get (res);
+	if (!visc) {
+		x_api_error_if (1, "non vis result?", -1);
+	}
+	xmmsc_result_get_int (res, &visc->id);
+	visc->type = VIS_NONE;
+	
+	return visc->idx;
+
+}
 
 /**
  * Initializes a new visualization connection
