@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -25,9 +25,9 @@
 
 #include <glib.h>
 
-/* scons takes care of this too, this is just an extra check */
-#if !GLIB_CHECK_VERSION(2,6,0)
-# error You need atleast glib 2.6.0
+/* WAF checks this too, this is just an extra check */
+#if !GLIB_CHECK_VERSION(2,8,0)
+# error You need atleast glib 2.8.0
 #endif
 
 #include "xmms_configuration.h"
@@ -110,7 +110,8 @@ stats (xmms_object_t *object, xmms_error_t *error)
 {
 	gint starttime;
 	GHashTable *ret = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                                         g_free, xmms_object_cmd_value_free);
+	                                         g_free,
+	                                         (GDestroyNotify)xmms_object_cmd_value_unref);
 
 	starttime = ((xmms_main_t*)object)->starttime;
 
@@ -152,9 +153,11 @@ do_scriptdir (const gchar *scriptdir)
 	while ((f = g_dir_read_name (dir))) {
 		argv[0] = g_strdup_printf ("%s/%s", scriptdir, f);
 		if (g_file_test (argv[0], G_FILE_TEST_IS_EXECUTABLE)) {
-			g_spawn_async (g_get_home_dir (),
-			               argv, NULL, 0,
-			               NULL, NULL, NULL, &err);
+			if (!g_spawn_async (g_get_home_dir (),
+			                    argv, NULL, 0, NULL, NULL, NULL, &err)) {
+				xmms_log_error ("Could not run script '%s', error: %s",
+				                argv[0], err->message);
+			}
 		}
 		g_free (argv[0]);
 	}
@@ -241,8 +244,7 @@ xmms_main_destroy (xmms_object_t *object)
 
 	xmms_object_unref (xform_obj);
 
-	g_assert (conffile != NULL);
-	xmms_config_save (conffile);
+	xmms_config_save ();
 
 	xmms_config_shutdown ();
 	xmms_plugin_shutdown ();
@@ -303,7 +305,7 @@ install_scripts (const gchar *into_dir)
 	const gchar *f;
 	gchar *s;
 
-	s = strrchr (into_dir, '/');
+	s = strrchr (into_dir, G_DIR_SEPARATOR);
 	if (!s)
 		return;
 
@@ -337,7 +339,7 @@ void
 print_version ()
 {
 	printf ("XMMS2 version " XMMS_VERSION "\n");
-	printf ("Copyright (C) 2003-2007 XMMS2 Team\n");
+	printf ("Copyright (C) 2003-2008 XMMS2 Team\n");
 	printf ("This is free software; see the source for copying conditions.\n");
 	printf ("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 	printf ("PARTICULAR PURPOSE.\n");

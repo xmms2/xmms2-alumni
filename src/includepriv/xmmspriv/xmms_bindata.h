@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -19,6 +19,6 @@
 
 typedef struct xmms_bindata_St xmms_bindata_t;
 
-xmms_bindata_t *xmms_bindata_init ();
+xmms_bindata_t *xmms_bindata_init (void);
 
 #endif

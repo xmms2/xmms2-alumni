@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -251,7 +251,7 @@ xmmsc_ipc_result_unregister (xmmsc_ipc_t *ipc, xmmsc_result_t *res)
 		xmmsc_result_t *tmp = n->data;
 
 		if (xmmsc_result_cookie_get (res) == xmmsc_result_cookie_get (tmp)) {
-			ipc->results_list = x_list_remove (ipc->results_list, tmp);
+			ipc->results_list = x_list_delete_link (ipc->results_list, n);
 			break;
 		}
 	}
@@ -400,10 +400,12 @@ xmmsc_ipc_exec_msg (xmmsc_ipc_t *ipc, xmms_ipc_msg_t *msg)
 		char *errstr;
 		uint32_t len;
 
-		if (!xmms_ipc_msg_get_string_alloc (msg, &errstr, &len))
-			errstr = strdup ("No errormsg!");
-
-		xmmsc_result_seterror (res, errstr);
+		if (!xmms_ipc_msg_get_string_alloc (msg, &errstr, &len)) {
+			xmmsc_result_seterror (res, "No errormsg!");
+		} else {
+			xmmsc_result_seterror (res, errstr);
+			free (errstr);
+		}
 	}
 
 	xmmsc_result_run (res, msg);

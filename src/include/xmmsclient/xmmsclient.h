@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -41,18 +41,20 @@ typedef enum {
 	XMMSC_RESULT_CLASS_BROADCAST
 } xmmsc_result_type_t;
 
+typedef void (*xmmsc_disconnect_func_t) (void *user_data);
 typedef void (*xmmsc_user_data_free_func_t) (void *user_data);
+typedef void (*xmmsc_io_need_out_callback_func_t) (int, void*);
 
 xmmsc_connection_t *xmmsc_init (const char *clientname);
 int xmmsc_connect (xmmsc_connection_t *, const char *);
-void xmmsc_ref (xmmsc_connection_t *c);
+xmmsc_connection_t *xmmsc_ref (xmmsc_connection_t *c);
 void xmmsc_unref (xmmsc_connection_t *c);
 void xmmsc_lock_set (xmmsc_connection_t *conn, void *lock, void (*lockfunc)(void *), void (*unlockfunc)(void *));
-void xmmsc_disconnect_callback_set (xmmsc_connection_t *c, void (*callback) (void*), void *userdata);
-void xmmsc_disconnect_callback_set_full (xmmsc_connection_t *c, void (*callback) (void*), void *userdata, xmmsc_user_data_free_func_t free_func);
+void xmmsc_disconnect_callback_set (xmmsc_connection_t *c, xmmsc_disconnect_func_t disconnect_func, void *userdata);
+void xmmsc_disconnect_callback_set_full (xmmsc_connection_t *c, xmmsc_disconnect_func_t disconnect_func, void *userdata, xmmsc_user_data_free_func_t free_func);
 
-void xmmsc_io_need_out_callback_set (xmmsc_connection_t *c, void (*callback) (int, void*), void *userdata);
-void xmmsc_io_need_out_callback_set_full (xmmsc_connection_t *c, void (*callback) (int, void*), void *userdata, xmmsc_user_data_free_func_t free_func);
+void xmmsc_io_need_out_callback_set (xmmsc_connection_t *c, xmmsc_io_need_out_callback_func_t callback, void *userdata);
+void xmmsc_io_need_out_callback_set_full (xmmsc_connection_t *c, xmmsc_io_need_out_callback_func_t callback, void *userdata, xmmsc_user_data_free_func_t free_func);
 void xmmsc_io_disconnect (xmmsc_connection_t *c);
 int xmmsc_io_want_out (xmmsc_connection_t *c);
 int xmmsc_io_out_handle (xmmsc_connection_t *c);
@@ -81,6 +83,7 @@ xmmsc_result_t *xmmsc_playlist_add_args (xmmsc_connection_t *c, const char *play
 xmmsc_result_t *xmmsc_playlist_add_url (xmmsc_connection_t *c, const char *playlist, const char *url);
 xmmsc_result_t *xmmsc_playlist_add_id (xmmsc_connection_t *c, const char *playlist, uint32_t id);
 xmmsc_result_t *xmmsc_playlist_add_encoded (xmmsc_connection_t *c, const char *playlist, const char *url);
+xmmsc_result_t *xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist, xmmsc_coll_t *coll);
 xmmsc_result_t *xmmsc_playlist_add_collection (xmmsc_connection_t *c, const char *playlist, xmmsc_coll_t *coll, const char **order);
 xmmsc_result_t *xmmsc_playlist_remove_entry (xmmsc_connection_t *c, const char *playlist, uint32_t);
 xmmsc_result_t *xmmsc_playlist_clear (xmmsc_connection_t *c, const char *playlist);
@@ -161,7 +164,6 @@ xmmsc_result_t *xmmsc_main_stats (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_broadcast_mediainfo_reader_status (xmmsc_connection_t *c);
 
 /* signals */
-xmmsc_result_t *xmmsc_signal_visualisation_data (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_signal_mediainfo_reader_unindexed (xmmsc_connection_t *c);
 
 /*
@@ -198,6 +200,7 @@ xmmsc_result_t *xmmsc_xform_media_browse_encoded (xmmsc_connection_t *c, const c
 xmmsc_result_t *xmmsc_bindata_add (xmmsc_connection_t *c, const unsigned char *data, unsigned int len);
 xmmsc_result_t *xmmsc_bindata_retrieve (xmmsc_connection_t *c, const char *hash);
 xmmsc_result_t *xmmsc_bindata_remove (xmmsc_connection_t *c, const char *hash);
+xmmsc_result_t *xmmsc_bindata_list (xmmsc_connection_t *c);
 
 /* broadcasts */
 xmmsc_result_t *xmmsc_broadcast_medialib_entry_changed (xmmsc_connection_t *c);
@@ -289,11 +292,10 @@ xmmsc_result_t *xmmsc_broadcast_collection_changed (xmmsc_connection_t *c);
 typedef void (*xmmsc_result_notifier_t) (xmmsc_result_t *res, void *user_data);
 
 xmmsc_result_t *xmmsc_result_restart (xmmsc_result_t *res);
-void xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg);
 xmmsc_result_type_t xmmsc_result_get_class (xmmsc_result_t *res);
 void xmmsc_result_disconnect (xmmsc_result_t *res);
 
-void xmmsc_result_ref (xmmsc_result_t *res);
+xmmsc_result_t *xmmsc_result_ref (xmmsc_result_t *res);
 void xmmsc_result_unref (xmmsc_result_t *res);
 
 void xmmsc_result_notifier_set (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data);
@@ -305,7 +307,7 @@ const char * xmmsc_result_get_error (xmmsc_result_t *res);
 
 int xmmsc_result_get_int (xmmsc_result_t *res, int32_t *r);
 int xmmsc_result_get_uint (xmmsc_result_t *res, uint32_t *r);
-int xmmsc_result_get_string (xmmsc_result_t *res, char **r);
+int xmmsc_result_get_string (xmmsc_result_t *res, const char **r);
 int xmmsc_result_get_collection (xmmsc_result_t *conn, xmmsc_coll_t **coll);
 int xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen);
 
@@ -324,14 +326,14 @@ typedef void (*xmmsc_propdict_foreach_func) (const void *key, xmmsc_result_value
 typedef void (*xmmsc_dict_foreach_func) (const void *key, xmmsc_result_value_type_t type, const void *value, void *user_data);
 
 xmmsc_result_value_type_t xmmsc_result_get_dict_entry_type (xmmsc_result_t *res, const char *key);
-int xmmsc_result_get_dict_entry_string (xmmsc_result_t *res, const char *key, char **r);
+int xmmsc_result_get_dict_entry_string (xmmsc_result_t *res, const char *key, const char **r);
 int xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *r);
 int xmmsc_result_get_dict_entry_uint (xmmsc_result_t *res, const char *key, uint32_t *r);
 int xmmsc_result_get_dict_entry_collection (xmmsc_result_t *conn, const char *key, xmmsc_coll_t **coll);
 int xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func, void *user_data);
 int xmmsc_result_propdict_foreach (xmmsc_result_t *res, xmmsc_propdict_foreach_func func, void *user_data);
 void xmmsc_result_source_preference_set (xmmsc_result_t *res, const char **preference);
-char ** xmmsc_result_source_preference_get (xmmsc_result_t *res);
+const char **xmmsc_result_source_preference_get (xmmsc_result_t *res);
 
 int xmmsc_result_is_list (xmmsc_result_t *res);
 int xmmsc_result_list_next (xmmsc_result_t *res);

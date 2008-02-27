@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -58,8 +58,6 @@ struct xmms_ipc_St {
  * A IPC client representation.
  */
 typedef struct xmms_ipc_client_St {
-	GThread *thread;
-
 	GMainLoop *ml;
 	GIOChannel *iochan;
 
@@ -150,45 +148,41 @@ type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_
 	return TRUE;
 }
 
-
-static void
-count_hash (gpointer key, gpointer value, gpointer udata)
-{
-	gint *i = (gint*)udata;
-
-	if (key && value)
-		(*i)++;
-}
+typedef struct hash_to_dict_data_St {
+	xmms_ipc_msg_t *msg;
+	guint count;
+} hash_to_dict_data_t;
 
 static void
 hash_to_dict (gpointer key, gpointer value, gpointer udata)
 {
 	gchar *k = key;
 	xmms_object_cmd_value_t *v = value;
-	xmms_ipc_msg_t *msg = udata;
+	hash_to_dict_data_t *d = udata;
 
 	if (k && v) {
-		xmms_ipc_msg_put_string (msg, k);
-		xmms_ipc_handle_cmd_value (msg, v);
+		xmms_ipc_msg_put_string (d->msg, k);
+		xmms_ipc_handle_cmd_value (d->msg, v);
+		d->count++;
 	}
-
 }
 
 static void
 xmms_ipc_do_dict (xmms_ipc_msg_t *msg, GHashTable *table)
 {
-	gint i = 0;
+	hash_to_dict_data_t d = {msg, 0};
+	guint offset;
 
-	g_hash_table_foreach (table, count_hash, &i);
-
-	xmms_ipc_msg_put_uint32 (msg, i);
-	g_hash_table_foreach (table, hash_to_dict, msg);
+	offset = xmms_ipc_msg_put_uint32 (msg, 0);
+	g_hash_table_foreach (table, hash_to_dict, &d);
+	xmms_ipc_msg_store_uint32 (msg, offset, d.count);
 }
 
 static void
 xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
 {
 	GList *n;
+	guint offset, count;
 
 	xmms_ipc_msg_put_int32 (msg, val->type);
 
@@ -207,12 +201,24 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
 			break;
 		case XMMS_OBJECT_CMD_ARG_LIST:
 		case XMMS_OBJECT_CMD_ARG_PROPDICT:
-			xmms_ipc_msg_put_uint32 (msg, g_list_length (val->value.list));
+			/* store a dummy value first, and get the offset at where
+			 * it was put, so we can store the real count later.
+			 */
+			offset = xmms_ipc_msg_put_uint32 (msg, 0);
+			count = 0;
 
 			for (n = val->value.list; n; n = g_list_next (n)) {
 				xmms_object_cmd_value_t *lval = n->data;
+
 				xmms_ipc_handle_cmd_value (msg, lval);
+				count++;
 			}
+
+			/* now that we know how many items we stored we can
+			 * overwrite the dummy value from before.
+			 */
+			xmms_ipc_msg_store_uint32 (msg, offset, count);
+
 			break;
 		case XMMS_OBJECT_CMD_ARG_DICT:
 			xmms_ipc_do_dict (msg, val->value.dict);
@@ -330,7 +336,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 	}
 
 	if (arg.retval)
-		xmms_object_cmd_value_free (arg.retval);
+		xmms_object_cmd_value_unref (arg.retval);
 
 err:
 	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {

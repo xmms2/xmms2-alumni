@@ -74,11 +74,10 @@ new (class, clientname=NULL)
 		con = xmmsc_init (clientname);
 
 		if (con == NULL) {
-			RETVAL = &PL_sv_undef;
+			XSRETURN_UNDEF;
 		}
-		else {
-			RETVAL = perl_xmmsclient_new_sv_from_ptr (con, class);
-		}
+
+		RETVAL = perl_xmmsclient_new_sv_from_ptr (con, class);
 	OUTPUT:
 		RETVAL
 
@@ -549,7 +548,7 @@ Retrieve information about entry C<$id> from the medialib.
 
 =cut
 
-xmmsc_result_t *
+xmmsc_result_t_MedialibEntryStatus *
 xmmsc_medialib_get_info (c, id)
 		xmmsc_connection_t *c
 		uint32_t id
@@ -1222,6 +1221,26 @@ xmmsc_bindata_remove (c, hash)
 		xmmsc_connection_t *c
 		const char *hash
 
+=head2 bindata_list
+
+=over 4
+
+=item Arguments: none
+
+=item Return Value: $result
+
+=back
+
+  my $result = $conn->bindata_list;
+
+List all bindata hashes stored on the server.
+
+=cut
+
+xmmsc_result_t *
+xmmsc_bindata_list (c)
+		xmmsc_connection_t *c
+
 
 ## Other
 
@@ -1331,26 +1350,6 @@ xmmsc_result_t *
 xmmsc_broadcast_configval_changed (c)
 		xmmsc_connection_t *c
 
-=head2 signal_visualisation_data
-
-=over 4
-
-=item Arguments: none
-
-=item Return Value: $result
-
-=back
-
-  my $result = $conn->signal_visualisation_data;
-
-Request the visualisation data signal.
-
-=cut
-
-xmmsc_result_t *
-xmmsc_signal_visualisation_data (c)
-		xmmsc_connection_t *c
-
 =head2 broadcast_mediainfo_reader_status
 
 =over 4
@@ -1367,7 +1366,7 @@ Request status for the mediainfo reader. It can be idle or working.
 
 =cut
 
-xmmsc_result_t *
+xmmsc_result_t_MediainfoReaderStatus *
 xmmsc_broadcast_mediainfo_reader_status (c)
 		xmmsc_connection_t *c
 
@@ -1603,7 +1602,7 @@ play, stop and pause is triggered.
 
 =cut
 
-xmmsc_result_t *
+xmmsc_result_t_PlaybackStatus *
 xmmsc_broadcast_playback_status (c)
 		xmmsc_connection_t *c
 
@@ -1623,7 +1622,7 @@ Request the playback status.
 
 =cut
 
-xmmsc_result_t *
+xmmsc_result_t_PlaybackStatus *
 xmmsc_playback_status (c)
 		xmmsc_connection_t *c
 
@@ -1812,7 +1811,7 @@ manipulate the playlist this will be emitted.
 
 =cut
 
-xmmsc_result_t *
+xmmsc_result_t_PlaylistChanged *
 xmmsc_broadcast_playlist_changed (c)
 		xmmsc_connection_t *c
 
@@ -2145,7 +2144,7 @@ L<Audio::XMMSClient::Result>, L<Audio::XMMSClient::Playlist>, L<Audio::XMMSClien
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2006-2007, Florian Ragwitz
+Copyright (C) 2006-2008, Florian Ragwitz
 
 This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself, either Perl version 5.8.8 or, at your option,

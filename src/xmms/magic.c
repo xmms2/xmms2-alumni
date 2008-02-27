@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -426,22 +426,6 @@ tree_match (xmms_magic_checker_t *c, GNode *tree)
 	return FALSE;
 }
 
-guint
-tree_bytes_max_needed (xmms_magic_checker_t *c, GNode *tree)
-{
-	GNode *n;
-	guint ret = 0;
-
-	for (n = tree->children; n; n = n->next) {
-		xmms_magic_entry_t *entry = n->data;
-
-		ret = MAX (ret, c->offset + entry->offset + entry->len);
-		ret = MAX (ret, tree_bytes_max_needed (c, n));
-	}
-
-	return ret;
-}
-
 static gchar *
 xmms_magic_match (xmms_magic_checker_t *c, const gchar *uri)
 {
@@ -607,25 +591,6 @@ xmms_magic_plugin_init (xmms_xform_t *xform)
 	return !!res;
 }
 
-static void
-xmms_magic_plugin_destroy (xmms_xform_t *xform)
-{
-
-}
-static gint
-xmms_magic_plugin_read (xmms_xform_t *xform, void *buffer, gint len, xmms_error_t *error)
-{
-	return xmms_xform_read (xform, buffer, len, error);
-}
-
-static gint64
-xmms_magic_plugin_seek (xmms_xform_t *xform, gint64 offset, xmms_xform_seek_mode_t whence, xmms_error_t *err)
-{
-	return xmms_xform_seek (xform, offset, whence, err);
-}
-
-
-
 static gboolean
 xmms_magic_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 {
@@ -633,9 +598,8 @@ xmms_magic_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 
 	XMMS_XFORM_METHODS_INIT (methods);
 	methods.init = xmms_magic_plugin_init;
-	methods.destroy = xmms_magic_plugin_destroy;
-	methods.read = xmms_magic_plugin_read;
-	methods.seek = xmms_magic_plugin_seek;
+	methods.read = xmms_xform_read;
+	methods.seek = xmms_xform_seek;
 
 	xmms_xform_plugin_methods_set (xform_plugin, &methods);
 

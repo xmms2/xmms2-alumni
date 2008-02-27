@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -18,7 +18,7 @@
 #define __SIGNAL_XMMS_H__
 
 /* Don't forget to up this when protocol changes */
-#define XMMS_IPC_PROTOCOL_VERSION 10
+#define XMMS_IPC_PROTOCOL_VERSION 11
 
 typedef enum {
 	XMMS_OBJECT_CMD_ARG_NONE,
@@ -86,6 +86,7 @@ typedef enum {
 	XMMS_IPC_CMD_SET_POS_REL,
 	XMMS_IPC_CMD_ADD_URL,
 	XMMS_IPC_CMD_ADD_ID,
+	XMMS_IPC_CMD_ADD_IDLIST,
 	XMMS_IPC_CMD_ADD_COLL,
 	XMMS_IPC_CMD_REMOVE_ENTRY,
 	XMMS_IPC_CMD_MOVE_ENTRY,
@@ -155,6 +156,7 @@ typedef enum {
 	XMMS_IPC_CMD_GET_DATA,
 	XMMS_IPC_CMD_ADD_DATA,
 	XMMS_IPC_CMD_REMOVE_DATA,
+	XMMS_IPC_CMD_LIST_DATA,
 
 	/* end */
 	XMMS_IPC_CMD_END
@@ -192,8 +194,6 @@ typedef enum {
 typedef enum {
 	XMMS_PLUGIN_TYPE_ALL,
 	XMMS_PLUGIN_TYPE_OUTPUT,
-	XMMS_PLUGIN_TYPE_PLAYLIST,
-	XMMS_PLUGIN_TYPE_EFFECT,
 	XMMS_PLUGIN_TYPE_XFORM
 } xmms_plugin_type_t;
 

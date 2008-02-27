@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -15,6 +15,7 @@
  */
 
 #include <xmmsclient/xmmsclient.h>
+#include <xmms_configuration.h>
 
 #include <ruby.h>
 
@@ -57,7 +58,11 @@ m_decode_url (VALUE self, VALUE str)
 		return Qnil;
 
 	url = rb_str_new2 (tmp);
-	free (tmp);
+
+	/* We have to free tmp here ourselves because we didn't pass a
+	 * result to xmmsc_result_decode_url() above.
+	 */
+	free ((void *) tmp);
 
 	return url;
 }

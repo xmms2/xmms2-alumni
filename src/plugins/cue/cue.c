@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -148,6 +148,7 @@ add_index (cue_track *tr, gchar *idx)
 		tr->index2 = ms;
 	}
 
+	g_strfreev (a);
 }
 
 static void

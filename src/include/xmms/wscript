@@ -14,14 +14,14 @@ def configure(conf):
 
     defs['PKGLIBDIR'] = os.path.join(conf.env['PREFIX'],
                                      'lib', 'xmms2')
-    defs['BINDIR'] = os.path.join(conf.env['PREFIX'],
-                                  'bin')
+    defs['BINDIR']    = conf.env['BINDIR']
     defs['SHAREDDIR'] = os.path.join(conf.env['PREFIX'],
                                      'share', 'xmms2')
     defs['SCRIPTDIR'] = os.path.join(conf.env['PREFIX'],
                                      'share', 'xmms2', 'scripts', 'startup.d')
 
-    defs['XMMS_PATH_MAX'] = 255
+    defs['XMMS_VERSION'] = conf.env['VERSION']
+
     l = conf.env['XMMS_OUTPUT_PLUGINS']
     l.sort()
     prio,name = l[-1]
@@ -38,7 +38,6 @@ def configure(conf):
 
     conf.env['XMMS_DEFS'] = defs
     conf.env['PLUGINDIR'] = defs['PKGLIBDIR']
-    conf.env['PKGCONFIGDIR'] = os.path.join(conf.env["PREFIX"], "lib", "pkgconfig")
 
     # The plugin path in Windows should be relative, not absolute
     if Params.g_platform == 'win32':

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -115,24 +115,19 @@ xmmsc_init (const char *clientname)
 		return NULL;
 	}
 
-	xmmsc_ref (c);
-
-	return c;
+	return xmmsc_ref (c);
 }
 
 static xmmsc_result_t *
 xmmsc_send_hello (xmmsc_connection_t *c)
 {
 	xmms_ipc_msg_t *msg;
-	xmmsc_result_t *result;
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_HELLO);
 	xmms_ipc_msg_put_int32 (msg, XMMS_IPC_PROTOCOL_VERSION);
 	xmms_ipc_msg_put_string (msg, c->clientname);
 
-	result = xmmsc_send_msg (c, msg);
-
-	return result;
+	return xmmsc_send_msg (c, msg);
 }
 
 /**
@@ -195,14 +190,18 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
  * be disconnected.
  */
 void
-xmmsc_disconnect_callback_set (xmmsc_connection_t *c, void (*callback) (void*), void *userdata)
+xmmsc_disconnect_callback_set (xmmsc_connection_t *c,
+                               xmmsc_disconnect_func_t callback,
+                               void *userdata)
 {
 	xmmsc_disconnect_callback_set_full (c, callback, userdata, NULL);
 }
 
 void
-xmmsc_disconnect_callback_set_full (xmmsc_connection_t *c, void (*callback) (void*),
-                                    void *userdata, xmmsc_user_data_free_func_t free_func)
+xmmsc_disconnect_callback_set_full (xmmsc_connection_t *c,
+                                    xmmsc_disconnect_func_t callback,
+                                    void *userdata,
+                                    xmmsc_user_data_free_func_t free_func)
 {
 	x_check_conn (c,);
 	xmmsc_ipc_disconnect_set (c->ipc, callback, userdata, free_func);
@@ -235,14 +234,19 @@ xmmsc_unref (xmmsc_connection_t *c)
 }
 
 /**
- * @internal
+ * References the #xmmsc_connection_t
+ *
+ * @param c the connection to reference.
+ * @return c
  */
-void
+xmmsc_connection_t *
 xmmsc_ref (xmmsc_connection_t *c)
 {
-	x_api_error_if (!c, "with a NULL connection",);
+	x_api_error_if (!c, "with a NULL connection", NULL);
 
 	c->ref++;
+
+	return c;
 }
 
 /**

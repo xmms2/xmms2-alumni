@@ -1,7 +1,7 @@
 # encoding: utf-8
 #
 # WAF build scripts for XMMS2
-# Copyright (C) 2006-2007 XMMS2 Team
+# Copyright (C) 2006-2008 XMMS2 Team
 #
 
 import sys
@@ -23,7 +23,7 @@ import Object
 import Utils
 import Common
 
-VERSION="0.4 DrKosmos (git commit: %s)" % gittools.get_info_str()
+BASEVERSION="0.4 DrKosmos+WIP"
 APPNAME='xmms2'
 
 srcdir='.'
@@ -70,27 +70,28 @@ all_plugins = sets.Set([p for p in os.listdir("src/plugins")
 ## Build
 ####
 def build(bld):
-    if bld.env_of_name("default")["BUILD_XMMS2D"]:
+    env = bld.env()
+
+    if env["BUILD_XMMS2D"]:
         subdirs.append("src/xmms")
 
     newest = max([os.stat(os.path.join(sd, "wscript")).st_mtime for sd in subdirs])
-    if bld.env_of_name('default')['NEWEST_WSCRIPT_SUBDIR'] and newest > bld.env_of_name('default')['NEWEST_WSCRIPT_SUBDIR']:
+    if env['NEWEST_WSCRIPT_SUBDIR'] and newest > env['NEWEST_WSCRIPT_SUBDIR']:
         Params.fatal("You need to run waf configure")
 
     # Process subfolders
     bld.add_subdirs(subdirs)
 
     # Build configured plugins
-    plugins = bld.env_of_name('default')['XMMS_PLUGINS_ENABLED']
+    plugins = env['XMMS_PLUGINS_ENABLED']
     bld.add_subdirs(["src/plugins/%s" % plugin for plugin in plugins])
 
     # Build the clients
-    bld.add_subdirs(bld.env_of_name('default')['XMMS_OPTIONAL_BUILD'])
+    bld.add_subdirs(env['XMMS_OPTIONAL_BUILD'])
 
     # pkg-config
     o = bld.create_obj('pkgc')
-    o.version = VERSION
-    o.libs = bld.env_of_name('default')['XMMS_PKGCONF_FILES']
+    o.libs = env['XMMS_PKGCONF_FILES']
 
     Common.install_files('SHAREDDIR', '', 'mind.in.a.box-lament_snipplet.ogg')
 
@@ -243,19 +244,41 @@ def configure(conf):
     if Params.g_options.target_platform:
         Params.g_platform = Params.g_options.target_platform
 
-    conf.env["VERSION"] = VERSION
+    nam,changed = gittools.get_info()
+    conf.check_message("git commit id", "", True, nam)
+    if Params.g_options.customversion:
+        conf.env["VERSION"] = BASEVERSION + " (%s + %s)" % (nam, Params.g_options.customversion)
+    else:
+        dirty=""
+        if changed:
+            dirty="-dirty"
+        conf.check_message("uncommitted changes", "", bool(changed))
+        conf.env["VERSION"] = BASEVERSION + " (git commit: %s%s)" % (nam, dirty)
+
     conf.env["CCFLAGS"] = Utils.to_list(conf.env["CCFLAGS"]) + ['-g', '-O0']
     conf.env["CXXFLAGS"] = Utils.to_list(conf.env["CXXFLAGS"]) + ['-g', '-O0']
     conf.env['XMMS_PKGCONF_FILES'] = []
     conf.env['XMMS_OUTPUT_PLUGINS'] = [(-1, "NONE")]
 
-    conf.env['CCDEFINES'] += ["XMMS_VERSION=\"\\\"%s\\\"\"" % VERSION]
-    conf.env['CXXDEFINES'] += ["XMMS_VERSION=\"\\\"%s\\\"\"" % VERSION]
+    if Params.g_options.bindir:
+        conf.env["BINDIR"] = Params.g_options.bindir
+        conf.env["program_INST_VAR"] = "BINDIR"
+        conf.env["program_INST_DIR"] = ""
+    else:
+        conf.env["BINDIR"] = os.path.join(conf.env["PREFIX"], "bin")
 
     if Params.g_options.libdir:
         conf.env["LIBDIR"] = Params.g_options.libdir
-        conf.env["shlib_INST_DIR"] = ""
-        conf.env["shlib_INST_VAR"] = "LIBDIR"
+        conf.env["shlib_INST_VAR"]     = "LIBDIR"
+        conf.env["shlib_INST_DIR"]     = ""
+        conf.env["staticlib_INST_VAR"] = "LIBDIR"
+        conf.env["staticlib_INST_DIR"] = ""
+
+    if Params.g_options.pkgconfigdir:
+        conf.env['PKGCONFIGDIR'] = Params.g_options.pkgconfigdir
+        print conf.env['PKGCONFIGDIR']
+    else:
+        conf.env['PKGCONFIGDIR'] = os.path.join(conf.env["PREFIX"], "lib", "pkgconfig")
 
     if Params.g_options.config_prefix:
         for dir in Params.g_options.config_prefix:
@@ -316,7 +339,7 @@ def configure(conf):
 
     # Glib is required by everyone, so check for it here and let them
     # assume its presence.
-    conf.check_pkg2('glib-2.0', version='2.6.0', uselib='glib2')
+    conf.check_pkg2('glib-2.0', version='2.8.0', uselib='glib2')
 
     enabled_plugins, disabled_plugins = _configure_plugins(conf)
     enabled_optionals, disabled_optionals = _configure_optionals(conf)
@@ -343,6 +366,9 @@ def _list_cb(option, opt, value, parser):
 
 def set_options(opt):
     opt.tool_options('gcc')
+
+    opt.add_option('--with-custom-version', type='string',
+                   dest='customversion')
     opt.add_option('--with-plugins', action="callback", callback=_list_cb,
                    type="string", dest="enable_plugins")
     opt.add_option('--without-plugins', action="callback", callback=_list_cb,
@@ -355,7 +381,9 @@ def set_options(opt):
                    type='string', dest='config_prefix')
     opt.add_option('--without-xmms2d', type='int', dest='without_xmms2d')
     opt.add_option('--with-mandir', type='string', dest='manualdir')
+    opt.add_option('--with-bindir', type='string', dest='bindir')
     opt.add_option('--with-libdir', type='string', dest='libdir')
+    opt.add_option('--with-pkgconfigdir', type='string', dest='pkgconfigdir')
     opt.add_option('--with-target-platform', type='string',
 	               dest='target_platform')
 

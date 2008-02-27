@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -162,7 +162,7 @@ namespace Xmms
 	inline std::string*
 	extract_value( xmmsc_result_t* res )
 	{
-		char* temp = 0;
+		const char* temp = 0;
 		xmmsc_result_get_string( res, &temp );
 		return new std::string( temp );
 	}

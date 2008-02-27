@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -287,7 +287,7 @@ attrs_inspect_cb (VALUE args, VALUE s)
 	key = RARRAY (args)->ptr[0];
 	value = RARRAY (args)->ptr[1];
 
-	if (RSTRING (s)->len > 1)
+	if (RSTRING_LEN (s) > 1)
 		rb_str_buf_cat2 (s, ", ");
 
 	rb_str_buf_append (s, rb_inspect (key));

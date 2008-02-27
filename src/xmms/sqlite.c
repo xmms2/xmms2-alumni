@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -245,21 +245,22 @@ xmms_sqlite_set_common_properties (sqlite3 *sql)
 }
 
 gboolean
-xmms_sqlite_create ()
+xmms_sqlite_create (gboolean *create)
 {
 	xmms_config_property_t *cv;
 	gchar *tmp;
-	gboolean create = FALSE;
 	gboolean analyze = FALSE;
 	const gchar *dbpath;
 	gint version = 0;
 	sqlite3 *sql;
 
+	*create = FALSE;
+
 	cv = xmms_config_lookup ("medialib.path");
 	dbpath = xmms_config_property_get_string (cv);
 
 	if (!g_file_test (dbpath, G_FILE_TEST_EXISTS)) {
-		create = TRUE;
+		*create = TRUE;
 	}
 
 	if (sqlite3_open (dbpath, &sql)) {
@@ -269,7 +270,7 @@ xmms_sqlite_create ()
 
 	xmms_sqlite_set_common_properties (sql);
 
-	if (!create) {
+	if (!*create) {
 		sqlite3_exec (sql, "PRAGMA user_version",
 		              xmms_sqlite_version_cb, &version, NULL);
 
@@ -289,7 +290,7 @@ xmms_sqlite_create ()
 			g_free (old);
 
 			sqlite3_exec (sql, "PRAGMA synchronous = OFF", NULL, NULL, NULL);
-			create = TRUE;
+			*create = TRUE;
 		}
 
 		cv = xmms_config_lookup ("medialib.analyze_on_startup");
@@ -301,7 +302,7 @@ xmms_sqlite_create ()
 		}
 	}
 
-	if (create) {
+	if (*create) {
 		/* Check if we are about to put the medialib on a
 		 * remote filesystem. They are known to work less
 		 * well with sqlite and therefore we should refuse
@@ -494,7 +495,8 @@ xmms_sqlite_query_table (sqlite3 *sql, xmms_medialib_row_table_method_t method, 
 		gint i;
 		xmms_object_cmd_value_t *val;
 		GHashTable *ret = g_hash_table_new_full (g_str_hash, g_str_equal,
-		                                         g_free, xmms_object_cmd_value_free);
+		                                         g_free,
+		                                         (GDestroyNotify)xmms_object_cmd_value_unref);
 		gint num = sqlite3_data_count (stm);
 
 		for (i = 0; i < num; i++) {
@@ -531,7 +533,8 @@ xmms_sqlite_query_array (sqlite3 *sql, xmms_medialib_row_array_method_t method, 
 {
 	gchar *q;
 	va_list ap;
-	gint ret;
+	gint ret, num_cols;
+	xmms_object_cmd_value_t **row;
 	sqlite3_stmt *stm = NULL;
 
 	g_return_val_if_fail (query, FALSE);
@@ -554,20 +557,34 @@ xmms_sqlite_query_array (sqlite3 *sql, xmms_medialib_row_array_method_t method, 
 		return FALSE;
 	}
 
+	num_cols = sqlite3_column_count (stm);
+
+	row = g_new (xmms_object_cmd_value_t *, num_cols + 1);
+	row[num_cols] = NULL;
+
 	while ((ret = sqlite3_step (stm)) == SQLITE_ROW) {
 		gint i;
-		xmms_object_cmd_value_t **row;
-		gint num = sqlite3_data_count (stm);
+		gboolean b;
 
-		row = g_new0 (xmms_object_cmd_value_t*, num+1);
+		/* I'm a bit paranoid */
+		g_assert (num_cols == sqlite3_data_count(stm));
 
-		for (i = 0; i < num; i++) {
+		for (i = 0; i < num_cols; i++) {
 			row[i] = xmms_sqlite_column_to_val (stm, i);
 		}
 
-		if (!method (row, udata))
+		b = method (row, udata);
+
+		for (i = 0; i < num_cols; i++) {
+			xmms_object_cmd_value_unref (row[i]);
+		}
+
+		if (!b) {
 			break;
+		}
 	}
+
+	g_free (row);
 
 	if (ret == SQLITE_ERROR) {
 		xmms_log_error ("SQLite Error code %d (%s) on query '%s'", ret, sqlite3_errmsg (sql), q);

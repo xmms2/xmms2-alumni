@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -53,6 +53,14 @@ namespace Xmms
 		    call( connected_,
 		          boost::bind( xmmsc_bindata_remove, conn_, hash.c_str() ) );
 		return VoidResult( res, ml_ );
+	}
+
+	StringListResult Bindata::list() const
+	{
+		xmmsc_result_t* res =
+		    call( connected_,
+		          boost::bind( xmmsc_bindata_list, conn_ ) );
+		return StringListResult( res, ml_ );
 	}
 
 	Bindata::Bindata( xmmsc_connection_t*& conn, bool& connected,

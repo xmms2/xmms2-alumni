@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -505,6 +505,34 @@ xmmsc_playlist_add_encoded (xmmsc_connection_t *c, const char *playlist, const c
 		x_api_error ("with a non encoded url", NULL);
 
 	return _xmmsc_playlist_add_encoded (c, playlist, url);
+}
+
+/**
+ * Adds media in idlist to a playlist.
+ *
+ * @param c The connection structure.
+ * @param playlist The playlist in which to add the media.
+ * @param coll The collection to find media in the medialib.
+ */
+xmmsc_result_t *
+xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist,
+                           xmmsc_coll_t *coll)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (c, NULL);
+
+	/* default to the active playlist */
+	if (playlist == NULL) {
+		playlist = XMMS_ACTIVE_PLAYLIST;
+	}
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_PLAYLIST, XMMS_IPC_CMD_ADD_IDLIST);
+	xmms_ipc_msg_put_string (msg, playlist);
+	xmms_ipc_msg_put_collection (msg, coll);
+
+	return xmmsc_send_msg (c, msg);
+
 }
 
 /**

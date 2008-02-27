@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -46,15 +46,6 @@ namespace Xmms
 		xmmsc_result_t* res = 
 		    call( connected_, boost::bind( xmmsc_plugin_list, conn_, type ) );
 		return DictListResult( res, ml_ );
-	}
-
-	UintListSignal
-	Stats::signalVisualisationData() const
-	{
-		using boost::bind;
-		xmmsc_result_t* res =
-		    call( connected_, bind( xmmsc_signal_visualisation_data, conn_ ) );
-		return UintListSignal( res, ml_ );
 	}
 
 	ReaderStatusSignal

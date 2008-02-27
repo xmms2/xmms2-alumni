@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -486,7 +486,7 @@ cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	if (io) {
 		gchar *contents = NULL;
 		gsize filesize = 0;
-		gchar *hash;
+		const gchar *hash;
 		gchar **id_arg;
 		error = NULL;
 

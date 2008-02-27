@@ -1,7 +1,7 @@
 /** @file avcodec.c
  *  Decoder plugin for ffmpeg avcodec formats
  *
- *  Copyright (C) 2006-2007 XMMS2 Team
+ *  Copyright (C) 2006-2008 XMMS2 Team
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -144,14 +144,14 @@ xmms_avcodec_init (xmms_xform_t *xform)
 	data->channels = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
 
 	/* bitrate required for WMA files */
-	xmms_xform_privdata_get_int (xform,
-	                             "bitrate",
-	                             &data->bitrate);
+	xmms_xform_auxdata_get_int (xform,
+	                            "bitrate",
+	                            &data->bitrate);
 
-	ret = xmms_xform_privdata_get_bin (xform,
-	                                   "decoder_config",
-	                                   &data->extradata,
-	                                   &data->extradata_size);
+	ret = xmms_xform_auxdata_get_bin (xform,
+	                                  "decoder_config",
+	                                  &data->extradata,
+	                                  &data->extradata_size);
 
 	if (!ret) {
 		xmms_log_error ("Decoder config data not found!");
@@ -282,9 +282,7 @@ xmms_avcodec_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_seek_mode_t w
 	data = xmms_xform_private_data_get (xform);
 	g_return_val_if_fail (data, FALSE);
 
-	if (!strcmp (data->codec_id, "alac")) {
-		ret = xmms_xform_seek (xform, samples, whence, err);
-	}
+	ret = xmms_xform_seek (xform, samples, whence, err);
 
 	if (ret >= 0) {
 		avcodec_flush_buffers (data->codecctx);

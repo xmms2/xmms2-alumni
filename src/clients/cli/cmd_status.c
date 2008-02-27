@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -42,7 +42,7 @@ static gint curr_dur = 0;
 static gchar songname[256];
 static guint curr_status = 0;
 
-static gchar *status_messages[] = {
+static const gchar *status_messages[] = {
 	"Stopped",
 	"Playing",
 	"Paused"
@@ -255,13 +255,13 @@ do_mediainfo (xmmsc_result_t *res, void *userdata)
 		                    "[stream] ${title}", res);
 		has_songname = TRUE;
 	} else if (res_has_key (res, "channel")) {
-		xmmsc_entry_format (songname, sizeof (songname), "${title}", res);
+		xmmsc_entry_format (songname, sizeof (songname), "${channel}", res);
 		has_songname = TRUE;
 	} else if (!res_has_key (res, "title")) {
-		gchar *url, *filename;
+		const gchar *url;
 
 		if (xmmsc_result_get_dict_entry_string (res, "url", &url)) {
-			filename = g_path_get_basename (url);
+			gchar *filename = g_path_get_basename (url);
 
 			if (filename) {
 				g_snprintf (songname, sizeof (songname), "%s", filename);

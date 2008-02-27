@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -43,7 +43,7 @@ typedef struct xmms_output_St xmms_output_t;
 /**
  * The current API version.
  */
-#define XMMS_OUTPUT_API_VERSION 2
+#define XMMS_OUTPUT_API_VERSION 5
 
 struct xmms_output_plugin_St;
 typedef struct xmms_output_plugin_St xmms_output_plugin_t;

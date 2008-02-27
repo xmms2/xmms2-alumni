@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -73,8 +73,8 @@
 	StringValue (arg1); \
 \
 	res = xmmsc_##name (xmms->real, \
-	                    (unsigned char *) RSTRING (arg1)->ptr, \
-	                    RSTRING (arg1)->len); \
+	                    (unsigned char *) RSTRING_PTR (arg1), \
+	                    RSTRING_LEN (arg1)); \
 	METHOD_HANDLER_FOOTER
 
 static VALUE cPlaylist;
@@ -927,6 +927,18 @@ c_playlist_list (VALUE self)
 
 /*
  * call-seq:
+ *  xc.playlist_current_active -> result
+ *
+ * Retrieves the name of the active playlist.
+ */
+static VALUE
+c_playlist_current_active (VALUE self)
+{
+	METHOD_ADD_HANDLER (playlist_current_active);
+}
+
+/*
+ * call-seq:
  *  xc.medialib_path_import(path) -> result
  *
  * Recursively imports all media files under _path_ to the medialib.
@@ -1066,18 +1078,6 @@ c_configval_register (VALUE self, VALUE key, VALUE defval)
 
 /*
  * call-seq:
- *  xc.signal_visualization_data -> result
- *
- * Retrieves visualization data as a signal.
- */
-static VALUE
-c_signal_visualisation_data (VALUE self)
-{
-	METHOD_ADD_HANDLER(signal_visualisation_data);
-}
-
-/*
- * call-seq:
  *  xc.bindata_add(str) -> result
  *
  * Stores binary data on the server.
@@ -1099,6 +1099,30 @@ static VALUE
 c_bindata_retrieve (VALUE self, VALUE hash)
 {
 	METHOD_ADD_HANDLER_STR (bindata_retrieve, hash);
+}
+
+/*
+ * call-seq:
+ *  xc.bindata_remove(hash) -> result
+ *
+ * Remove a datafile from the server.
+ */
+static VALUE
+c_bindata_remove (VALUE self, VALUE hash)
+{
+	METHOD_ADD_HANDLER_STR (bindata_remove, hash);
+}
+
+/*
+ * call-seq:
+ *  xc.bindata_list -> result
+ *
+ * List all bindata hashes stored on the server.
+ */
+static VALUE
+c_bindata_list (VALUE self)
+{
+	METHOD_ADD_HANDLER (bindata_list);
 }
 
 /* call-seq:
@@ -1471,6 +1495,8 @@ Init_Client (VALUE mXmms)
 
 	rb_define_method (c, "playlist", c_playlist, -1);
 	rb_define_method (c, "playlist_list", c_playlist_list, 0);
+	rb_define_method (c, "playlist_current_active",
+	                  c_playlist_current_active, 0);
 	rb_define_method (c, "playlist_set_next", c_playlist_set_next, 1);
 	rb_define_method (c, "playlist_set_next_rel", c_playlist_set_next_rel, 1);
 
@@ -1508,9 +1534,6 @@ Init_Client (VALUE mXmms)
 	rb_define_method (c, "plugin_list", c_plugin_list, -1);
 	rb_define_method (c, "main_stats", c_main_stats, 0);
 
-	rb_define_method (c, "signal_visualisation_data",
-	                  c_signal_visualisation_data, 0);
-
 	rb_define_method (c, "configval_list", c_configval_list, 0);
 	rb_define_method (c, "configval_get", c_configval_get, 1);
 	rb_define_method (c, "configval_set", c_configval_set, 2);
@@ -1520,6 +1543,8 @@ Init_Client (VALUE mXmms)
 
 	rb_define_method (c, "bindata_add", c_bindata_add, 1);
 	rb_define_method (c, "bindata_retrieve", c_bindata_retrieve, 1);
+	rb_define_method (c, "bindata_remove", c_bindata_remove, 1);
+	rb_define_method (c, "bindata_list", c_bindata_list, 0);
 
 	rb_define_const (c, "PLAY",
 	                 INT2FIX (XMMS_PLAYBACK_STATUS_PLAY));
@@ -1536,8 +1561,12 @@ Init_Client (VALUE mXmms)
 	rb_define_const (c, "ALL_PLUGINS", INT2FIX (XMMS_PLUGIN_TYPE_ALL));
 	rb_define_const (c, "XFORM", INT2FIX (XMMS_PLUGIN_TYPE_XFORM));
 	rb_define_const (c, "OUTPUT", INT2FIX (XMMS_PLUGIN_TYPE_OUTPUT));
-	rb_define_const (c, "PLAYLIST", INT2FIX (XMMS_PLUGIN_TYPE_PLAYLIST));
-	rb_define_const (c, "EFFECT", INT2FIX (XMMS_PLUGIN_TYPE_EFFECT));
+
+	rb_define_const (c, "ENTRY_STATUS_NEW", INT2FIX (XMMS_MEDIALIB_ENTRY_STATUS_NEW));
+	rb_define_const (c, "ENTRY_STATUS_OK", INT2FIX (XMMS_MEDIALIB_ENTRY_STATUS_OK));
+	rb_define_const (c, "ENTRY_STATUS_RESOLVING", INT2FIX (XMMS_MEDIALIB_ENTRY_STATUS_RESOLVING));
+	rb_define_const (c, "ENTRY_STATUS_NOT_AVAILABLE", INT2FIX (XMMS_MEDIALIB_ENTRY_STATUS_NOT_AVAILABLE));
+	rb_define_const (c, "ENTRY_STATUS_REHASH", INT2FIX (XMMS_MEDIALIB_ENTRY_STATUS_REHASH));
 
 	eClientError = rb_define_class_under (c, "ClientError",
 	                                      rb_eStandardError);

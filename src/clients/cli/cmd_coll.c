@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -67,7 +67,7 @@ cmd_coll (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 
 static void
-coll_list (xmmsc_connection_t *conn, gchar *namespace)
+coll_list (xmmsc_connection_t *conn, const gchar *namespace)
 {
 	xmmsc_result_t *res;
 
@@ -78,8 +78,9 @@ coll_list (xmmsc_connection_t *conn, gchar *namespace)
 		print_error ("Couldn't list collections in namespace %s: %s",
 		             namespace, xmmsc_result_get_error (res));
 	} else {
-		gchar *name;
 		while (xmmsc_result_list_valid (res)) {
+			const gchar *name;
+
 			xmmsc_result_get_string (res, &name);
 			print_info ("%s", name);
 			xmmsc_result_list_next (res);
@@ -89,7 +90,7 @@ coll_list (xmmsc_connection_t *conn, gchar *namespace)
 }
 
 static void
-coll_find (xmmsc_connection_t *conn, gchar *namespace, guint mid)
+coll_find (xmmsc_connection_t *conn, const gchar *namespace, guint mid)
 {
 	xmmsc_result_t *res;
 
@@ -100,8 +101,9 @@ coll_find (xmmsc_connection_t *conn, gchar *namespace, guint mid)
 		print_error ("Couldn't find collections containing media %d in namespace %s: %s",
 		             mid, namespace, xmmsc_result_get_error (res));
 	} else {
-		gchar *name;
 		while (xmmsc_result_list_valid (res)) {
+			const gchar *name;
+
 			xmmsc_result_get_string (res, &name);
 			print_info ("%s", name);
 			xmmsc_result_list_next (res);
@@ -144,7 +146,7 @@ coll_dump (xmmsc_coll_t *coll, unsigned int level)
 	xmmsc_coll_t *operand;
 	GString *idlist_str;
 
-	indent = (gchar*) malloc ((level * 2) + 1);
+	indent = g_malloc ((level * 2) + 1);
 	for (i = 0; i < level * 2; ++i) {
 		indent[i] = ' ';
 	}

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -42,7 +42,7 @@ format_url (gchar *item, GFileTest test)
 
 		url = g_strdup_printf ("file://%s", rpath);
 	} else {
-		url = g_strdup_printf ("%s", item);
+		url = g_strdup (item);
 	}
 
 	return x_path2url (url);
@@ -194,7 +194,7 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 	print_info (format_header, "Id", "Artist", "Album", "Title");
 
 	for (n = list; n; n = g_list_next (n)) {
-		gchar *title;
+		const gchar *title;
 		xmmsc_result_t *res;
 		gint mid = XPOINTER_TO_INT (n->data);
 
@@ -206,7 +206,7 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 		xmmsc_result_wait (res);
 
 		if (xmmsc_result_get_dict_entry_string (res, "title", &title)) {
-			gchar *artist, *album;
+			const gchar *artist, *album;
 			if (!xmmsc_result_get_dict_entry_string (res, "artist", &artist)) {
 				artist = "Unknown";
 			}
@@ -217,10 +217,10 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 
 			print_info (format_rows, mid, artist, album, title);
 		} else {
-			gchar *url, *filename;
+			const gchar *url;
 			xmmsc_result_get_dict_entry_string (res, "url", &url);
 			if (url) {
-				filename = g_path_get_basename (url);
+				gchar *filename = g_path_get_basename (url);
 				if (filename) {
 					print_info ("%-5.5d| %s", mid, filename);
 					g_free (filename);

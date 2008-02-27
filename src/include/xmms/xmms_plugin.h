@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -22,6 +22,7 @@
 
 #include <glib.h>
 #include <xmmsc/xmmsc_idnumbers.h>
+#include "xmms_configuration.h"
 
 typedef struct xmms_plugin_desc_St {
 	xmms_plugin_type_t type;

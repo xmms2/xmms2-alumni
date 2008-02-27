@@ -13,6 +13,11 @@ int32_t						T_IV
 perl_xmmsclient_collection_order_t	PERL_XMMSCLIENT_COLLECTION_ORDER_T
 perl_xmmsclient_playlist_t *	PERL_XMMSCLIENT_PLAYLIST_T
 
+xmmsc_result_t_PlaybackStatus *	XMMSC_RESULT_T_OVERLOAD
+xmmsc_result_t_MediainfoReaderStatus *	XMMSC_RESULT_T_OVERLOAD
+xmmsc_result_t_PlaylistChanged *	XMMSC_RESULT_T_OVERLOAD
+xmmsc_result_t_MedialibEntryStatus *	XMMSC_RESULT_T_OVERLOAD
+
 OUTPUT
 
 XMMSC_CONNECTION_T
@@ -27,6 +32,9 @@ XMMSC_COLL_T
 
 XMMSC_RESULT_T
 	$arg = perl_xmmsclient_new_sv_from_ptr ($var, \"Audio::XMMSClient::Result\");
+
+XMMSC_RESULT_T_OVERLOAD
+	$arg = perl_xmmsclient_new_sv_from_ptr ($var, \"Audio::XMMSClient::Result::${ ($type =~ /xmmsc_result_t_(\S+)/, \"$1") }\");
 
 XMMS_RESULT_TYPE_T
 	{
@@ -136,10 +144,6 @@ XMMS_PLUGIN_TYPE_T
 
 		if (strcmp (plugin_type, \"output\") == 0) {
 			$var = XMMS_PLUGIN_TYPE_OUTPUT;
-		} else if (strcmp (plugin_type, \"playlist\") == 0) {
-			$var = XMMS_PLUGIN_TYPE_PLAYLIST;
-		} else if (strcmp (plugin_type, \"effect\") == 0) {
-			$var = XMMS_PLUGIN_TYPE_EFFECT;
 		} else if (strcmp (plugin_type, \"xform\") == 0) {
 			$var = XMMS_PLUGIN_TYPE_XFORM;
 		} else if (strcmp (plugin_type, \"all\") == 0) {

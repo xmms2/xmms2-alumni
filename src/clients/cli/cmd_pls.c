@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -19,6 +19,7 @@
 
 cmds plist_commands[] = {
 	{ "list", "List all available playlists", cmd_playlists_list },
+	{ "active", "Displays the name of the active playlist", cmd_playlist_active },
 	{ "create", "[playlistname] - Create a playlist", cmd_playlist_create },
 	{ "type", "[playlistname] [type] - Set the type of the playlist (list, queue, pshuffle)", cmd_playlist_type },
 	{ "load", "[playlistname] - Load 'playlistname' stored in medialib", cmd_playlist_load },
@@ -54,7 +55,7 @@ add_item_to_playlist (xmmsc_connection_t *conn, gchar *playlist, gchar *item)
 }
 
 
-static gchar *
+static const gchar *
 get_playlist_type_string (xmmsc_coll_type_t type)
 {
 	switch (type) {
@@ -178,7 +179,7 @@ cmd_add (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	for (i = 2; argv[i]; i++) {
 		/* FIXME: Fulhack to check for optional playlist argument */
 		if (i == 2 && argc > 3 && !g_file_test (argv[i], G_FILE_TEST_EXISTS)) {
-			playlist = argv[i];
+			playlist = argv[i++];
 		}
 
 		add_item_to_playlist (conn, playlist, argv[i]);
@@ -545,14 +546,14 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 				                    "${channel}", info_res);
 			}
 		} else if (!res_has_key (info_res, "title")) {
-			gchar *url, *filename;
+			const gchar *url;
 		  	gchar dur[10];
 			
 			xmmsc_entry_format (dur, sizeof (dur),
 			                    "(${minutes}:${seconds})", info_res);
 			
 			if (xmmsc_result_get_dict_entry_string (info_res, "url", &url)) {
-				filename = g_path_get_basename (url);
+				gchar *filename = g_path_get_basename (url);
 				if (filename) {
 					g_snprintf (line, sizeof (line), "%s %s", filename, dur);
 					g_free (filename);
@@ -751,7 +752,7 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 void
 cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
-	gchar *active_name;
+	const gchar *active_name;
 	xmmsc_result_t *res, *active_res;
 
 	active_res = xmmsc_playlist_current_active (conn);
@@ -770,7 +771,7 @@ cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	while (xmmsc_result_list_valid (res)) {
-		gchar *name;
+		const gchar *name;
 
 		if (!xmmsc_result_get_string (res, &name)) {
 			print_error ("Broken resultset");
@@ -787,6 +788,23 @@ cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		xmmsc_result_list_next (res);
 	}
 	xmmsc_result_unref (res);
+	xmmsc_result_unref (active_res);
+}
+
+void
+cmd_playlist_active (xmmsc_connection_t *conn, gint argc, gchar **argv)
+{
+	const gchar *active_name;
+	xmmsc_result_t *active_res;
+
+	active_res = xmmsc_playlist_current_active (conn);
+	xmmsc_result_wait (active_res);
+
+	if (!xmmsc_result_iserror (active_res) &&
+	    xmmsc_result_get_string (active_res, &active_name)) {
+		print_info("%s",active_name);
+	}
+
 	xmmsc_result_unref (active_res);
 }
 
@@ -813,16 +831,22 @@ cmd_playlist_remove (xmmsc_connection_t *conn, gint argc, gchar **argv)
 void
 cmd_addpls (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
+	gchar *playlist;
 	xmmsc_result_t *res, *res2;
 	xmmsc_coll_t *coll;
-	const char *order[] = { "id", NULL };
 	gchar *url;
 
 	if (argc < 3) {
 		print_error ("Supply path to playlist file");
 	}
 
-	url = format_url (argv[2], G_FILE_TEST_IS_REGULAR);
+	if (argc == 3) {
+		playlist = NULL;
+		url = format_url (argv[2], G_FILE_TEST_IS_REGULAR);
+	} else {
+		playlist = argv[2];
+		url = format_url (argv[3], G_FILE_TEST_IS_REGULAR);
+	}
 
 	res = xmmsc_coll_idlist_from_playlist_file (conn, url);
 	g_free (url);
@@ -836,10 +860,10 @@ cmd_addpls (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		print_error ("Couldn't get collection from result!");
 	}
 
-	res2 = xmmsc_playlist_add_collection (conn, NULL, coll, order);
+	res2 = xmmsc_playlist_add_idlist (conn, playlist, coll);
 	xmmsc_result_wait (res2);
 	if (xmmsc_result_iserror (res2)) {
-		print_error ("%s", xmmsc_result_get_error (res2));                                                  
+		print_error ("%s", xmmsc_result_get_error (res2));
 	}
 
 	print_info ("Playlist with %d entries added", xmmsc_coll_idlist_get_size (coll));
