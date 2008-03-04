@@ -20,7 +20,9 @@
    :Complexity: easy
    :END:
    xmmsc_coll_property_list (coll, pattern = NULL)
-  
+
+   Use case: discover the existing properties for some media.
+
    possibly filtered by a pattern (same syntax as Match, i.e. _ and % wildcards).
 ?  pattern can be used to only find 'tag.*' properties, for instance.
 ?  also want to list sources
@@ -33,6 +35,8 @@
    :END:
    xmmsc_coll_property_values (coll, groupby = [])
 
+   Use case: efficiently list specific properties (artist, album) for browsing.
+
 ?  should we have both a fetch and a groupby list (i.e. any sense to fetch fields we don't group by?)
 ?  what happens with Various Artists albums?
    allows to remove the groupby argument from query_infos
@@ -43,9 +47,9 @@
    :Release:  v1.1
    :Complexity: easy
    :END:
-   xmmsc_coll_random_get (coll, n = 1)
+   xmmsc_coll_random_get (coll, max = 1)
 
-   Needed for client-side party shuffle or anything like that
+   Use case: needed for client-side party shuffle or anything like that.
 
 
 * Querying
@@ -57,12 +61,15 @@
    :Complexity: hard
    :END:
 
+   Use case: special handling for dates (query, retrieve), use NOW(), etc.
+
 ** Aggregate functions:
    :PROPERTIES:
    :Brainstorm: [X]
    :Release:  v1.1
    :Complexity: med
    :END:
+
    - count  (function of "rows")
    - max, min, avg  (function of "values")
    - other?
@@ -200,7 +207,7 @@
     Allow to add state/query-dependent syntax, e.g.:
     * '_' current track
     * '+' previous pattern
-
+    * '$album' current album
 
 * External tools
 
