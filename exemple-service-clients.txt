@@ -1,0 +1,12 @@
+Exemple service clients:
+
+* mpd-bridge, also other remote interfaces
+* bookmark
+* lyrics
+* stop after
+* pshuffle
+* alarm/scheduler
+* more-infos
+* medialib-updater + track-renames
+* metadata write-back
+* last.fm/audioscrobbler

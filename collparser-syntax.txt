@@ -1,0 +1,60 @@
+New syntax:
+(_ prefix means that the rule is being worked on)
+
+_start       := operation
+
+_operation   := andop
+_groupop     := 
+_notop       := symnot wss ???
+_orop        := token | token wss symor wss token
+_andop       := token wss token | token wss symand wss token
+
+ token       := posseq | idseq | has | filter
+
+ posseq      := posrange | posseq ‘,’ posrange
+ posrange    := nums ‘-’ nums | nums
+ idseq       := idrange | idseq ‘,’ idrange
+ idrange     := ‘#’ nums ‘-’ nums | ‘#’ nums
+ reference   := symref value
+ has         := ‘+’ propnames
+_autofilter  := value                                             # ambiguous?
+ filter      := propnames ‘:’ value
+ propnames   := propname | propnames propname
+ propname    := alphanum | ‘.’ | ‘-’ | ‘_’
+ value       := char | qstring
+ qstring     := ‘"’ qandq ‘"’ | ‘'’ qansq ‘'’
+ qandq       := [string of any char but ‘"’]
+ qansq       := [string of any char but ‘'’]
+_char        := alphanum | ‘.’ | ‘-’ | ‘_’ | ‘,’ | ... | escchar  # not ‘\’ or space or quote
+ escchar     := ‘\’ ‘ ’ | ‘\’ ‘\’ | ‘\’ ‘"’ | ‘\’ ‘'’
+ alphanum    := alpha | num
+ nums        := num | nums num
+ num         := ‘0’ | ‘1’ | ... | ‘8’ | ‘9’
+ alpha       := ‘a’ | ‘b’ | ... | ‘Y’ | ‘Z’
+ wss         := ws | wss ws
+ ws          := ‘ ’ | ‘\t’
+
+ symnot      := “NOT”
+ symor       := “OR”
+ symand      := “AND”
+ symref      := ‘@’ | “in:”
+
+
+Syntax of the current (old) parser:
+
+ * S         := OPERATION
+ * EXPR      := POSSEQ | IDSEQ | FILTER | TOKEN_GROUP_OPEN OPERATION TOKEN_GROUP_CLOSE | UNARYOP
+ * PROP      := TOKEN_PROP_LONG | TOKEN_PROP_SHORT
+ * INTVAL    := INTEGER | SEQUENCE
+ * STRVAL    := STRING | PATTERN
+ * POSSEQ    := INTVAL
+ * IDSEQ     := TOKEN_SYMBOL_ID INTVAL
+ * OPERATION := ANDOP
+ * UNAOP     := TOKEN_OPSET_NOT EXPR | TOKEN_REFERENCE STRING
+ * ANDOP     := OROP ANDOP | OROP TOKEN_OPSET_AND ANDOP | OROP
+ * OROP      := EXPR TOKEN_OPSET_OR OROP | EXPR
+ * FILTER    := UNAFILTER | BINFILTER | STRVAL
+ * UNAFILTER := TOKEN_OPFIL_HAS PROP
+ * BINFILTER := PROP TOKEN_OPFIL_EQUALS STRING | PROP TOKEN_OPFIL_MATCH STRVAL |
+ *              PROP TOKEN_OPFIL_SMALLER INTEGER | PROP TOKEN_OPFIL_GREATER INTEGER |
+ *              TOKEN_OPFIL_EQUALS STRING | TOKEN_OPFIL_MATCH STRVAL
