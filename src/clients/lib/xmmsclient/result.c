@@ -565,7 +565,7 @@ xmmsc_visualization_t *
 xmmsc_result_visc_get (xmmsc_result_t *res)
 {
 	x_return_val_if_fail (res, NULL);
-	x_return_val_if_fail (!res->visc, NULL);
+	x_return_val_if_fail (res->visc, NULL);
 	return res->visc;
 }
 

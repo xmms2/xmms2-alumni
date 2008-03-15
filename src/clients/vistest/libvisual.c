@@ -56,7 +56,7 @@ void xmms2_init ()
 	}
 
 	res = xmmsc_visualization_init (x_connection);
-	xmms_result_wait (res);
+	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {
 		x_exit (xmmsc_result_get_error (res));
 	}
