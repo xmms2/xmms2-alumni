@@ -81,6 +81,7 @@ void xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr);
 
 void xmmsc_result_visc_set (xmmsc_result_t *res, xmmsc_visualization_t *visc);
 xmmsc_visualization_t *xmmsc_result_visc_get (xmmsc_result_t *res);
+xmmsc_connection_t *xmmsc_result_get_connection (xmmsc_result_t *res);
 
 
 #endif

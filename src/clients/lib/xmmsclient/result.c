@@ -569,6 +569,14 @@ xmmsc_result_visc_get (xmmsc_result_t *res)
 	return res->visc;
 }
 
+xmmsc_connection_t *
+xmmsc_result_get_connection (xmmsc_result_t *res)
+{
+	x_return_val_if_fail (res, NULL);
+	x_return_val_if_fail (res->c, NULL);
+	return res->c;
+}
+
 /**
  * Decreases the references for the #xmmsc_result_t
  * When the number of references reaches 0 it will

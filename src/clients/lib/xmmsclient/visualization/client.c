@@ -35,19 +35,7 @@
  * @{
  */
 
-struct xmmsc_visualization_St {
-	union {
-		xmmsc_vis_unixshm_t shm;
-		xmmsc_vis_udp_t udp;
-	} transport;
-	xmmsc_vis_transport_t type;
-	/** server side identifier */
-	int32_t id;
-	/** client side array index */
-	int idx;
-};
-
-static xmmsc_visualization_t *
+xmmsc_visualization_t *
 get_dataset(xmmsc_connection_t *c, int vv) {
 	if (vv < 0 || vv >= c->visc)
 		return NULL;
@@ -125,6 +113,7 @@ xmmsc_visualization_start (xmmsc_connection_t *c, int vv) {
 	xmms_ipc_msg_t *msg;
 	xmmsc_visualization_t *v;
 	bool ret;
+	xmmsc_result_t *res;
 
 	x_check_conn (c, 0);
 	v = get_dataset (c, vv);
@@ -134,12 +123,27 @@ xmmsc_visualization_start (xmmsc_connection_t *c, int vv) {
 
 	/* first try unixshm */
 	v->type = VIS_UNIXSHM;
-	ret = setup_shm (c, &v->transport.shm, v->id);
+	res = setup_shm_prepare (c, vv);
+
+	if (res) {
+		xmmsc_result_wait (res);
+		ret = setup_shm_handle (res);
+		if (!ret) {
+			c->error = strdup ("Server doesn't support or couldn't attach shared memory!");
+		}
+		xmmsc_result_unref (res);
+	}
 
 	if (!ret) {
 		/* next try udp */
 		v->type = VIS_UDP;
-		ret = setup_udp (c, &v->transport.udp, v->id);
+		res = setup_udp_prepare (c, vv);
+		xmmsc_result_wait (res);
+		ret = setup_udp_handle (res);
+		if (!ret) {
+			c->error = strdup ("Server doesn't support or couldn't setup UDP!");
+		}
+		xmmsc_result_unref (res);
 	}
 
 	if (!ret) {
