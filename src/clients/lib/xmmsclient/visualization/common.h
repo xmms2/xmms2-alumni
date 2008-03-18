@@ -12,6 +12,7 @@ struct xmmsc_visualization_St {
 		xmmsc_vis_udp_t udp;
 	} transport;
 	xmmsc_vis_transport_t type;
+	xmmsc_vis_state_t state;
 	/** server side identifier */
 	int32_t id;
 	/** client side array index */

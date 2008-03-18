@@ -76,6 +76,7 @@ xmmsc_visualization_init (xmmsc_connection_t *c) {
 			x_oom ();
 		} else {
 			c->visv[vv]->idx = vv;
+			c->visv[vv]->state = VIS_NEW;
 			res = xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_REGISTER);
 			if (res) {
 				xmmsc_result_visc_set (res, c->visv[vv]);
@@ -108,55 +109,112 @@ xmmsc_visualization_init_handle (xmmsc_result_t *res)
  * Initializes a new visualization connection
  */
 
-int
-xmmsc_visualization_start (xmmsc_connection_t *c, int vv) {
-	xmms_ipc_msg_t *msg;
-	xmmsc_visualization_t *v;
-	bool ret;
+xmmsc_result_t *
+xmmsc_visualization_start (xmmsc_connection_t *c, int vv)
+{
 	xmmsc_result_t *res;
+	xmmsc_visualization_t *v;
 
 	x_check_conn (c, 0);
 	v = get_dataset (c, vv);
 	x_api_error_if (!v, "with unregistered/unconnected visualization dataset", 0);
 
-	x_api_error_if (!(v->type == VIS_NONE), "with already transmitting visualization dataset", 0);
+	switch (v->state) {
+	case VIS_WORKING:
+	case VIS_ERRORED:
+		break;
+	case VIS_NEW:
+		/* first try unixshm */
+		v->type = VIS_UNIXSHM;
+		res = setup_shm_prepare (c, vv);
+		v->state = VIS_TRYING_UNIXSHM;
+		break;
+	case VIS_TO_TRY_UDP:
+		v->type = VIS_UDP;
+		res = setup_udp_prepare (c, vv);
+		v->state = VIS_TRYING_UDP;
+		break;
+	default:
+		v->state = VIS_ERRORED;
+		printf("API MISUSE!\n");
+		break;
+	}
 
-	/* first try unixshm */
-	v->type = VIS_UNIXSHM;
-	res = setup_shm_prepare (c, vv);
+	return res;
+}
 
-	if (res) {
-		xmmsc_result_wait (res);
+void
+xmmsc_visualization_start_handle (xmmsc_connection_t *c, xmmsc_result_t *res)
+{
+	xmmsc_visualization_t *v;
+	bool ret;
+
+	if (xmmsc_result_iserror (res)) {
+		return;
+	}
+	v = xmmsc_result_visc_get (res);
+	if (!v) {
+		x_api_error_if (1, "non vis result?", );
+	}
+
+	switch (v->state) {
+	case VIS_WORKING:
+	case VIS_ERRORED:
+		break;
+	case VIS_TRYING_UNIXSHM:
 		ret = setup_shm_handle (res);
 		if (!ret) {
 			c->error = strdup ("Server doesn't support or couldn't attach shared memory!");
+			v->state = VIS_TO_TRY_UDP;
+		} else {
+			v->state = VIS_WORKING;
 		}
-		xmmsc_result_unref (res);
-	}
-
-	if (!ret) {
-		/* next try udp */
-		v->type = VIS_UDP;
-		res = setup_udp_prepare (c, vv);
-		xmmsc_result_wait (res);
+		break;
+	case VIS_TRYING_UDP:
 		ret = setup_udp_handle (res);
 		if (!ret) {
+			xmms_ipc_msg_t *msg;
 			c->error = strdup ("Server doesn't support or couldn't setup UDP!");
+			v->state = VIS_ERRORED;
+			v->type = VIS_NONE;
+			msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_SHUTDOWN);
+			xmms_ipc_msg_put_int32 (msg, v->id);
+			xmmsc_send_msg (c, msg);
+		} else {
+			v->state = VIS_WORKING;
 		}
-		xmmsc_result_unref (res);
+		break;
+	default:
+		v->state = VIS_ERRORED;
+		printf("API MISUSE!\n");
+		break;
 	}
-
-	if (!ret) {
-		/* finally give up */
-		v->type = VIS_NONE;
-		msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_VISUALIZATION, XMMS_IPC_CMD_VISUALIZATION_SHUTDOWN);
-		xmms_ipc_msg_put_int32 (msg, v->id);
-		xmmsc_send_msg (c, msg);
-	}
-
-	/* c->error is written by setup_*(...) */
-	return (ret ? 1 : 0);
 }
+
+bool
+xmmsc_visualization_started (xmmsc_connection_t *c, int vv)
+{
+	xmmsc_visualization_t *v;
+
+	x_check_conn (c, 0);
+	v = get_dataset (c, vv);
+	x_api_error_if (!v, "with unregistered/unconnected visualization dataset", 0);
+
+	return (v->state == VIS_WORKING);
+}
+
+bool
+xmmsc_visualization_errored (xmmsc_connection_t *c, int vv)
+{
+	xmmsc_visualization_t *v;
+
+	x_check_conn (c, 0);
+	v = get_dataset (c, vv);
+	x_api_error_if (!v, "with unregistered/unconnected visualization dataset", 0);
+
+	return (v->state == VIS_ERRORED);
+}
+
 
 /**
  * Deliver one property

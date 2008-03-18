@@ -68,9 +68,18 @@ void xmms2_init ()
 	}
 	xmmsc_result_unref (res);
 
-	if (!xmmsc_visualization_start (x_connection, x_vis)) {
-		printf ("%s\n", xmmsc_get_last_error (x_connection));
-		x_exit ("Couldn't setup visualization transfer!");
+	while (!xmmsc_visualization_started (x_connection, x_vis)) {
+		res = xmmsc_visualization_start (x_connection, x_vis);
+		if (xmmsc_visualization_errored (x_connection, x_vis)) {
+			printf ("Couldn't start visualization transfer: %s\n",
+				xmmsc_get_last_error (x_connection));
+			exit (EXIT_FAILURE);
+		}
+		if (res) {
+			xmmsc_result_wait (res);
+			xmmsc_visualization_start_handle (x_connection, res);
+			xmmsc_result_unref (res);
+		}
 	}
 
 	atexit (xmms2_quit);
