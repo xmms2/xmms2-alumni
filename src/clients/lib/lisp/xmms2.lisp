@@ -1,31 +1,3 @@
-(load "xmmsc.lisp")
-
-(defpackage :xmms2
-  (:use :common-lisp :xmmsc :cffi)
-  (:export
-    :save-collection
-    :remove-collection
-    :remove-playlist
-    :rename-collection
-    :rename-playlist
-    :collection-query-ids
-    :list-collections
-    :list-playlists
-    :active-playlist
-    :playlist-list-entries
-    :playlist-append-collection
-    :shuffle
-    :toggle-play
-    :pause
-    :tickle
-    :stop
-    :jump-to
-    :next
-    :back
-    :mlib-remove-entry
-    :mlib-entry-set-property
-    :mlib-entry-remove-property))
-
 (in-package :xmms2)
 
 (defun get-value-from-result (result)

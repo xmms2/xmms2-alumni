@@ -1,49 +1,43 @@
-(require 'asdf)
-
-(asdf:oos 'asdf:load-op :cffi)
-
-(defpackage :xmmsc
-  (:use :common-lisp :cffi))
-
-(in-package :xmmsc)
+(in-package :xmms2)
 
 (define-foreign-library libxmmsclient
 			(t (:default "libxmmsclient")))
 
 (use-foreign-library libxmmsclient)
 
-(defun my-lispify (name flag &optional (package *package*))
-  (labels ((helper (lst last rest &aux (c (car lst)))
-		   (cond
-		     ((null lst)
-		      rest)
-		     ((upper-case-p c)
-		      (helper (cdr lst) 'upper
-			      (case last
-				((lower digit) (list* c #\- rest))
-				(t (cons c rest)))))
-		     ((lower-case-p c)
-		      (helper (cdr lst) 'lower (cons (char-upcase c) rest)))
-		     ((digit-char-p c)
-		      (helper (cdr lst) 'digit
-			      (case last
-				((upper lower) (list* c #\- rest))
-				(t (cons c rest)))))
-		     ((char-equal c #\_)
-		      (helper (cdr lst) '_ (cons #\- rest)))
-		     (t
-		       (error "Invalid character: ~A" c)))))
-    (let ((fix (case flag
-		 ((constant enumvalue) "+")
-		 (variable "*")
-		 (t ""))))
-      (intern
-	(concatenate
-	  'string
-	  fix
-	  (nreverse (helper (concatenate 'list name) nil nil))
-	  fix)
-	package))))
+(eval-when (:compile-toplevel :load-toplevel)
+  (defun my-lispify (name flag &optional (package *package*))
+    (labels ((helper (lst last rest &aux (c (car lst)))
+		     (cond
+		       ((null lst)
+			rest)
+		       ((upper-case-p c)
+			(helper (cdr lst) 'upper
+				(case last
+				  ((lower digit) (list* c #\- rest))
+				  (t (cons c rest)))))
+		       ((lower-case-p c)
+			(helper (cdr lst) 'lower (cons (char-upcase c) rest)))
+		       ((digit-char-p c)
+			(helper (cdr lst) 'digit
+				(case last
+				  ((upper lower) (list* c #\- rest))
+				  (t (cons c rest)))))
+		       ((char-equal c #\_)
+			(helper (cdr lst) '_ (cons #\- rest)))
+		       (t
+			 (error "Invalid character: ~A" c)))))
+      (let ((fix (case flag
+		   ((constant enumvalue) "+")
+		   (variable "*")
+		   (t ""))))
+	(intern
+	  (concatenate
+	    'string
+	    fix
+	    (nreverse (helper (concatenate 'list name) nil nil))
+	    fix)
+	  package)))))
 
 
 (cffi:defcenum #.(my-lispify "xmmsc_result_value_type_t" 'enumname)
@@ -66,7 +60,7 @@
       (foreign-alloc :string
 		     :initial-contents (list content)
 		     :null-terminated-p t))
-    (list 
+    (list
       (foreign-alloc :string
 		     :initial-contents content
 		     :null-terminated-p t))
@@ -104,6 +98,6 @@
 ;(#.(my-lispify "XMMSC_RESULT_VALUE_TYPE_BIN" 'enumvalue :keyword)
 ;XMMS_OBJECT_CMD_ARG_BIN))
 
-(cl:export '#.(my-lispify "xmmsc_result_value_type_t" 'enumname))
+(export '#.(my-lispify "xmmsc_result_value_type_t" 'enumname))
 
-(load "xmmsc-swig.lisp")
+;(load "xmmsc-swig.lisp")

@@ -1,4 +1,4 @@
-
+(in-package :xmms2)
 
 ;;;SWIG wrapper code starts here
 
@@ -424,21 +424,21 @@
 
 (cl:export '#.(my-lispify "xmmsc_medialib_entry_status_t" 'enumname))
 
-(cl:defconstant #.(my-lispify "XMMS_COLLECTION_NS_ALL" 'constant) "*")
-
-(cl:export '#.(my-lispify "XMMS_COLLECTION_NS_ALL" 'constant))
-
-(cl:defconstant #.(my-lispify "XMMS_COLLECTION_NS_COLLECTIONS" 'constant) "Collections")
-
-(cl:export '#.(my-lispify "XMMS_COLLECTION_NS_COLLECTIONS" 'constant))
-
-(cl:defconstant #.(my-lispify "XMMS_COLLECTION_NS_PLAYLISTS" 'constant) "Playlists")
-
-(cl:export '#.(my-lispify "XMMS_COLLECTION_NS_PLAYLISTS" 'constant))
-
-(cl:defconstant #.(my-lispify "XMMS_ACTIVE_PLAYLIST" 'constant) "_active")
-
-(cl:export '#.(my-lispify "XMMS_ACTIVE_PLAYLIST" 'constant))
+;(cl:defconstant #.(my-lispify "XMMS_COLLECTION_NS_ALL" 'constant) "*")
+;
+;(cl:export '#.(my-lispify "XMMS_COLLECTION_NS_ALL" 'constant))
+;
+;(cl:defconstant #.(my-lispify "XMMS_COLLECTION_NS_COLLECTIONS" 'constant) "Collections")
+;
+;(cl:export '#.(my-lispify "XMMS_COLLECTION_NS_COLLECTIONS" 'constant))
+;
+;(cl:defconstant #.(my-lispify "XMMS_COLLECTION_NS_PLAYLISTS" 'constant) "Playlists")
+;
+;(cl:export '#.(my-lispify "XMMS_COLLECTION_NS_PLAYLISTS" 'constant))
+;
+;(cl:defconstant #.(my-lispify "XMMS_ACTIVE_PLAYLIST" 'constant) "_active")
+;
+;(cl:export '#.(my-lispify "XMMS_ACTIVE_PLAYLIST" 'constant))
 
 (cffi:defcenum #.(my-lispify "xmmsc_result_type_t" 'enumname)
 	#.(my-lispify "XMMSC_RESULT_CLASS_DEFAULT" 'enumvalue :keyword)
@@ -1206,12 +1206,6 @@
   (res :pointer))
 
 (cl:export '#.(my-lispify "xmmsc_result_restart" 'function))
-
-(cffi:defcfun ("xmmsc_result_run" #.(my-lispify "xmmsc_result_run" 'function)) :void
-  (res :pointer)
-  (msg :pointer))
-
-(cl:export '#.(my-lispify "xmmsc_result_run" 'function))
 
 (cffi:defcfun ("xmmsc_result_get_class" #.(my-lispify "xmmsc_result_get_class" 'function)) #.(my-lispify "xmmsc_result_type_t" 'enumname)
   (res :pointer))
