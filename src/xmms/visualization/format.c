@@ -109,7 +109,7 @@ fft (short *samples, gfloat *spec)
 }
 
 /**
- * Calcualte the FFT on the decoded data buffer.
+ * Calculate the FFT on the decoded data buffer.
  */
 short
 fill_buffer_fft (int16_t* dest, int size, short *src)
@@ -118,7 +118,8 @@ fill_buffer_fft (int16_t* dest, int size, short *src)
 	float tmp;
 
 	if (size != FFT_LEN * 2) {
-		puts("GNARF!");
+		/* TODO: We have to handle unfitting (ie, not long enough) audio chunks
+		   One possibility would be to silently drop them, like it is done here */
 		return 0;
 	}
 
