@@ -69,7 +69,13 @@ namespace Xmms
 	                              MainloopInterface*& ml ) :
 		conn_( conn ), connected_( connected ), ml_( ml )
 	{
-		vis_ = xmmsc_visualization_init( conn_ );
+		xmmsc_result_t* res = xmmsc_visualization_init( conn );
+		xmmsc_result_wait( res );
+		if (xmmsc_result_iserror( res ) ) {
+			puts( xmmsc_result_get_error( res ) );
+			exit( EXIT_FAILURE );
+		}
+		vis_ = xmmsc_visualization_init_handle( res );
 	}
 
 }
