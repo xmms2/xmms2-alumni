@@ -631,7 +631,7 @@ int
 xmmsc_result_get_service_method (xmmsc_result_t *res,
                                  xmmsc_service_method_t **method)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (!res || xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -654,7 +654,7 @@ xmmsc_result_get_service_method (xmmsc_result_t *res,
 int
 xmmsc_result_get_service_cookie (xmmsc_result_t *res, uint32_t *cookie)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (!res || xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
