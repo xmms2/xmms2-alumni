@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) { Py_Initialize(); Py_Finalize(); return 0; }
 	# according to 
 	# distutils.command.build_ext.build_ext.get_libraries.__doc__
 	# this might want to be OS/2 aswell.
-	if sys.platform == 'win32' or (Py_ENABLE_SHARED is not None
+	if sys.platform == 'win32' or (Py_ENABLE_SHARED
 					and sys.platform != 'darwin'):
 		conf.env['LIBPATH_PYEXT'] = conf.env['LIBPATH_PYEMBED']
 		conf.env['LIB_PYEXT'] = conf.env['LIB_PYEMBED']
