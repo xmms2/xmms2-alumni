@@ -1,4 +1,4 @@
-xmms2 (0.4DrKosmos-3) UNRELEASED; urgency=low
+xmms2 (0.4DrKosmos-3) unstable; urgency=low
 
   * Add the Homepage field to debian/control.
   * Don't link xmmsapi.so against libpython (Closes: #472314).
