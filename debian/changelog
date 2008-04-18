@@ -3,6 +3,8 @@ xmms2 (0.4DrKosmos-3) UNRELEASED; urgency=low
   * Add the Homepage field to debian/control.
   * Don't link xmmsapi.so against libpython (Closes: #472314).
     + Patch by Anders Waldenborg.
+  * Link the replaygain plugin against libm (Closes: #473693).
+    + Cherry-picked patch 6c845c32 by Anders Waldenborg.
 
  -- Florian Ragwitz <rafl@debian.org>  Mon, 25 Feb 2008 15:55:49 +0100
 
