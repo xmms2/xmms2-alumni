@@ -1,3 +1,9 @@
+xmms2 (0.4DrKosmos-4) unstable; urgency=low
+
+  * Make all packages that ship pkg-config files depend on pkg-config.
+
+ -- Florian Ragwitz <rafl@debian.org>  Mon, 21 Apr 2008 13:10:36 +0200
+
 xmms2 (0.4DrKosmos-3) unstable; urgency=low
 
   * Add the Homepage field to debian/control.
