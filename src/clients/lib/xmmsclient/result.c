@@ -1397,7 +1397,7 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 	xmms_ipc_msg_destroy (msg);
 
 	xmmsc_result_ref (res);
-	xmmsc_value_ref (res->data);
+/*	xmmsc_value_ref (res->data); */
 
 	/* Run all notifiers and check for positive return values */
 	for (n = res->notifiers; n; n = x_list_next (n)) {
@@ -1423,7 +1423,7 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 		xmmsc_result_unref (res);
 	}
 
-	xmmsc_result_unref (res);
+/*	xmmsc_result_unref (res); */
 }
 
 /**
@@ -1454,6 +1454,8 @@ xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type,
 
 	/* user must give this back */
 	xmmsc_result_ref (res);
+
+	xmmsc_value_ref (res->data);
 
 	/* Add it to the loop */
 	xmmsc_ipc_result_register (c->ipc, res);
