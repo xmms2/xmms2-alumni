@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 typedef struct xmmsc_connection_St xmmsc_connection_t;
-typedef struct xmmsc_result_value_St xmmsc_result_value_t;
+typedef struct xmmsc_value_St xmmsc_value_t;
 typedef struct xmmsc_result_St xmmsc_result_t;
 
 typedef enum {
@@ -172,7 +172,7 @@ xmmsc_result_t *xmmsc_signal_mediainfo_reader_unindexed (xmmsc_connection_t *c);
  */
 
 /* commands */
-int xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res);
+int xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_value_t *val);
 xmmsc_result_t *xmmsc_medialib_add_entry (xmmsc_connection_t *conn, const char *url);
 xmmsc_result_t *xmmsc_medialib_add_entry_args (xmmsc_connection_t *conn, const char *url, int numargs, const char **args);
 xmmsc_result_t *xmmsc_medialib_add_entry_encoded (xmmsc_connection_t *conn, const char *url);
@@ -290,11 +290,9 @@ xmmsc_result_t *xmmsc_broadcast_collection_changed (xmmsc_connection_t *c);
  * RESULTS
  */
 
-typedef void (*xmmsc_result_notifier_t) (xmmsc_result_t *res, void *user_data);
+typedef int (*xmmsc_result_notifier_t) (xmmsc_value_t *val, void *user_data);
 
-xmmsc_result_t *xmmsc_result_restart (xmmsc_result_t *res);
 xmmsc_result_type_t xmmsc_result_get_class (xmmsc_result_t *res);
-void xmmsc_result_disconnect (xmmsc_result_t *res);
 
 xmmsc_result_t *xmmsc_result_ref (xmmsc_result_t *res);
 void xmmsc_result_unref (xmmsc_result_t *res);
@@ -303,48 +301,61 @@ void xmmsc_result_notifier_set (xmmsc_result_t *res, xmmsc_result_notifier_t fun
 void xmmsc_result_notifier_set_full (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data, xmmsc_user_data_free_func_t free_func);
 void xmmsc_result_wait (xmmsc_result_t *res);
 
-int xmmsc_result_iserror (xmmsc_result_t *res);
-const char * xmmsc_result_get_error (xmmsc_result_t *res);
+xmmsc_value_t *xmmsc_result_get_value (xmmsc_result_t *res);
 
-int xmmsc_result_get_int (xmmsc_result_t *res, int32_t *r);
-int xmmsc_result_get_uint (xmmsc_result_t *res, uint32_t *r);
-int xmmsc_result_get_string (xmmsc_result_t *res, const char **r);
-int xmmsc_result_get_collection (xmmsc_result_t *conn, xmmsc_coll_t **coll);
-int xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen);
+/*
+ * VALUES
+ */
+
+xmmsc_value_t *xmmsc_value_ref (xmmsc_value_t *val);
+void xmmsc_value_unref (xmmsc_value_t *val);
+
+int xmmsc_value_iserror (xmmsc_value_t *val);
+const char * xmmsc_value_get_error (xmmsc_value_t *val);
+
+int xmmsc_value_get_int (xmmsc_value_t *val, int32_t *r);
+int xmmsc_value_get_uint (xmmsc_value_t *val, uint32_t *r);
+int xmmsc_value_get_string (xmmsc_value_t *val, const char **r);
+int xmmsc_value_get_collection (xmmsc_value_t *val, xmmsc_coll_t **coll);
+int xmmsc_value_get_bin (xmmsc_value_t *val, unsigned char **r, unsigned int *rlen);
 
 typedef enum {
-	XMMSC_RESULT_VALUE_TYPE_NONE = XMMS_OBJECT_CMD_ARG_NONE,
-	XMMSC_RESULT_VALUE_TYPE_UINT32 = XMMS_OBJECT_CMD_ARG_UINT32,
-	XMMSC_RESULT_VALUE_TYPE_INT32 = XMMS_OBJECT_CMD_ARG_INT32,
-	XMMSC_RESULT_VALUE_TYPE_STRING = XMMS_OBJECT_CMD_ARG_STRING,
-	XMMSC_RESULT_VALUE_TYPE_DICT = XMMS_OBJECT_CMD_ARG_DICT,
-	XMMSC_RESULT_VALUE_TYPE_LIST = XMMS_OBJECT_CMD_ARG_LIST,
-	XMMSC_RESULT_VALUE_TYPE_PROPDICT = XMMS_OBJECT_CMD_ARG_PROPDICT,
-	XMMSC_RESULT_VALUE_TYPE_COLL = XMMS_OBJECT_CMD_ARG_COLL,
-	XMMSC_RESULT_VALUE_TYPE_BIN = XMMS_OBJECT_CMD_ARG_BIN
-} xmmsc_result_value_type_t;
+	XMMSC_VALUE_TYPE_NONE = XMMS_OBJECT_CMD_ARG_NONE,
+	XMMSC_VALUE_TYPE_UINT32 = XMMS_OBJECT_CMD_ARG_UINT32,
+	XMMSC_VALUE_TYPE_INT32 = XMMS_OBJECT_CMD_ARG_INT32,
+	XMMSC_VALUE_TYPE_STRING = XMMS_OBJECT_CMD_ARG_STRING,
+	XMMSC_VALUE_TYPE_DICT = XMMS_OBJECT_CMD_ARG_DICT,
+	XMMSC_VALUE_TYPE_LIST = XMMS_OBJECT_CMD_ARG_LIST,
+	XMMSC_VALUE_TYPE_PROPDICT = XMMS_OBJECT_CMD_ARG_PROPDICT,
+	XMMSC_VALUE_TYPE_COLL = XMMS_OBJECT_CMD_ARG_COLL,
+	XMMSC_VALUE_TYPE_BIN = XMMS_OBJECT_CMD_ARG_BIN
+} xmmsc_value_type_t;
 
-typedef void (*xmmsc_propdict_foreach_func) (const void *key, xmmsc_result_value_type_t type, const void *value, const char *source, void *user_data);
-typedef void (*xmmsc_dict_foreach_func) (const void *key, xmmsc_result_value_type_t type, const void *value, void *user_data);
+typedef void (*xmmsc_propdict_foreach_func) (const void *key, xmmsc_value_type_t type, const void *value, const char *source, void *user_data);
+typedef void (*xmmsc_dict_foreach_func) (const void *key, xmmsc_value_type_t type, const void *value, void *user_data);
 
-xmmsc_result_value_type_t xmmsc_result_get_dict_entry_type (xmmsc_result_t *res, const char *key);
-int xmmsc_result_get_dict_entry_string (xmmsc_result_t *res, const char *key, const char **r);
-int xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *r);
-int xmmsc_result_get_dict_entry_uint (xmmsc_result_t *res, const char *key, uint32_t *r);
-int xmmsc_result_get_dict_entry_collection (xmmsc_result_t *conn, const char *key, xmmsc_coll_t **coll);
-int xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func, void *user_data);
-int xmmsc_result_propdict_foreach (xmmsc_result_t *res, xmmsc_propdict_foreach_func func, void *user_data);
-void xmmsc_result_source_preference_set (xmmsc_result_t *res, const char **preference);
-const char **xmmsc_result_source_preference_get (xmmsc_result_t *res);
+xmmsc_value_type_t xmmsc_value_get_dict_entry_type (xmmsc_value_t *val, const char *key);
+int xmmsc_value_get_dict_entry_string (xmmsc_value_t *val, const char *key, const char **r);
+int xmmsc_value_get_dict_entry_int (xmmsc_value_t *val, const char *key, int32_t *r);
+int xmmsc_value_get_dict_entry_uint (xmmsc_value_t *val, const char *key, uint32_t *r);
+int xmmsc_value_get_dict_entry_collection (xmmsc_value_t *val, const char *key, xmmsc_coll_t **coll);
+int xmmsc_value_dict_foreach (xmmsc_value_t *val, xmmsc_dict_foreach_func func, void *user_data);
+int xmmsc_value_propdict_foreach (xmmsc_value_t *val, xmmsc_propdict_foreach_func func, void *user_data);
+void xmmsc_value_source_preference_set (xmmsc_value_t *val, const char **preference);
+const char **xmmsc_value_source_preference_get (xmmsc_value_t *val);
 
-int xmmsc_result_is_list (xmmsc_result_t *res);
-int xmmsc_result_list_next (xmmsc_result_t *res);
-int xmmsc_result_list_first (xmmsc_result_t *res);
-int xmmsc_result_list_valid (xmmsc_result_t *res);
+int xmmsc_value_is_list (xmmsc_value_t *val);
+int xmmsc_value_list_next (xmmsc_value_t *val);
+int xmmsc_value_list_first (xmmsc_value_t *val);
+int xmmsc_value_list_valid (xmmsc_value_t *val);
 
-xmmsc_result_value_type_t xmmsc_result_get_type (xmmsc_result_t *res);
+xmmsc_value_type_t xmmsc_value_get_type (xmmsc_value_t *val);
 
-const char *xmmsc_result_decode_url (xmmsc_result_t *res, const char *string);
+const char *xmmsc_value_decode_url (xmmsc_value_t *val, const char *string);
+
+/* Legacy aliases for convenience. */
+#define xmmsc_result_iserror(res) xmmsc_value_iserror(xmmsc_result_get_value(res))
+#define xmmsc_result_get_error(res) xmmsc_value_get_error(xmmsc_result_get_value(res))
 
 #ifdef __cplusplus
 }

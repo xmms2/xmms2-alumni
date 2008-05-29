@@ -153,6 +153,7 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 {
 	xmmsc_ipc_t *ipc;
 	xmmsc_result_t *result;
+	xmmsc_value_t *value;
 
 	char path[PATH_MAX];
 
@@ -176,8 +177,9 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 	c->ipc = ipc;
 	result = xmmsc_send_hello (c);
 	xmmsc_result_wait (result);
-	if (xmmsc_result_iserror (result)) {
-		c->error = strdup (xmmsc_result_get_error (result));
+	value = xmmsc_result_get_value (result);
+	if (xmmsc_value_iserror (value)) {
+		c->error = strdup (xmmsc_value_get_error (value));
 		xmmsc_result_unref (result);
 		return false;
 	}
