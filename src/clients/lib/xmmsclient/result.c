@@ -41,7 +41,7 @@ typedef struct xmmsc_result_value_bin_St {
 	uint32_t len;
 } xmmsc_result_value_bin_t;
 
-typedef struct xmmsc_result_value_St {
+struct xmmsc_result_value_St {
 	union {
 		void *generic;
 		uint32_t uint32;
@@ -52,7 +52,7 @@ typedef struct xmmsc_result_value_St {
 		xmmsc_result_value_bin_t *bin;
 	} value;
 	xmmsc_result_value_type_t type;
-} xmmsc_result_value_t;
+};
 
 static xmmsc_result_value_t *xmmsc_result_parse_value (xmms_ipc_msg_t *msg);
 
@@ -79,19 +79,9 @@ struct xmmsc_result_St {
 
 	xmmsc_ipc_t *ipc;
 
-	uint32_t datatype;
-
 	int parsed;
 
-	union {
-		void *generic;
-		uint32_t uint;
-		int32_t inte;
-		char *string;
-		x_list_t *dict;
-		xmmsc_coll_t *coll;
-		xmmsc_result_value_bin_t *bin;
-	} data;
+	xmmsc_result_value_t *data;
 
 	x_list_t *list;
 	x_list_t *current;
@@ -197,6 +187,8 @@ xmmsc_result_free (xmmsc_result_t *res)
 	xmmsc_ipc_result_unregister (res->ipc, res);
 
 	xmmsc_unref (res->c);
+
+	free (res->data);
 
 	l = res->udata_list;
 	f = res->udata_free_func_list;
@@ -359,17 +351,17 @@ xmmsc_result_value_free (void *v)
 	xmmsc_result_value_t *val = v;
 
 	switch (val->type) {
-		case XMMS_OBJECT_CMD_ARG_BIN:
+		case XMMSC_RESULT_VALUE_TYPE_BIN:
 			free (val->value.bin->data);
 			free (val->value.bin);
 			break;
-		case XMMS_OBJECT_CMD_ARG_STRING:
+		case XMMSC_RESULT_VALUE_TYPE_STRING:
 			free (val->value.string);
 			break;
-		case XMMS_OBJECT_CMD_ARG_DICT:
+		case XMMSC_RESULT_VALUE_TYPE_DICT:
 			free_dict_list (val->value.dict);
 			break;
-		case XMMS_OBJECT_CMD_ARG_COLL:
+		case XMMSC_RESULT_VALUE_TYPE_COLL:
 			xmmsc_coll_unref (val->value.coll);
 			break;
 		default:
@@ -387,37 +379,38 @@ xmmsc_result_cleanup_data (xmmsc_result_t *res)
 		return;
 
 	if (res->islist) {
-		res->datatype = XMMS_OBJECT_CMD_ARG_LIST;
+		res->data->type = XMMSC_RESULT_VALUE_TYPE_LIST;
 	}
 
-	switch (res->datatype) {
-		case XMMS_OBJECT_CMD_ARG_UINT32 :
-		case XMMS_OBJECT_CMD_ARG_INT32 :
+	switch (res->data->type) {
+		case XMMSC_RESULT_VALUE_TYPE_NONE :
+		case XMMSC_RESULT_VALUE_TYPE_UINT32 :
+		case XMMSC_RESULT_VALUE_TYPE_INT32 :
 			break;
-		case XMMS_OBJECT_CMD_ARG_STRING :
-			free (res->data.string);
-			res->data.string = NULL;
+		case XMMSC_RESULT_VALUE_TYPE_STRING :
+			free (res->data->value.string);
+			res->data->value.string = NULL;
 			break;
-		case XMMS_OBJECT_CMD_ARG_BIN :
-			free (res->data.bin->data);
-			free (res->data.bin);
-			res->data.bin = NULL;
+		case XMMSC_RESULT_VALUE_TYPE_BIN :
+			free (res->data->value.bin->data);
+			free (res->data->value.bin);
+			res->data->value.bin = NULL;
 			break;
-		case XMMS_OBJECT_CMD_ARG_LIST:
-		case XMMS_OBJECT_CMD_ARG_PROPDICT:
+		case XMMSC_RESULT_VALUE_TYPE_LIST:
+		case XMMSC_RESULT_VALUE_TYPE_PROPDICT:
 			while (res->list) {
 				xmmsc_result_value_free (res->list->data);
 				res->list = x_list_delete_link (res->list, res->list);
 			}
 
 			break;
-		case XMMS_OBJECT_CMD_ARG_DICT:
-			free_dict_list (res->data.dict);
-			res->data.dict = NULL;
+		case XMMSC_RESULT_VALUE_TYPE_DICT:
+			free_dict_list (res->data->value.dict);
+			res->data->value.dict = NULL;
 			break;
-		case XMMS_OBJECT_CMD_ARG_COLL:
-			xmmsc_coll_unref (res->data.coll);
-			res->data.coll = NULL;
+		case XMMSC_RESULT_VALUE_TYPE_COLL:
+			xmmsc_coll_unref (res->data->value.coll);
+			res->data->value.coll = NULL;
 			break;
 	}
 }
@@ -436,21 +429,21 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 	if (!xmms_ipc_msg_get_int32 (msg, &type))
 		return false;
 
-	res->datatype = type;
+	res->data->type = type;
 
 	switch (type) {
 
-		case XMMS_OBJECT_CMD_ARG_UINT32 :
-			if (!xmms_ipc_msg_get_uint32 (msg, &res->data.uint)) {
+		case XMMSC_RESULT_VALUE_TYPE_UINT32 :
+			if (!xmms_ipc_msg_get_uint32 (msg, &res->data->value.uint32)) {
 				return false;
 			}
 			break;
-		case XMMS_OBJECT_CMD_ARG_INT32 :
-			if (!xmms_ipc_msg_get_int32 (msg, &res->data.inte)) {
+		case XMMSC_RESULT_VALUE_TYPE_INT32 :
+			if (!xmms_ipc_msg_get_int32 (msg, &res->data->value.int32)) {
 				return false;
 			}
 			break;
-		case XMMS_OBJECT_CMD_ARG_BIN:
+		case XMMSC_RESULT_VALUE_TYPE_BIN:
 			{
 				xmmsc_result_value_bin_t *bin;
 				bin = x_new0 (xmmsc_result_value_bin_t, 1);
@@ -458,18 +451,21 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 					free (bin);
 					return false;
 				}
-				res->data.bin = bin;
+				res->data->value.bin = bin;
 				break;
 			}
-		case XMMS_OBJECT_CMD_ARG_STRING :
+		case XMMSC_RESULT_VALUE_TYPE_STRING :
 			{
 				uint32_t len;
 
-				if (!xmms_ipc_msg_get_string_alloc (msg, &res->data.string, &len))
+				if (!xmms_ipc_msg_get_string_alloc (msg,
+				                                    &res->data->value.string,
+				                                    &len)) {
 					return false;
+				}
 			}
 			break;
-		case XMMS_OBJECT_CMD_ARG_DICT:
+		case XMMSC_RESULT_VALUE_TYPE_DICT:
 			{
 				x_list_t *dict;
 
@@ -477,12 +473,12 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 				if (!dict)
 					return false;
 
-				res->data.dict = dict;
+				res->data->value.dict = dict;
 
 			}
 			break;
-		case XMMS_OBJECT_CMD_ARG_LIST :
-		case XMMS_OBJECT_CMD_ARG_PROPDICT :
+		case XMMSC_RESULT_VALUE_TYPE_LIST :
+		case XMMSC_RESULT_VALUE_TYPE_PROPDICT :
 			{
 				uint32_t len, i;
 
@@ -500,34 +496,34 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 
 				res->current = res->list = list;
 
-				if (type == XMMS_OBJECT_CMD_ARG_LIST) {
+				if (type == XMMSC_RESULT_VALUE_TYPE_LIST) {
 					res->islist = 1;
 
 					if (res->current) {
 						xmmsc_result_value_t *val = res->current->data;
-						res->data.generic = val->value.generic;
-						res->datatype = val->type;
+						res->data->value.generic = val->value.generic;
+						res->data->type = val->type;
 					} else {
-						res->data.generic = NULL;
-						res->datatype = XMMS_OBJECT_CMD_ARG_NONE;
+						res->data->value.generic = NULL;
+						res->data->type = XMMSC_RESULT_VALUE_TYPE_NONE;
 					}
 				}
 			}
 			break;
 
-		case XMMS_OBJECT_CMD_ARG_COLL:
+		case XMMSC_RESULT_VALUE_TYPE_COLL:
 			{
 				xmmsc_coll_t *coll;
 
 				if (!xmms_ipc_msg_get_collection_alloc (msg, &coll))
 					return false;
 
-				res->data.coll = coll;
-				xmmsc_coll_ref (res->data.coll);
+				res->data->value.coll = coll;
+				xmmsc_coll_ref (res->data->value.coll);
 			}
 			break;
 
-		case XMMS_OBJECT_CMD_ARG_NONE :
+		case XMMSC_RESULT_VALUE_TYPE_NONE :
 			break;
 
 		default :
@@ -684,7 +680,7 @@ xmmsc_result_get_type (xmmsc_result_t *res)
 	                XMMSC_RESULT_VALUE_TYPE_NONE);
 	x_api_error_if (!res->parsed, "invalid result type",
 	                XMMSC_RESULT_VALUE_TYPE_NONE);
-	return res->datatype;
+	return res->data->type;
 }
 
 /**
@@ -701,11 +697,11 @@ xmmsc_result_get_int (xmmsc_result_t *res, int32_t *r)
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_INT32) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_INT32) {
 		return 0;
 	}
 
-	*r = res->data.inte;
+	*r = res->data->value.int32;
 
 	return 1;
 }
@@ -724,10 +720,10 @@ xmmsc_result_get_uint (xmmsc_result_t *res, uint32_t *r)
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_UINT32)
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_UINT32)
 		return 0;
 
-	*r = res->data.uint;
+	*r = res->data->value.uint32;
 
 	return 1;
 }
@@ -745,11 +741,11 @@ xmmsc_result_get_string (xmmsc_result_t *res, const char **r)
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_STRING) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_STRING) {
 		return 0;
 	}
 
-	*r = res->data.string;
+	*r = res->data->value.string;
 
 	return 1;
 }
@@ -767,11 +763,11 @@ xmmsc_result_get_collection (xmmsc_result_t *res, xmmsc_coll_t **c)
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_COLL) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_COLL) {
 		return 0;
 	}
 
-	*c = res->data.coll;
+	*c = res->data->value.coll;
 
 	return 1;
 }
@@ -790,12 +786,12 @@ xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_BIN) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_BIN) {
 		return 0;
 	}
 
-	*r = res->data.bin->data;
-	*rlen = res->data.bin->len;
+	*r = res->data->value.bin->data;
+	*rlen = res->data->value.bin->len;
 
 	return 1;
 }
@@ -805,7 +801,7 @@ plaindict_lookup (xmmsc_result_t *res, const char *key)
 {
 	x_list_t *n;
 
-	for (n = res->data.dict; n; n = x_list_next (n)) {
+	for (n = res->data->value.dict; n; n = x_list_next (n)) {
 		const char *k = n->data;
 		if (strcasecmp (k, key) == 0 && n->next) {
 			/* found right key, return value */
@@ -859,9 +855,9 @@ propdict_lookup (xmmsc_result_t *res, const char *key)
 static xmmsc_result_value_t *
 xmmsc_result_dict_lookup (xmmsc_result_t *res, const char *key)
 {
-	if (res->datatype == XMMS_OBJECT_CMD_ARG_DICT) {
+	if (res->data->type == XMMSC_RESULT_VALUE_TYPE_DICT) {
 		return plaindict_lookup (res, key);
-	} else if (res->datatype == XMMS_OBJECT_CMD_ARG_PROPDICT) {
+	} else if (res->data->type == XMMSC_RESULT_VALUE_TYPE_PROPDICT) {
 		return propdict_lookup (res, key);
 	}
 
@@ -889,8 +885,8 @@ xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
-	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_DICT &&
+	    res->data->type != XMMSC_RESULT_VALUE_TYPE_PROPDICT) {
 		*r = -1;
 		return 0;
 	}
@@ -928,8 +924,8 @@ xmmsc_result_get_dict_entry_uint (xmmsc_result_t *res, const char *key,
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
-	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_DICT &&
+	    res->data->type != XMMSC_RESULT_VALUE_TYPE_PROPDICT) {
 		*r = -1;
 		return 0;
 	}
@@ -968,8 +964,8 @@ xmmsc_result_get_dict_entry_string (xmmsc_result_t *res,
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
-	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_DICT &&
+	    res->data->type != XMMSC_RESULT_VALUE_TYPE_PROPDICT) {
 		*r = NULL;
 		return 0;
 	}
@@ -1008,8 +1004,8 @@ xmmsc_result_get_dict_entry_collection (xmmsc_result_t *res, const char *key,
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
-	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_DICT &&
+	    res->data->type != XMMSC_RESULT_VALUE_TYPE_PROPDICT) {
 		*c = NULL;
 		return 0;
 	}
@@ -1041,8 +1037,8 @@ xmmsc_result_get_dict_entry_type (xmmsc_result_t *res, const char *key)
 		return XMMSC_RESULT_VALUE_TYPE_NONE;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT &&
-	    res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_DICT &&
+	    res->data->type != XMMSC_RESULT_VALUE_TYPE_PROPDICT) {
 		return XMMSC_RESULT_VALUE_TYPE_NONE;
 	}
 
@@ -1065,7 +1061,7 @@ xmmsc_result_propdict_foreach (xmmsc_result_t *res,
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_PROPDICT) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_PROPDICT) {
 		x_print_err ("xmms_result_propdict_foreach", "on a normal dict!");
 		return 0;
 	}
@@ -1110,13 +1106,13 @@ xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func,
 		return 0;
 	}
 
-	if (res->datatype != XMMS_OBJECT_CMD_ARG_DICT) {
+	if (res->data->type != XMMSC_RESULT_VALUE_TYPE_DICT) {
 		x_print_err ("xmms_result_dict_foreach", "on a source dict!");
 		return 0;
 	}
 
-	if (res->datatype == XMMS_OBJECT_CMD_ARG_DICT) {
-		for (n = res->data.dict; n; n = x_list_next (n)) {
+	if (res->data->type == XMMSC_RESULT_VALUE_TYPE_DICT) {
+		for (n = res->data->value.dict; n; n = x_list_next (n)) {
 			xmmsc_result_value_t *val = NULL;
 			if (n->next) {
 				val = n->next->data;
@@ -1197,11 +1193,11 @@ xmmsc_result_list_next (xmmsc_result_t *res)
 
 	if (res->current) {
 		xmmsc_result_value_t *val = res->current->data;
-		res->data.generic = val->value.generic;
-		res->datatype = val->type;
+		res->data->value.generic = val->value.generic;
+		res->data->type = val->type;
 	} else {
-		res->data.generic = NULL;
-		res->datatype = XMMS_OBJECT_CMD_ARG_NONE;
+		res->data->value.generic = NULL;
+		res->data->type = XMMSC_RESULT_VALUE_TYPE_NONE;
 	}
 
 	return 1;
@@ -1224,11 +1220,11 @@ xmmsc_result_list_first (xmmsc_result_t *res)
 
 	if (res->current) {
 		xmmsc_result_value_t *val = res->current->data;
-		res->data.generic = val->value.generic;
-		res->datatype = val->type;
+		res->data->value.generic = val->value.generic;
+		res->data->type = val->type;
 	} else {
-		res->data.generic = NULL;
-		res->datatype = XMMS_OBJECT_CMD_ARG_NONE;
+		res->data->value.generic = NULL;
+		res->data->type = XMMSC_RESULT_VALUE_TYPE_NONE;
 	}
 
 	return 1;
@@ -1397,14 +1393,18 @@ xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type,
                   uint32_t cookie)
 {
 	xmmsc_result_t *res;
+	xmmsc_result_value_t *val;
 
-	if (!(res = x_new0 (xmmsc_result_t, 1))) {
+	res = x_new0 (xmmsc_result_t, 1);
+	val = x_new0 (xmmsc_result_value_t, 1);
+	if (!res || !val) {
 		x_oom ();
 		return NULL;
 	}
 
 	res->c = xmmsc_ref (c);
 
+	res->data = val;
 	res->type = type;
 	res->cookie = cookie;
 
@@ -1436,35 +1436,35 @@ xmmsc_result_parse_value (xmms_ipc_msg_t *msg)
 	}
 
 	switch (val->type) {
-		case XMMS_OBJECT_CMD_ARG_STRING:
+		case XMMSC_RESULT_VALUE_TYPE_STRING:
 			if (!xmms_ipc_msg_get_string_alloc (msg, &val->value.string, &len)) {
 				goto err;
 			}
 			break;
-		case XMMS_OBJECT_CMD_ARG_UINT32:
+		case XMMSC_RESULT_VALUE_TYPE_UINT32:
 			if (!xmms_ipc_msg_get_uint32 (msg, &val->value.uint32)) {
 				goto err;
 			}
 			break;
-		case XMMS_OBJECT_CMD_ARG_INT32:
+		case XMMSC_RESULT_VALUE_TYPE_INT32:
 			if (!xmms_ipc_msg_get_int32 (msg, &val->value.int32)) {
 				goto err;
 			}
 			break;
-		case XMMS_OBJECT_CMD_ARG_DICT:
+		case XMMSC_RESULT_VALUE_TYPE_DICT:
 			val->value.dict = xmmsc_deserialize_dict (msg);
 			if (!val->value.dict) {
 				goto err;
 			}
 			break;
-		case XMMS_OBJECT_CMD_ARG_COLL:
+		case XMMSC_RESULT_VALUE_TYPE_COLL:
 			xmms_ipc_msg_get_collection_alloc (msg, &val->value.coll);
 			if (!val->value.coll) {
 				goto err;
 			}
 			xmmsc_coll_ref (val->value.coll);
 			break;
-		case XMMS_OBJECT_CMD_ARG_NONE:
+		case XMMSC_RESULT_VALUE_TYPE_NONE:
 			break;
 		default:
 			goto err;

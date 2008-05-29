@@ -33,6 +33,7 @@ extern "C" {
 #endif
 
 typedef struct xmmsc_connection_St xmmsc_connection_t;
+typedef struct xmmsc_result_value_St xmmsc_result_value_t;
 typedef struct xmmsc_result_St xmmsc_result_t;
 
 typedef enum {
@@ -317,6 +318,7 @@ typedef enum {
 	XMMSC_RESULT_VALUE_TYPE_INT32 = XMMS_OBJECT_CMD_ARG_INT32,
 	XMMSC_RESULT_VALUE_TYPE_STRING = XMMS_OBJECT_CMD_ARG_STRING,
 	XMMSC_RESULT_VALUE_TYPE_DICT = XMMS_OBJECT_CMD_ARG_DICT,
+	XMMSC_RESULT_VALUE_TYPE_LIST = XMMS_OBJECT_CMD_ARG_LIST,
 	XMMSC_RESULT_VALUE_TYPE_PROPDICT = XMMS_OBJECT_CMD_ARG_PROPDICT,
 	XMMSC_RESULT_VALUE_TYPE_COLL = XMMS_OBJECT_CMD_ARG_COLL,
 	XMMSC_RESULT_VALUE_TYPE_BIN = XMMS_OBJECT_CMD_ARG_BIN
