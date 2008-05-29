@@ -20,15 +20,17 @@ void
 cmd_stats (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsc_value_t *val;
 
 	res = xmmsc_main_stats (conn);
 	xmmsc_result_wait (res);
+	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsc_value_iserror (val)) {
+		print_error ("%s", xmmsc_value_get_error (val));
 	}
 
-	xmmsc_result_dict_foreach (res, print_hash, NULL);
+	xmmsc_value_dict_foreach (val, print_hash, NULL);
 	xmmsc_result_unref (res);
 }
 
@@ -37,6 +39,7 @@ void
 cmd_plugin_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsc_value_t *val;
 	xmms_plugin_type_t type = XMMS_PLUGIN_TYPE_ALL;
 
 	if (argc > 2) {
@@ -51,20 +54,21 @@ cmd_plugin_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	res = xmmsc_plugin_list (conn, type);
 	xmmsc_result_wait (res);
+	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsc_value_iserror (val)) {
+		print_error ("%s", xmmsc_value_get_error (val));
 	}
 
-	while (xmmsc_result_list_valid (res)) {
+	while (xmmsc_value_list_valid (val)) {
 		const gchar *shortname, *desc;
 
-		if (xmmsc_result_get_dict_entry_string (res, "shortname", &shortname) &&
-		    xmmsc_result_get_dict_entry_string (res, "description", &desc)) {
+		if (xmmsc_value_get_dict_entry_string (val, "shortname", &shortname) &&
+		    xmmsc_value_get_dict_entry_string (val, "description", &desc)) {
 			print_info ("%s - %s", shortname, desc);
 		}
 
-		xmmsc_result_list_next (res);
+		xmmsc_value_list_next (val);
 	}
 	xmmsc_result_unref (res);
 }
@@ -88,6 +92,7 @@ void
 cmd_browse (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsc_value_t *val;
 
 	if (argc < 3) {
 		print_error ("Need to specify a URL to browse");
@@ -95,24 +100,25 @@ cmd_browse (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	res = xmmsc_xform_media_browse (conn, argv[2]);
 	xmmsc_result_wait (res);
+	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsc_value_iserror (val)) {
+		print_error ("%s", xmmsc_value_get_error (val));
 	}
 
-	for (;xmmsc_result_list_valid (res); xmmsc_result_list_next (res)) {
-		xmmsc_result_value_type_t type;
+	for (;xmmsc_value_list_valid (val); xmmsc_value_list_next (val)) {
+		xmmsc_value_type_t type;
 		const gchar *r;
 		gint d;
 
-		type = xmmsc_result_get_dict_entry_type (res, "realpath");
-		if (type != XMMSC_RESULT_VALUE_TYPE_NONE) {
-			xmmsc_result_get_dict_entry_string (res, "realpath", &r);
+		type = xmmsc_value_get_dict_entry_type (val, "realpath");
+		if (type != XMMSC_VALUE_TYPE_NONE) {
+			xmmsc_value_get_dict_entry_string (val, "realpath", &r);
 		} else {
-			xmmsc_result_get_dict_entry_string (res, "path", &r);
+			xmmsc_value_get_dict_entry_string (val, "path", &r);
 		}
 
-		xmmsc_result_get_dict_entry_int (res, "isdir", &d);
+		xmmsc_value_get_dict_entry_int (val, "isdir", &d);
 		print_info ("%s%c", r, d ? '/' : ' ');
 	}
 

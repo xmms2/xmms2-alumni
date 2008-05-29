@@ -17,9 +17,9 @@
 #include "common.h"
 
 gint
-res_has_key (xmmsc_result_t *res, const gchar *key)
+val_has_key (xmmsc_value_t *val, const gchar *key)
 {
-	return xmmsc_result_get_dict_entry_type (res, key) != XMMSC_RESULT_VALUE_TYPE_NONE;
+	return xmmsc_value_get_dict_entry_type (val, key) != XMMSC_VALUE_TYPE_NONE;
 }
 
 
@@ -80,10 +80,10 @@ print_error (const gchar *fmt, ...)
 
 
 void
-print_hash (const void *key, xmmsc_result_value_type_t type,
+print_hash (const void *key, xmmsc_value_type_t type,
             const void *value, void *udata)
 {
-	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
+	if (type == XMMSC_VALUE_TYPE_STRING) {
 		print_info ("%s = %s", key, value);
 	} else {
 		print_info ("%s = %d", key, XPOINTER_TO_INT (value));
@@ -92,17 +92,17 @@ print_hash (const void *key, xmmsc_result_value_type_t type,
 
 
 void
-print_entry (const void *key, xmmsc_result_value_type_t type,
+print_entry (const void *key, xmmsc_value_type_t type,
              const void *value, const gchar *source, void *udata)
 {
-	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
+	if (type == XMMSC_VALUE_TYPE_STRING) {
 		/* Ok it's a string, if it's the URL property from the
 		 * server source we need to decode it since it's
 		 * encoded in the server
 		 */
 		if (strcmp (key, "url") == 0 && strcmp (source, "server") == 0) {
 			/* First decode the URL encoding */
-			const gchar *tmp = xmmsc_result_decode_url ((xmmsc_result_t *)udata, value);
+			const gchar *tmp = xmmsc_value_decode_url ((xmmsc_value_t *)udata, value);
 
 			/* Let's see if the result is valid utf-8. This must be done
 			 * since we don't know the charset of the binary string */
@@ -196,6 +196,7 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 	for (n = list; n; n = g_list_next (n)) {
 		const gchar *title;
 		xmmsc_result_t *res;
+		xmmsc_value_t *val;
 		gint mid = XPOINTER_TO_INT (n->data);
 
 		if (!mid) {
@@ -204,21 +205,22 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 
 		res = xmmsc_medialib_get_info (conn, mid);
 		xmmsc_result_wait (res);
+		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_result_get_dict_entry_string (res, "title", &title)) {
+		if (xmmsc_value_get_dict_entry_string (val, "title", &title)) {
 			const gchar *artist, *album;
-			if (!xmmsc_result_get_dict_entry_string (res, "artist", &artist)) {
+			if (!xmmsc_value_get_dict_entry_string (val, "artist", &artist)) {
 				artist = "Unknown";
 			}
 
-			if (!xmmsc_result_get_dict_entry_string (res, "album", &album)) {
+			if (!xmmsc_value_get_dict_entry_string (val, "album", &album)) {
 				album = "Unknown";
 			}
 
 			print_info (format_rows, mid, artist, album, title);
 		} else {
 			const gchar *url;
-			xmmsc_result_get_dict_entry_string (res, "url", &url);
+			xmmsc_value_get_dict_entry_string (val, "url", &url);
 			if (url) {
 				gchar *filename = g_path_get_basename (url);
 				if (filename) {

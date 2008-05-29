@@ -98,6 +98,7 @@ void
 cmd_info (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsc_value_t *val;
 	guint id;
 
 	if (argc > 2) {
@@ -108,36 +109,39 @@ cmd_info (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 			res = xmmsc_medialib_get_info (conn, id);
 			xmmsc_result_wait (res);
+			val = xmmsc_result_get_value (res);
 
-			if (xmmsc_result_iserror (res)) {
-				print_error ("%s", xmmsc_result_get_error (res));
+			if (xmmsc_value_iserror (val)) {
+				print_error ("%s", xmmsc_value_get_error (val));
 			}
 
-			xmmsc_result_propdict_foreach (res, print_entry, res);
+			xmmsc_value_propdict_foreach (val, print_entry, val);
 			xmmsc_result_unref (res);
 		}
 
 	} else {
 		res = xmmsc_playback_current_id (conn);
 		xmmsc_result_wait (res);
+		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_result_iserror (res)) {
-			print_error ("%s", xmmsc_result_get_error (res));
+		if (xmmsc_value_iserror (val)) {
+			print_error ("%s", xmmsc_value_get_error (val));
 		}
 
-		if (!xmmsc_result_get_uint (res, &id)) {
+		if (!xmmsc_value_get_uint (val, &id)) {
 			print_error ("Broken resultset");
 		}
 		xmmsc_result_unref (res);
 
 		res = xmmsc_medialib_get_info (conn, id);
 		xmmsc_result_wait (res);
+		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_result_iserror (res)) {
-			print_error ("%s", xmmsc_result_get_error (res));
+		if (xmmsc_value_iserror (val)) {
+			print_error ("%s", xmmsc_value_get_error (val));
 		}
 
-		xmmsc_result_propdict_foreach (res, print_entry, res);
+		xmmsc_value_propdict_foreach (val, print_entry, val);
 		xmmsc_result_unref (res);
 	}
 }
@@ -334,6 +338,7 @@ static void
 cmd_mlib_search (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsc_value_t *val;
 	GList *n = NULL;
 	xmmsc_coll_t *query;
 	gchar *pattern;
@@ -365,20 +370,21 @@ cmd_mlib_search (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	res = xmmsc_coll_query_ids (conn, query, NULL, 0, 0);
 	xmmsc_result_wait (res);
 	xmmsc_coll_unref (query);
+	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsc_value_iserror (val)) {
+		print_error ("%s", xmmsc_value_get_error (val));
 	}
 
-	while (xmmsc_result_list_valid (res)) {
+	while (xmmsc_value_list_valid (val)) {
 		guint id;
 
-		if (!xmmsc_result_get_uint (res, &id)) {
+		if (!xmmsc_value_get_uint (val, &id)) {
 			print_error ("Broken resultset");
 		}
 
 		n = g_list_prepend (n, XINT_TO_POINTER (id));
-		xmmsc_result_list_next (res);
+		xmmsc_value_list_next (val);
 	}
 	n = g_list_reverse (n);
 	format_pretty_list (conn, n);
@@ -469,6 +475,7 @@ static void
 cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsc_value_t *val;
 	const gchar *filename;
 	GIOChannel* io = NULL;
 	GError *error = NULL;
@@ -503,14 +510,15 @@ cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 		res = xmmsc_bindata_add (conn, (guchar*)contents, filesize);
 		xmmsc_result_wait (res);
+		val = xmmsc_result_get_value (res);
 
 		g_free (contents);
 
-		if (xmmsc_result_iserror (res)) {
-			print_error ("%s", xmmsc_result_get_error (res));
+		if (xmmsc_value_iserror (val)) {
+			print_error ("%s", xmmsc_value_get_error (val));
 		}
 
-		if (!xmmsc_result_get_string (res, &hash)) {
+		if (!xmmsc_value_get_string (val, &hash)) {
 			print_error ("Could not extract hash from result!");
 		}
 
