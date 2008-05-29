@@ -610,7 +610,7 @@ xmms_playlist_load (xmms_playlist_t *playlist, gchar *name, xmms_error_t *err)
 
 	xmms_object_emit_f (XMMS_OBJECT (playlist),
 	                    XMMS_IPC_SIGNAL_PLAYLIST_LOADED,
-	                    XMMS_OBJECT_CMD_ARG_STRING,
+	                    XMMSV_TYPE_STRING,
 	                    name);
 }
 
@@ -1352,8 +1352,8 @@ xmms_playlist_entry_compare (gconstpointer a, gconstpointer b, gpointer user_dat
 			return 1;
 		}
 
-		if (val1->type == XMMS_OBJECT_CMD_ARG_STRING &&
-		    val2->type == XMMS_OBJECT_CMD_ARG_STRING) {
+		if (val1->type == XMMSV_TYPE_STRING &&
+		    val2->type == XMMSV_TYPE_STRING) {
 			res = g_utf8_collate (val1->value.string,
 			                      val2->value.string);
 			/* keep comparing next pair if equal */
@@ -1363,14 +1363,14 @@ xmms_playlist_entry_compare (gconstpointer a, gconstpointer b, gpointer user_dat
 				return res;
 		}
 
-		if ((val1->type == XMMS_OBJECT_CMD_ARG_INT32 ||
-		     val1->type == XMMS_OBJECT_CMD_ARG_UINT32) &&
-		    (val2->type == XMMS_OBJECT_CMD_ARG_INT32 ||
-		     val2->type == XMMS_OBJECT_CMD_ARG_UINT32))
+		if ((val1->type == XMMSV_TYPE_INT32 ||
+		     val1->type == XMMSV_TYPE_UINT32) &&
+		    (val2->type == XMMSV_TYPE_INT32 ||
+		     val2->type == XMMSV_TYPE_UINT32))
 		{
-			s1 = (val1->type == XMMS_OBJECT_CMD_ARG_INT32) ?
+			s1 = (val1->type == XMMSV_TYPE_INT32) ?
 			      val1->value.int32 : val1->value.uint32;
-			s2 = (val2->type == XMMS_OBJECT_CMD_ARG_INT32) ?
+			s2 = (val2->type == XMMSV_TYPE_INT32) ?
 			      val2->value.int32 : val2->value.uint32;
 
 			if (s1 < s2)
@@ -1495,7 +1495,7 @@ xmms_playlist_sort (xmms_playlist_t *playlist, gchar *plname, GList *properties,
 			                                                  data->id,
 			                                                  str);
 
-			if (val && val->type == XMMS_OBJECT_CMD_ARG_STRING) {
+			if (val && val->type == XMMSV_TYPE_STRING) {
 				str = val->value.string;
 				val->value.string = g_utf8_casefold (str, strlen (str));
 				g_free (str);
@@ -1744,7 +1744,7 @@ xmms_playlist_changed_msg_send (xmms_playlist_t *playlist, GTree *dict)
 
 	xmms_object_emit_f (XMMS_OBJECT (playlist),
 	                    XMMS_IPC_SIGNAL_PLAYLIST_CHANGED,
-	                    XMMS_OBJECT_CMD_ARG_DICT,
+	                    XMMSV_TYPE_DICT,
 	                    dict);
 
 	g_tree_destroy (dict);
@@ -1760,7 +1760,7 @@ xmms_playlist_current_pos_msg_send (xmms_playlist_t *playlist,
 
 	xmms_object_emit_f (XMMS_OBJECT (playlist),
 	                    XMMS_IPC_SIGNAL_PLAYLIST_CURRENT_POS,
-	                    XMMS_OBJECT_CMD_ARG_DICT,
+	                    XMMSV_TYPE_DICT,
 	                    dict);
 
 	g_tree_destroy (dict);

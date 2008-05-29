@@ -123,17 +123,17 @@ handle_mediainfo (xmmsc_result_t *res, void *userdata)
 
 	for (i = 0; props[i]; i++) {
 		switch (xmmsc_result_get_dict_entry_type (res, props[i])) {
-		case XMMSC_RESULT_VALUE_TYPE_STRING:
+		case XMMSV_TYPE_STRING:
 			if (xmmsc_result_get_dict_entry_string (res, props[i], &tstr)) {
 				g_string_append_printf (str, "%s=%s\n", props[i], tstr);
 			}
 			break;
-		case XMMSC_RESULT_VALUE_TYPE_UINT32:
+		case XMMSV_TYPE_UINT32:
 			if (xmmsc_result_get_dict_entry_uint (res, props[i], &tuint)) {
 				g_string_append_printf (str, "%s=%u\n", props[i], tuint);
 			}
 			break;
-		case XMMSC_RESULT_VALUE_TYPE_INT32:
+		case XMMSV_TYPE_INT32:
 			if (xmmsc_result_get_dict_entry_int (res, props[i], &tint)) {
 				g_string_append_printf (str, "%s=%d\n", props[i], tint);
 			}

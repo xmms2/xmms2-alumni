@@ -26,6 +26,7 @@ void
 cmd_config (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsv_t *val;
 	gchar *key;
 	const gchar *value;
 
@@ -38,13 +39,14 @@ cmd_config (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	if (argc == 3) {
 		res = xmmsc_configval_get (conn, key);
 		xmmsc_result_wait (res);
+		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_result_iserror (res)) {
+		if (xmmsv_is_error (val)) {
 			print_error ("Couldn't get config value: %s",
-			             xmmsc_result_get_error (res));
+			             xmmsv_get_error (val));
 		}
 
-		xmmsc_result_get_string (res, &value);
+		xmmsv_get_string (val, &value);
 		print_info ("%s", value);
 
 		xmmsc_result_unref (res);
@@ -80,20 +82,22 @@ void
 cmd_config_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsv_t *val;
 
 	res = xmmsc_configval_list (conn);
 	xmmsc_result_wait (res);
+	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsv_is_error (val)) {
+		print_error ("%s", xmmsv_get_error (val));
 	}
 
-	xmmsc_result_dict_foreach (res, print_hash, NULL);
+	xmmsv_dict_foreach (val, print_hash, NULL);
 	xmmsc_result_unref (res);
 }
 
 void
-get_keys (const void *key, xmmsc_result_value_type_t type, const void *value, void *user_data)
+get_keys (const void *key, xmmsv_type_t type, const void *value, void *user_data)
 {
 	GList **l = user_data;
 	volume_channel_t *chan;
@@ -111,17 +115,19 @@ guint
 volume_get (xmmsc_connection_t *conn, const gchar *name)
 {
 	xmmsc_result_t *res;
+	xmmsv_t *val;
 	guint ret;
 
 	res = xmmsc_playback_volume_get (conn);
 	xmmsc_result_wait (res);
+	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_result_iserror (res)) {
+	if (xmmsv_is_error (val)) {
 		print_error ("Failed to get volume: %s",
-		             xmmsc_result_get_error (res));
+		             xmmsv_get_error (val));
 	}
 
-	if (!xmmsc_result_get_dict_entry_uint (res, name, &ret)) {
+	if (!xmmsv_get_dict_entry_uint (val, name, &ret)) {
 		ret = 0;
 	}
 
@@ -134,6 +140,7 @@ void
 cmd_volume (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsv_t *val;
 	int i;
 	GList *channels, *cur;
 	gchar *end = NULL;
@@ -164,13 +171,14 @@ cmd_volume (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	if (!channels) {
 		res = xmmsc_playback_volume_get (conn);
 		xmmsc_result_wait (res);
+		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_result_iserror (res)) {
+		if (xmmsv_is_error (val)) {
 			print_error ("Failed to get channel information: %s",
-			             xmmsc_result_get_error (res));
+			             xmmsv_get_error (val));
 		}
 
-		xmmsc_result_dict_foreach (res, get_keys, &channels);
+		xmmsv_dict_foreach (val, get_keys, &channels);
 
 		xmmsc_result_unref (res);
 	}
@@ -203,15 +211,17 @@ void
 cmd_volume_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsv_t *val;
 
 	res = xmmsc_playback_volume_get (conn);
 	xmmsc_result_wait (res);
+	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_result_iserror (res)) {
+	if (xmmsv_is_error (val)) {
 		print_error ("Failed to get volume: %s",
-		             xmmsc_result_get_error (res));
+		             xmmsv_get_error (val));
 	}
-	xmmsc_result_dict_foreach (res, print_hash, NULL);
+	xmmsv_dict_foreach (val, print_hash, NULL);
 
 	xmmsc_result_unref (res);
 }

@@ -173,7 +173,7 @@ xmms_collection_changed_msg_send (xmms_coll_dag_t *colldag, GTree *dict)
 
 	xmms_object_emit_f (XMMS_OBJECT (colldag),
 	                    XMMS_IPC_SIGNAL_COLLECTION_CHANGED,
-	                    XMMS_OBJECT_CMD_ARG_DICT,
+	                    XMMSV_TYPE_DICT,
 	                    dict);
 
 	g_tree_destroy (dict);
@@ -289,12 +289,12 @@ add_metadata_from_tree (gpointer key, gpointer value, gpointer user_data)
 	add_metadata_from_tree_user_data_t *ud = user_data;
 	xmms_object_cmd_value_t *b = value;
 
-	if (b->type == XMMS_OBJECT_CMD_ARG_INT32) {
+	if (b->type == XMMSV_TYPE_INT32) {
 		xmms_medialib_entry_property_set_int_source (ud->session, ud->entry,
 		                                             (const gchar *)key,
 		                                             b->value.int32,
 		                                             ud->src);
-	} else if (b->type == XMMS_OBJECT_CMD_ARG_STRING) {
+	} else if (b->type == XMMSV_TYPE_STRING) {
 		xmms_medialib_entry_property_set_str_source (ud->session, ud->entry,
 		                                             (const gchar *)key,
 		                                             b->value.string,
@@ -1940,17 +1940,17 @@ filter_get_mediainfo_field_string (xmmsv_coll_t *coll, GHashTable *mediainfo, gc
 		cmdval = g_hash_table_lookup (mediainfo, attr);
 		if (cmdval != NULL) {
 			switch (cmdval->type) {
-			case XMMS_OBJECT_CMD_ARG_STRING:
+			case XMMSV_TYPE_STRING:
 				*val = g_strdup (cmdval->value.string);
 				retval = TRUE;
 				break;
 
-			case XMMS_OBJECT_CMD_ARG_UINT32:
+			case XMMSV_TYPE_UINT32:
 				*val = g_strdup_printf ("%u", cmdval->value.uint32);
 				retval = TRUE;
 				break;
 
-			case XMMS_OBJECT_CMD_ARG_INT32:
+			case XMMSV_TYPE_INT32:
 				*val = g_strdup_printf ("%d", cmdval->value.int32);
 				retval = TRUE;
 				break;
@@ -1978,7 +1978,7 @@ filter_get_mediainfo_field_int (xmmsv_coll_t *coll, GHashTable *mediainfo, gint 
 
 	if (xmmsv_coll_attribute_get (coll, "field", &attr)) {
 		cmdval = g_hash_table_lookup (mediainfo, attr);
-		if (cmdval != NULL && cmdval->type == XMMS_OBJECT_CMD_ARG_INT32) {
+		if (cmdval != NULL && cmdval->type == XMMSV_TYPE_INT32) {
 			*val = cmdval->value.int32;
 			retval = TRUE;
 		}

@@ -20,13 +20,16 @@
 
 #include <errno.h>
 #include <time.h>
+#include <assert.h>
 
+#include "xmmspriv/xmms_list.h"
 #include "xmmsc/xmmsc_ipc_transport.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 #include "xmmsc/xmmsc_util.h"
 #include "xmmsc/xmmsc_sockets.h"
 #include "xmmsc/xmmsc_stdint.h"
 #include "xmmsc/xmmsc_coll.h"
+
 
 typedef union {
 	struct {
@@ -665,4 +668,276 @@ err:
 	xmmsv_coll_unref (*coll);
 
 	return false;
+}
+
+
+static int
+xmmsc_deserialize_dict (xmms_ipc_msg_t *msg, xmmsv_t **val)
+{
+	xmmsv_t *tmpval;
+	xmmsv_dict_iter_t *dit;
+	unsigned int len, ignore;
+	char *key;
+
+	tmpval = xmmsv_new_dict ();
+	xmmsv_get_dict_iter (tmpval, &dit);
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &len)) {
+		goto err;
+	}
+
+	while (len--) {
+		xmmsv_t *v;
+
+		if (!xmms_ipc_msg_get_string_alloc (msg, &key, &ignore)) {
+			goto err;
+		}
+
+		if (!xmms_ipc_msg_get_value (msg, &v)) {
+			goto err;
+		}
+
+		xmmsv_dict_iter_insert (dit, key, v);
+	}
+
+	*val = tmpval;
+
+	return true;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+	xmmsv_unref (tmpval);
+	return false;
+}
+
+static int
+xmmsc_deserialize_list (xmms_ipc_msg_t *msg, xmmsv_t **val)
+{
+	xmmsv_t *tmpval;
+	xmmsv_list_iter_t *lit;
+	unsigned int len;
+
+    tmpval = xmmsv_new_list ();
+	xmmsv_get_list_iter (tmpval, &lit);
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &len)) {
+		goto err;
+	}
+
+	while (len--) {
+		xmmsv_t *v;
+		if (xmms_ipc_msg_get_value (msg, &v)) {
+			xmmsv_list_iter_append (lit, v);
+		} else {
+			goto err;
+		}
+	}
+
+	*val = tmpval;
+
+	return true;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+	xmmsv_unref (tmpval);
+	return false;
+}
+
+
+/*
+static bool
+xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
+{
+	int type;
+	x_list_t *list = NULL;
+
+	if (xmmsv_is_error (res->data)) {
+		res->parsed = true;
+		return true;
+	}
+
+	if (!xmms_ipc_msg_get_int32 (msg, &type))
+		return false;
+
+	res->data->type = type;
+
+	switch (type) {
+
+		case XMMSV_TYPE_UINT32 :
+			if (!xmms_ipc_msg_get_uint32 (msg, &res->data->value.uint32)) {
+				return false;
+			}
+			break;
+		case XMMSV_TYPE_INT32 :
+			if (!xmms_ipc_msg_get_int32 (msg, &res->data->value.int32)) {
+				return false;
+			}
+			break;
+		case XMMSV_TYPE_BIN:
+			{
+				xmmsv_bin_t *bin;
+				bin = x_new0 (xmmsv_bin_t, 1);
+				if (!xmms_ipc_msg_get_bin_alloc (msg, &bin->data, &bin->len)) {
+					free (bin);
+					return false;
+				}
+				res->data->value.bin = bin;
+				break;
+			}
+		case XMMSV_TYPE_STRING :
+			{
+				uint32_t len;
+
+				if (!xmms_ipc_msg_get_string_alloc (msg,
+				                                    &res->data->value.string,
+				                                    &len)) {
+					return false;
+				}
+			}
+			break;
+		case XMMSV_TYPE_DICT:
+			{
+				x_list_t *dict;
+
+				dict = xmmsc_deserialize_dict (msg);
+				if (!dict)
+					return false;
+
+				res->data->value.dict = dict;
+
+			}
+			break;
+		case XMMSV_TYPE_LIST :
+		case XMMSV_TYPE_PROPDICT :
+			{
+				uint32_t len, i;
+
+				if (!xmms_ipc_msg_get_uint32 (msg, &len))
+					return false;
+
+				for (i = 0; i < len; i ++) {
+					xmmsv_t *val;
+					val = xmmsc_parse_value (msg);
+					list = x_list_prepend (list, val);
+				}
+
+				if (list)
+					list = x_list_reverse (list);
+
+				res->data->current = res->data->list = list;
+
+				if (type == XMMSV_TYPE_LIST) {
+					res->data->islist = 1;
+
+					if (res->data->current) {
+						xmmsv_t *val = res->data->current->data;
+						res->data->value.generic = val->value.generic;
+						res->data->type = val->type;
+					} else {
+						res->data->value.generic = NULL;
+						res->data->type = XMMSV_TYPE_NONE;
+					}
+				}
+			}
+			break;
+
+		case XMMSV_TYPE_COLL:
+			{
+				xmmsv_coll_t *coll;
+
+				if (!xmms_ipc_msg_get_collection_alloc (msg, &coll))
+					return false;
+
+				res->data->value.coll = coll;
+				xmmsv_coll_ref (res->data->value.coll);
+			}
+			break;
+
+		case XMMSV_TYPE_NONE :
+			break;
+
+		default :
+			return false;
+	}
+
+	res->parsed = true;
+
+	return true;
+}
+*/
+
+
+bool
+xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmmsv_t **val)
+{
+	int32_t type, i;
+	uint32_t len, u;
+	char *s;
+	xmmsv_coll_t *c;
+	unsigned char *d;
+
+/* FIXME: ?
+	if (xmmsv_is_error (val)) {
+		return true;
+	}
+*/
+
+	if (!xmms_ipc_msg_get_int32 (msg, (int32_t *) &type)) {
+		return false;
+	}
+
+	switch (type) {
+		case XMMSV_TYPE_UINT32:
+			if (!xmms_ipc_msg_get_uint32 (msg, &u)) {
+				return false;
+			}
+			*val = xmmsv_new_uint (u);
+			break;
+		case XMMSV_TYPE_INT32:
+			if (!xmms_ipc_msg_get_int32 (msg, &i)) {
+				return false;
+			}
+			*val = xmmsv_new_int (i);
+			break;
+		case XMMSV_TYPE_STRING:
+			if (!xmms_ipc_msg_get_string_alloc (msg, &s, &len)) {
+				return false;
+			}
+			*val = xmmsv_new_string (s);
+			break;
+		case XMMSV_TYPE_DICT:
+			if (!xmmsc_deserialize_dict (msg, val)) {
+				return false;
+			}
+			break;
+
+		case XMMSV_TYPE_LIST :
+			if (!xmmsc_deserialize_list (msg, val)) {
+				return false;
+			}
+			break;
+
+		case XMMSV_TYPE_COLL:
+			xmms_ipc_msg_get_collection_alloc (msg, &c);
+			if (!c) {
+				return false;
+			}
+			*val = xmmsv_new_coll (c);
+			break;
+
+		case XMMSV_TYPE_BIN:
+			if (!xmms_ipc_msg_get_bin_alloc (msg, &d, &len)) {
+				return false;
+			}
+			*val = xmmsv_new_bin (d, len);
+			break;
+
+		case XMMSV_TYPE_NONE:
+			break;
+		default:
+			return false;
+			break;
+	}
+
+	return true;
 }
