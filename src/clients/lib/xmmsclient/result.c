@@ -1399,10 +1399,9 @@ xmmsc_result_restartable (xmmsc_result_t *res, uint32_t signalid)
 void
 xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 {
-	x_list_t *n;
+	x_list_t *n, *next;
 	int cmd;
 	xmmsc_result_t *restart_res;
-	int need_restart = 0;
 
 	x_return_if_fail (res);
 	x_return_if_fail (msg);
@@ -1417,33 +1416,63 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 	xmms_ipc_msg_destroy (msg);
 
 	xmmsc_result_ref (res);
-/*	xmmsc_value_ref (res->data); */
 
 	/* Run all notifiers and check for positive return values */
-	for (n = res->notifiers; n; n = x_list_next (n)) {
+	n = res->notifiers;
+	while (n) {
+		next = x_list_next (n);
+
 		xmmsc_result_callback_t *cb = n->data;
-		if (cb && xmmsc_result_callback_exec (cb, res->data)) {
-			need_restart = 1;
+		if (!cb || !xmmsc_result_callback_exec (cb, res->data)) {
+			if (cb) {
+				xmmsc_result_callback_free (cb);
+			}
+
+			res->notifiers = x_list_remove_link (res->notifiers, n);
+			x_list_free (n);
+
+			/* Every callbacks has one reference to the result */
+			/* This also disconnects a broadcast when all notifiers are gone */
+			xmmsc_result_unref (res);
 		}
+
+		n = next;
 	}
 
-	if (need_restart && cmd == XMMS_IPC_CMD_SIGNAL) {
+	if (res->notifiers && cmd == XMMS_IPC_CMD_SIGNAL) {
 		restart_res = xmmsc_result_restart (res);
+
+		/* notifiers, and their references have been added to restart_res */
+		/* Before the notifiers would unref the result themselves,
+		 * but they cannot do that anymore, so we must */
+		n = res->notifiers;
+		while (n) {
+			next = x_list_next (n);
+
+			xmmsc_result_unref (res);
+
+			/* FIXME: leave this for result_free? */
+			if (n->data) {
+				xmmsc_result_callback_free (n->data);
+			}
+			res->notifiers = x_list_remove_link (res->notifiers, n);
+			x_list_free (n);
+
+			n = next;
+		}
+
 		xmmsc_result_unref (restart_res);
-	} else if (!need_restart && cmd == XMMS_IPC_CMD_BROADCAST) {
-		xmmsc_result_disconnect (res);
 	}
 
 	if (cmd == XMMS_IPC_CMD_BROADCAST) {
 		/* We keep the results alive with broadcasts, but we
-		   just unref the value because it went out of scope. */
+		   just renew the value because it went out of scope.
+		   (freeing the payload) */
 		xmmsc_value_unref (res->data);
-	} else {
-		/* Automatically cleanup result if not a broadcast! */
-		xmmsc_result_unref (res);
+		res->data = xmmsc_value_new ();
 	}
 
-/*	xmmsc_result_unref (res); */
+	xmmsc_result_unref (res);
 }
 
 /**
