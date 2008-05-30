@@ -369,6 +369,26 @@ xmmsc_value_unref (xmmsc_value_t *val)
 	}
 }
 
+/**
+ * Allocates new #xmmsc_result_t and refereces it.
+ * Should not be used from a client.
+ * @internal
+ */
+xmmsc_value_t *
+xmmsc_value_new ()
+{
+	xmmsc_value_t *val;
+
+	val = x_new0 (xmmsc_value_t, 1);
+	if (!val) {
+		x_oom ();
+		return NULL;
+	}
+
+	xmmsc_value_ref (val);
+	return val;
+}
+
 static void
 xmmsc_value_free (xmmsc_value_t *val)
 {
@@ -1437,25 +1457,21 @@ xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type,
                   uint32_t cookie)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
 
 	res = x_new0 (xmmsc_result_t, 1);
-	val = x_new0 (xmmsc_value_t, 1);
-	if (!res || !val) {
+	if (!res) {
 		x_oom ();
 		return NULL;
 	}
 
 	res->c = xmmsc_ref (c);
 
-	res->data = val;
+	res->data = xmmsc_value_new ();
 	res->type = type;
 	res->cookie = cookie;
 
 	/* user must give this back */
 	xmmsc_result_ref (res);
-
-	xmmsc_value_ref (res->data);
 
 	/* Add it to the loop */
 	xmmsc_ipc_result_register (c->ipc, res);
@@ -1472,10 +1488,7 @@ xmmsc_parse_value (xmms_ipc_msg_t *msg)
 	xmmsc_value_t *val;
 	uint32_t len;
 
-	if (!(val = x_new0 (xmmsc_value_t, 1))) {
-		x_oom ();
-		return NULL;
-	}
+	val = xmmsc_value_new ();
 
 	if (!xmms_ipc_msg_get_int32 (msg, (int32_t *)&val->type)) {
 		goto err;
