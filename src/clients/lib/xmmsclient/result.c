@@ -1238,9 +1238,9 @@ xmmsc_value_list_next (xmmsc_value_t *val)
 	val->current = val->current->next;
 
 	if (val->current) {
-		xmmsc_value_t *val = val->current->data;
-		val->value.generic = val->value.generic;
-		val->type = val->type;
+		xmmsc_value_t *val2 = val->current->data;
+		val->value.generic = val2->value.generic;
+		val->type = val2->type;
 	} else {
 		val->value.generic = NULL;
 		val->type = XMMSC_VALUE_TYPE_NONE;

@@ -520,6 +520,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	res = xmmsc_playlist_list_entries (conn, playlist);
 	xmmsc_result_wait (res);
+	val = xmmsc_result_get_value (res);
 
 	if (xmmsc_value_iserror (val)) {
 		print_error ("%s", xmmsc_value_get_error (val));
