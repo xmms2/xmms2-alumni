@@ -1674,6 +1674,7 @@ xmmsc_result_callback_free (xmmsc_result_callback_t *cb)
 static void
 xmmsc_result_notifier_remove (xmmsc_result_t *res, x_list_t *node)
 {
+	free (node->data); /* remove the callback struct, but not the udata */
 	res->notifiers = x_list_delete_link (res->notifiers, node);
 	xmmsc_result_unref (res); /* each cb has a reference to res */
 }
@@ -1685,6 +1686,10 @@ static void
 xmmsc_result_notifier_delete (xmmsc_result_t *res, x_list_t *node)
 {
 	xmmsc_result_callback_t *cb = node->data;
-	xmmsc_result_callback_free (cb);
+
+	/* remove the udata */
+	if (cb->free_func) {
+		cb->free_func (cb->user_data);
+	}
 	xmmsc_result_notifier_remove (res, node);
 }
