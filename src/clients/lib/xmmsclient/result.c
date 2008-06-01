@@ -37,6 +37,8 @@ static int source_match_pattern (const char *source, const char *pattern);
 
 xmmsc_result_t *xmmsc_result_restart (xmmsc_result_t *res);
 void xmmsc_result_disconnect (xmmsc_result_t *res);
+static void xmmsc_result_notifier_remove (xmmsc_result_t *res, x_list_t *node);
+static void xmmsc_result_notifier_delete (xmmsc_result_t *res, x_list_t *node);
 
 typedef struct xmmsc_value_bin_St {
 	unsigned char *data;
@@ -192,7 +194,7 @@ xmmsc_result_ref (xmmsc_result_t *res)
 static void
 xmmsc_result_free (xmmsc_result_t *res)
 {
-	x_list_t *n;
+	x_list_t *n, *next;
 
 	x_return_if_fail (res);
 
@@ -204,12 +206,12 @@ xmmsc_result_free (xmmsc_result_t *res)
 
 	xmmsc_value_unref (res->data);
 
-	for (n = res->notifiers; n; n = x_list_next (n)) {
-		xmmsc_result_callback_t *cb = n->data;
-		xmmsc_result_callback_free (cb);
+	n = res->notifiers;
+	while (n) {
+		next = x_list_next (n);
+		xmmsc_result_notifier_delete (res, n);
+		n = next;
 	}
-
-	x_list_free (res->notifiers);
 
 	free (res);
 }
@@ -1402,6 +1404,7 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 	x_list_t *n, *next;
 	int cmd;
 	xmmsc_result_t *restart_res;
+	xmmsc_result_callback_t *cb;
 
 	x_return_if_fail (res);
 	x_return_if_fail (msg);
@@ -1421,24 +1424,17 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 	n = res->notifiers;
 	while (n) {
 		next = x_list_next (n);
+		cb = n->data;
 
-		xmmsc_result_callback_t *cb = n->data;
-		if (!cb || !xmmsc_result_callback_exec (cb, res->data)) {
-			if (cb) {
-				xmmsc_result_callback_free (cb);
-			}
-
-			res->notifiers = x_list_remove_link (res->notifiers, n);
-			x_list_free (n);
-
-			/* Every callbacks has one reference to the result */
-			/* This also disconnects a broadcast when all notifiers are gone */
-			xmmsc_result_unref (res);
+		if (!xmmsc_result_callback_exec (cb, res->data)) {
+			xmmsc_result_notifier_delete (res, n);
 		}
 
 		n = next;
 	}
 
+	/* If we restart a signal, we must cleanup its callback because
+	 * they hold a reference to the result. */
 	if (res->notifiers && cmd == XMMS_IPC_CMD_SIGNAL) {
 		restart_res = xmmsc_result_restart (res);
 
@@ -1448,16 +1444,7 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 		n = res->notifiers;
 		while (n) {
 			next = x_list_next (n);
-
-			xmmsc_result_unref (res);
-
-			/* FIXME: leave this for result_free? */
-			if (n->data) {
-				xmmsc_result_callback_free (n->data);
-			}
-			res->notifiers = x_list_remove_link (res->notifiers, n);
-			x_list_free (n);
-
+			xmmsc_result_notifier_remove (res, n);
 			n = next;
 		}
 
@@ -1660,6 +1647,8 @@ xmmsc_result_callback_new (xmmsc_result_notifier_t f, void *udata,
 static int
 xmmsc_result_callback_exec (xmmsc_result_callback_t *cb, xmmsc_value_t *val)
 {
+	x_return_val_if_fail (cb, 0);
+
 	cb->want_restart = cb->func (val, cb->user_data);
 
 	return cb->want_restart;
@@ -1668,10 +1657,34 @@ xmmsc_result_callback_exec (xmmsc_result_callback_t *cb, xmmsc_value_t *val)
 static void
 xmmsc_result_callback_free (xmmsc_result_callback_t *cb)
 {
+	x_return_if_fail (cb);
+
 	/* Don't free if it's gonna be restarted. */
 	if (!cb->want_restart && cb->free_func) {
 		cb->free_func (cb->user_data);
 	}
 
 	free (cb);
+}
+
+
+/* Dereference a notifier from a result.
+ * The #x_list_t node containing the notifier is passed.
+ */
+static void
+xmmsc_result_notifier_remove (xmmsc_result_t *res, x_list_t *node)
+{
+	res->notifiers = x_list_delete_link (res->notifiers, node);
+	xmmsc_result_unref (res); /* each cb has a reference to res */
+}
+
+/* Dereference a notifier from a result and delete its udata.
+ * The #x_list_t node containing the notifier is passed.
+ */
+static void
+xmmsc_result_notifier_delete (xmmsc_result_t *res, x_list_t *node)
+{
+	xmmsc_result_callback_t *cb = node->data;
+	xmmsc_result_callback_free (cb);
+	xmmsc_result_notifier_remove (res, node);
 }
