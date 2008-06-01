@@ -368,7 +368,7 @@ xmmsc_value_unref (xmmsc_value_t *val)
 }
 
 /**
- * Allocates new #xmmsc_result_t and refereces it.
+ * Allocates new #xmmsc_value_t and references it.
  * Should not be used from a client.
  * @internal
  */
@@ -1434,8 +1434,8 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 	if (res->notifiers && cmd == XMMS_IPC_CMD_SIGNAL) {
 		restart_res = xmmsc_result_restart (res);
 
-		/* notifiers, and their references have been added to restart_res */
-		/* Before the notifiers would unref the result themselves,
+		/* notifiers, and their references have been added to restart_res
+		 * Before the notifiers would unref the result themselves,
 		 * but they cannot do that anymore, so we must */
 		n = res->notifiers;
 		while (n) {
@@ -1459,7 +1459,7 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 }
 
 /**
- * Allocates new #xmmsc_result_t and refereces it.
+ * Allocates new #xmmsc_result_t and references it.
  * Should not be used from a client.
  * @internal
  */
