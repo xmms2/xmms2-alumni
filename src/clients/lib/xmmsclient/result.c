@@ -49,12 +49,9 @@ typedef struct xmmsc_result_callback_St {
 	xmmsc_result_notifier_t func;
 	void *user_data;
 	xmmsc_user_data_free_func_t free_func;
-	int want_restart; /* bool, set according to func retval */
 } xmmsc_result_callback_t;
 
 static xmmsc_result_callback_t *xmmsc_result_callback_new (xmmsc_result_notifier_t f, void *udata, xmmsc_user_data_free_func_t free_f);
-static int xmmsc_result_callback_exec (xmmsc_result_callback_t *cb, xmmsc_value_t *val);
-static void xmmsc_result_callback_free (xmmsc_result_callback_t *cb);
 
 struct xmmsc_value_St {
 	union {
@@ -327,11 +324,10 @@ xmmsc_result_restart (xmmsc_result_t *res)
 
 	for (n = res->notifiers; n; n = x_list_next (n)) {
 		xmmsc_result_callback_t *cb = n->data;
-		if (cb->want_restart) {
-			xmmsc_result_notifier_set_full (newres, cb->func,
-			                                cb->user_data,
-			                                cb->free_func);
-		}
+
+		xmmsc_result_notifier_set_full (newres, cb->func,
+		                                cb->user_data,
+		                                cb->free_func);
 	}
 	xmmsc_result_restartable (newres, res->restart_signal);
 
@@ -1426,7 +1422,7 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 		next = x_list_next (n);
 		cb = n->data;
 
-		if (!xmmsc_result_callback_exec (cb, res->data)) {
+		if (!cb->func (res->data, cb->user_data)) {
 			xmmsc_result_notifier_delete (res, n);
 		}
 
@@ -1642,31 +1638,6 @@ xmmsc_result_callback_new (xmmsc_result_notifier_t f, void *udata,
 
 	return cb;
 }
-
-/* Run the registered notifier and return its retval. */
-static int
-xmmsc_result_callback_exec (xmmsc_result_callback_t *cb, xmmsc_value_t *val)
-{
-	x_return_val_if_fail (cb, 0);
-
-	cb->want_restart = cb->func (val, cb->user_data);
-
-	return cb->want_restart;
-}
-
-static void
-xmmsc_result_callback_free (xmmsc_result_callback_t *cb)
-{
-	x_return_if_fail (cb);
-
-	/* Don't free if it's gonna be restarted. */
-	if (!cb->want_restart && cb->free_func) {
-		cb->free_func (cb->user_data);
-	}
-
-	free (cb);
-}
-
 
 /* Dereference a notifier from a result.
  * The #x_list_t node containing the notifier is passed.
