@@ -14,7 +14,6 @@ Build-Depends: debhelper (>= 5.0.37.2),
                libglib2.0-dev,
                libcurl4-openssl-dev,
                libsmbclient-dev,
-               libgnomevfs2-dev,
                libvorbis-dev,
                libshout-dev,
                libflac-dev,
@@ -77,7 +76,6 @@ Depends: ${misc:Depends},
          xmms2-plugin-curl,
          xmms2-plugin-smb,
          xmms2-plugin-mms,
-         xmms2-plugin-gnomevfs,
          xmms2-plugin-vorbis,
          xmms2-plugin-flac,
          xmms2-plugin-faad,
@@ -384,15 +382,6 @@ Depends: ${misc:Depends},
 Enhances: xmms2-core
 Description: XMMS2 - MMS transport
  THis package contains an MMS transport for xmms2.
-
-Package: xmms2-plugin-gnomevfs
-Architecture: any
-Depends: ${misc:Depends},
-         ${shlibs:Depends},
-         xmms2-core (= ${binary:Version})
-Enhances: xmms2-core
-Description: XMMS2 - GnomeVFS transport
- This package contains a GnomeVFS transport for xmms2.
 
 Package: xmms2-plugin-vorbis
 Architecture: any
