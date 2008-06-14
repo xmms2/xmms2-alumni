@@ -4,6 +4,8 @@ xmms2 (0.4DrKosmos+WIP+TEST3-1) unstable; urgency=low
   * New upstream release.
     + Remove the xmms2-plugin-gnomevfs package. The plugin has been
       removed upstream.
+    + Remove the xmms2-plugin-avformat package. xmms2-plugin-asf replaces
+      it.
 
  -- Florian Ragwitz <rafl@debian.org>  Sun, 15 Jun 2008 15:32:00 +0200
 

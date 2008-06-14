@@ -28,7 +28,6 @@ Build-Depends: debhelper (>= 5.0.37.2),
                libmms-dev,
                libsidplay2-dev,
                libresid-builder-dev,
-               libavformat-dev,
                libavcodec-dev [!kfreebsd-i386 !kfreebsd-amd64],
                libboost-dev,
                libboost-signals-dev,
@@ -83,7 +82,6 @@ Depends: ${misc:Depends},
          xmms2-plugin-modplug,
          xmms2-plugin-mad,
          xmms2-plugin-musepack,
-         xmms2-plugin-avformat,
          xmms2-plugin-avcodec,
          xmms2-plugin-wma,
          xmms2-plugin-sid,
@@ -442,16 +440,6 @@ Enhances: xmms2-core
 Description: XMMS2 - mpc decoder
  This package enables musepack (mpc) decoding for xmms2.
 
-Package: xmms2-plugin-avformat
-Architecture: any
-Depends: ${misc:Depends},
-         ${shlibs:Depends},
-         xmms2-core (= ${binary:Version})
-Enhances: xmms2-core, xmms2-plugin-avcodec
-Description: XMMS2 - avformat demuxer
- This package enables avformat demuxing for xmms2. Together with
- xmms2-plugin-avcodec you'll be able to decode .wma files.
-
 Package: xmms2-plugin-avcodec
 Architecture: any
 Depends: ${misc:Depends},
@@ -459,16 +447,17 @@ Depends: ${misc:Depends},
          xmms2-core (= ${binary:Version})
 Enhances: xmms2-core
 Recommends: xmms2-plugin-asf, xmms2-plugin-mp4
+Replaces: xmms2-plugin-avformat
 Description: XMMS2 - avcodec decoder
  This package enables avcodec decoding for xmms2. Together with
- xmms2-plugin-avformat it's possible to decode .wma files. Combined with
+ xmms2-plugin-asf it's possible to decode .wma files. Combined with
  xmms2-plugin-mp4 you can decode .mp4 files.
 
 Package: xmms2-plugin-wma
 Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends},
-         xmms2-plugin-avformat (= ${binary:Version}),
+         xmms2-plugin-asf (= ${binary:Version}),
          xmms2-plugin-avcodec (= ${binary:Version})
 Enhances: xmms2-core
 Description: XMMS2 - wma decoder
