@@ -69,7 +69,7 @@ install-stamp:
 		-Xusr/lib/libxmmsclient-ecore.so \
 		-Xusr/lib/ruby/1.8/i486-linux/xmmsclient_ecore.so
 	for pkg in `dh_listpackages`; do \
-		for checker in lintian linda; do \
+		for checker in lintian; do \
 			src="debian/$${pkg}.$${checker}-overrides"; \
 			dst="debian/$${pkg}/usr/share/$${checker}/overrides"; \
 			if [ -e "$$src" ]; then \
