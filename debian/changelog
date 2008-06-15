@@ -9,6 +9,7 @@ xmms2 (0.4DrKosmos+WIP+TEST3-1) unstable; urgency=low
     + Add xmms2-plugin-karaoke.
     + Add xmms2-plugin-airplay.
     + Add xmms2-plugin-speex.
+    + Add xmms2-plugin-gme.
 
  -- Florian Ragwitz <rafl@debian.org>  Sun, 15 Jun 2008 15:32:00 +0200
 
