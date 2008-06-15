@@ -3,7 +3,7 @@ Section: sound
 Priority: optional
 Maintainer: Florian Ragwitz <rafl@debian.org>
 Uploaders: Jens Taprogge <jlt@taprogge.org>, Jonne Lehtinen <jms@modeemi.fi>, Thomas Jollans <thomas@jollans.com>, Anders Waldenborg <anders@0x63.nu>
-Standards-Version: 3.7.3
+Standards-Version: 3.8.0
 Build-Depends: debhelper (>= 5.0.37.2),
                libsqlite3-dev,
                ruby,
