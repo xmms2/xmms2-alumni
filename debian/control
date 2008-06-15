@@ -66,7 +66,7 @@ Description: Client/server based media player system
  and graphical. All common audio formats are supported using plugins. On top of
  this, there is a flexible media library to organize your music.
  .
- This package is a meta package depending on various other XMMS2 packages.
+ This package is a metapackage depending on various other XMMS2 packages.
  Installing this package gets you a commandline client and enables XMMS2
  playback of Ogg Vorbis and MP3 files from local and remote sources.
 
