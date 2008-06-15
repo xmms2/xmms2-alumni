@@ -157,11 +157,13 @@ Description: XMMS2 - phone home package
  This package contains a small program that (anonymously) reports back
  information on your computer and xmms2 configuration to the xmms2 developers.
 
-Package: libxmmsclient3
+Package: libxmmsclient4
 Architecture: any
 Section: libs
-Conflicts: libxmmsclient2
-Replaces: libxmmsclient2
+Conflicts: libxmmsclient2,
+           libxmmsclient3
+Replaces: libxmmsclient2,
+          libxmmsclient3
 Depends: ${misc:Depends},
          ${shlibs:Depends}
 Description: XMMS2 - client library
@@ -177,7 +179,7 @@ Architecture: any
 Section: libdevel
 Depends: ${misc:Depends},
          ${shlibs:Depends},
-         libxmmsclient3,
+         libxmmsclient4,
          xmms2-dev,
          pkg-config
 Description: XMMS2 - client library devel files
@@ -186,7 +188,7 @@ Description: XMMS2 - client library devel files
  and graphical. All common audio formats are supported using plugins. On top of
  this, there is a flexible media library to organize your music.
  .
- This package contains files for developing XMMS2 clients using libxmmsclient2.
+ This package contains files for developing XMMS2 clients using libxmmsclient4.
 
 Package: libxmmsclient-glib1
 Architecture: any
@@ -219,11 +221,13 @@ Description: XMMS2 - glib client library - development files
  This package contains files for developing XMMS2 clients using
  libxmmsclient-glib1.
 
-Package: libxmmsclient++2
+Package: libxmmsclient++3
 Architecture: any
 Section: libs
-Conflicts: libxmmsclient++1
-Replaces: libxmmsclient++1
+Conflicts: libxmmsclient++1,
+           libxmmsclient++2
+Replaces: libxmmsclient++1,
+          libxmmsclient++2,
 Depends: ${misc:Depends},
          ${shlibs:Depends}
 Description: XMMS2 - client library for c++
@@ -239,7 +243,7 @@ Architecture: any
 Section: libdevel
 Depends: ${misc:Depends},
          ${shlibs:Depends},
-         libxmmsclient++2,
+         libxmmsclient++3,
          libxmmsclient-dev,
          libboost-signals-dev,
          pkg-config
@@ -250,7 +254,7 @@ Description: XMMS2 - client library for c++ - development files
  this, there is a flexible media library to organize your music.
  .
  This package contains files for developing XMMS2 clients using
- libxmmsclient++1.
+ libxmmsclient++3.
 
 Package: libxmmsclient++-glib1
 Architecture: any
