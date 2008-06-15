@@ -111,7 +111,8 @@ Depends: ${misc:Depends},
          xmms2-plugin-karaoke,
          xmms2-plugin-airplay,
          xmms2-plugin-speex,
-         xmms2-plugin-gme
+         xmms2-plugin-gme,
+         xmms2-plugin-gvfs
 Description: XMMS2 - all plugins
  This is a metapackage depending on all available XMMS2 plugins to make
  installation easier.
@@ -734,6 +735,15 @@ Depends: ${misc:Depends},
 Enhances: xmms2-core
 Description: XMMS2 - gme plugin
  Game Music Emulator music decoder for xmms2.
+
+Package: xmms2-plugin-gvfs
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends},
+         xmms2-core (= ${binary:Version})
+Enhances: xmms2-core
+Description: XMMS2 - gvfs plugin
+ Glib virtual filesystem trasport for xmms2.
 
 Package: libaudio-xmmsclient-perl
 Architecture: any
