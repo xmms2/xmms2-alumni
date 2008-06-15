@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -42,7 +42,7 @@ static gint curr_dur = 0;
 static gchar songname[256];
 static guint curr_status = 0;
 
-static gchar *status_messages[] = {
+static const gchar *status_messages[] = {
 	"Stopped",
 	"Playing",
 	"Paused"
@@ -55,7 +55,7 @@ void
 cmd_status (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	GMainLoop *ml;
-	
+
 	ml = g_main_loop_new (NULL, FALSE);
 
 	has_songname = FALSE;
@@ -83,7 +83,7 @@ cmd_status (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 void
 cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
-{ 
+{
 	xmmsc_result_t *res;
 	gchar print_text[256];
 	guint id;
@@ -108,10 +108,10 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	if (argc > 2) {
-		xmmsc_entry_format (print_text, sizeof(print_text), argv[2], res);	
+		xmmsc_entry_format (print_text, sizeof (print_text), argv[2], res);
 	} else {
-		xmmsc_entry_format (print_text, sizeof(print_text), 
-                            "${artist} - ${title}", res);
+		xmmsc_entry_format (print_text, sizeof (print_text),
+		                    "${artist} - ${title}", res);
 	}
 
 	print_info ("%s", print_text);
@@ -166,7 +166,7 @@ handle_playtime (xmmsc_result_t *res, void *userdata)
 	if (xmmsc_result_iserror (res)) {
 		print_error ("%s", xmmsc_result_get_error (res));
 	}
-	
+
 	if (!xmmsc_result_get_uint (res, &dur)) {
 		print_error ("Broken resultset");
 	}
@@ -255,13 +255,13 @@ do_mediainfo (xmmsc_result_t *res, void *userdata)
 		                    "[stream] ${title}", res);
 		has_songname = TRUE;
 	} else if (res_has_key (res, "channel")) {
-		xmmsc_entry_format (songname, sizeof (songname), "${title}", res);
+		xmmsc_entry_format (songname, sizeof (songname), "${channel}", res);
 		has_songname = TRUE;
 	} else if (!res_has_key (res, "title")) {
-		gchar *url, *filename;
+		const gchar *url;
 
 		if (xmmsc_result_get_dict_entry_string (res, "url", &url)) {
-			filename = g_path_get_basename (url);
+			gchar *filename = g_path_get_basename (url);
 
 			if (filename) {
 				g_snprintf (songname, sizeof (songname), "%s", filename);

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -25,7 +25,6 @@
 #include "xmmsc/xmmsc_coll.h"
 
 #define XMMS_IPC_MSG_DEFAULT_SIZE 128 /*32768*/
-#define XMMS_IPC_MSG_MAX_SIZE 327680
 #define XMMS_IPC_MSG_HEAD_LEN 16 /* all but data */
 
 typedef struct xmms_ipc_msg_St xmms_ipc_msg_t;
@@ -46,37 +45,15 @@ void xmms_ipc_msg_destroy (xmms_ipc_msg_t *msg);
 bool xmms_ipc_msg_write_transport (xmms_ipc_msg_t *msg, xmms_ipc_transport_t *transport, bool *disconnected);
 bool xmms_ipc_msg_read_transport (xmms_ipc_msg_t *msg, xmms_ipc_transport_t *transport, bool *disconnected);
 
-void* xmms_ipc_msg_put_uint32 (xmms_ipc_msg_t *msg, uint32_t v);
-void* xmms_ipc_msg_put_int32 (xmms_ipc_msg_t *msg, int32_t v);
-void* xmms_ipc_msg_put_float (xmms_ipc_msg_t *msg, float v);
-void* xmms_ipc_msg_put_string (xmms_ipc_msg_t *msg, const char *str);
-void* xmms_ipc_msg_put_string_list (xmms_ipc_msg_t *msg, const char* strings[]);
-void* xmms_ipc_msg_put_collection (xmms_ipc_msg_t *msg, xmmsc_coll_t *coll);
-void* xmms_ipc_msg_put_bin (xmms_ipc_msg_t *msg, const unsigned char *data, unsigned int len);
-void* xmms_ipc_msg_append (xmms_ipc_msg_t *dmsg, xmms_ipc_msg_t *smsg);
+uint32_t xmms_ipc_msg_put_uint32 (xmms_ipc_msg_t *msg, uint32_t v);
+uint32_t xmms_ipc_msg_put_int32 (xmms_ipc_msg_t *msg, int32_t v);
+uint32_t xmms_ipc_msg_put_float (xmms_ipc_msg_t *msg, float v);
+uint32_t xmms_ipc_msg_put_string (xmms_ipc_msg_t *msg, const char *str);
+uint32_t xmms_ipc_msg_put_string_list (xmms_ipc_msg_t *msg, const char* strings[]);
+uint32_t xmms_ipc_msg_put_collection (xmms_ipc_msg_t *msg, xmmsc_coll_t *coll);
+uint32_t xmms_ipc_msg_put_bin (xmms_ipc_msg_t *msg, const unsigned char *data, unsigned int len);
 
-typedef enum {
-	XMMS_IPC_MSG_ARG_TYPE_END,
-	XMMS_IPC_MSG_ARG_TYPE_UINT32,
-	XMMS_IPC_MSG_ARG_TYPE_INT32,
-	XMMS_IPC_MSG_ARG_TYPE_FLOAT,
-	XMMS_IPC_MSG_ARG_TYPE_STRING,
-	XMMS_IPC_MSG_ARG_TYPE_DATA
-} xmms_ipc_msg_arg_type_t;
-
-#define __XMMS_IPC_MSG_DO_IDENTITY_FUNC(type) static inline type *__xmms_ipc_msg_arg_##type (type *arg) {return arg;}
-__XMMS_IPC_MSG_DO_IDENTITY_FUNC(int32_t)
-__XMMS_IPC_MSG_DO_IDENTITY_FUNC(uint32_t)
-__XMMS_IPC_MSG_DO_IDENTITY_FUNC(float)
-__XMMS_IPC_MSG_DO_IDENTITY_FUNC(char)
-#undef __XMMS_IPC_MSG_DO_IDENTITY_FUNC
-
-#define XMMS_IPC_MSG_UINT32(a) XMMS_IPC_MSG_ARG_TYPE_UINT32, __xmms_ipc_msg_arg_guint32 (a)
-#define XMMS_IPC_MSG_INT32(a) XMMS_IPC_MSG_ARG_TYPE_INT32, __xmms_ipc_msg_arg_gint32 (a)
-#define XMMS_IPC_MSG_INT64(a) XMMS_IPC_MSG_ARG_TYPE_FLOAT, __xmms_ipc_msg_arg_gint64 (a)
-#define XMMS_IPC_MSG_STRING(a,len) XMMS_IPC_MSG_ARG_TYPE_STRING, ((gint)len), __xmms_ipc_msg_arg_char (a)
-
-#define XMMS_IPC_MSG_END XMMS_IPC_MSG_ARG_TYPE_END
+void xmms_ipc_msg_store_uint32 (xmms_ipc_msg_t *msg, uint32_t offset, uint32_t v);
 
 bool xmms_ipc_msg_get_uint32 (xmms_ipc_msg_t *msg, uint32_t *v);
 bool xmms_ipc_msg_get_int32 (xmms_ipc_msg_t *msg, int32_t *v);

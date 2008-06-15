@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -147,6 +147,10 @@ xmms_converter_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	xmms_xform_plugin_indata_add (xform_plugin,
 	                              XMMS_STREAM_TYPE_MIMETYPE,
 	                              "audio/pcm",
+	                              XMMS_STREAM_TYPE_PRIORITY,
+				      100,
+	                              XMMS_STREAM_TYPE_NAME,
+				      "generic-pcmdata",
 	                              XMMS_STREAM_TYPE_END);
 
 	converter_plugin = xform_plugin;

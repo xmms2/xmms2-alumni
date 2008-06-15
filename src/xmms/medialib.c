@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -97,9 +97,6 @@ struct xmms_medialib_session_St {
 	/** The SQLite handler */
 	sqlite3 *sql;
 
-	/** The source to be working with */
-	gchar *source_pref;
-
 	/** debug file */
 	const gchar *file;
 	/** debug line number */
@@ -107,6 +104,8 @@ struct xmms_medialib_session_St {
 
 	/* Write or read lock, true if write */
 	gboolean write;
+
+	gint next_id;
 };
 
 
@@ -118,6 +117,8 @@ struct xmms_medialib_session_St {
   * and altering the function callers...
   */
 static xmms_medialib_t *medialib;
+
+static const char source_pref[] = "server:client/*:plugin/id3v2:plugin/*";
 
 /**
   * This is only used if we are using a older version of sqlite.
@@ -131,9 +132,6 @@ static GMutex *global_medialib_session_mutex;
 
 static GMutex *xmms_medialib_debug_mutex;
 static GHashTable *xmms_medialib_debug_hash;
-
-#define destroy_array(a) { gint i = 0; while (a[i]) { xmms_object_cmd_value_free (a[i]); i++; }; g_free (a); }
-
 
 static void
 xmms_medialib_destroy (xmms_object_t *object)
@@ -167,30 +165,37 @@ xmms_medialib_path_changed (xmms_object_t *object, gconstpointer data,
 #define XMMS_MEDIALIB_SOURCE_SERVER_ID 1
 
 static gint
-source_match_pattern (gchar* source, gchar* pattern)
+source_match_pattern (const gchar *source, const gchar *pattern,
+                      gint pattern_len)
 {
-	gboolean match = FALSE;
-	gint lpos = strlen (pattern) - 1;
+	/* check whether we need to keep a wildcard in mind when matching
+	 * the strings.
+	 */
+	if (pattern_len > 0 && pattern[pattern_len - 1] == '*') {
+		/* if the asterisk is the first character of the pattern,
+		 * it obviously accepts anything.
+		 */
+		if (pattern_len == 1) {
+			return TRUE;
+		}
 
-	if (g_strcasecmp (pattern, source) == 0) {
-		match = TRUE;
-	}
-	else if (lpos >= 0 && pattern[lpos] == '*' &&
-	        (lpos == 0 || g_strncasecmp (source, pattern, lpos) == 0)) {
-		match = TRUE;
+		/* otherwise we have to compare the characters just up to the
+		 * asterisk.
+		 */
+		return !g_ascii_strncasecmp (source, pattern, pattern_len - 1);
 	}
 
-	return match;
+	/* there's no wildcards, so just compare all of the characters. */
+	return !g_ascii_strncasecmp (pattern, source, pattern_len);
 }
 
 static void
 xmms_sqlite_source_pref (sqlite3_context *context, int args, sqlite3_value **val)
 {
 	gint source;
-	const guchar *pref;
-	gchar **split;
+	const gchar *pref;
 	xmms_medialib_t *mlib;
-	gchar *source_name;
+	gchar *source_name, *colon;
 	gint i;
 
 	mlib = sqlite3_user_data (context);
@@ -205,23 +210,33 @@ xmms_sqlite_source_pref (sqlite3_context *context, int args, sqlite3_value **val
 	}
 
 	source = sqlite3_value_int (val[0]);
-	pref = sqlite3_value_text (val[1]);
+	pref = (const gchar *) sqlite3_value_text (val[1]);
 
 	g_mutex_lock (mlib->source_lock);
 	source_name = g_hash_table_lookup (mlib->sources, GINT_TO_POINTER (source));
 	g_mutex_unlock (mlib->source_lock);
 
-	split = g_strsplit ((gchar *)pref, ":", 0);
+	do {
+		gsize len;
 
-	for (i = 0; split[i]; i++) {
-		if (source_match_pattern (source_name, split[i])) {
+		colon = strchr (pref, ':');
+
+		/* get the length of this substring */
+		len = colon ? colon - pref : strlen (pref);
+
+		/* check whether the substring matches */
+		if (source_match_pattern (source_name, pref, len)) {
 			sqlite3_result_int (context, i);
-			g_strfreev (split);
 			return;
 		}
-	}
 
-	g_strfreev (split);
+		if (colon) {
+			pref = colon + 1;
+		}
+
+		/* if we just processed the final substring, then we're done */
+	} while (colon);
+
 	sqlite3_result_int (context, -1);
 }
 
@@ -262,23 +277,16 @@ static xmms_medialib_session_t *
 xmms_medialib_session_new (const char *file, int line)
 {
 	xmms_medialib_session_t *session;
-	gint create;
 
 	session = g_new0 (xmms_medialib_session_t, 1);
 	session->medialib = medialib;
 	session->file = file;
 	session->line = line;
 	session->sql = xmms_sqlite_open ();
-	session->source_pref = g_strdup ("server:client/*:plugin/id3v2:plugin/*");
+
 	sqlite3_create_function (session->sql, "xmms_source_pref", 2, SQLITE_UTF8,
 	                         session->medialib, xmms_sqlite_source_pref, NULL, NULL);
 
-	if (create) {
-		xmms_medialib_entry_t entry;
-		xmms_error_t error;
-		entry = xmms_medialib_entry_new (session, "file://" SHAREDDIR "/mind.in.a.box-lament_snipplet.ogg", &error);
-		/* A default playlist containing that song has been created with the mlib */
-	}
 	return session;
 }
 
@@ -296,6 +304,7 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 {
 	gchar *path;
 	xmms_medialib_session_t *session;
+	gboolean create;
 
 	medialib = xmms_object_new (xmms_medialib_t, xmms_medialib_destroy);
 	medialib->playlist = playlist;
@@ -352,7 +361,7 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	global_medialib_session = NULL;
 
 	/* init the database */
-	xmms_sqlite_create ();
+	xmms_sqlite_create (&create);
 
 	if (sqlite3_libversion_number () < 3002004) {
 		xmms_log_info ("**************************************************************");
@@ -375,6 +384,19 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	session = xmms_medialib_begin_write ();
 	sqlite3_exec (session->sql, "select id, source from Sources",
 	              add_to_source, medialib->sources, NULL);
+
+	if (create) {
+		xmms_error_t error;
+
+		xmms_medialib_entry_new (session,
+		                         "file://" SHAREDDIR
+		                         "/mind.in.a.box-lament_snipplet.ogg",
+		                         &error);
+		/* A default playlist containing that song has been created
+		 * with the mlib.
+		 */
+	}
+
 	xmms_medialib_end (session);
 
 	return medialib;
@@ -417,6 +439,8 @@ _xmms_medialib_begin (gboolean write, const char *file, int line)
 		}
 	}
 
+	session->next_id = -1;
+
 	return session;
 }
 
@@ -441,8 +465,6 @@ xmms_medialib_end (xmms_medialib_session_t *session)
 		return;
 	}
 
-	g_free (session->source_pref);
-
 	xmms_sqlite_close (session->sql);
 	xmms_object_unref (XMMS_OBJECT (session->medialib));
 	g_free (session);
@@ -458,8 +480,6 @@ xmms_medialib_int_cb (xmms_object_cmd_value_t **row, gpointer udata)
 	else
 		XMMS_DBG ("Expected int32 but got something else!");
 
-	destroy_array (row);
-
 	return TRUE;
 }
 
@@ -473,8 +493,6 @@ xmms_medialib_string_cb (xmms_object_cmd_value_t **row, gpointer udata)
 	else
 		XMMS_DBG ("Expected string but got something else!");
 
-	destroy_array (row);
-
 	return 0;
 }
 
@@ -483,9 +501,7 @@ xmms_medialib_cmd_value_cb (xmms_object_cmd_value_t **row, gpointer udata)
 {
 	xmms_object_cmd_value_t **ret = udata;
 
-	*ret = xmms_object_cmd_value_copy (row[0]);
-
-	destroy_array (row);
+	*ret = xmms_object_cmd_value_ref (row[0]);
 
 	return 0;
 }
@@ -513,7 +529,7 @@ xmms_medialib_entry_property_get_cmd_value (xmms_medialib_session_t *session,
 	} else {
 		xmms_sqlite_query_array (session->sql, xmms_medialib_cmd_value_cb,
 		                         &ret, XMMS_MEDIALIB_RETRV_PROPERTY_SQL,
-		                         property, entry, session->source_pref);
+		                         property, entry, source_pref);
 	}
 
 	return ret;
@@ -542,7 +558,7 @@ xmms_medialib_entry_property_get_str (xmms_medialib_session_t *session,
 
 	xmms_sqlite_query_array (session->sql, xmms_medialib_string_cb, &ret,
 	                         XMMS_MEDIALIB_RETRV_PROPERTY_SQL,
-	                         property, entry, session->source_pref);
+	                         property, entry, source_pref);
 
 	return ret;
 }
@@ -569,7 +585,7 @@ xmms_medialib_entry_property_get_int (xmms_medialib_session_t *session,
 
 	xmms_sqlite_query_array (session->sql, xmms_medialib_int_cb, &ret,
 	                         XMMS_MEDIALIB_RETRV_PROPERTY_SQL,
-	                         property, entry, session->source_pref);
+	                         property, entry, source_pref);
 
 	return ret;
 }
@@ -722,31 +738,19 @@ static void
 process_file (xmms_medialib_session_t *session,
               gchar *playlist,
               const gchar *path,
-              guint32 *id,
               xmms_error_t *error)
 {
-	guint32 ret = 0;
+	xmms_medialib_entry_t entry;
 
-	xmms_sqlite_query_array (session->sql, xmms_medialib_int_cb, &ret,
-	                         "select id as value from Media where "
-	                         "key='%s' and value=%Q and source=%d",
-	                         XMMS_MEDIALIB_ENTRY_PROPERTY_URL, path,
-	                         XMMS_MEDIALIB_SOURCE_SERVER_ID);
+	entry = xmms_medialib_entry_new_encoded (session, path, error);
 
-	if (!ret) {
-		*id = *id + 1; /* increment id */
-		xmms_medialib_entry_new_insert (session, *id, path, error);
-		if (playlist != NULL) {
-			xmms_playlist_add_entry (session->medialib->playlist,
-			                         playlist, *id, error);
-		}
-	} else if (playlist != NULL) {
+	if (entry && playlist != NULL) {
 		xmms_playlist_add_entry (session->medialib->playlist,
-		                         playlist, ret, error);
+		                         playlist, entry, error);
 	}
 }
 
-static gchar *
+static const gchar *
 lookup_string (xmms_object_cmd_value_t *tbl, const gchar *key)
 {
 	xmms_object_cmd_value_t *val;
@@ -754,7 +758,7 @@ lookup_string (xmms_object_cmd_value_t *tbl, const gchar *key)
 	if (!tbl || tbl->type != XMMS_OBJECT_CMD_ARG_DICT)
 		return NULL;
 
-	val = g_hash_table_lookup (tbl->value.dict, key);
+	val = g_tree_lookup (tbl->value.dict, key);
 
 	if (!val)
 		return NULL;
@@ -762,7 +766,7 @@ lookup_string (xmms_object_cmd_value_t *tbl, const gchar *key)
 	if (val->type != XMMS_OBJECT_CMD_ARG_STRING)
 		return NULL;
 
-	return g_strdup (val->value.string);
+	return val->value.string;
 }
 
 static gint32
@@ -773,7 +777,7 @@ lookup_int (xmms_object_cmd_value_t *tbl, const gchar *key)
 	if (!tbl || tbl->type != XMMS_OBJECT_CMD_ARG_DICT)
 		return 0;
 
-	val = g_hash_table_lookup (tbl->value.dict, key);
+	val = g_tree_lookup (tbl->value.dict, key);
 
 	if (!val)
 		return 0;
@@ -804,7 +808,7 @@ process_dir (const gchar *directory,
              GList **ret,
              xmms_error_t *error)
 {
-	GList *list, *n;
+	GList *list;
 
 	list = xmms_xform_browse (NULL, directory, error);
 	if (!list) {
@@ -813,19 +817,19 @@ process_dir (const gchar *directory,
 
 	list = g_list_sort (list, cmp_val);
 
-	for (n = list; n; n = g_list_next (n)) {
-		xmms_object_cmd_value_t *val = n->data;
+	while (list) {
+		xmms_object_cmd_value_t *val = list->data;
+		const gchar *str = lookup_string (val, "path");
 
 		if (lookup_int (val, "isdir") == 1) {
-			process_dir (lookup_string (val, "path"), ret, error);
+			process_dir (str, ret, error);
 		} else {
-			*ret = g_list_prepend (*ret, lookup_string (val, "path"));
+			*ret = g_list_prepend (*ret, g_strdup (str));
 		}
 
-		xmms_object_cmd_value_free (val);
+		xmms_object_cmd_value_unref (val);
+		list = g_list_delete_link (list, list);
 	}
-
-	g_list_free (list);
 
 	return TRUE;
 }
@@ -888,26 +892,29 @@ xmms_medialib_add_recursive (xmms_medialib_t *medialib, gchar *playlist,
                              gchar *path, xmms_error_t *error)
 {
 	xmms_medialib_session_t *session;
-	guint32 id;
-	GList *list = NULL, *n;
+	GList *first, *list = NULL, *n;
 
 	g_return_if_fail (medialib);
 	g_return_if_fail (path);
+
+	/* Allocate our first list node manually here. The following call
+	 * to process_dir() will prepend all other nodes, so afterwards
+	 * "first" will point to the last node of the list... see below.
+	 */
+	first = list = g_list_alloc ();
 
 	process_dir (path, &list, error);
 
 	XMMS_DBG ("taking the transaction!");
 	session = xmms_medialib_begin_write ();
-	if (!xmms_sqlite_query_array (session->sql, xmms_medialib_int_cb, &id,
-	                              "select ifnull(MAX (id),0) from Media")) {
-		xmms_error_set (error, XMMS_ERROR_GENERIC, "Sql error/corruption selecting max(id)");
-		return;
-	}
 
-	list = g_list_reverse (list);
-
-	for (n = list; n; n = g_list_next (n)) {
-		process_file (session, playlist, n->data, &id, error);
+	/* We now want to iterate the list in the order in which the nodes
+	 * were added, ie in reverse order. Thankfully we stored a pointer
+	 * to the last node in the list before, which saves us an expensive
+	 * g_list_last() call now.
+	 */
+	for (n = first->prev; n; n = g_list_previous (n)) {
+		process_file (session, playlist, n->data, error);
 		g_free (n->data);
 	}
 
@@ -963,6 +970,7 @@ xmms_medialib_entry_new_encoded (xmms_medialib_session_t *session,
 
 	g_return_val_if_fail (url, 0);
 	g_return_val_if_fail (session, 0);
+	g_return_val_if_fail (session->write, 0);
 
 	source = XMMS_MEDIALIB_SOURCE_SERVER_ID;
 
@@ -974,13 +982,16 @@ xmms_medialib_entry_new_encoded (xmms_medialib_session_t *session,
 	if (id) {
 		ret = id;
 	} else {
-		if (!xmms_sqlite_query_array (session->sql, xmms_medialib_int_cb, &ret,
-		                              "select ifnull(MAX (id),0) from Media")) {
+		if (session->next_id <= 0 &&
+		    !xmms_sqlite_query_array (session->sql, xmms_medialib_int_cb,
+		                              &session->next_id,
+		                              "SELECT IFNULL(MAX (id),0)+1 "
+		                              "FROM Media")) {
 			xmms_error_set (error, XMMS_ERROR_GENERIC, "Sql error/corruption selecting max(id)");
 			return 0;
 		}
 
-		ret++; /* next id */
+		ret = session->next_id++;
 
 		if (!xmms_medialib_entry_new_insert (session, ret, url, error))
 			return 0;
@@ -1043,13 +1054,13 @@ xmms_medialib_list_cb (xmms_object_cmd_value_t **row, gpointer udata)
 	GList **list = (GList**)udata;
 
 	/* Source */
-	*list = g_list_append (*list, xmms_object_cmd_value_copy (row[0]));
-	/* Key */
-	*list = g_list_append (*list, xmms_object_cmd_value_copy (row[1]));
-	/* Value */
-	*list = g_list_append (*list, xmms_object_cmd_value_copy (row[2]));
+	*list = g_list_prepend (*list, xmms_object_cmd_value_ref (row[0]));
 
-	destroy_array (row);
+	/* Key */
+	*list = g_list_prepend (*list, xmms_object_cmd_value_ref (row[1]));
+
+	/* Value */
+	*list = g_list_prepend (*list, xmms_object_cmd_value_ref (row[2]));
 
 	return TRUE;
 }
@@ -1085,11 +1096,16 @@ xmms_medialib_entry_to_list (xmms_medialib_session_t *session, xmms_medialib_ent
 		return NULL;
 	}
 
-	ret = g_list_append (ret, xmms_object_cmd_value_str_new ("server"));
-	ret = g_list_append (ret, xmms_object_cmd_value_str_new ("id"));
-	ret = g_list_append (ret, xmms_object_cmd_value_int_new (entry));
+	/* Source */
+	ret = g_list_prepend (ret, xmms_object_cmd_value_str_new ("server"));
 
-	return ret;
+	/* Key */
+	ret = g_list_prepend (ret, xmms_object_cmd_value_str_new ("id"));
+
+	/* Value */
+	ret = g_list_prepend (ret, xmms_object_cmd_value_int_new (entry));
+
+	return g_list_reverse (ret);
 }
 
 
@@ -1120,7 +1136,7 @@ select_callback (GHashTable *row, gpointer udata)
 {
 	GList **l = (GList **) udata;
 
-	*l = g_list_prepend (*l, xmms_object_cmd_value_dict_new (row));
+	*l = g_list_prepend (*l, xmms_object_cmd_value_hash_table_new (row));
 	return TRUE;
 }
 
@@ -1187,7 +1203,7 @@ xmms_medialib_property_set_str_method (xmms_medialib_t *medialib, guint32 entry,
 	guint32 sourceid;
 	xmms_medialib_session_t *session;
 
-	if (g_strcasecmp (source, "server") == 0) {
+	if (g_ascii_strcasecmp (source, "server") == 0) {
 		xmms_error_set (error, XMMS_ERROR_GENERIC,
 		                "Can't write to source server!");
 		return;
@@ -1211,7 +1227,7 @@ xmms_medialib_property_set_int_method (xmms_medialib_t *medialib, guint32 entry,
 	guint32 sourceid;
 	xmms_medialib_session_t *session;
 
-	if (g_strcasecmp (source, "server") == 0) {
+	if (g_ascii_strcasecmp (source, "server") == 0) {
 		xmms_error_set (error, XMMS_ERROR_GENERIC,
 		                "Can't write to source server!");
 		return;
@@ -1248,7 +1264,7 @@ xmms_medialib_property_remove_method (xmms_medialib_t *medialib, guint32 entry,
                                       gchar *source, gchar *key,
                                       xmms_error_t *error)
 {
-	if (g_strcasecmp (source, "server") == 0) {
+	if (g_ascii_strcasecmp (source, "server") == 0) {
 		xmms_error_set (error, XMMS_ERROR_GENERIC,
 		                "Can't remove properties set by the server!");
 		return;

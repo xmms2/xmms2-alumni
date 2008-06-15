@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -38,16 +38,14 @@
 xmmsc_result_t *
 xmmsc_plugin_list (xmmsc_connection_t *c, xmms_plugin_type_t type)
 {
-	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
+
 	x_check_conn (c, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_PLUGIN_LIST);
 	xmms_ipc_msg_put_uint32 (msg, type);
 
-	res = xmmsc_send_msg (c, msg);
-
-	return res;
+	return xmmsc_send_msg (c, msg);
 }
 
 /**
@@ -59,17 +57,6 @@ xmmsc_main_stats (xmmsc_connection_t *c)
 	x_check_conn (c, NULL);
 
 	return xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_STATS);
-}
-
-/**
- * Request the visualisation data signal. This will be called with vis data
- */
-xmmsc_result_t *
-xmmsc_signal_visualisation_data (xmmsc_connection_t *c)
-{
-	x_check_conn (c, NULL);
-
-	return xmmsc_send_signal_msg (c, XMMS_IPC_SIGNAL_VISUALISATION_DATA);
 }
 
 /**

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -102,7 +102,7 @@ namespace Xmms
 			}
 			case XMMSC_RESULT_VALUE_TYPE_STRING: {
 
-				char* temp = 0;
+				const char* temp = 0;
 				if( !xmmsc_result_get_dict_entry_string( result_, 
 				                                         key.c_str(), 
 				                                         &temp ) ) {

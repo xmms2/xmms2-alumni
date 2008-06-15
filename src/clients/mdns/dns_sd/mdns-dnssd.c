@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -32,12 +32,12 @@ static GPollFD *pollfd;
 static GMainLoop *ml;
 
 void
-dns_callback (DNSServiceRef sdref, 
-			  DNSServiceFlags flags, 
-			  DNSServiceErrorType errorCode, 
-			  const char *name, 
-			  const char *regtype, 
-			  const char *domain, void *context)
+dns_callback (DNSServiceRef sdref,
+              DNSServiceFlags flags,
+              DNSServiceErrorType errorCode,
+              const char *name,
+              const char *regtype,
+              const char *domain, void *context)
 {
 	if (errorCode == kDNSServiceErr_NoError) {
 		printf ("Registered: %s %s %s\n", name, regtype, domain);
@@ -76,8 +76,8 @@ dns_ipc_source_check (GSource *source)
 }
 
 static gboolean
-dns_ipc_source_dispatch (GSource *source, GSourceFunc callback, 
-						 gpointer user_data)
+dns_ipc_source_dispatch (GSource *source, GSourceFunc callback,
+                         gpointer user_data)
 {
 	if (pollfd->revents & G_IO_IN) {
 		if (DNSServiceProcessResult (g_sdref) != kDNSServiceErr_NoError) {
@@ -152,7 +152,7 @@ main (int argc, char **argv)
 			gp = ipcsplit[i];
 		}
 	}
-	
+
 	if (!gp) {
 		printf ("Need to have a socket listening to TCP before we can do that!");
 		exit (1);
@@ -181,9 +181,9 @@ main (int argc, char **argv)
 
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_quit, handle_quit, ml);
 	xmmsc_disconnect_callback_set (conn, disconnected, NULL);
-	
+
 	register_service (port);
-	
+
 	xmmsc_mainloop_gmain_init (conn);
 
 	g_main_loop_run (ml);

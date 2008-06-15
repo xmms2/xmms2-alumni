@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -126,6 +126,28 @@ xmms_strlist_prepend_copy (char **data, char *newstr) {
 	for (i = 0; data[i] != NULL; i++)
 		ret[i+1] = strdup (data[i]);
 	ret[i+1] = NULL;
+
+	return ret;
+}
+
+/**
+ * Return a deep copy of a list.
+ * @param strlist The original list.
+ * @return A newly allocated list of strings.
+ */
+char **
+xmms_strlist_copy (char **strlist)
+{
+	char **ret;
+	int i;
+
+	ret = malloc ((xmms_strlist_len (strlist) + 1) * sizeof (char *));
+
+	for (i = 0; strlist[i] != NULL; i++) {
+		ret[i] = strdup (strlist[i]);
+	}
+
+	ret[i] = NULL;
 
 	return ret;
 }

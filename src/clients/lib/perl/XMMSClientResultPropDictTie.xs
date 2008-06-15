@@ -11,7 +11,9 @@ perl_xmmsclient_extract_keys_from_propdict (const void *key,
 {
 	HV *keys = (HV *)user_data;
 
-	hv_store (keys, key, strlen (key), &PL_sv_undef, 0);
+	if (!hv_store (keys, key, strlen (key), &PL_sv_undef, 0)) {
+		croak ("Failed to extract propdict keys");
+	}
 }
 
 HV *
@@ -94,7 +96,8 @@ FETCH (res, key)
 		int ret = 0;
 		uint32_t uint32_val;
 		int32_t int32_val;
-		char *string_val;
+		const char *string_val;
+		SV **he;
 	CODE:
 		switch (xmmsc_result_get_dict_entry_type (res, key)) {
 			case XMMS_OBJECT_CMD_ARG_UINT32:
@@ -111,11 +114,35 @@ FETCH (res, key)
 				RETVAL = newSVpv (string_val, 0);
 				break;
 			default:
-				RETVAL = &PL_sv_undef;
+				XSRETURN_UNDEF;
 		}
 
 		if (ret != 1) {
-			RETVAL = &PL_sv_undef;
+			XSRETURN_UNDEF;
+		}
+
+		he = hv_fetch ((HV *)SvRV (ST (0)), "field", 5, 0);
+		if (he && *he) {
+			char *key;
+			STRLEN key_len;
+			HV *perl_constants;
+
+			key = SvPV (*he, key_len);
+			he = hv_fetch ((HV *)SvRV (ST (0)), "constants", 9, 0);
+
+			if (!he || !*he) {
+				croak ("constants not available");
+			}
+
+			perl_constants = (HV *)SvRV (*he);
+
+			key = SvPV (RETVAL, key_len);
+			he = hv_fetch (perl_constants, key, key_len, 0);
+
+			if (he && *he) {
+				sv_2mortal (RETVAL);
+				RETVAL = newSVsv (*he);
+			}
 		}
 	OUTPUT:
 		RETVAL

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -55,7 +55,7 @@ cmd_toggleplay (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		print_error ("Couldn't get playback status: %s",
 		             xmmsc_result_get_error (res));
 	}
-	
+
 	if (!xmmsc_result_get_uint (res, &status)) {
 		print_error ("Broken resultset");
 	}
@@ -74,10 +74,10 @@ void
 cmd_play (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	
+
 	res = xmmsc_playback_start (conn);
 	xmmsc_result_wait (res);
-	
+
 	if (xmmsc_result_iserror (res)) {
 		print_error ("Couldn't start playback: %s",
 		             xmmsc_result_get_error (res));
@@ -89,10 +89,10 @@ void
 cmd_stop (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	
+
 	res = xmmsc_playback_stop (conn);
 	xmmsc_result_wait (res);
-	
+
 	if (xmmsc_result_iserror (res)) {
 		print_error ("Couldn't stop playback: %s",
 		             xmmsc_result_get_error (res));
@@ -142,7 +142,7 @@ cmd_seek (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		print_error ("You need to specify a number of seconds. Usage:\n"
 		             "xmms2 seek n  - seek to absolute position in song\n"
 		             "xmms2 seek +n - seek n seconds forward in song\n"
-                     "xmms2 seek -n - seek n seconds backwards");
+		             "xmms2 seek -n - seek n seconds backwards");
 	}
 
 	/* parse the movement argument */
@@ -165,7 +165,7 @@ cmd_seek (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	if (xmmsc_result_iserror (res)) {
 		print_error ("Couldn't seek to %d arg: %s", arg,
-					 xmmsc_result_get_error (res));
+		             xmmsc_result_get_error (res));
 	}
 	xmmsc_result_unref (res);
 }
@@ -194,7 +194,7 @@ cmd_jump (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	if (xmmsc_result_iserror (res)) {
 		print_error ("Couldn't go to next song: %s",
-					 xmmsc_result_get_error (res));
+		             xmmsc_result_get_error (res));
 	}
 	xmmsc_result_unref (res);
 }

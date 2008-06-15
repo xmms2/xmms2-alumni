@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -23,7 +23,7 @@
 #include <glib.h>
 
 
-gboolean xmms_checkroot ();
+gboolean xmms_checkroot (void);
 
 #endif
 

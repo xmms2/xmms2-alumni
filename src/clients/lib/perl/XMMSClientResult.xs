@@ -1,5 +1,31 @@
 #include "perl_xmmsclient.h"
 
+static struct {
+	const char *module;
+	const char *field;
+	uint32_t constant;
+	const char *perl_constant;
+} constants[] = {
+	{ "PlaybackStatus", NULL, XMMS_PLAYBACK_STATUS_STOP, "stop" },
+	{ "PlaybackStatus", NULL, XMMS_PLAYBACK_STATUS_PLAY, "play" },
+	{ "PlaybackStatus", NULL, XMMS_PLAYBACK_STATUS_PAUSE, "pause" },
+	{ "MediainfoReaderStatus", NULL, XMMS_MEDIAINFO_READER_STATUS_IDLE, "idle" },
+	{ "MediainfoReaderStatus", NULL, XMMS_MEDIAINFO_READER_STATUS_RUNNING, "running" },
+	{ "PlaylistChanged", "type", XMMS_PLAYLIST_CHANGED_ADD, "add" },
+	{ "PlaylistChanged", "type", XMMS_PLAYLIST_CHANGED_INSERT, "insert" },
+	{ "PlaylistChanged", "type", XMMS_PLAYLIST_CHANGED_SHUFFLE, "shuffle" },
+	{ "PlaylistChanged", "type", XMMS_PLAYLIST_CHANGED_REMOVE, "remove" },
+	{ "PlaylistChanged", "type", XMMS_PLAYLIST_CHANGED_CLEAR, "clear" },
+	{ "PlaylistChanged", "type", XMMS_PLAYLIST_CHANGED_MOVE, "move" },
+	{ "PlaylistChanged", "type", XMMS_PLAYLIST_CHANGED_SORT, "sort" },
+	{ "PlaylistChanged", "type", XMMS_PLAYLIST_CHANGED_UPDATE, "update" },
+	{ "MedialibEntryStatus", "status", XMMS_MEDIALIB_ENTRY_STATUS_NEW, "new" },
+	{ "MedialibEntryStatus", "status", XMMS_MEDIALIB_ENTRY_STATUS_OK, "ok" },
+	{ "MedialibEntryStatus", "status", XMMS_MEDIALIB_ENTRY_STATUS_RESOLVING, "resolving" },
+	{ "MedialibEntryStatus", "status", XMMS_MEDIALIB_ENTRY_STATUS_NOT_AVAILABLE, "not-available" },
+	{ "MedialibEntryStatus", "status", XMMS_MEDIALIB_ENTRY_STATUS_REHASH, "rehash" }
+};
+
 void
 perl_xmmsclient_xmmsc_result_notifyer_cb (xmmsc_result_t *res, void *user_data)
 {
@@ -41,7 +67,7 @@ SV *
 perl_xmmsclient_xmmsc_result_get_string (xmmsc_result_t *res)
 {
 	int ret;
-	char *val = NULL;
+	const char *val = NULL;
 
 	ret = xmmsc_result_get_string (res, &val);
 
@@ -110,7 +136,9 @@ perl_xmmsclient_xmmsc_result_dict_foreach_cb (const void *key, xmmsc_result_valu
 {
 	HV *hash = (HV *)user_data;
 
-	hv_store(hash, (const char *)key, strlen((const char *)key), perl_xmmsclient_xmms_result_cast_value (type, value), 0);
+	if (!hv_store (hash, (const char *)key, strlen ((const char *)key), perl_xmmsclient_xmms_result_cast_value (type, value), 0)) {
+		croak ("Failed to convert result to hash");
+	}
 }
 
 SV *
@@ -122,25 +150,38 @@ perl_xmmsclient_xmmsc_result_get_dict(xmmsc_result_t *res)
 	ret = xmmsc_result_dict_foreach (res, perl_xmmsclient_xmmsc_result_dict_foreach_cb, val);
 
 	if (ret == 0) {
-		croak("Could not fetch dict value");
+		croak ("Could not fetch dict value");
 	}
 
 	return newRV_inc ((SV *)val);
 }
 
 SV *
-perl_xmmsclient_xmmsc_result_get_propdict (xmmsc_result_t *res)
+perl_xmmsclient_xmmsc_result_get_propdict_with_overload (xmmsc_result_t *res, SV *field, HV *constants)
 {
-	SV *hash;
-	SV *tie;
+	SV *hash, *tie;
 
 	xmmsc_result_ref (res);
 
 	tie = perl_xmmsclient_new_sv_from_ptr (res, "Audio::XMMSClient::Result::PropDict::Tie");
 	hash = perl_xmmsclient_new_sv_from_ptr (res, "Audio::XMMSClient::Result::PropDict");
+
+	if (field && constants) {
+		if (!hv_store ((HV *)SvRV (tie), "field", 5, field, 0)
+		 || !hv_store ((HV *)SvRV (tie), "constants", 9, newRV_inc ((SV *)constants), 0)) {
+			croak ("failed to store constant info");
+		}
+	}
+
 	hv_magic ((HV *)SvRV (hash), (GV *)tie, PERL_MAGIC_tied);
 
 	return hash;
+}
+
+SV *
+perl_xmmsclient_xmmsc_result_get_propdict (xmmsc_result_t *res)
+{
+	return perl_xmmsclient_xmmsc_result_get_propdict_with_overload (res, NULL, NULL);
 }
 
 SV *
@@ -188,6 +229,111 @@ perl_xmmsclient_result_get_list (xmmsc_result_t *res)
 	}
 
 	return newRV_inc ((SV *)list);
+}
+
+XS(overloaded_value);
+XS(overloaded_value)
+{
+	dXSARGS;
+	HV *perl_constants;
+	xmmsc_result_t *res;
+	SV **he;
+	SV *field = Nullsv;
+	SV *sv, *const_info;
+	char *key;
+	STRLEN key_len;
+	MAGIC *mg;
+
+	if (items != 1) {
+		croak ("Usage: Audio::XMMSClient::Result::value(res)");
+	}
+
+	res = (xmmsc_result_t *)perl_xmmsclient_get_ptr_from_sv (ST (0), "Audio::XMMSClient::Result");
+
+	if (!(mg = mg_find ((SV *)cv, PERL_MAGIC_ext))) {
+		croak ("can't find constant info");
+	}
+
+	const_info = (SV *)mg->mg_ptr;
+
+	switch (SvTYPE (const_info)) {
+		case SVt_PVAV:
+			{
+				SV **tmp = av_fetch ((AV *)const_info, 0, 0);
+				if (!tmp || !*tmp || SvROK (*tmp)) {
+					croak ("Invalid constant info.");
+				}
+
+				field = *tmp;
+
+				he = av_fetch((AV *)const_info, 1, 0);
+				if (!he || !*he || !SvROK (*he) || SvTYPE (SvRV (*he)) != SVt_PVHV) {
+					croak ("Invalid constant info.");
+				}
+
+				const_info = SvRV (*he);
+			}
+		case SVt_PVHV:
+			perl_constants = (HV *)const_info;
+			break;
+		default:
+			croak ("Invalid constant info.");
+	}
+
+	if (field) {
+		switch (xmmsc_result_get_type (res)) {
+			char *hkey;
+			STRLEN hkey_len;
+
+			case XMMSC_RESULT_VALUE_TYPE_DICT:
+				sv = perl_xmmsclient_xmmsc_result_get_dict (res);
+
+				hkey = SvPV (field, hkey_len);
+				he = hv_fetch ((HV *)SvRV (sv), hkey, hkey_len, 0);
+
+				if (he && *he) {
+					key = SvPV (*he, key_len);
+					he = hv_fetch (perl_constants, key, key_len, 0);
+
+					if (he && *he) {
+						if (!hv_store ((HV *)SvRV (sv), hkey, hkey_len, newSVsv (*he), 0)) {
+							croak ("bug");
+						}
+					}
+				}
+
+				break;
+			case XMMSC_RESULT_VALUE_TYPE_PROPDICT:
+				sv = perl_xmmsclient_xmmsc_result_get_propdict_with_overload (res, field, perl_constants);
+				break;
+			default:
+				croak ("constant field given but result is neither a dict nor a propdict");
+		}
+	}
+	else {
+		switch (xmmsc_result_get_type (res)) {
+			case XMMSC_RESULT_VALUE_TYPE_UINT32:
+				sv = perl_xmmsclient_xmmsc_result_get_uint (res);
+				break;
+			case XMMSC_RESULT_VALUE_TYPE_INT32:
+				sv = perl_xmmsclient_xmmsc_result_get_int (res);
+				break;
+			default:
+				croak ("unhandled constant type");
+		}
+
+		key = SvPV (sv, key_len);
+		he = hv_fetch (perl_constants, key, key_len, 0);
+
+		if (he && *he) {
+			sv_2mortal (sv);
+			sv = newSVsv (*he);
+		}
+	}
+
+	ST (0) = sv;
+	sv_2mortal (ST (0));
+	XSRETURN (1);
 }
 
 MODULE = Audio::XMMSClient::Result	PACKAGE = Audio::XMMSClient::Result	PREFIX = xmmsc_result_
@@ -422,6 +568,8 @@ xmmsc_result_source_preference_set (res, ...)
 
 =head2 source_preference_get
 
+=over 4
+
 =item Arguments: none
 
 =item Return Value: @source_preferences
@@ -438,7 +586,7 @@ void
 xmmsc_result_source_preference_get (res)
 		xmmsc_result_t *res
 	PREINIT:
-		char **preference = NULL, **i = NULL;
+		const char **preference = NULL, **i = NULL;
 	PPCODE:
 		preference = xmmsc_result_source_preference_get (res);
 
@@ -593,7 +741,7 @@ L<Audio::XMMSClient>, L<Audio::XMMSClient::Result::PropDict>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2006-2007, Florian Ragwitz
+Copyright (C) 2006-2008, Florian Ragwitz
 
 This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself, either Perl version 5.8.8 or, at your option,
@@ -608,4 +756,81 @@ DESTROY (res)
 		xmmsc_result_unref (res);
 
 BOOT:
+	int i;
+	HV *seen;
 	PERL_UNUSED_VAR (items);
+
+	seen = newHV ();
+
+	for (i = 0; i < (sizeof (constants) / sizeof (constants[0])); i++) {
+		char *class, *constant_name;
+		const char *module;
+		STRLEN module_len, constant_len;
+		SV *constant, *perl_constant;
+		HV *class_constants;
+
+		module = constants[i].module;
+		module_len = strlen (module);
+
+		class = (char *)malloc (sizeof (char) * (module_len + 28));
+		strcpy (class, "Audio::XMMSClient::Result::");
+		strcat (class, module);
+
+		if (!hv_exists (seen, module, module_len)) {
+			AV *isa;
+			SV *code;
+			char *isa_name, *method;
+
+			isa_name = (char *)malloc (sizeof (char) * (strlen (class) + 6));
+			strcpy (isa_name, class);
+			strcat (isa_name, "::ISA");
+
+			isa = get_av (isa_name, 1);
+			free (isa_name);
+
+			av_push (isa, newSVpv ("Audio::XMMSClient::Result", 0));
+
+			method = (char *)malloc (sizeof (char) * (strlen (class) + 8));
+			strcpy (method, class);
+			strcat (method, "::value");
+
+			code = (SV *)newXS (method, overloaded_value, file);
+
+			class_constants = newHV ();
+
+			if (constants[i].field) {
+				AV *field_constants = newAV ();
+
+				av_push (field_constants, newSVpv (constants[i].field, 0));
+				av_push (field_constants, newRV_inc ((SV *)class_constants));
+
+				sv_magic (code, 0, PERL_MAGIC_ext, (const char *)field_constants, 0);
+			}
+			else {
+				sv_magic (code, 0, PERL_MAGIC_ext, (const char *)class_constants, 0);
+			}
+
+			if (!hv_store (seen, module, module_len, newRV_inc ((SV *)class_constants), 0)) {
+				croak ("bug");
+			}
+		}
+		else {
+			SV **he = hv_fetch (seen, module, module_len, 0);
+
+			if (!he || !*he || !SvROK (*he)) {
+				croak ("Failed to fetch constants info.");
+			}
+
+			class_constants = (HV *)SvRV (*he);
+		}
+
+		constant = newSVuv (constants[i].constant);
+		constant_name = SvPV (constant, constant_len);
+		perl_constant = newSVpv (constants[i].perl_constant, 0);
+
+		if (!hv_store (class_constants, constant_name, constant_len, perl_constant, 0)) {
+			croak ("bug");
+		}
+
+		free (class);
+	}

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -47,7 +47,7 @@ xmms_statfs_is_remote (const gchar *path)
 		return FALSE;
 	}
 
-	if (g_strcasecmp (st.f_basetype, "nfs") == 0) {
+	if (g_ascii_strcasecmp (st.f_basetype, "nfs") == 0) {
 		return TRUE;
 	}
 

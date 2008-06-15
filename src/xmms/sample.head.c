@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -100,7 +100,7 @@ xmms_sample_converter_init (xmms_stream_type_t *from, xmms_stream_type_t *to)
 	                                   conv->resample);
 
 	if (!conv->func) {
-		xmms_object_unref(conv);
+		xmms_object_unref (conv);
 		xmms_log_error ("Can not convert between requested formats");
 		return NULL;
 	}
@@ -243,6 +243,7 @@ xmms_sample_audioformats_coerce (xmms_stream_type_t *in, const GList *goal_types
 	}
 
 	if (!best) {
+		xmms_log_error ("Couldn't convert sample format to any of the %d goal formats", g_list_length (goal_types));
 		return NULL;
 	}
 

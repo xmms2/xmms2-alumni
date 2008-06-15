@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -61,7 +61,8 @@ cmds mlib_commands[] = {
 
 
 static void
-cmd_mlib_help (void) {
+cmd_mlib_help (void)
+{
 	gint i;
 
 	print_info ("Available medialib commands:");
@@ -77,18 +78,18 @@ cmd_mlib (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gint i;
 	if (argc < 3) {
-		cmd_mlib_help();
+		cmd_mlib_help ();
 		return;
 	}
 
 	for (i = 0; mlib_commands[i].name; i++) {
-		if (g_strcasecmp (mlib_commands[i].name, argv[2]) == 0) {
+		if (g_ascii_strcasecmp (mlib_commands[i].name, argv[2]) == 0) {
 			mlib_commands[i].func (conn, argc, argv);
 			return;
 		}
 	}
 
-	cmd_mlib_help();
+	cmd_mlib_help ();
 	print_error ("Unrecognised mlib command: %s", argv[2]);
 }
 
@@ -128,7 +129,7 @@ cmd_info (xmmsc_connection_t *conn, gint argc, gchar **argv)
 			print_error ("Broken resultset");
 		}
 		xmmsc_result_unref (res);
-		
+
 		res = xmmsc_medialib_get_info (conn, id);
 		xmmsc_result_wait (res);
 
@@ -152,7 +153,7 @@ cmd_mlib_set_str (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	id = strtol (argv[3], NULL, 10);
-	
+
 	if (argc == 7) {
 		res = xmmsc_medialib_entry_property_set_str_with_source (conn,
 		                                                         id,
@@ -183,7 +184,7 @@ cmd_mlib_set_int (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	id = strtol (argv[3], NULL, 10);
-	
+
 	if (argc == 7) {
 		res = xmmsc_medialib_entry_property_set_int_with_source (conn,
 		                                                         id,
@@ -243,7 +244,7 @@ cmd_mlib_add (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	for (i = 3; argv[i]; i++) {
 		gchar *url;
-		
+
 		url = format_url (argv[i], G_FILE_TEST_IS_REGULAR);
 		if (url) {
 			res = xmmsc_medialib_add_entry (conn, url);
@@ -317,7 +318,7 @@ cmd_mlib_searchadd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 	g_free (args);
 	g_free (pattern);
-	
+
 	/* FIXME: Always add to active playlist: allow loading in other playlist! */
 	res = xmmsc_playlist_add_collection (conn, NULL, query, order);
 	xmmsc_result_wait (res);
@@ -433,7 +434,7 @@ cmd_mlib_remove (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	for (i = 3; i < argc; i++) {
 		entryid = atoi (argv[i]);
-		print_info("Removing entry %i", entryid);
+		print_info ("Removing entry %i", entryid);
 		res = xmmsc_medialib_remove_entry (conn, entryid);
 		xmmsc_result_wait (res);
 		if (xmmsc_result_iserror (res)) {
@@ -477,7 +478,7 @@ cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	filename = argv[3];
-	if (g_strcasecmp (filename, "-")) {
+	if (g_ascii_strcasecmp (filename, "-")) {
 		io = g_io_channel_new_file (filename, "r", &error);
 	} else {
 		io = g_io_channel_unix_new (STDIN_FILENO);
@@ -486,7 +487,7 @@ cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	if (io) {
 		gchar *contents = NULL;
 		gsize filesize = 0;
-		gchar *hash;
+		const gchar *hash;
 		gchar **id_arg;
 		error = NULL;
 
@@ -496,7 +497,9 @@ cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 			print_error ("Error reading file: %s", error->message);
 		}
 
-		g_io_channel_close (io);
+		if (g_io_channel_shutdown (io, FALSE, &error) == G_IO_STATUS_ERROR) {
+			print_error ("Error closing file: %s", error->message);
+		}
 
 		res = xmmsc_bindata_add (conn, (guchar*)contents, filesize);
 		xmmsc_result_wait (res);
@@ -524,7 +527,7 @@ cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 			res2 = xmmsc_medialib_entry_property_set_str (conn, id, "picture_front", hash);
 			xmmsc_result_wait (res2);
-			
+
 			if (xmmsc_result_iserror (res2)) {
 				print_info ("%s", xmmsc_result_get_error (res2));
 			}

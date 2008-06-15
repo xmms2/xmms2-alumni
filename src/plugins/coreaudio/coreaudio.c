@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -316,7 +316,7 @@ xmms_ca_volume_set (xmms_output_t *output,
 	data = xmms_output_private_data_get (output);
 	g_return_val_if_fail (data, FALSE);
 
-	if (!g_strcasecmp (channel, "master") == 0) {
+	if (!g_ascii_strcasecmp (channel, "master") == 0) {
 		return FALSE;
 	}
 

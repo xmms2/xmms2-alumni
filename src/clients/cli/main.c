@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -60,7 +60,7 @@ cmds commands[] = {
 	{ "remove", "removes something from the playlist", cmd_remove },
 	{ "list", "lists the playlist", cmd_list },
 	{ "addpls", "Adds the contents of a playlist file to the playlist", cmd_addpls },
-	
+
 	/* Playback managment */
 	{ "play", "starts playback", cmd_play },
 	{ "stop", "stops playback", cmd_stop },
@@ -112,7 +112,7 @@ parse_config (const gchar *buffer)
 
 		s = g_strsplit (split[i], "=", 2);
 		if (s && s[0] && s[1]) {
-			if (g_strcasecmp (s[1], "NULL") == 0) {
+			if (g_ascii_strcasecmp (s[1], "NULL") == 0) {
 				g_hash_table_insert (config, g_strdup (s[0]), NULL);
 			} else {
 				g_hash_table_insert (config, g_strdup (s[0]), g_strdup (s[1]));
@@ -134,7 +134,7 @@ read_config ()
 	gint read_bytes = 0;
 	struct stat st;
 	FILE *fp;
-	
+
 	gchar userconf[PATH_MAX];
 	xmmsc_userconfdir_get (userconf, PATH_MAX);
 	file = g_build_path (G_DIR_SEPARATOR_S, userconf,
@@ -169,7 +169,7 @@ read_config ()
 
 		while (read_bytes < st.st_size) {
 			guint ret = fread (buffer + read_bytes,
-							   st.st_size - read_bytes, 1, fp);
+			                   st.st_size - read_bytes, 1, fp);
 
 			if (ret == 0) {
 				break;
@@ -203,7 +203,8 @@ free_config ()
  * Usage
  */
 static void
-cmd_help (xmmsc_connection_t *conn, gint argc, gchar **argv) {
+cmd_help (xmmsc_connection_t *conn, gint argc, gchar **argv)
+{
 
 	gint i;
 	if (argc == 2) {
@@ -212,11 +213,10 @@ cmd_help (xmmsc_connection_t *conn, gint argc, gchar **argv) {
 		for (i = 0; commands[i].name; i++) {
 			print_info ("  %s - %s", commands[i].name, commands[i].help);
 		}
-	}
-	else if (argc == 3) {
+	} else if (argc == 3) {
 		/* print help for specified command */
 		for (i = 0; commands[i].name; i++) {
-			if (g_strcasecmp (commands[i].name, argv[2]) == 0) {
+			if (g_ascii_strcasecmp (commands[i].name, argv[2]) == 0) {
 				print_info ("  %s - %s", commands[i].name, commands[i].help);
 			}
 		}
@@ -245,13 +245,13 @@ main (gint argc, gchar **argv)
 
 	if (argc < 2) {
 		print_info ("Available commands:");
-		
+
 		for (i = 0; commands[i].name; i++) {
 			print_info ("  %s - %s", commands[i].name, commands[i].help);
 		}
 
 		exit (EXIT_SUCCESS);
-	} else if (g_strcasecmp (argv[1], "help") == 0) {
+	} else if (g_ascii_strcasecmp (argv[1], "help") == 0) {
 		cmd_help (NULL, argc, argv);
 		exit (EXIT_SUCCESS);
 	}
@@ -269,7 +269,7 @@ main (gint argc, gchar **argv)
 
 
 	for (i = 0; commands[i].name; i++) {
-		if (g_strcasecmp (commands[i].name, argv[1]) == 0) {
+		if (g_ascii_strcasecmp (commands[i].name, argv[1]) == 0) {
 			func = commands[i].func;
 		}
 	}
@@ -283,13 +283,13 @@ main (gint argc, gchar **argv)
 	if (!ret) {
 		gboolean autostart = FALSE;
 		gchar *tmp;
-	
+
 		tmp = g_hash_table_lookup (config, "autostart");
 		if (tmp && !g_ascii_strcasecmp (tmp, "true")) {
 		   autostart = TRUE;
 		}
 
-		if (autostart && g_ascii_strncasecmp(argv[1], "quit", 4) &&
+		if (autostart && g_ascii_strncasecmp (argv[1], "quit", 4) &&
 		    (!path || !g_ascii_strncasecmp (path, "unix://", 7))) {
 			if (!system ("xmms2-launcher")) {
 				ret = xmmsc_connect (connection, path);

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -141,7 +141,6 @@ xmmsc_playback_seek_ms_rel (xmmsc_connection_t *c, int milliseconds)
 xmmsc_result_t *
 xmmsc_playback_seek_samples (xmmsc_connection_t *c, unsigned int samples)
 {
-	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (c, NULL);
@@ -149,9 +148,7 @@ xmmsc_playback_seek_samples (xmmsc_connection_t *c, unsigned int samples)
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_OUTPUT, XMMS_IPC_CMD_SEEKSAMPLES);
 	xmms_ipc_msg_put_uint32 (msg, samples);
 
-	res = xmmsc_send_msg (c, msg);
-
-	return res;
+	return xmmsc_send_msg (c, msg);
 }
 
 /**

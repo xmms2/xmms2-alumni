@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -126,7 +126,7 @@ xmms_curl_can_handle (const gchar *url)
 
 	XMMS_DBG ("xmms_curl_ftp_can_handle (%s)", dec);
 
-	if ((g_strncasecmp (dec, "ftp:", 4) == 0) || (dec[0] == '/')) {
+	if ((g_ascii_strncasecmp (dec, "ftp:", 4) == 0) || (dec[0] == '/')) {
 		g_free (dec);
 		return TRUE;
 	}

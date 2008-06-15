@@ -1,7 +1,7 @@
 /** @file daap_mdns_browse.c
  *  Browser for DAAP servers shared via mDNS.
  *
- *  Copyright (C) 2006-2007 XMMS2 Team
+ *  Copyright (C) 2006-2008 XMMS2 Team
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -91,8 +91,7 @@ daap_mdns_resolve_cb (AvahiServiceResolver *resolv,
 
 	switch (event) {
 		case AVAHI_RESOLVER_FOUND:
-			server = (daap_mdns_server_t *)
-			         g_malloc0 (sizeof (daap_mdns_server_t));
+			server = g_new0 (daap_mdns_server_t, 1);
 			avahi_address_snprint (ad, sizeof (ad), addr);
 
 			server->server_name = g_strdup (name);
@@ -216,7 +215,7 @@ daap_mdns_initialize ()
 		goto fail;
 	}
 
-	browse_userdata = g_malloc0 (sizeof (browse_callback_userdata_t));
+	browse_userdata = g_new0 (browse_callback_userdata_t, 1);
 
 	avahi_set_allocator (avahi_glib_allocator ());
 

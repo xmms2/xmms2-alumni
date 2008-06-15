@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -51,14 +51,11 @@ xmms_object_cleanup (xmms_object_t *object)
 	for (i = 0; i < XMMS_IPC_SIGNAL_END; i++) {
 		if (object->signals[i]) {
 			GList *list = object->signals[i];
-			GList *node;
 
-			for (node = list; node; node = g_list_next (node)) {
-				if (node->data)
-					g_free (node->data);
+			while (list) {
+				g_free (list->data);
+				list = g_list_delete_link (list, list);
 			}
-			if (list)
-				g_list_free (list);
 		}
 	}
 
@@ -170,14 +167,14 @@ xmms_object_emit (xmms_object_t *object, guint32 signalid, gconstpointer data)
 
 	g_mutex_unlock (object->mutex);
 
-	for (node = list2; node; node = g_list_next (node)) {
-		entry = node->data;
+	while (list2) {
+		entry = list2->data;
 
 		if (entry && entry->handler)
 			entry->handler (object, data, entry->userdata);
-	}
-	g_list_free (list2);
 
+		list2 = g_list_delete_link (list2, list2);
+	}
 }
 
 xmms_object_cmd_value_t *
@@ -187,6 +184,7 @@ xmms_object_cmd_value_bin_new (GString *bin)
 	val = g_new0 (xmms_object_cmd_value_t, 1);
 	val->value.bin = bin;
 	val->type = XMMS_OBJECT_CMD_ARG_BIN;
+	val->refcount = 1;
 	return val;
 
 }
@@ -198,6 +196,7 @@ xmms_object_cmd_value_str_new (const gchar *string)
 	val = g_new0 (xmms_object_cmd_value_t, 1);
 	val->value.string = g_strdup (string);
 	val->type = XMMS_OBJECT_CMD_ARG_STRING;
+	val->refcount = 1;
 	return val;
 }
 
@@ -208,6 +207,7 @@ xmms_object_cmd_value_uint_new (guint32 uint)
 	val = g_new0 (xmms_object_cmd_value_t, 1);
 	val->value.uint32 = uint;
 	val->type = XMMS_OBJECT_CMD_ARG_UINT32;
+	val->refcount = 1;
 	return val;
 }
 
@@ -218,16 +218,29 @@ xmms_object_cmd_value_int_new (gint32 i)
 	val = g_new0 (xmms_object_cmd_value_t, 1);
 	val->value.int32 = i;
 	val->type = XMMS_OBJECT_CMD_ARG_INT32;
+	val->refcount = 1;
 	return val;
 }
 
 xmms_object_cmd_value_t *
-xmms_object_cmd_value_dict_new (GHashTable *dict)
+xmms_object_cmd_value_dict_new (GTree *dict)
 {
 	xmms_object_cmd_value_t *val;
 	val = g_new0 (xmms_object_cmd_value_t, 1);
 	val->value.dict = dict;
 	val->type = XMMS_OBJECT_CMD_ARG_DICT;
+	val->refcount = 1;
+	return val;
+}
+
+xmms_object_cmd_value_t *
+xmms_object_cmd_value_hash_table_new (GHashTable *hash)
+{
+	xmms_object_cmd_value_t *val;
+	val = g_new0 (xmms_object_cmd_value_t, 1);
+	val->value.hash = hash;
+	val->type = XMMS_OBJECT_CMD_ARG_HASH_TABLE;
+	val->refcount = 1;
 	return val;
 }
 
@@ -238,6 +251,7 @@ xmms_object_cmd_value_propdict_new (GList *list)
 	val = g_new0 (xmms_object_cmd_value_t, 1);
 	val->value.list = list;
 	val->type = XMMS_OBJECT_CMD_ARG_PROPDICT;
+	val->refcount = 1;
 	return val;
 }
 
@@ -248,6 +262,7 @@ xmms_object_cmd_value_list_new (GList *list)
 	val = g_new0 (xmms_object_cmd_value_t, 1);
 	val->value.list = list;
 	val->type = XMMS_OBJECT_CMD_ARG_LIST;
+	val->refcount = 1;
 	return val;
 }
 
@@ -258,6 +273,7 @@ xmms_object_cmd_value_coll_new (xmmsc_coll_t *coll)
 	val = g_new0 (xmms_object_cmd_value_t, 1);
 	val->value.coll = coll;
 	val->type = XMMS_OBJECT_CMD_ARG_COLL;
+	val->refcount = 1;
 	return val;
 }
 
@@ -267,51 +283,13 @@ xmms_object_cmd_value_none_new (void)
 	xmms_object_cmd_value_t *val;
 	val = g_new0 (xmms_object_cmd_value_t, 1);
 	val->type = XMMS_OBJECT_CMD_ARG_NONE;
+	val->refcount = 1;
 	return val;
 }
 
-xmms_object_cmd_value_t *
-xmms_object_cmd_value_copy (xmms_object_cmd_value_t *val)
+static void
+xmms_object_cmd_value_free (xmms_object_cmd_value_t *v)
 {
-	xmms_object_cmd_value_t *ret = NULL;
-
-	g_return_val_if_fail (val, NULL);
-
-	switch (val->type) {
-		case XMMS_OBJECT_CMD_ARG_BIN:
-			ret = xmms_object_cmd_value_bin_new (val->value.bin);
-			break;
-		case XMMS_OBJECT_CMD_ARG_STRING:
-			ret = xmms_object_cmd_value_str_new (val->value.string);
-			break;
-		case XMMS_OBJECT_CMD_ARG_UINT32:
-			ret = xmms_object_cmd_value_uint_new (val->value.uint32);
-			break;
-		case XMMS_OBJECT_CMD_ARG_INT32:
-			ret = xmms_object_cmd_value_int_new (val->value.int32);
-			break;
-		case XMMS_OBJECT_CMD_ARG_NONE:
-			ret = xmms_object_cmd_value_none_new ();
-			break;
-		case XMMS_OBJECT_CMD_ARG_DICT:
-		case XMMS_OBJECT_CMD_ARG_LIST:
-		case XMMS_OBJECT_CMD_ARG_PROPDICT:
-		case XMMS_OBJECT_CMD_ARG_STRINGLIST:
-		case XMMS_OBJECT_CMD_ARG_COLL:
-			/** Unsupported for now */
-			XMMS_DBG ("Unsupported value passed to value_copy()");
-			break;
-	}
-
-	return ret;
-}
-
-void
-xmms_object_cmd_value_free (gpointer val)
-{
-	xmms_object_cmd_value_t *v = val;
-	g_return_if_fail (v);
-
 	switch (v->type) {
 		case XMMS_OBJECT_CMD_ARG_STRING:
 			if (v->value.string)
@@ -324,7 +302,7 @@ xmms_object_cmd_value_free (gpointer val)
 		case XMMS_OBJECT_CMD_ARG_LIST:
 		case XMMS_OBJECT_CMD_ARG_PROPDICT:
 			while (v->value.list) {
-				xmms_object_cmd_value_free (v->value.list->data);
+				xmms_object_cmd_value_unref (v->value.list->data);
 				v->value.list = g_list_delete_link (v->value.list,
 				                                    v->value.list);
 			}
@@ -338,10 +316,17 @@ xmms_object_cmd_value_free (gpointer val)
 			break;
 		case XMMS_OBJECT_CMD_ARG_DICT:
 			if (v->value.dict) {
-				g_hash_table_destroy (v->value.dict);
+				g_tree_destroy (v->value.dict);
 			}
 
 			break;
+		case XMMS_OBJECT_CMD_ARG_HASH_TABLE:
+			if (v->value.hash) {
+				g_hash_table_destroy (v->value.hash);
+			}
+
+			break;
+
 		case XMMS_OBJECT_CMD_ARG_COLL:
 			if (v->value.coll) {
 				xmmsc_coll_unref (v->value.coll);
@@ -352,6 +337,28 @@ xmms_object_cmd_value_free (gpointer val)
 	}
 
 	g_free (v);
+}
+
+void
+xmms_object_cmd_value_unref (xmms_object_cmd_value_t *val)
+{
+	g_return_if_fail (val);
+
+	val->refcount--;
+
+	if (!val->refcount) {
+		xmms_object_cmd_value_free (val);
+	}
+}
+
+xmms_object_cmd_value_t *
+xmms_object_cmd_value_ref (xmms_object_cmd_value_t *val)
+{
+	g_return_val_if_fail (val, NULL);
+
+	val->refcount++;
+
+	return val;
 }
 
 /**
@@ -400,18 +407,21 @@ xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
 			arg.retval = xmms_object_cmd_value_str_new (va_arg (ap, gchar *));
 			break;
 		case XMMS_OBJECT_CMD_ARG_BIN:
-			arg.retval = xmms_object_cmd_value_bin_new ((GString *) va_arg (ap, gpointer));
+			arg.retval = xmms_object_cmd_value_bin_new (va_arg (ap, GString *));
 			break;
 		case XMMS_OBJECT_CMD_ARG_DICT:
-			arg.retval = xmms_object_cmd_value_dict_new ((GHashTable *) va_arg (ap, gpointer));
+			arg.retval = xmms_object_cmd_value_dict_new (va_arg (ap, GTree *));
+			break;
+		case XMMS_OBJECT_CMD_ARG_HASH_TABLE:
+			arg.retval = xmms_object_cmd_value_hash_table_new (va_arg (ap, GHashTable *));
 			break;
 		case XMMS_OBJECT_CMD_ARG_LIST:
 		case XMMS_OBJECT_CMD_ARG_PROPDICT:
 		case XMMS_OBJECT_CMD_ARG_STRINGLIST:
-			arg.retval = xmms_object_cmd_value_list_new ((GList *) va_arg (ap, gpointer));
+			arg.retval = xmms_object_cmd_value_list_new (va_arg (ap, GList *));
 			break;
 		case XMMS_OBJECT_CMD_ARG_COLL:
-			arg.retval = xmms_object_cmd_value_coll_new ((xmmsc_coll_t *) va_arg (ap, gpointer));
+			arg.retval = xmms_object_cmd_value_coll_new (va_arg (ap, xmmsc_coll_t *));
 			break;
 		case XMMS_OBJECT_CMD_ARG_NONE:
 			arg.retval = xmms_object_cmd_value_none_new ();
@@ -422,13 +432,19 @@ xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
 	xmms_object_emit (object, signalid, &arg);
 
 	/*
-	 * Let's not use value_free since that will free whatever
-	 * is in the struct also. This should be owned by the
-	 * parent
+	 * We're only calling xmms_object_cmd_value_unref() here for
+	 * retvals that either hold no payload at all (_ARG_NONE) or that
+	 * have their own copy/reference in the payload (_ARG_STRING and
+	 * maybe more later).
 	 */
-	if (type != XMMS_OBJECT_CMD_ARG_NONE)
-		g_free (arg.retval);
-
+	switch (type) {
+		case XMMS_OBJECT_CMD_ARG_STRING:
+		case XMMS_OBJECT_CMD_ARG_NONE:
+			xmms_object_cmd_value_unref (arg.retval);
+			break;
+		default:
+			g_free (arg.retval);
+	}
 }
 
 

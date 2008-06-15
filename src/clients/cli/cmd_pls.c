@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -19,6 +19,7 @@
 
 cmds plist_commands[] = {
 	{ "list", "List all available playlists", cmd_playlists_list },
+	{ "active", "Displays the name of the active playlist", cmd_playlist_active },
 	{ "create", "[playlistname] - Create a playlist", cmd_playlist_create },
 	{ "type", "[playlistname] [type] - Set the type of the playlist (list, queue, pshuffle)", cmd_playlist_type },
 	{ "load", "[playlistname] - Load 'playlistname' stored in medialib", cmd_playlist_load },
@@ -54,7 +55,7 @@ add_item_to_playlist (xmmsc_connection_t *conn, gchar *playlist, gchar *item)
 }
 
 
-static gchar *
+static const gchar *
 get_playlist_type_string (xmmsc_coll_type_t type)
 {
 	switch (type) {
@@ -84,25 +85,34 @@ playlist_setup_pshuffle (xmmsc_connection_t *conn, xmmsc_coll_t *coll, gchar *re
 		print_error ("invalid source collection name");
 	}
 
-	psres = xmmsc_coll_get (conn, s_name, s_namespace);
-	xmmsc_result_wait (psres);
+	/* Quick shortcut to use Universe for "All Media" */
+	if (strcmp (s_name, "All Media") == 0) {
+		refcoll = xmmsc_coll_universe ();
+	} else {
+		psres = xmmsc_coll_get (conn, s_name, s_namespace);
+		xmmsc_result_wait (psres);
 
-	if (xmmsc_result_iserror (psres)) {
-		print_error ("%s", xmmsc_result_get_error (psres));
+		if (xmmsc_result_iserror (psres)) {
+			print_error ("%s", xmmsc_result_get_error (psres));
+		}
+
+		refcoll = xmmsc_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
+		xmmsc_coll_attribute_set (refcoll, "reference", s_name);
+		xmmsc_coll_attribute_set (refcoll, "namespace", s_namespace);
 	}
-
-	refcoll = xmmsc_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
-	xmmsc_coll_attribute_set (refcoll, "reference", s_name);
-	xmmsc_coll_attribute_set (refcoll, "namespace", s_namespace);
 
 	/* Set operand */
 	xmmsc_coll_add_operand (coll, refcoll);
 	xmmsc_coll_unref (refcoll);
+
+	g_free (s_name);
+	g_free (s_namespace);
 }
 
 
 static void
-cmd_playlist_help (void) {
+cmd_playlist_help (void)
+{
 	gint i;
 
 	print_info ("Available playlist commands:");
@@ -118,18 +128,18 @@ cmd_playlist (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gint i;
 	if (argc < 3) {
-		cmd_playlist_help();
+		cmd_playlist_help ();
 		return;
 	}
 
 	for (i = 0; plist_commands[i].name; i++) {
-		if (g_strcasecmp (plist_commands[i].name, argv[2]) == 0) {
+		if (g_ascii_strcasecmp (plist_commands[i].name, argv[2]) == 0) {
 			plist_commands[i].func (conn, argc, argv);
 			return;
 		}
 	}
 
-	cmd_playlist_help();
+	cmd_playlist_help ();
 	print_error ("Unrecognised playlist command: %s", argv[2]);
 }
 
@@ -152,8 +162,8 @@ cmd_addid (xmmsc_connection_t *conn, gint argc, gchar **argv)
 			xmmsc_result_wait (res);
 
 			if (xmmsc_result_iserror (res)) {
-				print_error ("Couldn't add %d to playlist: %s", id, 
-							 xmmsc_result_get_error (res));
+				print_error ("Couldn't add %d to playlist: %s", id,
+				             xmmsc_result_get_error (res));
 			}
 			xmmsc_result_unref (res);
 
@@ -178,7 +188,7 @@ cmd_add (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	for (i = 2; argv[i]; i++) {
 		/* FIXME: Fulhack to check for optional playlist argument */
 		if (i == 2 && argc > 3 && !g_file_test (argv[i], G_FILE_TEST_EXISTS)) {
-			playlist = argv[i];
+			playlist = argv[i++];
 		}
 
 		add_item_to_playlist (conn, playlist, argv[i]);
@@ -241,8 +251,7 @@ cmd_insert (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	pos = strtol (argv[2], &endptr, 10);
 	if (*endptr == '\0') {
 		url = format_url (argv[3], G_FILE_TEST_IS_REGULAR);  /* No playlist name */
-	}
-	else {
+	} else {
 		playlist = argv[2];  /* extract playlist name */
 		pos = strtol (argv[3], NULL, 10);
 		url = format_url (argv[4], G_FILE_TEST_IS_REGULAR);
@@ -281,8 +290,7 @@ cmd_insertid (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	pos = strtol (argv[2], &endptr, 10);
 	if (*endptr == '\0') {
 		mlib_id = strtol (argv[3], NULL, 10); /* No playlist name */
-	}
-	else {
+	} else {
 		playlist = argv[2];  /* extract playlist name */
 		pos = strtol (argv[3], NULL, 10);
 		mlib_id = strtol (argv[4], NULL, 10);
@@ -293,7 +301,7 @@ cmd_insertid (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	if (xmmsc_result_iserror (res)) {
 		print_error ("Unable to insert %u at position %u: %s", mlib_id,
-		             pos, xmmsc_result_get_error(res));
+		             pos, xmmsc_result_get_error (res));
 	}
 
 	print_info ("Inserted %u at position %u", mlib_id, pos);
@@ -369,7 +377,7 @@ cmd_shuffle (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	if (argc == 3) {
 		playlist = argv[2];
 	}
-	
+
 	res = xmmsc_playlist_shuffle (conn, playlist);
 	xmmsc_result_wait (res);
 
@@ -402,7 +410,7 @@ cmd_sort (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	gchar *playlist;
 	const gchar **sortby;
 	xmmsc_result_t *res;
-	
+
 	if (argc < 3) {
 		print_error ("Sort needs a property to sort on, %d", argc);
 	} else if (argc == 3) {
@@ -480,7 +488,7 @@ cmd_remove (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		}
 		xmmsc_result_unref (res);
 	}
-	
+
 	g_free (sort);
 }
 
@@ -502,7 +510,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 
 	if (!xmmsc_result_iserror (res)) {
-		if (!xmmsc_result_get_uint (res, &p)) {
+		if (!xmmsc_result_get_dict_entry_uint (res, "position", &p)) {
 			print_error ("Broken resultset");
 		}
 		xmmsc_result_unref (res);
@@ -535,7 +543,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		if (xmmsc_result_get_dict_entry_int (info_res, "duration", &playtime)) {
 			total_playtime += playtime;
 		}
-		
+
 		if (res_has_key (info_res, "channel")) {
 			if (res_has_key (info_res, "title")) {
 				xmmsc_entry_format (line, sizeof (line),
@@ -545,14 +553,14 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 				                    "${channel}", info_res);
 			}
 		} else if (!res_has_key (info_res, "title")) {
-			gchar *url, *filename;
-		  	gchar dur[10];
-			
+			const gchar *url;
+			gchar dur[10];
+
 			xmmsc_entry_format (dur, sizeof (dur),
 			                    "(${minutes}:${seconds})", info_res);
-			
+
 			if (xmmsc_result_get_dict_entry_string (info_res, "url", &url)) {
-				filename = g_path_get_basename (url);
+				gchar *filename = g_path_get_basename (url);
 				if (filename) {
 					g_snprintf (line, sizeof (line), "%s %s", filename, dur);
 					g_free (filename);
@@ -561,7 +569,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 				}
 			}
 		} else {
-			xmmsc_entry_format (line, sizeof(line), listformat, info_res);
+			xmmsc_entry_format (line, sizeof (line), listformat, info_res);
 		}
 
 		if (p == pos) {
@@ -580,7 +588,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	/* rounding */
 	total_playtime += 500;
 
-	print_info ("\nTotal playtime: %d:%02d:%02d", total_playtime / 3600000, 
+	print_info ("\nTotal playtime: %d:%02d:%02d", total_playtime / 3600000,
 	            (total_playtime / 60000) % 60, (total_playtime / 1000) % 60);
 }
 
@@ -736,7 +744,7 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 		if (xmmsc_result_iserror (saveres)) {
 			print_error ("Couldn't save %s : %s",
-				         name, xmmsc_result_get_error (saveres));
+			             name, xmmsc_result_get_error (saveres));
 		}
 
 		xmmsc_coll_unref (newcoll);
@@ -751,13 +759,13 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 void
 cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
-	gchar *active_name;
+	const gchar *active_name;
 	xmmsc_result_t *res, *active_res;
 
 	active_res = xmmsc_playlist_current_active (conn);
 	xmmsc_result_wait (active_res);
 
-	if (xmmsc_result_iserror (active_res) || 
+	if (xmmsc_result_iserror (active_res) ||
 	    !xmmsc_result_get_string (active_res, &active_name)) {
 		active_name = NULL;
 	}
@@ -770,7 +778,7 @@ cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	while (xmmsc_result_list_valid (res)) {
-		gchar *name;
+		const gchar *name;
 
 		if (!xmmsc_result_get_string (res, &name)) {
 			print_error ("Broken resultset");
@@ -787,6 +795,23 @@ cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		xmmsc_result_list_next (res);
 	}
 	xmmsc_result_unref (res);
+	xmmsc_result_unref (active_res);
+}
+
+void
+cmd_playlist_active (xmmsc_connection_t *conn, gint argc, gchar **argv)
+{
+	const gchar *active_name;
+	xmmsc_result_t *active_res;
+
+	active_res = xmmsc_playlist_current_active (conn);
+	xmmsc_result_wait (active_res);
+
+	if (!xmmsc_result_iserror (active_res) &&
+	    xmmsc_result_get_string (active_res, &active_name)) {
+		print_info ("%s",active_name);
+	}
+
 	xmmsc_result_unref (active_res);
 }
 
@@ -813,16 +838,22 @@ cmd_playlist_remove (xmmsc_connection_t *conn, gint argc, gchar **argv)
 void
 cmd_addpls (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
+	gchar *playlist;
 	xmmsc_result_t *res, *res2;
 	xmmsc_coll_t *coll;
-	const char *order[] = { "id", NULL };
 	gchar *url;
 
 	if (argc < 3) {
 		print_error ("Supply path to playlist file");
 	}
 
-	url = format_url (argv[2], G_FILE_TEST_IS_REGULAR);
+	if (argc == 3) {
+		playlist = NULL;
+		url = format_url (argv[2], G_FILE_TEST_IS_REGULAR);
+	} else {
+		playlist = argv[2];
+		url = format_url (argv[3], G_FILE_TEST_IS_REGULAR);
+	}
 
 	res = xmmsc_coll_idlist_from_playlist_file (conn, url);
 	g_free (url);
@@ -836,10 +867,10 @@ cmd_addpls (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		print_error ("Couldn't get collection from result!");
 	}
 
-	res2 = xmmsc_playlist_add_collection (conn, NULL, coll, order);
+	res2 = xmmsc_playlist_add_idlist (conn, playlist, coll);
 	xmmsc_result_wait (res2);
 	if (xmmsc_result_iserror (res2)) {
-		print_error ("%s", xmmsc_result_get_error (res2));                                                  
+		print_error ("%s", xmmsc_result_get_error (res2));
 	}
 
 	print_info ("Playlist with %d entries added", xmmsc_coll_idlist_get_size (coll));

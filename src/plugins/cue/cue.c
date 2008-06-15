@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -128,19 +128,25 @@ typedef struct {
 static void
 add_index (cue_track *tr, gchar *idx)
 {
-	guint ms;
+	guint ms = 0;
 	guint tmp;
 
 	gchar **a = g_strsplit (idx, ":", 0);
 
-	tmp = strtol (a[0], NULL, 10);
-	ms = tmp * 60000;
+	if (a[0] != NULL) {
+		tmp = strtol (a[0], NULL, 10);
+		ms = tmp * 60000;
 
-	tmp = strtol (a[1], NULL, 10);
-	ms += tmp * 1000;
+		if (a[1] != NULL) {
+			tmp = strtol (a[1], NULL, 10);
+			ms += tmp * 1000;
 
-	tmp = strtol (a[2], NULL, 10);
-	ms += (guint)((gfloat)tmp * 1.0/75.0) * 1000.0;
+			if (a[2] != NULL) {
+				tmp = strtol (a[2], NULL, 10);
+				ms += (guint)((gfloat)tmp * 1.0/75.0) * 1000.0;
+			}
+		}
+	}
 
 	if (!tr->index) {
 		tr->index = ms;
@@ -148,6 +154,7 @@ add_index (cue_track *tr, gchar *idx)
 		tr->index2 = ms;
 	}
 
+	g_strfreev (a);
 }
 
 static void
@@ -162,18 +169,20 @@ add_track (xmms_xform_t *xform, cue_track *tr)
 	file = xmms_build_playlist_url (xmms_xform_get_url (xform), tr->file);
 
 	while (n) {
-		gchar *arg[2];
+		gchar arg0[32], arg1[32];
+		gchar *arg[2] = { arg0, arg1 };
 		gint numargs = 1;
 		cue_track *t = n->data;
 		if (!t) {
 			continue;
 		}
 
-		arg[0] = g_strdup_printf ("startms=%d", t->index2 ? t->index2 : t->index);
+		g_snprintf (arg0, sizeof (arg0), "startms=%d",
+		            t->index2 ? t->index2 : t->index);
 
 		if (n->next && n->next->data) {
 			cue_track *t2 = n->next->data;
-			arg[1] = g_strdup_printf ("stopms=%d", t2->index);
+			g_snprintf (arg1, sizeof (arg1), "stopms=%d", t2->index);
 			numargs = 2;
 		}
 
@@ -182,11 +191,6 @@ add_track (xmms_xform_t *xform, cue_track *tr)
 		xmms_xform_browse_add_entry_property_str (xform, "title", t->title);
 		xmms_xform_browse_add_entry_property_str (xform, "artist", t->artist);
 		xmms_xform_browse_add_entry_property_str (xform, "album", tr->album);
-
-		g_free (arg[0]);
-		if (numargs == 2) {
-			g_free (arg[1]);
-		}
 
 		g_free (t);
 		n = g_list_delete_link (n, n);

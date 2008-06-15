@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -34,13 +34,13 @@
 
 #include <glib.h>
 
-#define DEST_IP "83.140.162.43"
+#define DEST_IP "78.47.20.162"
 #define DEST_PORT 24944
 
 static time_t start_time;
-static gchar *server_version = "unknown";
+static const gchar *server_version = "unknown";
 static gchar *output_plugin;
-static gchar *system_name = "unknown";
+static const gchar *system_name = "unknown";
 static gint mlib_resolves = 0;
 
 static int send_socket;
@@ -110,11 +110,10 @@ handle_mediainfo_reader (xmmsc_result_t *res, void *userdata)
 static void
 handle_mediainfo (xmmsc_result_t *res, void *userdata)
 {
-	static gchar *props[] = {"chain",
-				 NULL};
+	static const gchar *props[] = {"chain", NULL};
 	static const gchar *pref[] = {"server", NULL};
 	GString *str;
-	gchar *tstr;
+	const gchar *tstr;
 	gint tint, i;
 	guint tuint;
 
@@ -168,7 +167,7 @@ handle_current_id (xmmsc_result_t *res, void *userdata)
 static void
 handle_config (xmmsc_result_t *res, void *userdata)
 {
-	char *value;
+	const gchar *value;
 
 	if (!xmmsc_result_get_dict_entry_string (res, "output.plugin", &value))
 		return;
@@ -180,7 +179,7 @@ handle_config (xmmsc_result_t *res, void *userdata)
 static void
 handle_config_val (xmmsc_result_t *res, void *userdata)
 {
-	char *value;
+	const gchar *value;
 
 	if (!xmmsc_result_get_string (res, &value))
 		return;
@@ -192,7 +191,7 @@ handle_config_val (xmmsc_result_t *res, void *userdata)
 static void
 handle_stats (xmmsc_result_t *res, void *userdata)
 {
-	gchar *tstr;
+	const gchar *tstr;
 
 	if (xmmsc_result_get_dict_entry_string (res, "version", &tstr)) {
 		server_version = g_strdup (tstr);
@@ -240,7 +239,7 @@ main (int argc, char **argv)
 
 	get_systemname ();
 
-	send_socket = socket(PF_INET, SOCK_DGRAM, 0);
+	send_socket = socket (PF_INET, SOCK_DGRAM, 0);
 
 	ml = g_main_loop_new (NULL, FALSE);
 

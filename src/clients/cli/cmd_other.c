@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -20,7 +20,7 @@ void
 cmd_stats (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	
+
 	res = xmmsc_main_stats (conn);
 	xmmsc_result_wait (res);
 
@@ -40,14 +40,10 @@ cmd_plugin_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmms_plugin_type_t type = XMMS_PLUGIN_TYPE_ALL;
 
 	if (argc > 2) {
-		if (g_strcasecmp (argv[2], "output") == 0) {
+		if (g_ascii_strcasecmp (argv[2], "output") == 0) {
 			type = XMMS_PLUGIN_TYPE_OUTPUT;
-		} else if (g_strcasecmp (argv[2], "xform") == 0) {
+		} else if (g_ascii_strcasecmp (argv[2], "xform") == 0) {
 			type = XMMS_PLUGIN_TYPE_XFORM;
-		} else if (g_strcasecmp (argv[2], "effect") == 0) {
-			type = XMMS_PLUGIN_TYPE_EFFECT;
-		} else if (g_strcasecmp (argv[2], "playlist") == 0) {
-			type = XMMS_PLUGIN_TYPE_PLAYLIST;
 		} else {
 			print_error ("no such plugin type!");
 		}
@@ -61,13 +57,13 @@ cmd_plugin_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	while (xmmsc_result_list_valid (res)) {
-		gchar *shortname, *desc;
+		const gchar *shortname, *desc;
 
 		if (xmmsc_result_get_dict_entry_string (res, "shortname", &shortname) &&
 		    xmmsc_result_get_dict_entry_string (res, "description", &desc)) {
 			print_info ("%s - %s", shortname, desc);
 		}
-		
+
 		xmmsc_result_list_next (res);
 	}
 	xmmsc_result_unref (res);
@@ -106,7 +102,7 @@ cmd_browse (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	for (;xmmsc_result_list_valid (res); xmmsc_result_list_next (res)) {
 		xmmsc_result_value_type_t type;
-		gchar *r;
+		const gchar *r;
 		gint d;
 
 		type = xmmsc_result_get_dict_entry_type (res, "realpath");

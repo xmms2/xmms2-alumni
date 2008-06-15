@@ -17,7 +17,7 @@ def plugin(name, source=None, configure=False, build=False,
             conf.env.append_value('XMMS_OUTPUT_PLUGINS', (output_prio, name))
 
     def stock_build(bld):
-        env = bld.env_of_name("default")
+        env = bld.env()
 
         obj = bld.create_obj(tool, 'plugin')
         obj.target = 'xmms_%s' % name
@@ -25,7 +25,7 @@ def plugin(name, source=None, configure=False, build=False,
         if source:
             obj.source = source
         else:
-            obj.source = '%s.c' % name
+            obj.source = ['%s.c' % name]
 
         libs = ['glib2']
         if needs_lib:

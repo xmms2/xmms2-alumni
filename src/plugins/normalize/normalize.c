@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -180,7 +180,7 @@ xmms_normalize_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 			                      data->buckets);
 			data->dirty = FALSE;
 		}
-		
+
 		compress_do (data->compress, buf, read);
 	}
 

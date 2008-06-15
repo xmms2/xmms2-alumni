@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -60,8 +60,8 @@ handle_quit (xmmsc_result_t *res, void *data)
 
 static void
 group_callback (AvahiEntryGroup *g,
-				AvahiEntryGroupState state,
-				void *userdata)
+                AvahiEntryGroupState state,
+                void *userdata)
 {
 	g_return_if_fail (g == group);
 
@@ -107,9 +107,9 @@ create_services (AvahiClient *c)
 	}
 
 	if ((ret = avahi_entry_group_add_service (group, AVAHI_IF_UNSPEC,
-											  AVAHI_PROTO_UNSPEC,
-											  0, name, "_xmms2._tcp",
-											  NULL, NULL, port, NULL)) < 0)
+	                                          AVAHI_PROTO_UNSPEC,
+	                                          0, name, "_xmms2._tcp",
+	                                          NULL, NULL, port, NULL)) < 0)
 	{
 		printf ("couldn't add entry to group: %s\n", avahi_strerror (ret));
 		g_free (name);
@@ -126,10 +126,10 @@ create_services (AvahiClient *c)
 	return;
 }
 
-static void 
-client_callback (AvahiClient *c, 
-				 AvahiClientState state, 
-				 void *userdata) 
+static void
+client_callback (AvahiClient *c,
+                 AvahiClientState state,
+                 void *userdata)
 {
 	g_return_if_fail (c);
 
@@ -199,7 +199,7 @@ main (int argc, char **argv)
 			gp = ipcsplit[i];
 		}
 	}
-	
+
 	if (!gp) {
 		printf ("Need to have a socket listening to TCP before we can do that!\n");
 		exit (1);
@@ -230,9 +230,9 @@ main (int argc, char **argv)
 
 	XMMS_CALLBACK_SET (conn, xmmsc_broadcast_quit, handle_quit, ml);
 	xmmsc_disconnect_callback_set (conn, disconnected, NULL);
-	
+
 	register_service ();
-	
+
 	xmmsc_mainloop_gmain_init (conn);
 
 	g_main_loop_run (ml);

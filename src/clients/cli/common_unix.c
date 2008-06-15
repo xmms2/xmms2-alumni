@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -32,7 +32,8 @@ x_path2url (gchar *path)
 }
 
 gint
-find_terminal_width () {
+find_terminal_width ()
+{
 	gint columns = 0;
 	struct winsize ws;
 	char *colstr, *endptr;
@@ -41,13 +42,13 @@ find_terminal_width () {
 		columns = ws.ws_col;
 	} else {
 		colstr = getenv ("COLUMNS");
-		if(colstr != NULL) {
+		if (colstr != NULL) {
 			columns = strtol (colstr, &endptr, 10);
 		}
 	}
 
 	/* Default to 80 columns */
-	if(columns <= 0) {
+	if (columns <= 0) {
 		columns = 80;
 	}
 

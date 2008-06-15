@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -223,7 +223,7 @@ uint_get (RbResult *res)
 static VALUE
 string_get (RbResult *res)
 {
-	char *s = NULL;
+	const char *s = NULL;
 
 	if (!xmmsc_result_get_string (res->real, &s))
 		rb_raise (eValueError, "cannot retrieve value");
@@ -396,7 +396,7 @@ static VALUE
 c_get_error (VALUE self)
 {
 	RbResult *res;
-	char *error;
+	const char *error;
 
 	Data_Get_Struct (self, RbResult, res);
 
@@ -413,6 +413,7 @@ c_propdict_init (VALUE self, VALUE result)
 	return self;
 }
 
+#ifdef HAVE_PROTECT_INSPECT
 static VALUE
 propdict_inspect_cb (VALUE args, VALUE s)
 {
@@ -422,7 +423,7 @@ propdict_inspect_cb (VALUE args, VALUE s)
 	key = RARRAY (args)->ptr[1];
 	value = RARRAY (args)->ptr[2];
 
-	if (RSTRING (s)->len > 1)
+	if (RSTRING_LEN (s) > 1)
 		rb_str_buf_cat2 (s, ", ");
 
 	rb_str_buf_cat2 (s, "[");
@@ -455,6 +456,7 @@ c_propdict_inspect (VALUE self)
 {
 	return rb_protect_inspect (propdict_inspect, self, 0);
 }
+#endif /* HAVE_PROTECT_INSPECT */
 
 static VALUE
 c_propdict_aref (VALUE self, VALUE key)
@@ -462,10 +464,9 @@ c_propdict_aref (VALUE self, VALUE key)
 	RbResult *res = NULL;
 	xmmsc_result_value_type_t type;
 	VALUE tmp;
-	const char *ckey;
+	const char *ckey, *vstr;
 	int32_t vint;
 	uint32_t vuint;
-	char *vstr;
 
 	Check_Type (key, T_SYMBOL);
 
@@ -588,7 +589,7 @@ c_source_preference_get (VALUE self)
 {
 	RbResult *res = NULL;
 	VALUE ary = rb_ary_new ();
-	char **preferences = NULL;
+	const char **preferences = NULL;
 	unsigned int i;
 
 	Data_Get_Struct (self, RbResult, res);
@@ -642,7 +643,9 @@ Init_Result (VALUE mXmms)
 	cPropDict = rb_define_class_under (mXmms, "PropDict", rb_cObject);
 
 	rb_define_method (cPropDict, "initialize", c_propdict_init, 1);
+#ifdef HAVE_PROTECT_INSPECT
 	rb_define_method (cPropDict, "inspect", c_propdict_inspect, 0);
+#endif /* HAVE_PROTECT_INSPECT */
 
 	rb_define_method (cPropDict, "[]", c_propdict_aref, 1);
 	rb_define_method (cPropDict, "has_key?", c_propdict_has_key, 1);

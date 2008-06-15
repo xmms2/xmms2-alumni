@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -75,11 +75,11 @@ typedef enum {
 	XMMS_COLLECTION_FIND_STATE_NOMATCH,
 } coll_find_state_t;
 
-typedef struct add_metadata_from_hash_user_data_St {
+typedef struct add_metadata_from_tree_user_data_St {
 	xmms_medialib_session_t *session;
 	xmms_medialib_entry_t entry;
 	guint src;
-} add_metadata_from_hash_user_data_t;
+} add_metadata_from_tree_user_data_t;
 
 static GList *global_stream_type;
 
@@ -143,26 +143,30 @@ XMMS_CMD_DEFINE4 (query_ids, xmms_collection_query_ids, xmms_coll_dag_t *, LIST,
 XMMS_CMD_DEFINE6 (query_infos, xmms_collection_query_infos, xmms_coll_dag_t *, LIST, COLL, UINT32, UINT32, STRINGLIST, STRINGLIST, STRINGLIST);
 
 
-GHashTable *
+GTree *
 xmms_collection_changed_msg_new (xmms_collection_changed_actions_t type,
                                  const gchar *plname, const gchar *namespace)
 {
-	GHashTable *dict;
+	GTree *dict;
 	xmms_object_cmd_value_t *val;
-	dict = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                              NULL, xmms_object_cmd_value_free);
+
+	dict = g_tree_new_full ((GCompareDataFunc) strcmp, NULL,
+	                        NULL, (GDestroyNotify)xmms_object_cmd_value_unref);
+
 	val = xmms_object_cmd_value_int_new (type);
-	g_hash_table_insert (dict, (gpointer) "type", val);
+	g_tree_insert (dict, (gpointer) "type", val);
+
 	val = xmms_object_cmd_value_str_new (plname);
-	g_hash_table_insert (dict, (gpointer) "name", val);
+	g_tree_insert (dict, (gpointer) "name", val);
+
 	val = xmms_object_cmd_value_str_new (namespace);
-	g_hash_table_insert (dict, (gpointer) "namespace", val);
+	g_tree_insert (dict, (gpointer) "namespace", val);
 
 	return dict;
 }
 
 void
-xmms_collection_changed_msg_send (xmms_coll_dag_t *colldag, GHashTable *dict)
+xmms_collection_changed_msg_send (xmms_coll_dag_t *colldag, GTree *dict)
 {
 	g_return_if_fail (colldag);
 	g_return_if_fail (dict);
@@ -172,7 +176,7 @@ xmms_collection_changed_msg_send (xmms_coll_dag_t *colldag, GHashTable *dict)
 	                    XMMS_OBJECT_CMD_ARG_DICT,
 	                    dict);
 
-	g_hash_table_destroy (dict);
+	g_tree_destroy (dict);
 }
 
 #define XMMS_COLLECTION_CHANGED_MSG(type, name, namespace) xmms_collection_changed_msg_send (dag, xmms_collection_changed_msg_new (type, name, namespace))
@@ -279,10 +283,10 @@ xmms_collection_init (xmms_playlist_t *playlist)
 	return ret;
 }
 
-static void
-add_metadata_from_hash (gpointer key, gpointer value, gpointer user_data)
+static gboolean
+add_metadata_from_tree (gpointer key, gpointer value, gpointer user_data)
 {
-	add_metadata_from_hash_user_data_t *ud = user_data;
+	add_metadata_from_tree_user_data_t *ud = user_data;
 	xmms_object_cmd_value_t *b = value;
 
 	if (b->type == XMMS_OBJECT_CMD_ARG_INT32) {
@@ -296,6 +300,8 @@ add_metadata_from_hash (gpointer key, gpointer value, gpointer user_data)
 		                                             b->value.string,
 		                                             ud->src);
 	}
+
+	return FALSE; /* keep going */
 }
 
 /** Create a idlist from a playlist file
@@ -336,11 +342,11 @@ xmms_collection_idlist_from_pls (xmms_coll_dag_t *dag, gchar *path, xmms_error_t
 
 		xmms_object_cmd_value_t *a = n->data;
 		xmms_object_cmd_value_t *b;
-		b = g_hash_table_lookup (a->value.dict, "realpath");
+		b = g_tree_lookup (a->value.dict, "realpath");
 
 		if (!b) {
 			xmms_log_error ("Playlist plugin did not set realpath; probably a bug in plugin");
-			xmms_object_cmd_value_free (a);
+			xmms_object_cmd_value_unref (a);
 			n = g_list_delete_link (n, n);
 			continue;
 		}
@@ -348,23 +354,23 @@ xmms_collection_idlist_from_pls (xmms_coll_dag_t *dag, gchar *path, xmms_error_t
 		entry = xmms_medialib_entry_new_encoded (session,
 		                                         b->value.string,
 		                                         err);
-		g_hash_table_remove (a->value.dict, "realpath");
-		g_hash_table_remove (a->value.dict, "path");
+		g_tree_remove (a->value.dict, "realpath");
+		g_tree_remove (a->value.dict, "path");
 
 		if (entry) {
-			add_metadata_from_hash_user_data_t udata;
+			add_metadata_from_tree_user_data_t udata;
 			udata.session = session;
 			udata.entry = entry;
 			udata.src = src;
 
-			g_hash_table_foreach (a->value.dict, add_metadata_from_hash, &udata);
+			g_tree_foreach (a->value.dict, add_metadata_from_tree, &udata);
 
 			xmmsc_coll_idlist_append (coll, entry);
 		} else {
 			xmms_log_error ("couldn't add %s to collection!", b->value.string);
 		}
 
-		xmms_object_cmd_value_free (a);
+		xmms_object_cmd_value_unref (a);
 		n = g_list_delete_link (n, n);
 	}
 
@@ -691,7 +697,7 @@ gboolean xmms_collection_rename (xmms_coll_dag_t *dag, gchar *from_name,
 
 	/* Update collection name everywhere */
 	} else {
-		GHashTable *dict;
+		GTree *dict;
 
 		/* insert new pair in hashtable */
 		xmms_collection_dag_replace (dag, nsid, g_strdup (to_name), from_coll);
@@ -707,8 +713,8 @@ gboolean xmms_collection_rename (xmms_coll_dag_t *dag, gchar *from_name,
 		/* Send _RENAME signal */
 		dict = xmms_collection_changed_msg_new (XMMS_COLLECTION_CHANGED_RENAME,
 		                                        from_name, namespace);
-		g_hash_table_insert (dict, (gpointer) "newname",
-		                     xmms_object_cmd_value_str_new (to_name));
+		g_tree_insert (dict, (gpointer) "newname",
+		               xmms_object_cmd_value_str_new (to_name));
 		xmms_collection_changed_msg_send (dag, dict);
 
 		retval = TRUE;
@@ -735,25 +741,22 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
                            guint lim_start, guint lim_len, GList *order,
                            xmms_error_t *err)
 {
-	GList *res = NULL;
-	GList *ids = NULL;
+	GList *res, *n;
 	GList *fetch = g_list_prepend (NULL, (gpointer) "id");
-	GList *n = NULL;
 
 	res = xmms_collection_query_infos (dag, coll, lim_start, lim_len, order, fetch, NULL, err);
 
 	/* FIXME: get an int list directly ! */
 	for (n = res; n; n = n->next) {
-		xmms_object_cmd_value_t *buf;
-		xmms_object_cmd_value_t *cmdval = (xmms_object_cmd_value_t*)n->data;
-		buf = g_hash_table_lookup (cmdval->value.dict, "id");
-		ids = g_list_prepend (ids, xmms_object_cmd_value_uint_new (buf->value.int32));
-		xmms_object_cmd_value_free (n->data);
+		xmms_object_cmd_value_t *id_val, *cmdval = n->data;
+
+		id_val = g_hash_table_lookup (cmdval->value.hash, "id");
+		n->data = xmms_object_cmd_value_uint_new (id_val->value.int32);
+
+		xmms_object_cmd_value_unref (cmdval);
 	}
 
-	g_list_free (res);
-
-	return g_list_reverse (ids);
+	return res;
 }
 
 
@@ -894,17 +897,14 @@ xmms_collection_set_int_attr (xmmsc_coll_t *coll, const gchar *attrname,
                               gint newval)
 {
 	gboolean retval = FALSE;
-	gchar *str;
+	gchar str[XMMS_MAX_INT_ATTRIBUTE_LEN + 1];
 	gint written;
 
-	str = g_new (char, XMMS_MAX_INT_ATTRIBUTE_LEN + 1);
-	written = g_snprintf (str, XMMS_MAX_INT_ATTRIBUTE_LEN, "%d", newval);
+	written = g_snprintf (str, sizeof (str), "%d", newval);
 	if (written < XMMS_MAX_INT_ATTRIBUTE_LEN) {
 		xmmsc_coll_attribute_set (coll, attrname, str);
 		retval = TRUE;
 	}
-
-	g_free (str);
 
 	return retval;
 }
@@ -961,7 +961,7 @@ xmms_collection_get_random_media (xmms_coll_dag_t *dag, xmmsc_coll_t *source)
 	if (res != NULL) {
 		xmms_object_cmd_value_t *cmdval = (xmms_object_cmd_value_t*)res->data;
 		mid = cmdval->value.int32;
-		xmms_object_cmd_value_free (res->data);
+		xmms_object_cmd_value_unref (res->data);
 		g_list_free (res);
 	}
 
@@ -1435,7 +1435,7 @@ prepend_key_string (gpointer key, gpointer value, gpointer udata)
 {
 	xmms_object_cmd_value_t *val;
 	GList **list = (GList**)udata;
-	val = xmms_object_cmd_value_str_new (g_strdup (key));
+	val = xmms_object_cmd_value_str_new (key);
 	*list = g_list_prepend (*list, val);
 }
 
@@ -1894,7 +1894,7 @@ xmms_collection_media_info (guint mid, xmms_error_t *err)
 
 	/* Transform the list into a HashMap */
 	infos = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                               g_free, xmms_object_cmd_value_free);
+	                               g_free, (GDestroyNotify)xmms_object_cmd_value_unref);
 	for (state = 0, n = res; n; state = (state + 1) % 3, n = n->next) {
 		switch (state) {
 		case 0:  /* source */
@@ -1906,7 +1906,7 @@ xmms_collection_media_info (guint mid, xmms_error_t *err)
 			break;
 
 		case 2:  /* prop value */
-			value = xmms_object_cmd_value_copy (n->data);
+			value = xmms_object_cmd_value_ref (n->data);
 
 			/* Only insert the first source */
 			if (g_hash_table_lookup (infos, name) == NULL) {
@@ -1915,7 +1915,7 @@ xmms_collection_media_info (guint mid, xmms_error_t *err)
 			break;
 		}
 
-		xmms_object_cmd_value_free (n->data);
+		xmms_object_cmd_value_unref (n->data);
 	}
 
 	g_list_free (res);
@@ -2099,7 +2099,6 @@ xmms_collection_media_filter_match (xmms_coll_dag_t *dag, GHashTable *mediainfo,
 	gchar *mediaval;
 	gchar *opval;
 	gboolean case_sens;
-	gint i, len;
 
 	if (filter_get_mediainfo_field_string (coll, mediainfo, &buf) &&
 	    filter_get_operator_value_string (coll, &opval) &&
@@ -2107,25 +2106,16 @@ xmms_collection_media_filter_match (xmms_coll_dag_t *dag, GHashTable *mediainfo,
 
 		/* Prepare values */
 		if (case_sens) {
-			mediaval = g_strdup (buf);
+			mediaval = buf;
 		} else {
-			opval = g_utf8_strdown (opval, strlen (opval));
-			mediaval = g_utf8_strdown (buf, strlen (buf));
+			opval = g_utf8_strdown (opval, -1);
+			mediaval = g_utf8_strdown (buf, -1);
 			g_free (buf);
-		}
-
-		/* Transform SQL wildcards to GLib wildcards */
-		for (i = 0, len = strlen (mediaval); i < len; i++) {
-			switch (mediaval[i]) {
-			case '%':  mediaval[i] = '*';  break;
-			case '_':  mediaval[i] = '?';  break;
-			default:                       break;
-			}
 		}
 
 		match = g_pattern_match_simple (opval, mediaval);
 
-		if (case_sens) {
+		if (!case_sens) {
 			g_free (opval);
 		}
 		g_free (mediaval);

@@ -1,7 +1,7 @@
 # encoding: utf-8
 #
 # WAF build scripts for XMMS2
-# Copyright (C) 2006-2007 XMMS2 Team
+# Copyright (C) 2006-2008 XMMS2 Team
 #
 
 import sys
@@ -23,7 +23,7 @@ import Object
 import Utils
 import Common
 
-VERSION="0.4 DrKosmos (git commit: %s)" % gittools.get_info_str()
+BASEVERSION="0.4 DrKosmos+WIP+TEST3"
 APPNAME='xmms2'
 
 srcdir='.'
@@ -66,31 +66,38 @@ all_optionals = sets.Set([os.path.basename(o) for o in optional_subdirs])
 all_plugins = sets.Set([p for p in os.listdir("src/plugins")
                         if os.path.exists(os.path.join("src/plugins",p,"wscript"))])
 
+libprefix = None
+
 ####
 ## Build
 ####
 def build(bld):
-    if bld.env_of_name("default")["BUILD_XMMS2D"]:
+    env = bld.env()
+
+    # set libprefix for later use in shutdown
+    global libprefix
+    libprefix = os.path.join(env[env['shlib_INST_VAR']], env['shlib_INST_DIR'])
+
+    if env["BUILD_XMMS2D"]:
         subdirs.append("src/xmms")
 
     newest = max([os.stat(os.path.join(sd, "wscript")).st_mtime for sd in subdirs])
-    if bld.env_of_name('default')['NEWEST_WSCRIPT_SUBDIR'] and newest > bld.env_of_name('default')['NEWEST_WSCRIPT_SUBDIR']:
+    if env['NEWEST_WSCRIPT_SUBDIR'] and newest > env['NEWEST_WSCRIPT_SUBDIR']:
         Params.fatal("You need to run waf configure")
 
     # Process subfolders
     bld.add_subdirs(subdirs)
 
     # Build configured plugins
-    plugins = bld.env_of_name('default')['XMMS_PLUGINS_ENABLED']
+    plugins = env['XMMS_PLUGINS_ENABLED']
     bld.add_subdirs(["src/plugins/%s" % plugin for plugin in plugins])
 
     # Build the clients
-    bld.add_subdirs(bld.env_of_name('default')['XMMS_OPTIONAL_BUILD'])
+    bld.add_subdirs(env['XMMS_OPTIONAL_BUILD'])
 
     # pkg-config
     o = bld.create_obj('pkgc')
-    o.version = VERSION
-    o.libs = bld.env_of_name('default')['XMMS_PKGCONF_FILES']
+    o.libs = env['XMMS_PKGCONF_FILES']
 
     Common.install_files('SHAREDDIR', '', 'mind.in.a.box-lament_snipplet.ogg')
 
@@ -243,19 +250,41 @@ def configure(conf):
     if Params.g_options.target_platform:
         Params.g_platform = Params.g_options.target_platform
 
-    conf.env["VERSION"] = VERSION
+    nam,changed = gittools.get_info()
+    conf.check_message("git commit id", "", True, nam)
+    if Params.g_options.customversion:
+        conf.env["VERSION"] = BASEVERSION + " (%s + %s)" % (nam, Params.g_options.customversion)
+    else:
+        dirty=""
+        if changed:
+            dirty="-dirty"
+        conf.check_message("uncommitted changes", "", bool(changed))
+        conf.env["VERSION"] = BASEVERSION + " (git commit: %s%s)" % (nam, dirty)
+
     conf.env["CCFLAGS"] = Utils.to_list(conf.env["CCFLAGS"]) + ['-g', '-O0']
     conf.env["CXXFLAGS"] = Utils.to_list(conf.env["CXXFLAGS"]) + ['-g', '-O0']
     conf.env['XMMS_PKGCONF_FILES'] = []
     conf.env['XMMS_OUTPUT_PLUGINS'] = [(-1, "NONE")]
 
-    conf.env['CCDEFINES'] += ["XMMS_VERSION=\"\\\"%s\\\"\"" % VERSION]
-    conf.env['CXXDEFINES'] += ["XMMS_VERSION=\"\\\"%s\\\"\"" % VERSION]
+    if Params.g_options.bindir:
+        conf.env["BINDIR"] = Params.g_options.bindir
+        conf.env["program_INST_VAR"] = "BINDIR"
+        conf.env["program_INST_DIR"] = ""
+    else:
+        conf.env["BINDIR"] = os.path.join(conf.env["PREFIX"], "bin")
 
     if Params.g_options.libdir:
         conf.env["LIBDIR"] = Params.g_options.libdir
-        conf.env["shlib_INST_DIR"] = ""
-        conf.env["shlib_INST_VAR"] = "LIBDIR"
+        conf.env["shlib_INST_VAR"]     = "LIBDIR"
+        conf.env["shlib_INST_DIR"]     = ""
+        conf.env["staticlib_INST_VAR"] = "LIBDIR"
+        conf.env["staticlib_INST_DIR"] = ""
+
+    if Params.g_options.pkgconfigdir:
+        conf.env['PKGCONFIGDIR'] = Params.g_options.pkgconfigdir
+        print conf.env['PKGCONFIGDIR']
+    else:
+        conf.env['PKGCONFIGDIR'] = os.path.join(conf.env["PREFIX"], "lib", "pkgconfig")
 
     if Params.g_options.config_prefix:
         for dir in Params.g_options.config_prefix:
@@ -306,6 +335,40 @@ def configure(conf):
         conf.env['socket_impl'] = 'socket'
     # Check win32 (winsock2) socket support
     elif Params.g_platform == 'win32':
+        if Params.g_options.winver:
+            major, minor = [int(x) for x in Params.g_options.winver.split('.')]
+        else:
+            try:
+                major, minor = sys.getwindowsversion()[:2]
+            except AttributeError, e:
+                Params.warning('No Windows version found and no version set. ' +
+                               'Defaulting to 5.1 (XP). You will not be able ' +
+                               'to use this build of XMMS2 on older Windows ' +
+                               'versions.')
+                major, minor = (5, 1)
+        need_wspiapi = True
+        if (major >= 5 and minor >= 1):
+            need_wspiapi = False
+        conf.check_header2('windows.h')
+        conf.check_header2('ws2tcpip.h')
+        conf.check_header2('winsock2.h')
+        conf.env['CCDEFINES'] += ['HAVE_WINSOCK2']
+        conf.env['CXXDEFINES'] += ['HAVE_WINSOCK2']
+        h = conf.create_header_configurator()
+        h.name = 'wspiapi.h'
+        h.header_code = "#include <windows.h>\n#include <ws2tcpip.h>"
+        if h.run():
+            conf.env['CCDEFINES'] += ['HAVE_WSPIAPI']
+        elif need_wspiapi:
+            Params.fatal('XMMS2 requires WSPiApi.h on Windows versions prior ' +
+                         'to XP. WSPiApi.h is provided by the Platform SDK.')
+        else:
+            print('This XMMS2 will only run on Windows XP and newer ' +
+                  'machines. If you are planning to use XMMS2 on older ' +
+                  'versions of Windows or are packaging a binary, please ' +
+                  'consider installing the WSPiApi.h header for ' +
+                  'compatibility. It is provided by the Platform SDK.')
+        conf.env['CCDEFINES'] += ['_WIN32_WINNT=0x%02x%02x' % (major, minor)]
         if not conf.check_library2("wsock32", uselib='socket'):
             Params.fatal("xmms2 requires wsock32 on windows.")
         conf.env.append_unique('LIB_socket', 'ws2_32')
@@ -316,7 +379,7 @@ def configure(conf):
 
     # Glib is required by everyone, so check for it here and let them
     # assume its presence.
-    conf.check_pkg2('glib-2.0', version='2.6.0', uselib='glib2')
+    conf.check_pkg2('glib-2.0', version='2.8.0', uselib='glib2')
 
     enabled_plugins, disabled_plugins = _configure_plugins(conf)
     enabled_optionals, disabled_optionals = _configure_optionals(conf)
@@ -343,6 +406,9 @@ def _list_cb(option, opt, value, parser):
 
 def set_options(opt):
     opt.tool_options('gcc')
+
+    opt.add_option('--with-custom-version', type='string',
+                   dest='customversion')
     opt.add_option('--with-plugins', action="callback", callback=_list_cb,
                    type="string", dest="enable_plugins")
     opt.add_option('--without-plugins', action="callback", callback=_list_cb,
@@ -355,16 +421,19 @@ def set_options(opt):
                    type='string', dest='config_prefix')
     opt.add_option('--without-xmms2d', type='int', dest='without_xmms2d')
     opt.add_option('--with-mandir', type='string', dest='manualdir')
+    opt.add_option('--with-bindir', type='string', dest='bindir')
     opt.add_option('--with-libdir', type='string', dest='libdir')
+    opt.add_option('--with-pkgconfigdir', type='string', dest='pkgconfigdir')
     opt.add_option('--with-target-platform', type='string',
-	               dest='target_platform')
+                   dest='target_platform')
+    opt.add_option('--with-windows-version', type='string', dest='winver')
 
     for o in optional_subdirs + subdirs:
         opt.sub_options(o)
 
 def shutdown():
-    if Params.g_commands['install'] and os.geteuid() == 0:
+    if Params.g_commands['install'] and os.geteuid() == 0 and libprefix:
         ldconfig = '/sbin/ldconfig'
         if os.path.isfile(ldconfig):
-            try: os.popen(ldconfig)
+            try: os.spawnvp(os.P_WAIT, 'ldconfig', ['', libprefix])
             except: pass

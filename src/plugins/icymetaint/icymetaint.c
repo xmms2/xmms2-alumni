@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -93,7 +93,7 @@ xmms_icymetaint_init (xmms_xform_t *xform)
 
 	g_return_val_if_fail (xform, FALSE);
 
-	res = xmms_xform_privdata_get_int (xform, "meta_offset", &meta_offset);
+	res = xmms_xform_auxdata_get_int (xform, "meta_offset", &meta_offset);
 	g_return_val_if_fail (res, FALSE);
 
 	XMMS_DBG ("meta_offset = %d", meta_offset);
@@ -240,7 +240,7 @@ handle_shoutcast_metadata (xmms_xform_t *xform, gchar *metadata)
 
 	tags = g_strsplit (metadata, ";", 0);
 	while (tags[i] != NULL) {
-		if (g_strncasecmp (tags[i], "StreamTitle=", 12) == 0) {
+		if (g_ascii_strncasecmp (tags[i], "StreamTitle=", 12) == 0) {
 			const gchar *metakey;
 			gchar *raw;
 

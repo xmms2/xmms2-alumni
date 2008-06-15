@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -46,7 +46,7 @@ typedef struct xmms_sun_data_St {
 	gchar *mixer_voldev;
 } xmms_sun_data_t;
 
-static struct {
+static const struct {
 	xmms_sample_format_t xmms_fmt;
 	guint sun_encoding;
 	guint sun_precision;
@@ -63,7 +63,7 @@ static struct {
 
 
 /* rates */
-static int rates[] = {
+static const int rates[] = {
 	8000,
 	11025,
 	16000,

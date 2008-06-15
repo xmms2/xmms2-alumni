@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team and Ma Xuan
+ *  Copyright (C) 2003-2008 XMMS2 Team and Ma Xuan
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -20,8 +20,6 @@
 #include <mac/APEInfo.h>
 #include <mac/CharacterHelper.h>
 
-extern "C" {
-
 #include "source_adapter.h"
 
 #include "xmms/xmms_log.h"
@@ -30,6 +28,8 @@ extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
 
+
+extern "C" {
 /*
  * Type Definitions
  */
@@ -84,8 +84,6 @@ XMMS_XFORM_PLUGIN ("mac",
                    "Monkey's Audio", XMMS_VERSION,
                    "Monkey's Audio Decoder",
                    xmms_mac_plugin_setup);
-
-}
 
 static gboolean
 xmms_mac_plugin_setup (xmms_xform_plugin_t *xform_plugin)
@@ -218,7 +216,7 @@ xmms_mac_get_media_info (xmms_xform_t *xform)
 
 				guint i = 0;
 				for (i = 0; i < G_N_ELEMENTS (properties); i++) {
-					if (g_strcasecmp (name, properties[i].vname) == 0) {
+					if (g_ascii_strcasecmp (name, properties[i].vname) == 0) {
 						if (properties[i].type == INTEGER) {
 							gint tmp = strtol (field_value, NULL, 10);
 							xmms_xform_metadata_set_int (xform,
@@ -240,7 +238,7 @@ xmms_mac_get_media_info (xmms_xform_t *xform)
 		}
 	}
 
-	gchar *name, *value, *metakey;
+	const gchar *name, *value, *metakey;
 	gint filesize;
 
 	metakey = XMMS_MEDIALIB_ENTRY_PROPERTY_SIZE;
@@ -251,12 +249,6 @@ xmms_mac_get_media_info (xmms_xform_t *xform)
 	}
 
 	/* Technical Information */
-
-	/* APE Version */
-	name = "Version";
-	value = g_strdup_printf ("%.2f", (float) data->p_decompress->GetInfo (APE_INFO_FILE_VERSION) / float (1000));
-	xmms_xform_metadata_set_str (xform, name, value);
-	g_free (value);
 
 	/* Compression Level */
 	name = "Compression Level";
@@ -333,3 +325,4 @@ xmms_mac_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_seek_mode_t whenc
 	return blocks;
 }
 
+}

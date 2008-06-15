@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -25,9 +25,9 @@
 
 #include <glib.h>
 
-/* scons takes care of this too, this is just an extra check */
-#if !GLIB_CHECK_VERSION(2,6,0)
-# error You need atleast glib 2.6.0
+/* WAF checks this too, this is just an extra check */
+#if !GLIB_CHECK_VERSION(2,8,0)
+# error You need atleast glib 2.8.0
 #endif
 
 #include "xmms_configuration.h"
@@ -60,7 +60,7 @@
  * Forward declarations of the methods in the main object
  */
 static void quit (xmms_object_t *object, xmms_error_t *error);
-static GHashTable *stats (xmms_object_t *object, xmms_error_t *error);
+static GTree *stats (xmms_object_t *object, xmms_error_t *error);
 static void hello (xmms_object_t *object, guint protocolver, gchar *client, xmms_error_t *error);
 static void install_scripts (const gchar *into_dir);
 static xmms_xform_object_t *xform_obj;
@@ -105,19 +105,21 @@ static gchar *conffile = NULL;
 /**
  * This returns the main stats for the server
  */
-static GHashTable *
+static GTree *
 stats (xmms_object_t *object, xmms_error_t *error)
 {
+	GTree *ret;
 	gint starttime;
-	GHashTable *ret = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                                         g_free, xmms_object_cmd_value_free);
+
+	ret = g_tree_new_full ((GCompareDataFunc) strcmp, NULL,
+	                       NULL, (GDestroyNotify)xmms_object_cmd_value_unref);
 
 	starttime = ((xmms_main_t*)object)->starttime;
 
-	g_hash_table_insert (ret, g_strdup ("version"),
-	                     xmms_object_cmd_value_str_new (XMMS_VERSION));
-	g_hash_table_insert (ret, g_strdup ("uptime"),
-	                     xmms_object_cmd_value_int_new (time (NULL)-starttime));
+	g_tree_insert (ret, (gpointer) "version",
+	               xmms_object_cmd_value_str_new (XMMS_VERSION));
+	g_tree_insert (ret, (gpointer) "uptime",
+	               xmms_object_cmd_value_int_new (time (NULL)-starttime));
 
 	return ret;
 }
@@ -152,9 +154,11 @@ do_scriptdir (const gchar *scriptdir)
 	while ((f = g_dir_read_name (dir))) {
 		argv[0] = g_strdup_printf ("%s/%s", scriptdir, f);
 		if (g_file_test (argv[0], G_FILE_TEST_IS_EXECUTABLE)) {
-			g_spawn_async (g_get_home_dir (),
-			               argv, NULL, 0,
-			               NULL, NULL, NULL, &err);
+			if (!g_spawn_async (g_get_home_dir (),
+			                    argv, NULL, 0, NULL, NULL, NULL, &err)) {
+				xmms_log_error ("Could not run script '%s', error: %s",
+				                argv[0], err->message);
+			}
 		}
 		g_free (argv[0]);
 	}
@@ -170,7 +174,7 @@ do_scriptdir (const gchar *scriptdir)
 static void
 load_config ()
 {
-	gchar *configdir = g_malloc0 (PATH_MAX);
+	gchar configdir[PATH_MAX];
 
 	if (!conffile) {
 		conffile = XMMS_BUILD_PATH ("xmms2.conf");
@@ -178,12 +182,11 @@ load_config ()
 
 	g_assert (strlen (conffile) <= XMMS_MAX_CONFIGFILE_LEN);
 
-	if (!xmms_userconfdir_get (configdir, PATH_MAX))
+	if (!xmms_userconfdir_get (configdir, sizeof (configdir))) {
 		xmms_log_error ("Could not get path to config dir");
-	if (!g_file_test (configdir, G_FILE_TEST_IS_DIR)) {
+	} else if (!g_file_test (configdir, G_FILE_TEST_IS_DIR)) {
 		g_mkdir_with_parents (configdir, 0755);
 	}
-	g_free (configdir);
 
 	xmms_config_init (conffile);
 }
@@ -241,8 +244,7 @@ xmms_main_destroy (xmms_object_t *object)
 
 	xmms_object_unref (xform_obj);
 
-	g_assert (conffile != NULL);
-	xmms_config_save (conffile);
+	xmms_config_save ();
 
 	xmms_config_shutdown ();
 	xmms_plugin_shutdown ();
@@ -303,7 +305,7 @@ install_scripts (const gchar *into_dir)
 	const gchar *f;
 	gchar *s;
 
-	s = strrchr (into_dir, '/');
+	s = strrchr (into_dir, G_DIR_SEPARATOR);
 	if (!s)
 		return;
 
@@ -337,7 +339,7 @@ void
 print_version ()
 {
 	printf ("XMMS2 version " XMMS_VERSION "\n");
-	printf ("Copyright (C) 2003-2007 XMMS2 Team\n");
+	printf ("Copyright (C) 2003-2008 XMMS2 Team\n");
 	printf ("This is free software; see the source for copying conditions.\n");
 	printf ("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 	printf ("PARTICULAR PURPOSE.\n");
@@ -370,6 +372,7 @@ main (int argc, char **argv)
 	gboolean version = FALSE;
 	gboolean nologging = FALSE;
 	gboolean runasroot = FALSE;
+	gboolean showhelp = FALSE;
 	const gchar *outname = NULL;
 	const gchar *ipcpath = NULL;
 	gchar *ppath = NULL;
@@ -391,6 +394,7 @@ main (int argc, char **argv)
 		{"conf", 'c', 0, G_OPTION_ARG_FILENAME, &conffile, "Specify alternate configuration file", "<file>"},
 		{"status-fd", 's', 0, G_OPTION_ARG_INT, &status_fd, "Specify a filedescriptor to write to when started", "fd"},
 		{"yes-run-as-root", 0, 0, G_OPTION_ARG_NONE, &runasroot, "Give me enough rope to shoot myself in the foot", NULL},
+		{"show-help", 'h', G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &showhelp, "Use --help or -? instead", NULL},
 		{NULL}
 	};
 
@@ -414,10 +418,19 @@ main (int argc, char **argv)
 		g_clear_error (&error);
 		exit (EXIT_FAILURE);
 	}
+	if (showhelp) {
+#if GLIB_CHECK_VERSION(2,14,0)
+		g_print (g_option_context_get_help (context, TRUE, NULL));
+		exit (EXIT_SUCCESS);
+#else
+		g_print ("Please use --help or -? for help\n");
+		exit (EXIT_FAILURE);
+#endif
+	}
 	g_option_context_free (context);
 
 	if (argc != 1) {
-		g_print ("There was unknown options, aborting!\n");
+		g_print ("There were unknown options, aborting!\n");
 		exit (EXIT_FAILURE);
 	}
 

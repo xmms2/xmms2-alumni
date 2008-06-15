@@ -1,6 +1,6 @@
 /** @file asf.c
  *  Demuxer plugin for ASF audio format
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -181,7 +181,7 @@ xmms_asf_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len, xmms_error_t *
 				continue;
 			}
 			g_string_append_len (data->outbuf, (gchar *) payload->data, payload->datalen);
-			xmms_xform_privdata_set_none (xform);
+			xmms_xform_auxdata_barrier (xform);
 		}
 
 		size = MIN (data->outbuf->len, len);
@@ -211,6 +211,7 @@ xmms_asf_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_seek_mode_t whenc
 	if (position < 0) {
 		return -1;
 	}
+	g_string_erase (data->outbuf, 0, data->outbuf->len);
 
 	return position * data->samplerate / 1000;
 }
@@ -378,25 +379,25 @@ xmms_asf_get_track (xmms_xform_t *xform, asf_file_t *file)
 			asf_waveformatex_t *wfx = sprop->properties;
 			const gchar *mimetype;
 
-			if (wfx->codec_id == 0x160)
+			if (wfx->wFormatTag == 0x160)
 				mimetype = "audio/x-ffmpeg-wmav1";
-			else if (wfx->codec_id == 0x161)
+			else if (wfx->wFormatTag == 0x161)
 				mimetype = "audio/x-ffmpeg-wmav2";
 			else
 				continue;
 
-			data->samplerate = wfx->rate;
-			data->channels = wfx->channels;
-			data->bitrate = wfx->bitrate;
+			data->samplerate = wfx->nSamplesPerSec;
+			data->channels = wfx->nChannels;
+			data->bitrate = wfx->nAvgBytesPerSec * 8;
 
-			xmms_xform_privdata_set_bin (xform,
-			                             "decoder_config",
-			                             wfx->data,
-			                             wfx->datalen);
+			xmms_xform_auxdata_set_bin (xform,
+			                            "decoder_config",
+			                            wfx->data,
+			                            wfx->cbSize);
 
-			xmms_xform_privdata_set_int (xform,
-			                             "bitrate",
-			                             data->bitrate);
+			xmms_xform_auxdata_set_int (xform,
+			                            "bitrate",
+			                            data->bitrate);
 
 			xmms_xform_outdata_type_add (xform,
 			                             XMMS_STREAM_TYPE_MIMETYPE,

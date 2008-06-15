@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -32,13 +32,13 @@ typedef struct xmms_ao_data_St {
 	ao_sample_format format;
 } xmms_ao_data_t;
 
-static xmms_sample_format_t formats[] = {
+static const xmms_sample_format_t formats[] = {
 	XMMS_SAMPLE_FORMAT_S8,
 	XMMS_SAMPLE_FORMAT_S16,
 	XMMS_SAMPLE_FORMAT_S32,
 };
 
-static int rates[] = {
+static const int rates[] = {
 	8000,
 	11025,
 	16000,
@@ -154,7 +154,7 @@ xmms_ao_new (xmms_output_t *output)
 		ao_device *device;
 
 		data->options = g_malloc (sizeof (ao_option));
-		data->options->key = "dev";
+		data->options->key = (gchar *) "dev";
 		data->options->value = (gchar *) value;
 		data->options->next = NULL;
 
@@ -280,7 +280,8 @@ xmms_ao_write (xmms_output_t *output, gpointer buffer, gint len, xmms_error_t *e
 	if (!ao_play (data->device, buffer, len)) {
 		ao_close (data->device);
 		data->device = NULL;
-		xmms_log_fatal ("Error writing to libao, output closed");
+		xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE,
+		                "Error writing to libao, output closed");
 	}
 }
 

@@ -1,11 +1,11 @@
 # encoding: utf-8
 #
 # WAF build scripts for XMMS2
-# Copyright (C) 2006-2007 XMMS2 Team
+# Copyright (C) 2006-2008 XMMS2 Team
 #
 
 def build(bld):
-    env = bld.env_of_name('default')
+    env = bld.env()
 
     obj = bld.create_obj('cc', 'staticlib')
     obj.source = ["socket_common.c"]
@@ -14,6 +14,7 @@ def build(bld):
     else:
         obj.source.append("socket_unix.c")
     obj.includes='. ../../include'
+    obj.uselib='socket'
     obj.target='xmmssocket'
     obj.install_var = 0
 

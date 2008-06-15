@@ -1,7 +1,7 @@
 /** @file daap_conn.c
  *  Manages the connection to a DAAP server.
  *
- *  Copyright (C) 2006-2007 XMMS2 Team
+ *  Copyright (C) 2006-2008 XMMS2 Team
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -58,7 +58,7 @@ daap_open_connection (gchar *host, gint port)
 		return NULL;
 	}
 
-	/* call getaddrinfo() to convert a hostname to ip */
+	/* call xmms_getaddrinfo() to convert a hostname to ip */
 
 	ai_hint = g_new0 (struct addrinfo, 1);
 	/* FIXME sometime in the future, we probably want to append
@@ -66,7 +66,7 @@ daap_open_connection (gchar *host, gint port)
 	ai_hint->ai_family = AF_INET;
 	ai_hint->ai_protocol = PF_INET;
 
-	while ((ai_status = getaddrinfo (host, NULL, ai_hint, &ai_result))) {
+	while ((ai_status = xmms_getaddrinfo (host, NULL, ai_hint, &ai_result))) {
 		if (ai_status != EAI_AGAIN) {
 			XMMS_DBG ("Error with getaddrinfo(): %s", gai_strerror (ai_status));
 			g_io_channel_unref (sock_chan);
@@ -81,7 +81,7 @@ daap_open_connection (gchar *host, gint port)
 	server.sin_port = htons (port);
 
 	g_free (ai_hint);
-	freeaddrinfo (ai_result);
+	xmms_freeaddrinfo (ai_result);
 
 	while (42) {
 		fd_set fds;
@@ -191,7 +191,7 @@ daap_receive_header (GIOChannel *sock_chan, gchar **header)
 		*header = NULL;
 	}
 
-	response = (gchar *) g_malloc0 (sizeof (gchar) * MAX_HEADER_LENGTH);
+	response = g_malloc0 (MAX_HEADER_LENGTH);
 	if (NULL == response) {
 		XMMS_DBG ("Error: couldn't allocate memory for response.\n");
 		return;
@@ -214,8 +214,7 @@ daap_receive_header (GIOChannel *sock_chan, gchar **header)
 			if (strcmp (recv_line, "\r\n") == 0) {
 				g_free (recv_line);
 				if (NULL != header) {
-					*header = (gchar *) g_malloc0 (sizeof (gchar) *
-					                               n_total_bytes_recvd);
+					*header = g_malloc0 (n_total_bytes_recvd);
 					if (NULL == *header) {
 						XMMS_DBG ("error: couldn't allocate header\n");
 						break;
@@ -269,7 +268,7 @@ daap_handle_data (GIOChannel *sock_chan, gchar *header)
 		return NULL;
 	}
 
-	response_data = (gchar *) g_malloc0 (sizeof (gchar) * response_length);
+	response_data = g_malloc0 (response_length);
 	if (NULL == response_data) {
 		XMMS_DBG ("error: could not allocate response memory\n");
 		return NULL;

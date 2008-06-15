@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -294,7 +294,7 @@ xmms_curl_init (xmms_xform_t *xform)
 
 	if (data->meta_offset > 0) {
 		XMMS_DBG ("icy-metadata detected");
-		xmms_xform_privdata_set_int (xform, "meta_offset", data->meta_offset);
+		xmms_xform_auxdata_set_int (xform, "meta_offset", data->meta_offset);
 
 		xmms_xform_outdata_type_add (xform,
 		                             XMMS_STREAM_TYPE_MIMETYPE,
@@ -359,6 +359,24 @@ fill_buffer (xmms_xform_t *xform, xmms_curl_data_t *data, xmms_error_t *error)
 
 		/* done */
 		if (handles == 0) {
+			CURLMsg *curlmsg;
+			gint messages;
+
+			do {
+				curlmsg = curl_multi_info_read (data->curl_multi, &messages);
+
+				if (curlmsg == NULL)
+					break;
+
+				if (curlmsg->msg == CURLMSG_DONE && curlmsg->data.result != CURLE_OK) {
+					xmms_log_error ("Curl fill_buffer returned error: (%d) %s",
+					                curlmsg->data.result,
+					                curl_easy_strerror (curlmsg->data.result));
+				} else {
+					XMMS_DBG ("Curl fill_buffer returned unknown message (%d)", curlmsg->msg);
+				}
+			} while (messages > 0);
+
 			data->done = TRUE;
 			return 0;
 		}

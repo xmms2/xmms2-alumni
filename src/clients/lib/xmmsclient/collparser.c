@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -26,23 +26,23 @@
 
 #define XMMS_COLLECTION_PARSER_DEFAULT_NAMESPACE "Collections"
 
-/* Properties to match by default. */
-char *coll_autofilter[] = { "artist", "album", "title", NULL };
-
 typedef struct {
-	char  shortstr;
-	char *longstr;
+	char shortstr;
+
+	/* this has to be large enough to hold all of the longstr's
+	 * below.
+	 */
+	char longstr[8];
 } xmmsc_coll_prop_t;
 
-xmmsc_coll_prop_t
+static const xmmsc_coll_prop_t
 xmmsc_coll_prop_short[] = { { 'a', "artist" },
                             { 'l', "album" },
                             { 't', "title" },
                             { 'n', "tracknr" },
                             { 'y', "year" },
                             { 'g', "genre" },
-                            { 'u', "url" },
-                            { '\0', NULL } };
+                            { 'u', "url" } };
 
 
 #define TOKEN_MATCH_CHAR(symbol, type) if (*tmp == (symbol)) { *newpos = tmp + 1; return coll_token_new (type, NULL); }
@@ -175,6 +175,7 @@ xmmsc_coll_parse_custom (const char *pattern,
 		k = parse_f (pattern, &next);
 		if (k == NULL || k->type == XMMS_COLLECTION_TOKEN_INVALID) {
 			/* FIXME: Check for invalid token */
+			break;
 		}
 
 		if (!last)
@@ -221,6 +222,9 @@ xmmsc_coll_default_parse_tokens (const char *str, const char **newpos)
 	char quote;
 
 	while (*str == ' ') str++;
+	if (*str == '\0') {
+		return NULL;
+	}
 	tmp = str;
 
 	TOKEN_MATCH_CHAR ('(', XMMS_COLLECTION_TOKEN_GROUP_OPEN);
@@ -258,13 +262,7 @@ xmmsc_coll_default_parse_tokens (const char *str, const char **newpos)
 				} else if ((*tmp == '*') || (*tmp == '?')) {
 					type = XMMS_COLLECTION_TOKEN_PATTERN;
 				}
-
-				/* FIXME: Kinda dirty, and we should escape % and _ then ! */
-				switch (*tmp) {
-				case '*':  strval[i++] = '%';  break;
-				case '?':  strval[i++] = '_';  break;
-				default:   strval[i++] = *tmp; break;
-				}
+				strval[i++] = *tmp;
 			}
 
 			tmp++;
@@ -337,12 +335,7 @@ xmmsc_coll_default_parse_tokens (const char *str, const char **newpos)
 			escape = 0;
 		}
 
-		switch (*tmp) {
-		case '*':  strval[i++] = '%';  break;
-		case '?':  strval[i++] = '_';  break;
-		default:   strval[i++] = *tmp; break;
-		}
-
+		strval[i++] = *tmp;
 		tmp++;
 	}
 
@@ -428,7 +421,7 @@ coll_parse_prepare (xmmsc_coll_token_t *tokens)
 				curr->type = XMMS_COLLECTION_TOKEN_STRING;
 			}
 
-			/* Fuzzy match the operand to MATCH, i.e. surround with '%' */
+			/* Fuzzy match the operand to MATCH, i.e. surround with '*' */
 			if (curr->type == XMMS_COLLECTION_TOKEN_STRING ||
 			    curr->type == XMMS_COLLECTION_TOKEN_PATTERN) {
 				int i, o;
@@ -436,14 +429,14 @@ coll_parse_prepare (xmmsc_coll_token_t *tokens)
 				i = 0;
 				o = 0;
 
-				if (curr->string[i] != '%') {
-					newstr[o++] = '%';
+				if (curr->string[i] != '*') {
+					newstr[o++] = '*';
 				}
 				while (curr->string[i] != '\0') {
 					newstr[o++] = curr->string[i++];
 				}
-				if (i > 0 && curr->string[i - 1] != '%') {
-					newstr[o++] = '%';
+				if (i > 0 && curr->string[i - 1] != '*') {
+					newstr[o++] = '*';
 				}
 				newstr[o] = '\0';
 
@@ -743,11 +736,14 @@ coll_parse_andop_append (xmmsc_coll_token_t *tokens, xmmsc_coll_t *operator,
 			*ret = first;
 		}
 		else {
+			xmmsc_coll_unref (first);
 			*ret = operator;
 		}
 	}
 	else {
 		xmmsc_coll_add_operand (operator, first);
+		xmmsc_coll_unref (first);
+
 		tk = coll_parse_andop_append (tk, operator, &tmp);
 		*ret = operator;
 	}
@@ -777,6 +773,7 @@ coll_parse_orop_append (xmmsc_coll_token_t *tokens, xmmsc_coll_t *operator,
 
 	if (operator) {
 		xmmsc_coll_add_operand (operator, first);
+		xmmsc_coll_unref (first);
 
 		if (tk && tk->type == XMMS_COLLECTION_TOKEN_OPSET_UNION) {
 			tk = coll_parse_orop_append (coll_next_token (tk), operator, ret);
@@ -946,6 +943,8 @@ coll_parse_autofilter (xmmsc_coll_token_t *token, xmmsc_coll_t **ret)
 	xmmsc_coll_type_t colltype;
 	xmmsc_coll_t *coll, *operand;
 	int i;
+	/* Properties to match by default. */
+	const char *coll_autofilter[] = { "artist", "album", "title", NULL };
 
 	if (token->type == XMMS_COLLECTION_TOKEN_OPFIL_EQUALS) {
 		colltype = XMMS_COLLECTION_TYPE_EQUALS;
@@ -1031,16 +1030,16 @@ coll_parse_prop (xmmsc_coll_token_t *token)
 	}
 
 	switch (token->type) {
-	case XMMS_COLLECTION_TOKEN_PROP_LONG:
-		return strdup (token->string);
-
 	case XMMS_COLLECTION_TOKEN_PROP_SHORT:
-		for (i = 0; xmmsc_coll_prop_short[i].longstr; i++) {
+		/* try to find short prop, else fallback to long prop */
+		for (i = 0; i < X_N_ELEMENTS (xmmsc_coll_prop_short); i++) {
 			if (*token->string == xmmsc_coll_prop_short[i].shortstr) {
 				return strdup (xmmsc_coll_prop_short[i].longstr);
 			}
 		}
-		break;
+
+	case XMMS_COLLECTION_TOKEN_PROP_LONG:
+		return strdup (token->string);
 
 	default:
 		break;

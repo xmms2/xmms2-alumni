@@ -1,7 +1,7 @@
-/** @file xmmsclient-cf.c 
+/** @file xmmsclient-cf.c
  *  Mac OS X CoreFoundation run loop integration
  *
- *  Copyright (C) 2005-2007 XMMS2 Team
+ *  Copyright (C) 2005-2008 XMMS2 Team
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -28,12 +28,12 @@ xmmsc_io_cf_toggle_socket_flags (int toggle, void *userdata)
 		CFSocketDisableCallBacks (sockRef, kCFSocketWriteCallBack);
 }
 
-static void 
-xmmsc_io_cf_event_callback (CFSocketRef s, 
-							 CFSocketCallBackType type, 
-							 CFDataRef address, 
-							 const void *data, 
-							 void *info)
+static void
+xmmsc_io_cf_event_callback (CFSocketRef s,
+                            CFSocketCallBackType type,
+                            CFDataRef address,
+                            const void *data,
+                            void *info)
 {
 	CFSocketContext context;
 
@@ -64,7 +64,7 @@ xmmsc_setup_with_cf (xmmsc_connection_t *c)
 
 	context.version = 0;
 	context.info = c;
-	context.retain = NULL; 
+	context.retain = NULL;
 	context.release = NULL;
 	context.copyDescription = NULL;
 
@@ -72,18 +72,18 @@ xmmsc_setup_with_cf (xmmsc_connection_t *c)
 	if (xmmsc_io_want_out (c))
 		flags |= kCFSocketWriteCallBack;
 
-	sockRef = CFSocketCreateWithNative (kCFAllocatorDefault, 
-										xmmsc_io_fd_get (c),
-										flags,
-										&xmmsc_io_cf_event_callback,
-										&context);
+	sockRef = CFSocketCreateWithNative (kCFAllocatorDefault,
+	                                    xmmsc_io_fd_get (c),
+	                                    flags,
+	                                    &xmmsc_io_cf_event_callback,
+	                                    &context);
 
 	if (!sockRef)
 		return 0;
 
 
-	runLoopSourceRef = CFSocketCreateRunLoopSource (kCFAllocatorDefault, 
-													sockRef, 4);
+	runLoopSourceRef = CFSocketCreateRunLoopSource (kCFAllocatorDefault,
+	                                                sockRef, 4);
 
 	CFRunLoopAddSource (runLoopRef, runLoopSourceRef, kCFRunLoopDefaultMode);
 

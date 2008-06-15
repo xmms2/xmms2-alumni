@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -48,10 +48,21 @@ typedef enum {
 	XMMS_CONFIG_STATE_PROPERTY
 } xmms_configparser_state_t;
 
-static GHashTable *xmms_config_listvalues (xmms_config_t *conf, xmms_error_t *err);
+typedef struct dump_tree_data_St {
+	FILE *fp;
+	xmms_configparser_state_t state;
+
+	gchar indent[128];
+	guint indent_level;
+
+	gchar *prev_key;
+} dump_tree_data_t;
+
+static GTree *xmms_config_listvalues (xmms_config_t *conf, xmms_error_t *err);
 static xmms_config_property_t *xmms_config_property_new (const gchar *name);
 static gchar *xmms_config_property_client_lookup (xmms_config_t *conf, gchar *key, xmms_error_t *err);
 static gchar *xmms_config_property_client_register (xmms_config_t *config, const gchar *name, const gchar *def_value, xmms_error_t *error);
+static gint compare_key (gconstpointer a, gconstpointer b, gpointer user_data);
 
 XMMS_CMD_DEFINE (setvalue, xmms_config_setvalue, xmms_config_t *, NONE, STRING, STRING);
 XMMS_CMD_DEFINE (listvalues, xmms_config_listvalues, xmms_config_t *, DICT, NONE, NONE);
@@ -76,7 +87,8 @@ XMMS_CMD_DEFINE (regvalue, xmms_config_property_client_register, xmms_config_t *
 struct xmms_config_St {
 	xmms_object_t obj;
 
-	GHashTable *properties;
+	const gchar *filename;
+	GTree *properties;
 
 	/* Lock on globals are great! */
 	GMutex *mutex;
@@ -100,7 +112,6 @@ struct xmms_config_property_St {
 	/** The data */
 	gchar *value;
 };
-
 
 /**
  * Global config
@@ -165,7 +176,7 @@ xmms_config_lookup (const gchar *path)
 	g_return_val_if_fail (global_config, NULL);
 
 	g_mutex_lock (global_config->mutex);
-	prop = g_hash_table_lookup (global_config->properties, path);
+	prop = g_tree_lookup (global_config->properties, path);
 	g_mutex_unlock (global_config->mutex);
 
 	return prop;
@@ -192,8 +203,7 @@ xmms_config_property_get_name (const xmms_config_property_t *prop)
 void
 xmms_config_property_set_data (xmms_config_property_t *prop, const gchar *data)
 {
-	GHashTable *dict;
-	gchar *file;
+	GTree *dict;
 
 	g_return_if_fail (prop);
 	g_return_if_fail (data);
@@ -208,24 +218,22 @@ xmms_config_property_set_data (xmms_config_property_t *prop, const gchar *data)
 	                  XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED,
 	                  (gpointer) data);
 
-	dict = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-	                              xmms_object_cmd_value_free);
-	g_hash_table_insert (dict, (gchar *) prop->name,
-	                     xmms_object_cmd_value_str_new (prop->value));
+	dict = g_tree_new_full (compare_key, NULL,
+	                        NULL, (GDestroyNotify)xmms_object_cmd_value_unref);
+	g_tree_insert (dict, (gchar *) prop->name,
+	               xmms_object_cmd_value_str_new (prop->value));
 
 	xmms_object_emit_f (XMMS_OBJECT (global_config),
 	                    XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED,
 	                    XMMS_OBJECT_CMD_ARG_DICT,
 	                    dict);
 
-	g_hash_table_destroy (dict);
+	g_tree_destroy (dict);
 
 	/* save the database to disk, so we don't lose any data
 	 * if the daemon crashes
 	 */
-	file = XMMS_BUILD_PATH ("xmms2.conf");
-	xmms_config_save (file);
-	g_free (file);
+	xmms_config_save ();
 }
 
 /**
@@ -335,13 +343,13 @@ xmms_config_property_register (const gchar *path,
 
 	g_mutex_lock (global_config->mutex);
 
-	prop = g_hash_table_lookup (global_config->properties, path);
+	prop = g_tree_lookup (global_config->properties, path);
 	if (!prop) {
 		prop = xmms_config_property_new (g_strdup (path));
 
 		xmms_config_property_set_data (prop, (gchar *) default_value);
-		g_hash_table_insert (global_config->properties,
-		                     (gchar *) prop->name, prop);
+		g_tree_replace (global_config->properties,
+		               (gchar *) prop->name, prop);
 	}
 
 	if (cb) {
@@ -554,7 +562,7 @@ xmms_config_parse_text (GMarkupParseContext *ctx,
 	prop = xmms_config_property_new (g_strdup (key));
 	xmms_config_property_set_data (prop, (gchar *) text);
 
-	g_hash_table_insert (config->properties, (gchar *) prop->name, prop);
+	g_tree_replace (config->properties, (gchar *) prop->name, prop);
 }
 
 /**
@@ -586,12 +594,14 @@ xmms_config_setvalue (xmms_config_t *conf, const gchar *key, const gchar *value,
  * @param property An xmms_config_property_t
  * @param udata The dict to store configvals
  */
-static void
+static gboolean
 xmms_config_foreach_dict (gpointer key, xmms_config_property_t *prop,
-                          GHashTable *dict)
+                          GTree *dict)
 {
-	g_hash_table_insert (dict, g_strdup (key),
-	                     xmms_object_cmd_value_str_new (prop->value));
+	g_tree_insert (dict, g_strdup (key),
+	               xmms_object_cmd_value_str_new (prop->value));
+
+	return FALSE; /* keep going */
 }
 
 /**
@@ -600,18 +610,18 @@ xmms_config_foreach_dict (gpointer key, xmms_config_property_t *prop,
  * @param err To be filled in if an error occurs
  * @return a dict with config properties and values
  */
-static GHashTable *
+static GTree *
 xmms_config_listvalues (xmms_config_t *conf, xmms_error_t *err)
 {
-	GHashTable *ret;
+	GTree *ret;
 
-	ret = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-	                             xmms_object_cmd_value_free);
+	ret = g_tree_new_full (compare_key, NULL,
+	                       g_free, (GDestroyNotify)xmms_object_cmd_value_unref);
 
 	g_mutex_lock (conf->mutex);
-	g_hash_table_foreach (conf->properties,
-	                      (GHFunc) xmms_config_foreach_dict,
-	                      (gpointer) ret);
+	g_tree_foreach (conf->properties,
+	                (GTraverseFunc) xmms_config_foreach_dict,
+	                (gpointer) ret);
 	g_mutex_unlock (conf->mutex);
 
 	return ret;
@@ -642,16 +652,23 @@ xmms_config_destroy (xmms_object_t *object)
 
 	g_mutex_free (config->mutex);
 
-	g_hash_table_destroy (config->properties);
+	g_tree_destroy (config->properties);
 
 	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_CONFIGVALUE_CHANGED);
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_CONFIG);
 }
 
-static gboolean
-foreach_remove (gpointer key, gpointer value, gpointer udata)
+static gint
+compare_key (gconstpointer a, gconstpointer b, gpointer user_data)
 {
-	return TRUE; /* remove this key/value pair */
+	return strcmp ((gchar *) a, (gchar *) b);
+}
+
+static GTree *
+create_tree ()
+{
+	return g_tree_new_full (compare_key, NULL, g_free,
+	                        (GDestroyNotify) __int_xmms_object_unref);
 }
 
 /**
@@ -661,7 +678,8 @@ foreach_remove (gpointer key, gpointer value, gpointer udata)
 static void
 clear_config (xmms_config_t *config)
 {
-	g_hash_table_foreach_remove (config->properties, foreach_remove, NULL);
+	g_tree_destroy (config->properties);
+	config->properties = create_tree ();
 
 	config->version = XMMS_CONFIG_VERSION;
 
@@ -685,10 +703,10 @@ xmms_config_init (const gchar *filename)
 
 	config = xmms_object_new (xmms_config_t, xmms_config_destroy);
 	config->mutex = g_mutex_new ();
+	config->filename = filename;
 
-	config->properties = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                                            g_free,
-	                                            (GDestroyNotify) __int_xmms_object_unref);
+	config->properties = create_tree ();
+
 	config->version = 0;
 	global_config = config;
 
@@ -791,118 +809,87 @@ xmms_config_shutdown ()
 
 }
 
-/**
- * @internal Append new data to a GNode tree
- * @param parent The parent node
- * @param new_data New data
- * @return The new GNode
- */
-static GNode *
-add_node (GNode *parent, gpointer new_data[2])
+static gboolean
+dump_tree (gchar *current_key, xmms_config_property_t *prop,
+           dump_tree_data_t *data)
 {
-	GNode *node;
-	gpointer *node_data;
-	int i;
+	gchar *prop_name, section[256];
+	gchar *dot = NULL, *current_last_dot, *start = current_key;
 
-	/* loop over the childs of parent */
-	for (node = g_node_first_child (parent); node;
-	     node = g_node_next_sibling (node)) {
-		node_data = node->data;
+	prop_name = strrchr (current_key, '.');
 
-		i = g_ascii_strcasecmp (node_data[0], new_data[0]);
-		if (!i) {
-			/* the node we want already exists, so we don't need
-			 * new_data anymore.
-			 * note that this never happens for "property" nodes, so
-			 * data[1] = ... below is safe.
-			 */
-			g_free (new_data[0]);
-			g_free (new_data);
+	/* check whether we need to open a new section.
+	 * this is always the case if data->prev_key == NULL.
+	 * but if the sections of the last key and the current key differ,
+	 * we also need to do that.
+	 */
+	if (data->prev_key) {
+		gchar *c = current_key, *o = data->prev_key;
+		gsize dots = 0;
 
-			return node;
-		} else if (i > 0) {
-			/* an exact match is impossible at this point, so create
-			 * a new node and return
-			 */
-			return g_node_insert_data_before (parent, node, new_data);
+		/* position c and o at the respective ends of the common
+		 * prefixes of the previous and the current key.
+		 */
+		while (*c && *o && *c == *o) {
+			c++;
+			o++;
+
+			if (*c == '.')
+				start = c + 1;
+		};
+
+		/* from this position on, count the number of dots in the
+		 * previous key (= number of dots that are present in the
+		 * previous key, but no the current key).
+		 */
+		while (*o) {
+			if (*o == '.')
+				dots++;
+
+			o++;
+		};
+
+		/* we'll close the previous key's sections now, so we don't
+		 * have to worry about it next time this function is called.
+		 */
+		if (dots)
+			data->prev_key = NULL;
+
+		while (dots--) {
+			/* decrease indent level */
+			data->indent[--data->indent_level] = '\0';
+
+			fprintf (data->fp, "%s</section>\n", data->indent);
 		}
 	}
 
-	return g_node_append_data (parent, new_data);
-}
+	/* open section tags */
+	dot = strchr (start, '.');
+	current_last_dot = start - 1;
 
-/**
- * @internal Function to help build a tree representing config data to be saved.
- * @param key The key to add to the tree
- * @param prop The property associated to key
- * @param udata User data - in this case, the GNode tree we're modifying
- */
-static void
-add_to_tree_foreach (gpointer key, gpointer prop, gpointer udata)
-{
-	GNode *node = udata;
-	gchar **subkey, **ptr;
-	gpointer *data = NULL;
+	while (dot) {
+		strncpy (section, current_last_dot + 1, dot - current_last_dot + 1);
+		section[dot - current_last_dot - 1] = 0;
 
-	subkey = g_strsplit (key, ".", 0);
-	g_assert (subkey);
+		fprintf (data->fp, "%s<section name=\"%s\">\n",
+		         data->indent, section);
 
-	for (ptr = subkey; *ptr; ptr++) {
-		data = g_new0 (gpointer, 2);
-		data[0] = g_strdup (*ptr);
+		/* increase indent level */
+		g_assert (data->indent_level < 127);
+		data->indent[data->indent_level] = '\t';
+		data->indent[++data->indent_level] = '\0';
 
-		node = add_node (node, data);
-	}
+		current_last_dot = dot;
+		dot = strchr (dot + 1, '.');
+	};
 
-	/* only the last node gets a value */
-	data[1] = g_strdup (xmms_config_property_get_string (prop));
+	data->prev_key = current_key;
 
-	g_strfreev (subkey);
-}
+	fprintf (data->fp, "%s<property name=\"%s\">%s</property>\n",
+	         data->indent, prop_name + 1,
+	         xmms_config_property_get_string (prop));
 
-/**
- * @internal Write data in a GNode to file.
- * @param node The GNode to dump
- * @param fp An open file stream
- */
-static void
-dump_node (GNode *node, FILE *fp)
-{
-	gchar **data = node->data;
-	gboolean is_root = G_NODE_IS_ROOT (node);
-	static gchar indent[128] = "";
-	static gsize siz = sizeof (indent);
-	gsize len;
-
-	if (G_NODE_IS_LEAF (node) && !is_root) {
-		fprintf (fp, "%s<property name=\"%s\">%s</property>\n",
-		         indent, data[0], data[1]);
-	} else {
-		if (is_root) {
-			fprintf (fp, "<?xml version=\"1.0\"?>\n<%s version=\"%i\">\n",
-			         (gchar *) node->data, XMMS_CONFIG_VERSION);
-		} else {
-			fprintf (fp, "%s<section name=\"%s\">\n",
-			         indent, data[0]);
-		}
-
-		len = g_strlcat (indent, "\t", siz);
-		g_node_children_foreach (node, G_TRAVERSE_ALL,
-		                         (GNodeForeachFunc) dump_node, fp);
-		indent[len - 1] = '\0';
-
-		if (is_root) {
-			fprintf (fp, "</%s>\n", (gchar *) node->data);
-		} else {
-			fprintf (fp, "%s</section>\n", indent);
-		}
-	}
-
-	if (!is_root) {
-		g_free (data[0]);
-		g_free (data[1]);
-		g_free (data);
-	}
+	return FALSE; /* keep going */
 }
 
 /**
@@ -911,29 +898,48 @@ dump_node (GNode *node, FILE *fp)
  * @return TRUE on success.
  */
 gboolean
-xmms_config_save (const gchar *file)
+xmms_config_save (void)
 {
-	GNode *tree = NULL;
 	FILE *fp = NULL;
+	dump_tree_data_t data;
 
 	g_return_val_if_fail (global_config, FALSE);
-	g_return_val_if_fail (file, FALSE);
 
 	/* don't try to save config while it's being read */
 	if (global_config->is_parsing)
 		return FALSE;
 
-	if (!(fp = fopen (file, "w"))) {
-		xmms_log_error ("Couldn't open %s for writing.", file);
+	if (!(fp = fopen (global_config->filename, "w"))) {
+		xmms_log_error ("Couldn't open %s for writing.",
+		                global_config->filename);
 		return FALSE;
 	}
 
-	tree = g_node_new ((gpointer) "xmms");
-	g_hash_table_foreach (global_config->properties, add_to_tree_foreach, tree);
+	fprintf (fp, "<?xml version=\"1.0\"?>\n<xmms version=\"%i\">\n",
+	         XMMS_CONFIG_VERSION);
 
-	dump_node (tree, fp);
+	data.fp = fp;
+	data.state = XMMS_CONFIG_STATE_START;
+	data.prev_key = NULL;
 
-	g_node_destroy (tree);
+	strcpy (data.indent, "\t");
+	data.indent_level = 1;
+
+	g_tree_foreach (global_config->properties,
+	                (GTraverseFunc) dump_tree, &data);
+
+	/* close the remaining section tags. the final indent level
+	 * was started with the opening xmms tag, so the loop condition
+	 * is '> 1' here rather than '> 0'.
+	 */
+	while (data.indent_level > 1) {
+		/* decrease indent level */
+		data.indent[--data.indent_level] = '\0';
+
+		fprintf (fp, "%s</section>\n", data.indent);
+	}
+
+	fprintf (fp, "</xmms>\n");
 	fclose (fp);
 
 	return TRUE;

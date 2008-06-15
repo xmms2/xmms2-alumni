@@ -1,7 +1,7 @@
 /** @file mp4.c
  *  Decoder plugin for MP4 audio format
  *
- *  Copyright (C) 2005-2007 XMMS2 Team
+ *  Copyright (C) 2005-2008 XMMS2 Team
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -183,7 +183,7 @@ xmms_mp4_init (xmms_xform_t *xform)
 
 	mp4ff_get_decoder_config (data->mp4ff, data->track, &tmpbuf,
 	                          &tmpbuflen);
-	xmms_xform_privdata_set_bin (xform, "decoder_config", tmpbuf, tmpbuflen);
+	xmms_xform_auxdata_set_bin (xform, "decoder_config", tmpbuf, tmpbuflen);
 	g_free (tmpbuf);
 
 	xmms_mp4_get_mediainfo (xform);
@@ -229,8 +229,8 @@ xmms_mp4_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len, xmms_error_t *
 		                                      data->sampleid);
 		data->sampleid++;
 
-		xmms_xform_privdata_set_int (xform, "frame_offset", offset);
-		xmms_xform_privdata_set_int (xform, "frame_duration", duration);
+		xmms_xform_auxdata_set_int (xform, "frame_offset", offset);
+		xmms_xform_auxdata_set_int (xform, "frame_duration", duration);
 
 		if (bytes_read > 0) {
 			g_string_append_len (data->outbuf, (gchar *) tmpbuf, tmpbuflen);

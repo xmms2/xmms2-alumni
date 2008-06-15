@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -41,8 +41,8 @@ typedef struct xmms_plugin_St {
  * Private functions
  */
 
-gboolean xmms_plugin_init (gchar *path);
-void xmms_plugin_shutdown ();
+gboolean xmms_plugin_init (const gchar *path);
+void xmms_plugin_shutdown (void);
 void xmms_plugin_destroy (xmms_plugin_t *plugin);
 
 typedef gboolean (*xmms_plugin_foreach_func_t)(xmms_plugin_t *, gpointer);

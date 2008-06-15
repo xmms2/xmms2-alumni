@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -26,6 +26,8 @@
 #include "xmmsc/xmmsc_coll.h"
 
 #define XMMS_OBJECT_MID 0x00455574
+
+G_BEGIN_DECLS
 
 struct xmms_object_St;
 typedef struct xmms_object_St xmms_object_t;
@@ -56,25 +58,28 @@ typedef struct {
 		gint32 int32;
 		guint32 uint32;
 		gchar *string;
-		GHashTable *dict;
+		GTree *dict;
+		GHashTable *hash;
 		GList *list;
 		xmmsc_coll_t *coll;
 		GString *bin;
 	} value;
 	xmms_object_cmd_arg_type_t type;
+	gint refcount;
 } xmms_object_cmd_value_t;
 
 xmms_object_cmd_value_t *xmms_object_cmd_value_str_new (const gchar *string);
 xmms_object_cmd_value_t *xmms_object_cmd_value_bin_new (GString *bin);
 xmms_object_cmd_value_t *xmms_object_cmd_value_uint_new (guint32 uint);
 xmms_object_cmd_value_t *xmms_object_cmd_value_int_new (gint32 i);
-xmms_object_cmd_value_t *xmms_object_cmd_value_dict_new (GHashTable *dict);
+xmms_object_cmd_value_t *xmms_object_cmd_value_dict_new (GTree *dict);
+xmms_object_cmd_value_t *xmms_object_cmd_value_hash_table_new (GHashTable *hash);
 xmms_object_cmd_value_t *xmms_object_cmd_value_list_new (GList *list);
 xmms_object_cmd_value_t *xmms_object_cmd_value_propdict_new (GList *list);
 xmms_object_cmd_value_t *xmms_object_cmd_value_coll_new (xmmsc_coll_t *coll);
 xmms_object_cmd_value_t *xmms_object_cmd_value_none_new (void);
-xmms_object_cmd_value_t *xmms_object_cmd_value_copy (xmms_object_cmd_value_t *val);
-void xmms_object_cmd_value_free (gpointer val);
+xmms_object_cmd_value_t *xmms_object_cmd_value_ref (xmms_object_cmd_value_t *val);
+void xmms_object_cmd_value_unref (xmms_object_cmd_value_t *val);
 
 #define XMMS_OBJECT_CMD_MAX_ARGS 6
 typedef struct {
@@ -177,5 +182,7 @@ xmms_object_t *__int_xmms_object_new (gint size, xmms_object_destroy_func_t dest
 } while (0)
 
 #define xmms_object_new(objtype,destroyfunc) (objtype *) __int_xmms_object_new (sizeof (objtype), destroyfunc)
+
+G_END_DECLS
 
 #endif /* __XMMS_OBJECT_H__ */

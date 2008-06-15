@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -150,7 +150,7 @@ namespace Xmms
 			{
 				return constructContents();
 			}
-			
+
 		/** @cond */
 		private:
 
@@ -188,7 +188,7 @@ namespace Xmms
 			}
 
 			List<int>& operator=( const List<int>& list )
-			{   
+			{
 				SuperList::operator=( list );
 				return *this;
 			}
@@ -197,7 +197,7 @@ namespace Xmms
 			{
 			}
 
-			const int operator*() const
+			int operator*() const
 			{
 				return constructContents();
 			}
@@ -216,7 +216,7 @@ namespace Xmms
 					// throw something
 				}
 				return temp;
-				
+
 			}
 
 	};
@@ -257,7 +257,7 @@ namespace Xmms
 			{
 			}
 
-			const unsigned int operator*() const
+			unsigned int operator*() const
 			{
 				return constructContents();
 			}
@@ -276,7 +276,7 @@ namespace Xmms
 					// throw something
 				}
 				return temp;
-				
+
 			}
 
 	};
@@ -322,7 +322,7 @@ namespace Xmms
 				return value_;
 			}
 
-			const std::string* const operator->() const
+			const std::string* operator->() const
 			{
 				constructContents();
 				return &value_;
@@ -339,12 +339,12 @@ namespace Xmms
 					throw out_of_range( "List out of range or empty list" );
 				}
 
-				char* temp = 0;
+				const char* temp = 0;
 				if( !xmmsc_result_get_string( result_, &temp ) ) {
 					// throw something
 				}
 				value_ = std::string( temp );
-				
+
 			}
 
 	};
@@ -393,7 +393,7 @@ namespace Xmms
 				return *value_;
 			}
 
-			const Dict* const operator->() const
+			const Dict* operator->() const
 			{
 				constructContents();
 				return value_.get();

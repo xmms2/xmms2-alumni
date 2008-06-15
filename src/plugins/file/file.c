@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -23,7 +23,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
-
 #include <string.h>
 
 /* not available everywhere. */
@@ -46,7 +45,7 @@ static gboolean xmms_file_init (xmms_xform_t *xform);
 static void xmms_file_destroy (xmms_xform_t *xform);
 static gint xmms_file_read (xmms_xform_t *xform, void *buffer, gint len, xmms_error_t *error);
 static gint64 xmms_file_seek (xmms_xform_t *xform, gint64 offset, xmms_xform_seek_mode_t whence, xmms_error_t *error);
-static gboolean xmms_file_browse (xmms_xform_t *xform, const gchar *url, xmms_error_t *error);
+gboolean xmms_file_browse (xmms_xform_t *xform, const gchar *url, xmms_error_t *error);
 static gboolean xmms_file_plugin_setup (xmms_xform_plugin_t *xform_plugin);
 
 /*
@@ -166,9 +165,7 @@ xmms_file_read (xmms_xform_t *xform, void *buffer, gint len, xmms_error_t *error
 
 	ret = read (data->fd, buffer, len);
 
-	if (ret == 0) {
-		xmms_error_set (error, XMMS_ERROR_EOS, "End of file reached");
-	} else if (ret == -1) {
+	if (ret == -1) {
 		xmms_log_error ("errno(%d) %s", errno, strerror (errno));
 		xmms_error_set (error, XMMS_ERROR_GENERIC, strerror (errno));
 	}
@@ -205,44 +202,4 @@ xmms_file_seek (xmms_xform_t *xform, gint64 offset, xmms_xform_seek_mode_t whenc
 		return -1;
 	}
 	return res;
-}
-
-static gboolean
-xmms_file_browse (xmms_xform_t *xform,
-                  const gchar *url,
-                  xmms_error_t *error)
-{
-	GDir *dir;
-	GError *err = NULL;
-	const gchar *tmp, *d;
-	struct stat st;
-
-	tmp = url + 7; /* maybe a bit unsafe */
-
-	dir = g_dir_open (tmp, 0, &err);
-	if (!dir) {
-		xmms_error_set (error, XMMS_ERROR_NOENT, err->message);
-		return FALSE;
-	}
-
-	while ((d = g_dir_read_name (dir))) {
-		guint32 flags = 0;
-		gchar *t = g_build_filename (tmp, d, NULL);
-
-		int ret = stat (t, &st);
-		g_free (t);
-
-		if (ret) {
-			continue;
-		}
-		if (S_ISDIR (st.st_mode)) {
-			flags |= XMMS_XFORM_BROWSE_FLAG_DIR;
-		}
-		xmms_xform_browse_add_entry (xform, d, flags);
-		xmms_xform_browse_add_entry_property_int (xform, "size", st.st_size);
-	}
-
-	g_dir_close (dir);
-
-	return TRUE;
 }

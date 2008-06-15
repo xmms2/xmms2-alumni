@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -50,8 +50,6 @@ static GList *xmms_plugin_list;
  */
 static gboolean xmms_plugin_setup (xmms_plugin_t *plugin, const xmms_plugin_desc_t *desc);
 static gboolean xmms_plugin_load (const xmms_plugin_desc_t *desc, GModule *module);
-static GList *xmms_plugin_list_get (xmms_plugin_type_t type);
-static void xmms_plugin_list_destroy (GList *list);
 static gboolean xmms_plugin_scan_directory (const gchar *dir);
 
 /*
@@ -78,7 +76,7 @@ xmms_config_property_t *
 xmms_plugin_config_lookup (xmms_plugin_t *plugin,
                            const gchar *key)
 {
-	gchar path[256];
+	gchar path[XMMS_PLUGIN_SHORTNAME_MAX_LEN + 256];
 	xmms_config_property_t *prop;
 
 	g_return_val_if_fail (plugin, NULL);
@@ -109,7 +107,7 @@ xmms_plugin_config_property_register (xmms_plugin_t *plugin,
                                       xmms_object_handler_t cb,
                                       gpointer userdata)
 {
-	gchar fullpath[256];
+	gchar fullpath[XMMS_PLUGIN_SHORTNAME_MAX_LEN + 256];
 	xmms_config_property_t *prop;
 
 	g_return_val_if_fail (plugin, NULL);
@@ -201,10 +199,12 @@ xmms_plugin_add_builtin_plugins (void)
 	extern const xmms_plugin_desc_t xmms_builtin_ringbuf;
 	extern const xmms_plugin_desc_t xmms_builtin_magic;
 	extern const xmms_plugin_desc_t xmms_builtin_converter;
+	extern const xmms_plugin_desc_t xmms_builtin_segment;
 
 	xmms_plugin_load (&xmms_builtin_ringbuf, NULL);
 	xmms_plugin_load (&xmms_builtin_magic, NULL);
 	xmms_plugin_load (&xmms_builtin_converter, NULL);
+	xmms_plugin_load (&xmms_builtin_segment, NULL);
 }
 
 
@@ -214,7 +214,7 @@ xmms_plugin_add_builtin_plugins (void)
  * @return Whether the initialisation was successful or not.
  */
 gboolean
-xmms_plugin_init (gchar *path)
+xmms_plugin_init (const gchar *path)
 {
 	if (!path)
 		path = PKGLIBDIR;
@@ -232,7 +232,6 @@ xmms_plugin_init (gchar *path)
 void
 xmms_plugin_shutdown ()
 {
-	GList *n;
 #ifdef HAVE_VALGRIND
 	/* print out a leak summary at this point, because the final leak
 	 * summary won't include proper backtraces of leaks found in
@@ -245,8 +244,8 @@ xmms_plugin_shutdown ()
 		;
 #endif
 
-	for (n = xmms_plugin_list; n; n = g_list_next (n)) {
-		xmms_plugin_t *p = n->data;
+	while (xmms_plugin_list) {
+		xmms_plugin_t *p = xmms_plugin_list->data;
 
 		/* if this plugin's refcount is > 1, then there's a bug
 		 * in one of the other subsystems
@@ -257,6 +256,9 @@ xmms_plugin_shutdown ()
 		}
 
 		xmms_object_unref (p);
+
+		xmms_plugin_list = g_list_delete_link (xmms_plugin_list,
+		                                       xmms_plugin_list);
 	}
 }
 
@@ -275,12 +277,6 @@ xmms_plugin_load (const xmms_plugin_desc_t *desc, GModule *module)
 		allocer = xmms_output_plugin_new;
 		verifier = xmms_output_plugin_verify;
 		break;
-/*
-	case XMMS_PLUGIN_TYPE_PLAYLIST:
-		expected_ver = XMMS_PLAYLIST_API_VERSION;
-		initer = xmms_playlist_plugin_init;
-		break;
-*/
 	case XMMS_PLUGIN_TYPE_XFORM:
 		expected_ver = XMMS_XFORM_API_VERSION;
 		allocer = xmms_xform_plugin_new;
@@ -376,12 +372,13 @@ xmms_plugin_scan_directory (const gchar *dir)
 			continue;
 		}
 
-		g_free (path);
-
 		if (!g_module_symbol (module, "XMMS_PLUGIN_DESC", &sym)) {
+			xmms_log_error ("Failed to find plugin header in %s", path);
 			g_module_close (module);
+			g_free (path);
 			continue;
 		}
+		g_free (path);
 
 		if (!xmms_plugin_load ((const xmms_plugin_desc_t *) sym, module)) {
 			g_module_close (module);
@@ -394,35 +391,37 @@ xmms_plugin_scan_directory (const gchar *dir)
 	return TRUE;
 }
 
+static gboolean
+xmms_plugin_client_list_foreach (xmms_plugin_t *plugin, gpointer data)
+{
+	GTree *dict;
+	GList **list = data;
+
+	dict = g_tree_new_full ((GCompareDataFunc) strcmp, NULL,
+	                        NULL,
+	                        (GDestroyNotify)xmms_object_cmd_value_unref);
+
+	g_tree_insert (dict, (gpointer) "name",
+	               xmms_object_cmd_value_str_new (xmms_plugin_name_get (plugin)));
+	g_tree_insert (dict, (gpointer) "shortname",
+	               xmms_object_cmd_value_str_new (xmms_plugin_shortname_get (plugin)));
+	g_tree_insert (dict, (gpointer) "version",
+	               xmms_object_cmd_value_str_new (xmms_plugin_version_get (plugin)));
+	g_tree_insert (dict, (gpointer) "description",
+	              xmms_object_cmd_value_str_new (xmms_plugin_description_get (plugin)));
+	g_tree_insert (dict, (gpointer) "type",
+	               xmms_object_cmd_value_uint_new (xmms_plugin_type_get (plugin)));
+
+	*list = g_list_prepend (*list, xmms_object_cmd_value_dict_new (dict));
+
+	return TRUE;
+}
+
 GList *
 xmms_plugin_client_list (xmms_object_t *main, guint32 type, xmms_error_t *err)
 {
-	GList *list = NULL, *node, *l;
-
-	l = xmms_plugin_list_get (type);
-
-	for (node = l; node; node = g_list_next (node)) {
-		GHashTable *hash;
-		xmms_plugin_t *plugin = node->data;
-
-		hash = g_hash_table_new (g_str_hash, g_str_equal);
-		g_hash_table_insert (hash, "name",
-		                     xmms_object_cmd_value_str_new (xmms_plugin_name_get (plugin)));
-		g_hash_table_insert (hash, "shortname",
-		                     xmms_object_cmd_value_str_new (xmms_plugin_shortname_get (plugin)));
-		g_hash_table_insert (hash, "version",
-		                     xmms_object_cmd_value_str_new (xmms_plugin_version_get (plugin)));
-		g_hash_table_insert (hash, "description",
-		                     xmms_object_cmd_value_str_new (xmms_plugin_description_get (plugin)));
-		g_hash_table_insert (hash, "type",
-		                     xmms_object_cmd_value_uint_new (xmms_plugin_type_get (plugin)));
-
-		list = g_list_prepend (list, xmms_object_cmd_value_dict_new (hash));
-
-	}
-
-	xmms_plugin_list_destroy (l);
-
+	GList *list = NULL;
+	xmms_plugin_foreach (type, xmms_plugin_client_list_foreach, &list);
 	return list;
 }
 
@@ -447,40 +446,22 @@ xmms_plugin_foreach (xmms_plugin_type_t type, xmms_plugin_foreach_func_t func, g
 	}
 }
 
-/**
- * @internal Look for loaded plugins matching a particular type
- * @param[in] type The plugin type to look for. (#xmms_plugin_type_t)
- * @return List of loaded plugins matching type
- */
-static GList *
-xmms_plugin_list_get (xmms_plugin_type_t type)
+typedef struct {
+	const gchar *name;
+	xmms_plugin_t *plugin;
+} xmms_plugin_find_foreach_data_t;
+
+static gboolean
+xmms_plugin_find_foreach (xmms_plugin_t *plugin, gpointer udata)
 {
-	GList *list = NULL, *node;
+	xmms_plugin_find_foreach_data_t *data = udata;
 
-	for (node = xmms_plugin_list; node; node = g_list_next (node)) {
-		xmms_plugin_t *plugin = node->data;
-
-		if (plugin->type == type || type == XMMS_PLUGIN_TYPE_ALL) {
-			xmms_object_ref (plugin);
-			list = g_list_prepend (list, plugin);
-		}
+	if (!g_ascii_strcasecmp (plugin->shortname, data->name)) {
+		xmms_object_ref (plugin);
+		data->plugin = plugin;
+		return FALSE;
 	}
-
-	return list;
-}
-
-/**
- * @internal Destroy a list of plugins. Note: this is not used to destroy the
- * global plugin list.
- * @param[in] list The plugin list to destroy
- */
-static void
-xmms_plugin_list_destroy (GList *list)
-{
-	while (list) {
-		xmms_object_unref (list->data);
-		list = g_list_delete_link (list, list);
-	}
+	return TRUE;
 }
 
 /**
@@ -492,24 +473,9 @@ xmms_plugin_list_destroy (GList *list)
 xmms_plugin_t *
 xmms_plugin_find (xmms_plugin_type_t type, const gchar *name)
 {
-	xmms_plugin_t *ret = NULL;
-	GList *l;
-
-	g_return_val_if_fail (name, NULL);
-
-	for (l = xmms_plugin_list; l; l = l->next) {
-		xmms_plugin_t *plugin = l->data;
-
-		if (plugin->type == type &&
-		    !g_strcasecmp (plugin->shortname, name)) {
-			ret = plugin;
-			xmms_object_ref (ret);
-
-			break;
-		}
-	}
-
-	return ret;
+	xmms_plugin_find_foreach_data_t data = {name, NULL};
+	xmms_plugin_foreach (type, xmms_plugin_find_foreach, &data);
+	return data.plugin;
 }
 
 

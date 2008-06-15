@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -68,12 +68,16 @@ static int xmmsc_coll_idlist_resize (xmmsc_coll_t *coll, size_t newsize);
  * Increases the references for the #xmmsc_coll_t
  *
  * @param coll the collection to reference.
+ * @return coll
  */
-void
+xmmsc_coll_t *
 xmmsc_coll_ref (xmmsc_coll_t *coll)
 {
-	x_return_if_fail (coll);
+	x_return_val_if_fail (coll, NULL);
+
 	coll->ref++;
+
+	return coll;
 }
 
 /**
@@ -306,7 +310,7 @@ xmmsc_coll_idlist_move (xmmsc_coll_t *coll, unsigned int index, unsigned int new
 
 	x_return_val_if_fail (coll, 0);
 
-	if ((index >= coll->idlist_size) || (newindex >= coll->idlist_size)) {
+	if ((index >= coll->idlist_size - 1) || (newindex >= coll->idlist_size - 1)) {
 		return 0;
 	}
 
@@ -339,6 +343,10 @@ xmmsc_coll_idlist_remove (xmmsc_coll_t *coll, unsigned int index)
 	size_t half_size;
 
 	x_return_val_if_fail (coll, 0);
+
+	if (index >= coll->idlist_size - 1) {
+		return 0;
+	}
 
 	coll->idlist_size--;
 	for (i = index; i < coll->idlist_size; i++) {

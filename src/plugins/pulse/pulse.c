@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -38,12 +38,19 @@ static gboolean xmms_pulse_plugin_setup (xmms_output_plugin_t *plugin);
 static void xmms_pulse_flush (xmms_output_t *output);
 static void xmms_pulse_close (xmms_output_t *output);
 static void xmms_pulse_write (xmms_output_t *output, gpointer buffer, gint len,
-			      xmms_error_t *err);
+                              xmms_error_t *err);
 static gboolean xmms_pulse_open (xmms_output_t *output);
 static gboolean xmms_pulse_new (xmms_output_t *output);
 static void xmms_pulse_destroy (xmms_output_t *output);
 static gboolean xmms_pulse_format_set (xmms_output_t *output,
-				       const xmms_stream_type_t *format);
+                                       const xmms_stream_type_t *format);
+static gboolean xmms_pulse_volume_set (xmms_output_t *output,
+                                       const gchar *channel,
+                                       guint volume);
+static gboolean xmms_pulse_volume_get (xmms_output_t *output,
+                                       const gchar **names,
+                                       guint *values,
+                                       guint *num_channels);
 
 
 /*
@@ -67,6 +74,8 @@ xmms_pulse_plugin_setup (xmms_output_plugin_t *plugin)
 	methods.write = xmms_pulse_write;
 	methods.flush = xmms_pulse_flush;
 	methods.format_set = xmms_pulse_format_set;
+	methods.volume_set = xmms_pulse_volume_set;
+	methods.volume_get = xmms_pulse_volume_get;
 
 	xmms_output_plugin_methods_set (plugin, &methods);
 
@@ -165,8 +174,10 @@ xmms_pulse_close (xmms_output_t *output)
 	data = xmms_output_private_data_get (output);
 	g_return_if_fail (data);
 
-	if (data->pulse)
+	if (data->pulse) {
 		xmms_pulse_backend_free (data->pulse);
+		data->pulse = NULL;
+	}
 }
 
 
@@ -184,12 +195,12 @@ xmms_pulse_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 	data = xmms_output_private_data_get (output);
 	g_return_val_if_fail (data, FALSE);
 
-	xmms_format = xmms_stream_type_get_int (
-		format, XMMS_STREAM_TYPE_FMT_FORMAT);
-	channels = xmms_stream_type_get_int (
-		format, XMMS_STREAM_TYPE_FMT_CHANNELS);
-	samplerate = xmms_stream_type_get_int (
-		format, XMMS_STREAM_TYPE_FMT_SAMPLERATE);
+	xmms_format = xmms_stream_type_get_int (format,
+	                                        XMMS_STREAM_TYPE_FMT_FORMAT);
+	channels = xmms_stream_type_get_int (format,
+	                                     XMMS_STREAM_TYPE_FMT_CHANNELS);
+	samplerate = xmms_stream_type_get_int (format,
+	                                       XMMS_STREAM_TYPE_FMT_SAMPLERATE);
 
 	val = xmms_output_config_lookup (output, "sink");
 	sink = xmms_config_property_get_string (val);
@@ -202,7 +213,7 @@ xmms_pulse_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 		name = XMMS_PULSE_DEFAULT_NAME;
 
 	if (!xmms_pulse_backend_set_stream (data->pulse, name, sink, xmms_format,
-                                            samplerate, channels, NULL))
+	                                    samplerate, channels, NULL))
 		return FALSE;
 
 	return TRUE;
@@ -219,13 +230,59 @@ xmms_pulse_flush (xmms_output_t *output)
 	g_return_if_fail (data);
 
 	if (data->pulse)
-		xmms_pulse_backend_flush(data->pulse, NULL);
+		xmms_pulse_backend_flush (data->pulse, NULL);
+}
+
+
+static gboolean
+xmms_pulse_volume_set (xmms_output_t *output,
+                      const gchar *channel_name, guint volume)
+{
+	xmms_pulse_data_t *data;
+
+	g_return_val_if_fail (output, FALSE);
+	g_return_val_if_fail (channel_name, FALSE);
+
+	data = xmms_output_private_data_get (output);
+	g_return_val_if_fail (data, FALSE);
+
+	g_return_val_if_fail (volume <= 100, FALSE);
+
+	return xmms_pulse_backend_volume_set (data->pulse, volume);
+}
+
+
+static gboolean
+xmms_pulse_volume_get (xmms_output_t *output, const gchar **names,
+                       guint *values, guint *num_channels)
+{
+	xmms_pulse_data_t *data;
+
+	g_return_val_if_fail (output, FALSE);
+
+	data = xmms_output_private_data_get (output);
+	g_return_val_if_fail (data, FALSE);
+
+	g_return_val_if_fail (num_channels, FALSE);
+
+	if (!*num_channels) {
+		*num_channels = 1;
+		return TRUE;
+	}
+
+	g_return_val_if_fail (*num_channels == 1, FALSE);
+	g_return_val_if_fail (names, FALSE);
+	g_return_val_if_fail (values, FALSE);
+
+	names[0] = "master";
+
+	return xmms_pulse_backend_volume_get (data->pulse, &values[0]);
 }
 
 
 static void
 xmms_pulse_write (xmms_output_t *output, gpointer buffer, gint len,
-		  xmms_error_t *err)
+                  xmms_error_t *err)
 {
 	xmms_pulse_data_t *data;
 

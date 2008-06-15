@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -17,6 +17,12 @@
 #ifndef __XMMS_UTIL_H__
 #define __XMMS_UTIL_H__
 
+#include <glib.h>
+
+G_BEGIN_DECLS
+
 gchar *xmms_build_playlist_url (const gchar *, const gchar *);
+
+G_END_DECLS
 
 #endif

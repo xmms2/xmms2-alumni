@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -29,11 +29,12 @@
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsc_errorcodes.h"
 #include "xmmsc/xmmsc_stdint.h"
+#include "xmmsc/xmmsc_strlist.h"
 
 static void xmmsc_result_cleanup_data (xmmsc_result_t *res);
 static void free_dict_list (x_list_t *list);
 static x_list_t *xmmsc_deserialize_dict (xmms_ipc_msg_t *msg);
-static int source_match_pattern (char* source, char* pattern);
+static int source_match_pattern (const char *source, const char *pattern);
 
 typedef struct xmmsc_result_value_bin_St {
 	unsigned char *data;
@@ -95,10 +96,23 @@ struct xmmsc_result_St {
 	x_list_t *list;
 	x_list_t *current;
 
-	x_list_t *source_pref;
+	/* the list of sources from most to least prefered.
+	 * if this is NULL, then default_source_pref will be used instead.
+	 */
+	char **source_pref;
 
 	/* things we want to free when the result is freed*/
 	x_list_t *extra_free;
+};
+
+static const char *default_source_pref[] = {
+	"server",
+	"client/*",
+	"plugin/id3v2",
+	"plugin/segment",
+	"plugin/*",
+	"*",
+	NULL
 };
 
 /**
@@ -151,12 +165,17 @@ struct xmmsc_result_St {
 
 /**
  * References the #xmmsc_result_t
+ *
+ * @param result the result to reference.
+ * @return result
  */
-void
+xmmsc_result_t *
 xmmsc_result_ref (xmmsc_result_t *res)
 {
-	x_return_if_fail (res);
+	x_return_val_if_fail (res, NULL);
 	res->ref++;
+
+	return res;
 }
 
 /**
@@ -196,10 +215,8 @@ xmmsc_result_free (xmmsc_result_t *res)
 	x_list_free (res->udata_list);
 	x_list_free (res->udata_free_func_list);
 
-	while (res->source_pref) {
-		free (res->source_pref->data);
-		res->source_pref = x_list_delete_link (res->source_pref,
-		                                       res->source_pref);
+	if (res->source_pref) {
+		xmms_strlist_destroy (res->source_pref);
 	}
 
 	while (res->extra_free) {
@@ -621,55 +638,32 @@ xmmsc_result_wait (xmmsc_result_t *res)
 void
 xmmsc_result_source_preference_set (xmmsc_result_t *res, const char **preference)
 {
-	int i = 0;
 	x_return_if_fail (res);
 	x_return_if_fail (preference);
 
-	while (res->source_pref) {
-		free (res->source_pref->data);
-		res->source_pref = x_list_delete_link (res->source_pref,
-		                                       res->source_pref);
+	if (res->source_pref) {
+		xmms_strlist_destroy (res->source_pref);
 	}
 
-	for (i = 0; preference[i]; i++) {
-		res->source_pref = x_list_append (res->source_pref, strdup (preference[i]));
-	}
+	res->source_pref = xmms_strlist_copy ((char **) preference);
 }
 
 /**
  * Get sources to be used when fetching stuff from a propdict.
  * @param res a #xmmsc_result_t that you got from a command dispatcher.
- * @param preference a list of the current sources from most to least
- * preferrable. This list is owned by the result and will be freed with the
- * result.
+ * @returns The current sources from most to least preferable, as a
+ * NULL-terminated array of immutable strings.
+ * This array is owned by the result and will be freed with it.
  */
-char **
+const char **
 xmmsc_result_source_preference_get (xmmsc_result_t *res)
 {
-	int i = 0;
-	char **preference = NULL;
-	x_list_t *list;
 	x_return_val_if_fail (res, NULL);
 
-	list = res->source_pref;
-	preference = malloc (x_list_length (list) * sizeof (char *) + 1);
-	if (!preference) {
-		x_oom ();
-		return NULL;
-	}
-
-	for (i = 0; list; list = list->next) {
-		preference[i] = strdup (list->data);
-		if (!preference[i]) {
-			x_oom ();
-			return NULL;
-		}
-		x_list_append (res->extra_free, preference[i++]);
-	}
-	preference[i] = NULL;
-	x_list_append (res->extra_free, preference);
-
-	return preference;
+	if (res->source_pref)
+		return (const char **) res->source_pref;
+	else
+		return default_source_pref;
 }
 
 /**
@@ -703,7 +697,7 @@ xmmsc_result_get_type (xmmsc_result_t *res)
 int
 xmmsc_result_get_int (xmmsc_result_t *res, int32_t *r)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -726,7 +720,7 @@ xmmsc_result_get_int (xmmsc_result_t *res, int32_t *r)
 int
 xmmsc_result_get_uint (xmmsc_result_t *res, uint32_t *r)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -745,9 +739,9 @@ xmmsc_result_get_uint (xmmsc_result_t *res, uint32_t *r)
  * @return 1 upon success otherwise 0
  */
 int
-xmmsc_result_get_string (xmmsc_result_t *res, char **r)
+xmmsc_result_get_string (xmmsc_result_t *res, const char **r)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -769,7 +763,7 @@ xmmsc_result_get_string (xmmsc_result_t *res, char **r)
 int
 xmmsc_result_get_collection (xmmsc_result_t *res, xmmsc_coll_t **c)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -792,7 +786,7 @@ xmmsc_result_get_collection (xmmsc_result_t *res, xmmsc_coll_t **c)
 int
 xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -806,53 +800,70 @@ xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen
 	return 1;
 }
 
-
-
 static xmmsc_result_value_t *
-xmmsc_result_dict_lookup (xmmsc_result_t *res, const char *key)
+plaindict_lookup (xmmsc_result_t *res, const char *key)
 {
 	x_list_t *n;
 
-	if (res->datatype == XMMS_OBJECT_CMD_ARG_DICT) {
-		for (n = res->data.dict; n; n = x_list_next (n)) {
-			const char *k = n->data;
-			if (strcasecmp (k, key) == 0 && n->next) {
-				/* found right key, return value */
-				return (xmmsc_result_value_t*) n->next->data;
-			} else {
-				/* skip data part of this entry */
-				n = x_list_next (n);
-			}
+	for (n = res->data.dict; n; n = x_list_next (n)) {
+		const char *k = n->data;
+		if (strcasecmp (k, key) == 0 && n->next) {
+			/* found right key, return value */
+			return (xmmsc_result_value_t*) n->next->data;
+		} else {
+			/* skip data part of this entry */
+			n = x_list_next (n);
 		}
-	} else if (res->datatype == XMMS_OBJECT_CMD_ARG_PROPDICT) {
-		x_list_t *s;
+	}
 
-		for (s = res->source_pref; s; s = x_list_next (s)) {
-			char *source = s->data;
+	return NULL;
+}
 
-			for (n = res->list; n; n = x_list_next (n)) {
-				xmmsc_result_value_t *k = n->data;
+static xmmsc_result_value_t *
+propdict_lookup (xmmsc_result_t *res, const char *key)
+{
+	x_list_t *n;
+	const char **sources, **ptr;
 
-				if (source_match_pattern (k->value.string, source) &&
-				    n->next && n->next->next) {
+	sources = res->source_pref ?
+		(const char **) res->source_pref : default_source_pref;
 
-					n = x_list_next (n);
-					k = n->data;
+	for (ptr = sources; *ptr; ptr++) {
+		const char *source = *ptr;
 
-					if (strcasecmp (k->value.string, key) == 0) {
-						return (xmmsc_result_value_t*) n->next->data;
-					} else {
-						n = x_list_next (n);
-					}
+		for (n = res->list; n; n = x_list_next (n)) {
+			xmmsc_result_value_t *k = n->data;
 
+			if (source_match_pattern (k->value.string, source) &&
+			    n->next && n->next->next) {
+
+				n = x_list_next (n);
+				k = n->data;
+
+				if (strcasecmp (k->value.string, key) == 0) {
+					return (xmmsc_result_value_t*) n->next->data;
 				} else {
 					n = x_list_next (n);
-					n = x_list_next (n);
 				}
+
+			} else {
+				n = x_list_next (n);
+				n = x_list_next (n);
 			}
 		}
 	}
 
+	return NULL;
+}
+
+static xmmsc_result_value_t *
+xmmsc_result_dict_lookup (xmmsc_result_t *res, const char *key)
+{
+	if (res->datatype == XMMS_OBJECT_CMD_ARG_DICT) {
+		return plaindict_lookup (res, key);
+	} else if (res->datatype == XMMS_OBJECT_CMD_ARG_PROPDICT) {
+		return propdict_lookup (res, key);
+	}
 
 	return NULL;
 }
@@ -873,7 +884,7 @@ int
 xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *r)
 {
 	xmmsc_result_value_t *val;
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		*r = -1;
 		return 0;
 	}
@@ -908,10 +919,11 @@ xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *
  *
  */
 int
-xmmsc_result_get_dict_entry_uint (xmmsc_result_t *res, const char *key, uint32_t *r)
+xmmsc_result_get_dict_entry_uint (xmmsc_result_t *res, const char *key,
+                                  uint32_t *r)
 {
 	xmmsc_result_value_t *val;
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		*r = -1;
 		return 0;
 	}
@@ -947,10 +959,11 @@ xmmsc_result_get_dict_entry_uint (xmmsc_result_t *res, const char *key, uint32_t
  *
  */
 int
-xmmsc_result_get_dict_entry_string (xmmsc_result_t *res, const char *key, char **r)
+xmmsc_result_get_dict_entry_string (xmmsc_result_t *res,
+                                    const char *key, const char **r)
 {
 	xmmsc_result_value_t *val;
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		*r = NULL;
 		return 0;
 	}
@@ -990,7 +1003,7 @@ xmmsc_result_get_dict_entry_collection (xmmsc_result_t *res, const char *key,
                                         xmmsc_coll_t **c)
 {
 	xmmsc_result_value_t *val;
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		*c = NULL;
 		return 0;
 	}
@@ -1024,7 +1037,7 @@ xmmsc_result_value_type_t
 xmmsc_result_get_dict_entry_type (xmmsc_result_t *res, const char *key)
 {
 	xmmsc_result_value_t *val;
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return XMMSC_RESULT_VALUE_TYPE_NONE;
 	}
 
@@ -1048,7 +1061,7 @@ xmmsc_result_propdict_foreach (xmmsc_result_t *res,
 {
 	x_list_t *n;
 
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -1088,11 +1101,12 @@ xmmsc_result_propdict_foreach (xmmsc_result_t *res,
  *
  */
 int
-xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func, void *user_data)
+xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func,
+                           void *user_data)
 {
 	x_list_t *n;
 
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -1124,7 +1138,7 @@ xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func, vo
 int
 xmmsc_result_is_list (xmmsc_result_t *res)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -1143,7 +1157,7 @@ xmmsc_result_is_list (xmmsc_result_t *res)
 int
 xmmsc_result_list_valid (xmmsc_result_t *res)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -1167,7 +1181,7 @@ xmmsc_result_list_valid (xmmsc_result_t *res)
 int
 xmmsc_result_list_next (xmmsc_result_t *res)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -1202,7 +1216,7 @@ xmmsc_result_list_next (xmmsc_result_t *res)
 int
 xmmsc_result_list_first (xmmsc_result_t *res)
 {
-	if (!res || res->error != XMMS_ERROR_NONE) {
+	if (xmmsc_result_iserror (res)) {
 		return 0;
 	}
 
@@ -1315,6 +1329,10 @@ xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr)
 {
 	res->error_str = strdup (errstr);
 	res->error = 1;
+
+	if (!res->error_str) {
+		x_oom ();
+	}
 }
 
 void
@@ -1385,16 +1403,10 @@ xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type,
 		return NULL;
 	}
 
-	res->c = c;
-	xmmsc_ref (c);
+	res->c = xmmsc_ref (c);
 
 	res->type = type;
 	res->cookie = cookie;
-	res->source_pref = x_list_prepend (NULL, strdup ("*"));
-	res->source_pref = x_list_prepend (res->source_pref, strdup ("plugin/*"));
-	res->source_pref = x_list_prepend (res->source_pref, strdup ("plugin/id3v2"));
-	res->source_pref = x_list_prepend (res->source_pref, strdup ("client/*"));
-	res->source_pref = x_list_prepend (res->source_pref, strdup ("server"));
 
 	/* user must give this back */
 	xmmsc_result_ref (res);
@@ -1472,7 +1484,6 @@ static x_list_t *
 xmmsc_deserialize_dict (xmms_ipc_msg_t *msg)
 {
 	unsigned int entries;
-	unsigned int i;
 	unsigned int len;
 	x_list_t *n = NULL;
 	char *key;
@@ -1481,7 +1492,7 @@ xmmsc_deserialize_dict (xmms_ipc_msg_t *msg)
 		return NULL;
 	}
 
-	for (i = 1; i <= entries; i++) {
+	while (entries--) {
 		xmmsc_result_value_t *val;
 
 		if (!xmms_ipc_msg_get_string_alloc (msg, &key, &len)) {
@@ -1494,16 +1505,16 @@ xmmsc_deserialize_dict (xmms_ipc_msg_t *msg)
 			goto err;
 		}
 
-		n = x_list_append (n, key);
-		n = x_list_append (n, val);
+		n = x_list_prepend (n, key);
+		n = x_list_prepend (n, val);
 	}
 
-	return n;
+	return x_list_reverse (n);
 
 err:
 	x_internal_error ("Message from server did not parse correctly!");
 
-	free_dict_list (n);
+	free_dict_list (x_list_reverse (n));
 
 	return NULL;
 }
@@ -1526,7 +1537,7 @@ free_dict_list (x_list_t *list)
 }
 
 static int
-source_match_pattern (char* source, char* pattern)
+source_match_pattern (const char *source, const char *pattern)
 {
 	int match = 0;
 	int lpos = strlen (pattern) - 1;

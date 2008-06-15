@@ -57,6 +57,10 @@ E: eleusis@xmms.org
 W: http://eleusis.f2o.org/
 D: Truckloads of documentation. Various fixes.
 
+N: Hugh Davenport
+E: hugh@davenport.ath.cx
+D: Alsa plugin fix.
+
 N: Dismantled / Gary Zon
 E: core@dismantled.com
 D: Supplied us with a great "intro" clip:
@@ -67,6 +71,10 @@ N: Franz Endstrasser
 E: franz.endstrasser@gmail.com
 D: Java bindings
 
+N: Thomas Frauendorfer
+E: Thomas.Frauendorfer@googlemail.com
+D: Small change to C++ bindings.
+
 N: Manuel Fuhr
 E: zod@knid.net
 D: lastfm
@@ -74,6 +82,10 @@ D: lastfm
 N: G. Gallino
 E: ggallino@gmail.com
 D: Equaliser fixes
+
+N: Paul Giblock
+E: drfaygo@gmail.com
+D: additional id3-tags
 
 N: Dries Harnie
 E: dries@harnie.be
@@ -103,6 +115,10 @@ N: Karsten Krispin
 E: karsten@krispin.de
 D: Multiple socket support
 
+N: Alan LaMielle
+E: alan.lamielle@gmail.com
+D: 'playlist active' command in cli client.
+
 N: Tuure Laurinolli
 E: tuure@laurinolli.net
 D: Windows portability.
@@ -129,6 +145,10 @@ D: Supplied us with a great "intro" clip.
 D: Lament for Lost Dreams clip by mind.in.a.box
 D: Copyright (c) by Stefan Poiss and Markus Hadwiger
 
+N: Dave Moore
+E: wrex006@gmail.com
+D: missing method in C++ bindings.
+
 N: Chris Morgan
 E: cmorgan@alum.wpi.edu
 D: Jack output plugin.
@@ -138,7 +158,8 @@ E: thomas@xmms.org
 D: Bugfixes. XMMS1 expertise.
 
 N: Sebastian Noack
-E: sebastian.noack@artaculous.com
+E: sebastian.noack@gmail.com
+P: 1024D/89789A18 5872 C79A D65E 3417 B365  C39B 85E7 F6EC 8978 9A18
 D: Better track number support in ASF.
 
 N: Vegard Nossum
@@ -152,6 +173,14 @@ D: HP-UX portability
 N: Heikki Orsila
 E: heikki.orsila@iki.fi
 D: Cleanups.
+
+N: Mohsin Patel
+E: mohsin.patel@gmail.com
+D: airplay output plugin (Summer of code 2006)
+
+N: Lucas Adam M Paul
+E: reilithion@gmail.com
+D: GME plugin
 
 N: Daniel Pearson
 E: daniel@nanoo.org
@@ -192,7 +221,7 @@ D: Various fixes
 N: Tobias Rundström
 E: tru@xmms.org
 W: http://tobi.nu/
-P: 1024D/EA0C5340 E203 6001 264C 71CE DBFD  7A95 102A 11D0 EA0C 5340
+P: 1024D/9B1FA0CB 527E C4EC D205 88ED FC07  B744 315F F685 9B1F A0CB
 D: Stuff all over the map. Release manager.
 
 N: Martin Salzer
@@ -202,8 +231,8 @@ D: sorting fix
 N: Tilman Sauerbeck
 E: tilman@code-monkey.de
 E: tilman@xmms.org
-W: http://www.code-monkey.de/
-P: 1024D/CAD6DB0F 8606 96BC ABE4 FD1B 8A7A  959B DBBB 8B8A CAD6 DB0F
+W: http://code-monkey.de/
+P: 1024D/5E587462 E3B5 FB50 70F3 376F 53C9  9957 EADC 791F 5E58 7462
 D: Ruby bindings. Many other things all over the place.
 
 N: Georg Schild
@@ -256,7 +285,7 @@ N: Juho Vähä-Herttua
 E: juhovh@iki.fi
 W: http://juho.vaha-herttua.fi/
 P: 1024D/CB130DCE 1C70 BF1D AEF7 619C C0A6  60E7 563D FCA3 CB13 0DCE
-D: Faad, wma, equalizer, vocoder, ao. Various fixes.
+D: Mp4, faad, asf, avcodec, equalizer, vocoder, ao, karaoke, etc.
 
 N: Georg Wacker
 E: gpsw@gmx.de
@@ -272,10 +301,25 @@ N: Michael Walle
 E: michael@walle.cc
 D: playlists_list stuff
 
+N: Bert Wesarg
+E: Bert.Wesarg@googlemail.com
+D: Buildsystem fixes
+
 N: Rainer Wittmaack
 E: ningo@gmx.net
 D: sun audio fixes
 
+N: Sebastian Woetzel
+E: wose@zuendmasse.de
+D: Python bindings improvements
+
+N: Deng Xiyue
+E: manphiz@gmail.com
+D: segment plugin.
+
 N: Ma Xuan
 E: supermmx@gmail.com
 D: mac plugin.
+
+# Unless you really are after "Ma Xuan" when sorted alphabetically
+# don't add your name here.

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -19,6 +19,10 @@
 
 #include <glib.h>
 
+G_BEGIN_DECLS
+
 gsize xmms_strnlen (const gchar *str, gsize max_len);
+
+G_END_DECLS
 
 #endif

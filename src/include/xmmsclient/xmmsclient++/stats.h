@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -32,8 +32,6 @@ namespace Xmms
 		typedef xmms_plugin_type_t Type;
 		static const Type ALL      = XMMS_PLUGIN_TYPE_ALL;
 		static const Type OUTPUT   = XMMS_PLUGIN_TYPE_OUTPUT;
-		static const Type PLAYLIST = XMMS_PLUGIN_TYPE_PLAYLIST;
-		static const Type EFFECT   = XMMS_PLUGIN_TYPE_EFFECT;
 		static const Type XFORM    = XMMS_PLUGIN_TYPE_XFORM;
 	}
 
@@ -99,18 +97,6 @@ namespace Xmms
 			 */
 			DictListResult
 			pluginList(Plugins::Type type = Plugins::ALL) const;
-
-			/** Request the visualisation data signal.
-			 *
-			 *  @param slot Function pointer to a function taking
-			 *              const List<unsigned int>& and returning a bool.
-			 *  @param error Function pointer to an error callback
-			 *               function. (<b>optional</b>)
-			 *
-			 *  @throw connection_error If the client isn't connected.
-			 */
-			UintListSignal
-			signalVisualisationData() const;
 
 			/** Request status for the mediainfo reader.
 			 *

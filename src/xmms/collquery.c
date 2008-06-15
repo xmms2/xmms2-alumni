@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -58,6 +58,7 @@ typedef struct {
 
 
 static coll_query_t* init_query (coll_query_params_t *params);
+static void add_fetch_group_aliases (coll_query_t *query, coll_query_params_t *params);
 static void destroy_query (coll_query_t* query);
 static GString* xmms_collection_gen_query (coll_query_t *query);
 static void xmms_collection_append_to_query (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, coll_query_t *query);
@@ -76,6 +77,7 @@ static void query_string_append_alias (GString *qstring, coll_query_alias_t *ali
 static gchar *canonical_field_name (gchar *field);
 static gboolean operator_is_allmedia (xmmsc_coll_t *op);
 static coll_query_alias_t *query_make_alias (coll_query_t *query, const gchar *field, gboolean optional);
+static coll_query_alias_t *query_get_alias (coll_query_t *query, const gchar *field);
 
 
 
@@ -97,8 +99,9 @@ xmms_collection_get_query (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 	coll_query_params_t params = { limit_start, limit_len, order, fetch, group };
 
 	query = init_query (&params);
-
 	xmms_collection_append_to_query (dag, coll, query);
+	add_fetch_group_aliases (query, &params);
+
 	qstring = xmms_collection_gen_query (query);
 
 	destroy_query (query);
@@ -111,7 +114,6 @@ xmms_collection_get_query (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 static coll_query_t*
 init_query (coll_query_params_t *params)
 {
-	GList *n;
 	coll_query_t *query;
 
 	query = g_new (coll_query_t, 1);
@@ -127,21 +129,21 @@ init_query (coll_query_params_t *params)
 	query->conditions = g_string_new (NULL);
 	query->params = params;
 
-	/* Prepare aliases for the order/group/fetch fields */
-	for (n = query->params->order; n; n = n->next) {
-		gchar *field = canonical_field_name (n->data);
-		if (field != NULL) {
-			query_make_alias (query, field, TRUE);
-		}
-	}
+	return query;
+}
+
+static void
+add_fetch_group_aliases (coll_query_t *query, coll_query_params_t *params)
+{
+	GList *n;
+
+	/* Prepare aliases for the group/fetch fields */
 	for (n = query->params->group; n; n = n->next) {
 		query_make_alias (query, n->data, TRUE);
 	}
 	for (n = query->params->fetch; n; n = n->next) {
 		query_make_alias (query, n->data, TRUE);
 	}
-
-	return query;
 }
 
 /* Free a coll_query_t object */
@@ -317,6 +319,7 @@ query_make_alias (coll_query_t *query, const gchar *field, gboolean optional)
 
 		alias = g_new (coll_query_alias_t, 1);
 		alias->optional = optional;
+		alias->id = 0;
 
 		if (strcmp (field, "id") == 0) {
 			alias->type = XMMS_QUERY_ALIAS_ID;
@@ -342,6 +345,12 @@ query_make_alias (coll_query_t *query, const gchar *field, gboolean optional)
 	}
 
 	return alias;
+}
+
+static coll_query_alias_t *
+query_get_alias (coll_query_t *query, const gchar *field)
+{
+	return g_hash_table_lookup (query->aliases, field);
 }
 
 /* Find the canonical name of a field (strip flags, if any) */
@@ -442,6 +451,8 @@ query_append_filter (coll_query_t *query, xmmsc_coll_type_t type,
 {
 	coll_query_alias_t *alias;
 	gboolean optional;
+	gchar *temp;
+	gint i;
 
 	if (type == XMMS_COLLECTION_TYPE_HAS) {
 		optional = TRUE;
@@ -458,23 +469,34 @@ query_append_filter (coll_query_t *query, xmmsc_coll_type_t type,
 		if (case_sens) {
 			query_string_append_alias (query->conditions, alias);
 		} else {
-			query_append_string (query, "LOWER(");
+			query_append_string (query, "(");
 			query_string_append_alias (query->conditions, alias);
-			query_append_string (query, ")");
+			query_append_string (query, " COLLATE NOCASE)");
 		}
 
 		if (type == XMMS_COLLECTION_TYPE_EQUALS) {
 			query_append_string (query, "=");
 		} else {
-			query_append_string (query, " LIKE ");
+			if (case_sens) {
+				query_append_string (query, " GLOB ");
+			} else {
+				query_append_string (query, " LIKE ");
+			}
 		}
 
-		if (case_sens) {
-			query_append_protect_string (query, value);
+		if (type == XMMS_COLLECTION_TYPE_MATCH && !case_sens) {
+			temp = g_strdup(value);
+			for (i = 0; temp[i]; i++) {
+				switch (temp[i]) {
+					case '*': temp[i] = '%'; break;
+					case '?': temp[i] = '_'; break;
+					default :                break;
+				}
+			}
+			query_append_protect_string (query, temp);
+			g_free(temp);
 		} else {
-			query_append_string (query, "LOWER(");
 			query_append_protect_string (query, value);
-			query_append_string (query, ")");
 		}
 		break;
 
@@ -544,9 +566,19 @@ query_string_append_alias_list (coll_query_t *query, GString *qstring, GList *fi
 		}
 
 		if (canon_field != NULL) {
-			alias = query_make_alias (query, canon_field, FALSE);
+			alias = query_get_alias (query, canon_field);
 			if (alias != NULL) {
 				query_string_append_alias (qstring, alias);
+			} else {
+				if (*field != '~') {
+					if (strcmp(canon_field, "id") == 0) {
+						g_string_append (qstring, "m0.id");
+					} else {
+						g_string_append_printf (qstring,
+							"(SELECT value FROM Media WHERE id = m0.id AND "
+							"key='%s')", canon_field);
+					}
+				}
 			}
 		}
 

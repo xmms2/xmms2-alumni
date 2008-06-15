@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -149,13 +149,13 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	UintResult Playlist::currentPos( const std::string& playlist ) const
+	DictResult Playlist::currentPos( const std::string& playlist ) const
 	{
 		xmmsc_result_t* res = 
 		    call( connected_,
 		          boost::bind( xmmsc_playlist_current_pos, conn_,
 		                       playlist.c_str() ) );
-		return UintResult( res, ml_ );
+		return DictResult( res, ml_ );
 	}
 
 	StringResult Playlist::currentActive() const
@@ -256,6 +256,14 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
+	VoidResult Playlist::remove( const std::string& playlist ) const
+	{
+		xmmsc_result_t* res =
+		    call( connected_,
+		          boost::bind( xmmsc_playlist_remove, conn_, playlist.c_str() ) );
+		return VoidResult( res, ml_ );
+	}
+
 	UintResult Playlist::setNext( unsigned int pos ) const
 	{
 		xmmsc_result_t* res = 
@@ -300,12 +308,12 @@ namespace Xmms
 		return DictSignal( res, ml_ );
 	}
 
-	UintSignal Playlist::broadcastCurrentPos() const
+	DictSignal Playlist::broadcastCurrentPos() const
 	{
 		xmmsc_result_t* res =
 		    call( connected_,
 		          boost::bind( xmmsc_broadcast_playlist_current_pos, conn_ ) );
-		return UintSignal( res, ml_ );
+		return DictSignal( res, ml_ );
 	}
 
 	StringSignal Playlist::broadcastLoaded() const

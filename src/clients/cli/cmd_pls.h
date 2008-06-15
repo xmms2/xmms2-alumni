@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -42,6 +42,7 @@ void cmd_playlist_load (xmmsc_connection_t *conn, gint argc, gchar **argv);
 void cmd_playlist_create (xmmsc_connection_t *conn, gint argc, gchar **argv);
 void cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv);
 void cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv);
+void cmd_playlist_active (xmmsc_connection_t *conn, gint argc, gchar **argv);
 void cmd_playlist_remove (xmmsc_connection_t *conn, gint argc, gchar **argv);
 
 #endif

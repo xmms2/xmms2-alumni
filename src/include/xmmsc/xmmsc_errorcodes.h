@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -25,7 +25,6 @@ typedef enum {
 	XMMS_ERROR_PERMISSION,
 	XMMS_ERROR_NOENT,
 	XMMS_ERROR_INVAL,
-	XMMS_ERROR_EOS,
 	XMMS_ERROR_NO_SAUSAGE,
 	XMMS_ERROR_COUNT /* must be last */
 } xmms_error_code_t;

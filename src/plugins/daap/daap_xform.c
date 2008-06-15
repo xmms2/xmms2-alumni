@@ -1,7 +1,7 @@
 /** @file daap_xform.c
  *  XMMS2 transform for accessing DAAP music shares.
  *
- *  Copyright (C) 2006-2007 XMMS2 Team
+ *  Copyright (C) 2006-2008 XMMS2 Team
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -398,7 +398,7 @@ xmms_daap_browse (xmms_xform_t *xform, const gchar *url, xmms_error_t *error)
 {
 	gboolean ret = FALSE;
 
-	if (g_strcasecmp (url, "daap://") == 0) {
+	if (g_ascii_strcasecmp (url, "daap://") == 0) {
 
 		GSList *sl = daap_mdns_get_server_list ();
 

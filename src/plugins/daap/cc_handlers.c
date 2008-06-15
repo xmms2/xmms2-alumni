@@ -1,7 +1,7 @@
 /** @file cc_handlers.c
  *  Functions for parsing DAAP content code data.
  *
- *  Copyright (C) 2006-2007 XMMS2 Team
+ *  Copyright (C) 2006-2008 XMMS2 Team
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -193,7 +193,7 @@ cc_handler_mlit (cc_data_t *fields, gchar *data, gint data_len)
 	current_data = data + 8;
 	data_end = data + data_len;
 
-	item_fields = g_malloc0 (sizeof (cc_item_record_t));
+	item_fields = g_new0 (cc_item_record_t, 1);
 
 	while (current_data < data_end && !do_break) {
 		switch (CC_TO_INT (current_data[0], current_data[1],
@@ -756,7 +756,7 @@ cc_data_new ()
 {
 	cc_data_t *retval;
 
-	retval = g_malloc0 (sizeof (cc_data_t));
+	retval = g_new0 (cc_data_t, 1);
 	retval->record_list = NULL;
 
 	return retval;
@@ -799,7 +799,7 @@ cc_record_list_deep_copy (GSList *record_list) {
 
 	for (; record_list; record_list = g_slist_next (record_list)) {
 		data = record_list->data;
-		record = g_malloc0 (sizeof (cc_item_record_t));
+		record = g_new0 (cc_item_record_t, 1);
 		if (!record) {
 			XMMS_DBG ("memory allocation failed for cc_record_list_deep_copy\n");
 			return NULL;

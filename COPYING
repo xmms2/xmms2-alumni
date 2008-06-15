@@ -1,4 +1,4 @@
-All the code is "Copyright (C) 2003-2007 XMMS2 Team" and is licensed
+All the code is "Copyright (C) 2003-2008 XMMS2 Team" and is licensed
 under the GNU Lesser General Public License (LGPL) except the files
 listed below. The full LGPL license text is available in COPYING.LGPL.
 
@@ -87,7 +87,13 @@ src/plugins/daap/*:
         Licensed under GPL license.
 
 src/plugins/normalize/compress*:
-	Copyright (C) 2002-2003 trikuare studios (http://trikuare.cx)
+        Copyright (C) 2002-2003 trikuare studios (http://trikuare.cx)
+
+src/plugins/airplay/rtsp*:
+	Copyright (C) <2005> Wim Taymans <wim@fluendo.com>
+
+src/plugins/airplay/airplay.c:
+	Copyright (C) 2005-2006 Mohsin Patel <mohsin.patel@gmail.com>
 
 src/includepriv/xmmspriv/xmms_list.h:
         Copyright (C) 1995-1997  Peter Mattis, Spencer Kimball and Josh MacDonald
@@ -109,3 +115,19 @@ wafadmin/pproc.py:
 src/clients/lib/perl/:
         Copyright (C) 2006-2007 Florian Ragwitz <rafl@debian.org>
         Licensed under the same terms as Perl itself.
+
+src/clients/lib/perl/ppport.h:
+        2004-2007, Marcus Holland-Moritz
+        Licensed under the same terms as Perl itself.
+
+src/plugins/gme/gme/*
+        Game_Music_Emu library copyright (C) 2003-2006 Shay Green <gblargg@gmail.com>.
+        SNES SPC DSP emulator based on OpenSPC, copyright (C) 2002 Brad Martin.
+        Sega Genesis YM2612 emulator copyright (C) 2002 Stephane Dallongeville.
+
+src/plugins/karaoke/*
+        Heavily based on DeFX, copyright (C) 2002 Franco Catrin L. <ancelot@directo.cl>.
+        Licensed under GPL license.
+
+src/plugins/samba/samba.c
+        Licensed under the GNU General Public License.

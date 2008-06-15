@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -42,7 +42,7 @@ format_url (gchar *item, GFileTest test)
 
 		url = g_strdup_printf ("file://%s", rpath);
 	} else {
-		url = g_strdup_printf ("%s", item);
+		url = g_strdup (item);
 	}
 
 	return x_path2url (url);
@@ -81,7 +81,7 @@ print_error (const gchar *fmt, ...)
 
 void
 print_hash (const void *key, xmmsc_result_value_type_t type,
-			const void *value, void *udata)
+            const void *value, void *udata)
 {
 	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
 		print_info ("%s = %s", key, value);
@@ -93,14 +93,14 @@ print_hash (const void *key, xmmsc_result_value_type_t type,
 
 void
 print_entry (const void *key, xmmsc_result_value_type_t type,
-			 const void *value, const gchar *source, void *udata)
+             const void *value, const gchar *source, void *udata)
 {
 	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
 		/* Ok it's a string, if it's the URL property from the
 		 * server source we need to decode it since it's
 		 * encoded in the server
 		 */
-		if (strcmp (key, "url") == 0 && strcmp(source, "server") == 0) {
+		if (strcmp (key, "url") == 0 && strcmp (source, "server") == 0) {
 			/* First decode the URL encoding */
 			const gchar *tmp = xmmsc_result_decode_url ((xmmsc_result_t *)udata, value);
 
@@ -146,7 +146,7 @@ print_padded_string (gint columns, gchar padchar, gboolean padright, const gchar
 	g_vsnprintf (buf, 1024, fmt, ap);
 	va_end (ap);
 
-	padstring = g_strnfill (columns - g_utf8_strlen(buf, -1), padchar);
+	padstring = g_strnfill (columns - g_utf8_strlen (buf, -1), padchar);
 
 	if (padright) {
 		print_info ("%s%s", buf, padstring);
@@ -154,7 +154,7 @@ print_padded_string (gint columns, gchar padchar, gboolean padright, const gchar
 		print_info ("%s%s", padstring, buf);
 	}
 
-	g_free(padstring);
+	g_free (padstring);
 }
 
 gchar*
@@ -194,7 +194,7 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 	print_info (format_header, "Id", "Artist", "Album", "Title");
 
 	for (n = list; n; n = g_list_next (n)) {
-		gchar *title;
+		const gchar *title;
 		xmmsc_result_t *res;
 		gint mid = XPOINTER_TO_INT (n->data);
 
@@ -206,7 +206,7 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 		xmmsc_result_wait (res);
 
 		if (xmmsc_result_get_dict_entry_string (res, "title", &title)) {
-			gchar *artist, *album;
+			const gchar *artist, *album;
 			if (!xmmsc_result_get_dict_entry_string (res, "artist", &artist)) {
 				artist = "Unknown";
 			}
@@ -217,10 +217,10 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 
 			print_info (format_rows, mid, artist, album, title);
 		} else {
-			gchar *url, *filename;
+			const gchar *url;
 			xmmsc_result_get_dict_entry_string (res, "url", &url);
 			if (url) {
-				filename = g_path_get_basename (url);
+				gchar *filename = g_path_get_basename (url);
 				if (filename) {
 					print_info ("%-5.5d| %s", mid, filename);
 					g_free (filename);
@@ -254,13 +254,14 @@ coll_read_collname (gchar *str, gchar **name, gchar **namespace)
 		return FALSE;
 	} else if (!s[1]) {
 		/* No namespace, assume default */
-		*name = s[0];
+		*name = g_strdup (s[0]);
 		*namespace = g_strdup (CMD_COLL_DEFAULT_NAMESPACE);
 	} else {
-		*name = s[1];
-		*namespace = s[0];
+		*name = g_strdup (s[1]);
+		*namespace = g_strdup (s[0]);
 	}
 
+	g_strfreev (s);
 	return TRUE;
 }
 

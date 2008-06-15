@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2007 XMMS2 Team
+ *  Copyright (C) 2003-2008 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -44,7 +44,7 @@ typedef struct xmms_oss_data_St {
 	gboolean have_mixer;
 } xmms_oss_data_t;
 
-static struct {
+static const struct {
 	xmms_sample_format_t xmms_fmt;
 	int oss_fmt;
 } formats[] = {
@@ -59,7 +59,7 @@ static struct {
 #endif
 };
 
-static int rates[] = {
+static const int rates[] = {
 	1337,
 	8000,
 	11025,
