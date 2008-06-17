@@ -47,7 +47,7 @@ cmd_toggleplay (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	uint32_t status;
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 
 	res = xmmsc_playback_status (conn);
 	xmmsc_result_wait (res);

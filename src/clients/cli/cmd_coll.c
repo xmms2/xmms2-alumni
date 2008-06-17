@@ -71,7 +71,7 @@ static void
 coll_list (xmmsc_connection_t *conn, const gchar *namespace)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 
 	res = xmmsc_coll_list (conn, namespace);
 	xmmsc_result_wait (res);
@@ -96,7 +96,7 @@ static void
 coll_find (xmmsc_connection_t *conn, const gchar *namespace, guint mid)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 
 	res = xmmsc_coll_find (conn, mid, namespace);
 	xmmsc_result_wait (res);
@@ -391,7 +391,7 @@ cmd_coll_query (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	gchar **order = NULL;
 	xmmsc_coll_t *collref;
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	GList *n = NULL;
 
 	if (argc < 4) {
@@ -521,7 +521,7 @@ cmd_coll_get (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *name, *namespace;
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 
 	if (argc < 4) {
 		print_error ("usage: coll get [collname]");
@@ -579,7 +579,7 @@ cmd_coll_attr (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *name, *namespace;
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 
 	if (argc < 4) {
 		print_error ("usage: coll attr [collname] [attr] [val]");

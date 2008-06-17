@@ -98,7 +98,7 @@ void
 cmd_info (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	guint id;
 
 	if (argc > 2) {
@@ -338,7 +338,7 @@ static void
 cmd_mlib_search (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	GList *n = NULL;
 	xmmsc_coll_t *query;
 	gchar *pattern;
@@ -475,7 +475,7 @@ static void
 cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	const gchar *filename;
 	GIOChannel* io = NULL;
 	GError *error = NULL;

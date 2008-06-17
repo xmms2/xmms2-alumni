@@ -498,7 +498,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *playlist = NULL;
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	gulong total_playtime = 0;
 	guint p = 0;
 	guint pos = 0;
@@ -528,7 +528,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	while (xmmsc_value_list_valid (val)) {
 		xmmsc_result_t *info_res;
-		xmmsc_value_t *info_val;
+		xmms_value_t *info_val;
 		gchar line[80];
 		gint playtime = 0;
 		guint ui;
@@ -679,7 +679,7 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	gchar *name;
 	xmmsc_coll_type_t prevtype, newtype;
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	xmmsc_coll_t *coll;
 
 	/* Read playlist name */
@@ -768,7 +768,7 @@ cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	const gchar *active_name;
 	xmmsc_result_t *res, *active_res;
-	xmmsc_value_t *val, *active_val;
+	xmms_value_t *val, *active_val;
 
 	active_res = xmmsc_playlist_current_active (conn);
 	xmmsc_result_wait (active_res);
@@ -813,7 +813,7 @@ cmd_playlist_active (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	const gchar *active_name;
 	xmmsc_result_t *active_res;
-	xmmsc_value_t *active_val;
+	xmms_value_t *active_val;
 
 	active_res = xmmsc_playlist_current_active (conn);
 	xmmsc_result_wait (active_res);
@@ -852,7 +852,7 @@ cmd_addpls (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *playlist;
 	xmmsc_result_t *res, *res2;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	xmmsc_coll_t *coll;
 	gchar *url;
 

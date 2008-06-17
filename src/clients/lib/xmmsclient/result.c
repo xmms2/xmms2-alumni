@@ -63,7 +63,7 @@ struct xmmsc_value_St {
 		xmmsc_coll_t *coll;
 		xmmsc_value_bin_t *bin;
 	} value;
-	xmmsc_value_type_t type;
+	xmms_value_type_t type;
 
 	/** refcounting */
 	int ref;
@@ -84,9 +84,9 @@ struct xmmsc_value_St {
 	x_list_t *extra_free;
 };
 
-static xmmsc_value_t *xmmsc_parse_value (xmms_ipc_msg_t *msg);
-static void xmmsc_value_free (xmmsc_value_t *val);
-static void xmmsc_value_seterror (xmmsc_value_t *val, const char *errstr);
+static xmms_value_t *xmmsc_parse_value (xmms_ipc_msg_t *msg);
+static void xmmsc_value_free (xmms_value_t *val);
+static void xmmsc_value_seterror (xmms_value_t *val, const char *errstr);
 
 struct xmmsc_result_St {
 	xmmsc_connection_t *c;
@@ -106,7 +106,7 @@ struct xmmsc_result_St {
 
 	int parsed;
 
-	xmmsc_value_t *data;
+	xmms_value_t *data;
 };
 
 static const char *default_source_pref[] = {
@@ -132,7 +132,7 @@ static const char *default_source_pref[] = {
  * is a sync example:
  * @code
  * xmmsc_result_t *res;
- * xmmsc_value_t *val;
+ * xmms_value_t *val;
  * uint32_t id;
  * res = xmmsc_playback_get_current_id (connection);
  * xmmsc_result_wait (res);
@@ -149,7 +149,7 @@ static const char *default_source_pref[] = {
  *
  * an async example is a bit more complex...
  * @code
- * static void handler (xmmsc_value_t *val, void *userdata) {
+ * static void handler (xmms_value_t *val, void *userdata) {
  *   uint32_t id;
  *   if (xmmsc_value_iserror (val)) {
  *      printf ("error: %s", xmmsc_value_get_error (val));
@@ -166,7 +166,7 @@ static const char *default_source_pref[] = {
  *   xmmsc_result_unref (res);
  * }
  * @endcode
- * When the answer arrives handler will be called. with the resulting #xmmsc_value_t
+ * When the answer arrives handler will be called. with the resulting #xmms_value_t
  * @{
 **/
 
@@ -226,11 +226,11 @@ xmmsc_result_get_class (xmmsc_result_t *res)
 }
 
 /**
- * Check the #xmmsc_value_t for error.
+ * Check the #xmms_value_t for error.
  * @return 1 if error was encountered, else 0
  */
 int
-xmmsc_value_iserror (xmmsc_value_t *val)
+xmmsc_value_iserror (xmms_value_t *val)
 {
 	x_return_val_if_fail (val, 1);
 
@@ -246,7 +246,7 @@ xmmsc_value_iserror (xmmsc_value_t *val)
  */
 
 const char *
-xmmsc_value_get_error (xmmsc_value_t *val)
+xmmsc_value_get_error (xmms_value_t *val)
 {
 	x_return_null_if_fail (val);
 
@@ -335,13 +335,13 @@ xmmsc_result_restart (xmmsc_result_t *res)
 }
 
 /**
- * References the #xmmsc_value_t
+ * References the #xmms_value_t
  *
  * @param val the value to reference.
  * @return val
  */
-xmmsc_value_t *
-xmmsc_value_ref (xmmsc_value_t *val)
+xmms_value_t *
+xmmsc_value_ref (xmms_value_t *val)
 {
 	x_return_val_if_fail (val, NULL);
 	val->ref++;
@@ -350,13 +350,13 @@ xmmsc_value_ref (xmmsc_value_t *val)
 }
 
 /**
- * Decreases the references for the #xmmsc_value_t
+ * Decreases the references for the #xmms_value_t
  * When the number of references reaches 0 it will
  * be freed. And thus all data you extracted from it
  * will be deallocated.
  */
 void
-xmmsc_value_unref (xmmsc_value_t *val)
+xmmsc_value_unref (xmms_value_t *val)
 {
 	x_return_if_fail (val);
 	x_api_error_if (val->ref < 1, "with a freed value",);
@@ -368,16 +368,16 @@ xmmsc_value_unref (xmmsc_value_t *val)
 }
 
 /**
- * Allocates new #xmmsc_value_t and references it.
+ * Allocates new #xmms_value_t and references it.
  * Should not be used from a client.
  * @internal
  */
-xmmsc_value_t *
+xmms_value_t *
 xmmsc_value_new ()
 {
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 
-	val = x_new0 (xmmsc_value_t, 1);
+	val = x_new0 (xmms_value_t, 1);
 	if (!val) {
 		x_oom ();
 		return NULL;
@@ -388,40 +388,40 @@ xmmsc_value_new ()
 }
 
 static void
-xmmsc_value_free (xmmsc_value_t *val)
+xmmsc_value_free (xmms_value_t *val)
 {
 	x_return_if_fail (val);
 
 	if (val->islist) {
-		val->type = XMMSC_VALUE_TYPE_LIST;
+		val->type = XMMS_VALUE_TYPE_LIST;
 	}
 
 	switch (val->type) {
-		case XMMSC_VALUE_TYPE_NONE :
-		case XMMSC_VALUE_TYPE_UINT32 :
-		case XMMSC_VALUE_TYPE_INT32 :
+		case XMMS_VALUE_TYPE_NONE :
+		case XMMS_VALUE_TYPE_UINT32 :
+		case XMMS_VALUE_TYPE_INT32 :
 			break;
-		case XMMSC_VALUE_TYPE_STRING :
+		case XMMS_VALUE_TYPE_STRING :
 			free (val->value.string);
 			val->value.string = NULL;
 			break;
-		case XMMSC_VALUE_TYPE_BIN :
+		case XMMS_VALUE_TYPE_BIN :
 			free (val->value.bin->data);
 			free (val->value.bin);
 			val->value.bin = NULL;
 			break;
-		case XMMSC_VALUE_TYPE_LIST:
-		case XMMSC_VALUE_TYPE_PROPDICT:
+		case XMMS_VALUE_TYPE_LIST:
+		case XMMS_VALUE_TYPE_PROPDICT:
 			while (val->list) {
-				xmmsc_value_unref ((xmmsc_value_t *) val->list->data);
+				xmmsc_value_unref ((xmms_value_t *) val->list->data);
 				val->list = x_list_delete_link (val->list, val->list);
 			}
 			break;
-		case XMMSC_VALUE_TYPE_DICT:
+		case XMMS_VALUE_TYPE_DICT:
 			free_dict_list (val->value.dict);
 			val->value.dict = NULL;
 			break;
-		case XMMSC_VALUE_TYPE_COLL:
+		case XMMS_VALUE_TYPE_COLL:
 			xmmsc_coll_unref (val->value.coll);
 			val->value.coll = NULL;
 			break;
@@ -460,17 +460,17 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 
 	switch (type) {
 
-		case XMMSC_VALUE_TYPE_UINT32 :
+		case XMMS_VALUE_TYPE_UINT32 :
 			if (!xmms_ipc_msg_get_uint32 (msg, &res->data->value.uint32)) {
 				return false;
 			}
 			break;
-		case XMMSC_VALUE_TYPE_INT32 :
+		case XMMS_VALUE_TYPE_INT32 :
 			if (!xmms_ipc_msg_get_int32 (msg, &res->data->value.int32)) {
 				return false;
 			}
 			break;
-		case XMMSC_VALUE_TYPE_BIN:
+		case XMMS_VALUE_TYPE_BIN:
 			{
 				xmmsc_value_bin_t *bin;
 				bin = x_new0 (xmmsc_value_bin_t, 1);
@@ -481,7 +481,7 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 				res->data->value.bin = bin;
 				break;
 			}
-		case XMMSC_VALUE_TYPE_STRING :
+		case XMMS_VALUE_TYPE_STRING :
 			{
 				uint32_t len;
 
@@ -492,7 +492,7 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 				}
 			}
 			break;
-		case XMMSC_VALUE_TYPE_DICT:
+		case XMMS_VALUE_TYPE_DICT:
 			{
 				x_list_t *dict;
 
@@ -504,8 +504,8 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 
 			}
 			break;
-		case XMMSC_VALUE_TYPE_LIST :
-		case XMMSC_VALUE_TYPE_PROPDICT :
+		case XMMS_VALUE_TYPE_LIST :
+		case XMMS_VALUE_TYPE_PROPDICT :
 			{
 				uint32_t len, i;
 
@@ -513,7 +513,7 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 					return false;
 
 				for (i = 0; i < len; i ++) {
-					xmmsc_value_t *val;
+					xmms_value_t *val;
 					val = xmmsc_parse_value (msg);
 					list = x_list_prepend (list, val);
 				}
@@ -523,22 +523,22 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 
 				res->data->current = res->data->list = list;
 
-				if (type == XMMSC_VALUE_TYPE_LIST) {
+				if (type == XMMS_VALUE_TYPE_LIST) {
 					res->data->islist = 1;
 
 					if (res->data->current) {
-						xmmsc_value_t *val = res->data->current->data;
+						xmms_value_t *val = res->data->current->data;
 						res->data->value.generic = val->value.generic;
 						res->data->type = val->type;
 					} else {
 						res->data->value.generic = NULL;
-						res->data->type = XMMSC_VALUE_TYPE_NONE;
+						res->data->type = XMMS_VALUE_TYPE_NONE;
 					}
 				}
 			}
 			break;
 
-		case XMMSC_VALUE_TYPE_COLL:
+		case XMMS_VALUE_TYPE_COLL:
 			{
 				xmmsc_coll_t *coll;
 
@@ -550,7 +550,7 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 			}
 			break;
 
-		case XMMSC_VALUE_TYPE_NONE :
+		case XMMS_VALUE_TYPE_NONE :
 			break;
 
 		default :
@@ -659,12 +659,12 @@ xmmsc_result_wait (xmmsc_result_t *res)
 
 /**
  * Set sources to be used when fetching stuff from a propdict.
- * @param val a #xmmsc_value_t that you got from a command dispatcher.
+ * @param val a #xmms_value_t that you got from a command dispatcher.
  * @param preference a list of sources from most to least preferrable.
  * You may use a wildcard "*" character.
  */
 void
-xmmsc_value_source_preference_set (xmmsc_value_t *val, const char **preference)
+xmmsc_value_source_preference_set (xmms_value_t *val, const char **preference)
 {
 	x_return_if_fail (val);
 	x_return_if_fail (preference);
@@ -678,13 +678,13 @@ xmmsc_value_source_preference_set (xmmsc_value_t *val, const char **preference)
 
 /**
  * Get sources to be used when fetching stuff from a propdict.
- * @param val a #xmmsc_value_t that you got from a command dispatcher.
+ * @param val a #xmms_value_t that you got from a command dispatcher.
  * @returns The current sources from most to least preferable, as a
  * NULL-terminated array of immutable strings.
  * This array is owned by the value and will be freed with it.
  */
 const char **
-xmmsc_value_source_preference_get (xmmsc_value_t *val)
+xmmsc_value_source_preference_get (xmms_value_t *val)
 {
 	x_return_val_if_fail (val, NULL);
 
@@ -706,7 +706,7 @@ xmmsc_value_source_preference_get (xmmsc_value_t *val)
  * @param res a #xmmsc_result_t containing the value.
  * @returns The value received by the result.
  */
-xmmsc_value_t *
+xmms_value_t *
 xmmsc_result_get_value (xmmsc_result_t *res)
 {
 	x_return_val_if_fail (res, NULL);
@@ -717,33 +717,33 @@ xmmsc_result_get_value (xmmsc_result_t *res)
 
 /**
  * Get the type of the value.
- * @param val a #xmmsc_value_t to get the type from.
+ * @param val a #xmms_value_t to get the type from.
  * @returns The data type in the value.
  */
-xmmsc_value_type_t
-xmmsc_value_get_type (xmmsc_value_t *val)
+xmms_value_type_t
+xmmsc_value_get_type (xmms_value_t *val)
 {
 	x_api_error_if (!val, "NULL value",
-	                XMMSC_VALUE_TYPE_NONE);
+	                XMMS_VALUE_TYPE_NONE);
 
 	return val->type;
 }
 
 /**
  * Retrives a signed integer from the value.
- * @param val a #xmmsc_value_t containing a integer.
+ * @param val a #xmms_value_t containing a integer.
  * @param r the return integer.
  * @return 1 upon success otherwise 0
  */
 
 int
-xmmsc_value_get_int (xmmsc_value_t *val, int32_t *r)
+xmmsc_value_get_int (xmms_value_t *val, int32_t *r)
 {
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_INT32) {
+	if (val->type != XMMS_VALUE_TYPE_INT32) {
 		return 0;
 	}
 
@@ -754,19 +754,19 @@ xmmsc_value_get_int (xmmsc_value_t *val, int32_t *r)
 
 /**
  * Retrives a unsigned integer from the resultset.
- * @param val a #xmmsc_value_t containing a integer.
+ * @param val a #xmms_value_t containing a integer.
  * @param r the return integer.
  * @return 1 upon success otherwise 0
  */
 
 int
-xmmsc_value_get_uint (xmmsc_value_t *val, uint32_t *r)
+xmmsc_value_get_uint (xmms_value_t *val, uint32_t *r)
 {
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_UINT32)
+	if (val->type != XMMS_VALUE_TYPE_UINT32)
 		return 0;
 
 	*r = val->value.uint32;
@@ -776,18 +776,18 @@ xmmsc_value_get_uint (xmmsc_value_t *val, uint32_t *r)
 
 /**
  * Retrives a string from the resultset.
- * @param val a #xmmsc_value_t containing a string.
+ * @param val a #xmms_value_t containing a string.
  * @param r the return string. This string is owned by the value and will be freed when the value is freed.
  * @return 1 upon success otherwise 0
  */
 int
-xmmsc_value_get_string (xmmsc_value_t *val, const char **r)
+xmmsc_value_get_string (xmms_value_t *val, const char **r)
 {
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_STRING) {
+	if (val->type != XMMS_VALUE_TYPE_STRING) {
 		return 0;
 	}
 
@@ -798,18 +798,18 @@ xmmsc_value_get_string (xmmsc_value_t *val, const char **r)
 
 /**
  * Retrieves a collection from the resultset.
- * @param val a #xmmsc_value_t containing a collection.
+ * @param val a #xmms_value_t containing a collection.
  * @param c the return collection. This collection is owned by the value and will be freed when the value is freed.
  * @return 1 upon success otherwise 0
  */
 int
-xmmsc_value_get_collection (xmmsc_value_t *val, xmmsc_coll_t **c)
+xmmsc_value_get_collection (xmms_value_t *val, xmmsc_coll_t **c)
 {
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_COLL) {
+	if (val->type != XMMS_VALUE_TYPE_COLL) {
 		return 0;
 	}
 
@@ -820,19 +820,19 @@ xmmsc_value_get_collection (xmmsc_value_t *val, xmmsc_coll_t **c)
 
 /**
  * Retrives binary data from the resultset.
- * @param val a #xmmsc_value_t containing a string.
+ * @param val a #xmms_value_t containing a string.
  * @param r the return data. This data is owned by the value and will be freed when the value is freed.
  * @param rlen the return length of data.
  * @return 1 upon success otherwise 0
  */
 int
-xmmsc_value_get_bin (xmmsc_value_t *val, unsigned char **r, unsigned int *rlen)
+xmmsc_value_get_bin (xmms_value_t *val, unsigned char **r, unsigned int *rlen)
 {
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_BIN) {
+	if (val->type != XMMS_VALUE_TYPE_BIN) {
 		return 0;
 	}
 
@@ -842,8 +842,8 @@ xmmsc_value_get_bin (xmmsc_value_t *val, unsigned char **r, unsigned int *rlen)
 	return 1;
 }
 
-static xmmsc_value_t *
-plaindict_lookup (xmmsc_value_t *val, const char *key)
+static xmms_value_t *
+plaindict_lookup (xmms_value_t *val, const char *key)
 {
 	x_list_t *n;
 
@@ -851,7 +851,7 @@ plaindict_lookup (xmmsc_value_t *val, const char *key)
 		const char *k = n->data;
 		if (strcasecmp (k, key) == 0 && n->next) {
 			/* found right key, return value */
-			return (xmmsc_value_t*) n->next->data;
+			return (xmms_value_t*) n->next->data;
 		} else {
 			/* skip data part of this entry */
 			n = x_list_next (n);
@@ -861,8 +861,8 @@ plaindict_lookup (xmmsc_value_t *val, const char *key)
 	return NULL;
 }
 
-static xmmsc_value_t *
-propdict_lookup (xmmsc_value_t *val, const char *key)
+static xmms_value_t *
+propdict_lookup (xmms_value_t *val, const char *key)
 {
 	x_list_t *n;
 	const char **sources, **ptr;
@@ -874,7 +874,7 @@ propdict_lookup (xmmsc_value_t *val, const char *key)
 		const char *source = *ptr;
 
 		for (n = val->list; n; n = x_list_next (n)) {
-			xmmsc_value_t *k = n->data;
+			xmms_value_t *k = n->data;
 
 			if (source_match_pattern (k->value.string, source) &&
 			    n->next && n->next->next) {
@@ -883,7 +883,7 @@ propdict_lookup (xmmsc_value_t *val, const char *key)
 				k = n->data;
 
 				if (strcasecmp (k->value.string, key) == 0) {
-					return (xmmsc_value_t*) n->next->data;
+					return (xmms_value_t*) n->next->data;
 				} else {
 					n = x_list_next (n);
 				}
@@ -898,12 +898,12 @@ propdict_lookup (xmmsc_value_t *val, const char *key)
 	return NULL;
 }
 
-static xmmsc_value_t *
-xmmsc_value_dict_lookup (xmmsc_value_t *val, const char *key)
+static xmms_value_t *
+xmmsc_value_dict_lookup (xmms_value_t *val, const char *key)
 {
-	if (val->type == XMMSC_VALUE_TYPE_DICT) {
+	if (val->type == XMMS_VALUE_TYPE_DICT) {
 		return plaindict_lookup (val, key);
-	} else if (val->type == XMMSC_VALUE_TYPE_PROPDICT) {
+	} else if (val->type == XMMS_VALUE_TYPE_PROPDICT) {
 		return propdict_lookup (val, key);
 	}
 
@@ -916,29 +916,29 @@ xmmsc_value_dict_lookup (xmmsc_value_t *val, const char *key)
  * If the key doesn't exist in the value the returned integer is
  * undefined.
  *
- * @param val a #xmmsc_value_t containing dict list.
+ * @param val a #xmms_value_t containing dict list.
  * @param key Key that should be retrieved
  * @param r the return int
  * @return 1 upon success otherwise 0
  *
  */
 int
-xmmsc_value_get_dict_entry_int (xmmsc_value_t *val, const char *key, int32_t *r)
+xmmsc_value_get_dict_entry_int (xmms_value_t *val, const char *key, int32_t *r)
 {
-	xmmsc_value_t *v;
+	xmms_value_t *v;
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		*r = -1;
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_DICT &&
-	    val->type != XMMSC_VALUE_TYPE_PROPDICT) {
+	if (val->type != XMMS_VALUE_TYPE_DICT &&
+	    val->type != XMMS_VALUE_TYPE_PROPDICT) {
 		*r = -1;
 		return 0;
 	}
 
 	v = xmmsc_value_dict_lookup (val, key);
-	if (v && v->type == XMMSC_VALUE_TYPE_INT32) {
+	if (v && v->type == XMMS_VALUE_TYPE_INT32) {
 		*r = v->value.int32;
 	} else {
 		*r = -1;
@@ -954,29 +954,29 @@ xmmsc_value_get_dict_entry_int (xmmsc_value_t *val, const char *key, int32_t *r)
  * If the key doesn't exist in the value the returned integer is
  * undefined.
  *
- * @param val a #xmmsc_value_t containing a hashtable.
+ * @param val a #xmms_value_t containing a hashtable.
  * @param key Key that should be retrieved
  * @param r the return uint
  * @return 1 upon success otherwise 0
  *
  */
 int
-xmmsc_value_get_dict_entry_uint (xmmsc_value_t *val, const char *key, uint32_t *r)
+xmmsc_value_get_dict_entry_uint (xmms_value_t *val, const char *key, uint32_t *r)
 {
-	xmmsc_value_t *v;
+	xmms_value_t *v;
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		*r = -1;
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_DICT &&
-	    val->type != XMMSC_VALUE_TYPE_PROPDICT) {
+	if (val->type != XMMS_VALUE_TYPE_DICT &&
+	    val->type != XMMS_VALUE_TYPE_PROPDICT) {
 		*r = -1;
 		return 0;
 	}
 
 	v = xmmsc_value_dict_lookup (val, key);
-	if (v && v->type == XMMSC_VALUE_TYPE_UINT32) {
+	if (v && v->type == XMMS_VALUE_TYPE_UINT32) {
 		*r = v->value.uint32;
 	} else {
 		*r = -1;
@@ -993,30 +993,30 @@ xmmsc_value_get_dict_entry_uint (xmmsc_value_t *val, const char *key, uint32_t *
  * NULL. The string is owned by the value and will be freed when the
  * value is freed.
  *
- * @param val a #xmmsc_value_t containing a hashtable.
+ * @param val a #xmms_value_t containing a hashtable.
  * @param key Key that should be retrieved
  * @param r the return string (owned by value)
  * @return 1 upon success otherwise 0
  *
  */
 int
-xmmsc_value_get_dict_entry_string (xmmsc_value_t *val,
+xmmsc_value_get_dict_entry_string (xmms_value_t *val,
                                    const char *key, const char **r)
 {
-	xmmsc_value_t *v;
+	xmms_value_t *v;
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		*r = NULL;
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_DICT &&
-	    val->type != XMMSC_VALUE_TYPE_PROPDICT) {
+	if (val->type != XMMS_VALUE_TYPE_DICT &&
+	    val->type != XMMS_VALUE_TYPE_PROPDICT) {
 		*r = NULL;
 		return 0;
 	}
 
 	v = xmmsc_value_dict_lookup (val, key);
-	if (v && v->type == XMMSC_VALUE_TYPE_STRING) {
+	if (v && v->type == XMMS_VALUE_TYPE_STRING) {
 		*r = v->value.string;
 	} else {
 		*r = NULL;
@@ -1033,30 +1033,30 @@ xmmsc_value_get_dict_entry_string (xmmsc_value_t *val,
  * NULL. The collection is owned by the value and will be freed when the
  * value is freed.
  *
- * @param val a #xmmsc_value_t containing a hashtable.
+ * @param val a #xmms_value_t containing a hashtable.
  * @param key Key that should be retrieved
  * @param c the return collection (owned by value)
  * @return 1 upon success otherwise 0
  *
  */
 int
-xmmsc_value_get_dict_entry_collection (xmmsc_value_t *val, const char *key,
+xmmsc_value_get_dict_entry_collection (xmms_value_t *val, const char *key,
                                        xmmsc_coll_t **c)
 {
-	xmmsc_value_t *v;
+	xmms_value_t *v;
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		*c = NULL;
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_DICT &&
-	    val->type != XMMSC_VALUE_TYPE_PROPDICT) {
+	if (val->type != XMMS_VALUE_TYPE_DICT &&
+	    val->type != XMMS_VALUE_TYPE_PROPDICT) {
 		*c = NULL;
 		return 0;
 	}
 
 	v = xmmsc_value_dict_lookup (val, key);
-	if (v && v->type == XMMSC_VALUE_TYPE_COLL) {
+	if (v && v->type == XMMS_VALUE_TYPE_COLL) {
 		*c = v->value.coll;
 	} else {
 		*c = NULL;
@@ -1069,34 +1069,34 @@ xmmsc_value_get_dict_entry_collection (xmmsc_value_t *val, const char *key,
 /**
  * Retrieve type associated for specified key in the resultset.
  *
- * @param val a #xmmsc_value_t containing a hashtable.
+ * @param val a #xmms_value_t containing a hashtable.
  * @param key Key that should be retrieved
  * @return type of key
  *
  */
-xmmsc_value_type_t
-xmmsc_value_get_dict_entry_type (xmmsc_value_t *val, const char *key)
+xmms_value_type_t
+xmmsc_value_get_dict_entry_type (xmms_value_t *val, const char *key)
 {
-	xmmsc_value_t *v;
+	xmms_value_t *v;
 	if (!val || val->error != XMMS_ERROR_NONE) {
-		return XMMSC_VALUE_TYPE_NONE;
+		return XMMS_VALUE_TYPE_NONE;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_DICT &&
-	    val->type != XMMSC_VALUE_TYPE_PROPDICT) {
-		return XMMSC_VALUE_TYPE_NONE;
+	if (val->type != XMMS_VALUE_TYPE_DICT &&
+	    val->type != XMMS_VALUE_TYPE_PROPDICT) {
+		return XMMS_VALUE_TYPE_NONE;
 	}
 
 	v = xmmsc_value_dict_lookup (val, key);
 	if (!v) {
-		return XMMSC_VALUE_TYPE_NONE;
+		return XMMS_VALUE_TYPE_NONE;
 	}
 
 	return v->type;
 }
 
 int
-xmmsc_value_propdict_foreach (xmmsc_value_t *val,
+xmmsc_value_propdict_foreach (xmms_value_t *val,
                               xmmsc_propdict_foreach_func func,
                               void *user_data)
 {
@@ -1106,15 +1106,15 @@ xmmsc_value_propdict_foreach (xmmsc_value_t *val,
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_PROPDICT) {
+	if (val->type != XMMS_VALUE_TYPE_PROPDICT) {
 		x_print_err ("xmms_value_propdict_foreach", "on a normal dict!");
 		return 0;
 	}
 
 	for (n = val->list; n; n = x_list_next (n)) {
-		xmmsc_value_t *source = NULL;
-		xmmsc_value_t *key = NULL;
-		xmmsc_value_t *val = NULL;
+		xmms_value_t *source = NULL;
+		xmms_value_t *key = NULL;
+		xmms_value_t *val = NULL;
 		if (n->next && n->next->next) {
 			source = n->data;
 			key = n->next->data;
@@ -1133,16 +1133,16 @@ xmmsc_value_propdict_foreach (xmmsc_value_t *val,
  *
  * Calls specified function for each key/value-pair in the dictionary.
  *
- * void function (const void *key, #xmmsc_value_type_t type, const void *value, void *user_data);
+ * void function (const void *key, #xmms_value_type_t type, const void *value, void *user_data);
  *
- * @param val a #xmmsc_value_t containing a dict.
+ * @param val a #xmms_value_t containing a dict.
  * @param func function that is called for each key/value-pair
  * @param user_data extra data passed to func
  * @return 1 upon success otherwise 0
  *
  */
 int
-xmmsc_value_dict_foreach (xmmsc_value_t *val, xmmsc_dict_foreach_func func, void *user_data)
+xmmsc_value_dict_foreach (xmms_value_t *val, xmmsc_dict_foreach_func func, void *user_data)
 {
 	x_list_t *n;
 
@@ -1150,14 +1150,14 @@ xmmsc_value_dict_foreach (xmmsc_value_t *val, xmmsc_dict_foreach_func func, void
 		return 0;
 	}
 
-	if (val->type != XMMSC_VALUE_TYPE_DICT) {
+	if (val->type != XMMS_VALUE_TYPE_DICT) {
 		x_print_err ("xmms_value_dict_foreach", "on a source dict!");
 		return 0;
 	}
 
-	if (val->type == XMMSC_VALUE_TYPE_DICT) {
+	if (val->type == XMMS_VALUE_TYPE_DICT) {
 		for (n = val->value.dict; n; n = x_list_next (n)) {
-			xmmsc_value_t *val = NULL;
+			xmms_value_t *val = NULL;
 			if (n->next) {
 				val = n->next->data;
 			}
@@ -1172,11 +1172,11 @@ xmmsc_value_dict_foreach (xmmsc_value_t *val, xmmsc_dict_foreach_func func, void
 /**
  * Check if the value stores a list.
  *
- * @param val a #xmmsc_value_t
+ * @param val a #xmms_value_t
  * @return 1 if value stores a list, 0 otherwise.
  */
 int
-xmmsc_value_is_list (xmmsc_value_t *val)
+xmmsc_value_is_list (xmms_value_t *val)
 {
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		return 0;
@@ -1191,11 +1191,11 @@ xmmsc_value_is_list (xmmsc_value_t *val)
  * When xmmsc_value_list_valid returns 1, there is a list entry
  * available for access with xmmsc_value_get_{type}.
  *
- * @param val a #xmmsc_value_t that is a list.
+ * @param val a #xmms_value_t that is a list.
  * @return 1 if inside, 0 otherwise
  */
 int
-xmmsc_value_list_valid (xmmsc_value_t *val)
+xmmsc_value_list_valid (xmms_value_t *val)
 {
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		return 0;
@@ -1215,11 +1215,11 @@ xmmsc_value_list_valid (xmmsc_value_t *val)
  * #xmmsc_value_list_valid should be used to determine if end of list
  * was reached.
  *
- * @param val a #xmmsc_value_t that is a list.
+ * @param val a #xmms_value_t that is a list.
  * @return 1 upon succes, 0 otherwise
  */
 int
-xmmsc_value_list_next (xmmsc_value_t *val)
+xmmsc_value_list_next (xmms_value_t *val)
 {
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		return 0;
@@ -1236,12 +1236,12 @@ xmmsc_value_list_next (xmmsc_value_t *val)
 	val->current = val->current->next;
 
 	if (val->current) {
-		xmmsc_value_t *val2 = val->current->data;
+		xmms_value_t *val2 = val->current->data;
 		val->value.generic = val2->value.generic;
 		val->type = val2->type;
 	} else {
 		val->value.generic = NULL;
-		val->type = XMMSC_VALUE_TYPE_NONE;
+		val->type = XMMS_VALUE_TYPE_NONE;
 	}
 
 	return 1;
@@ -1250,11 +1250,11 @@ xmmsc_value_list_next (xmmsc_value_t *val)
 /**
  * Return to first entry in list.
  *
- * @param val a #xmmsc_value_t that is a list.
+ * @param val a #xmms_value_t that is a list.
  * @return 1 upon succes, 0 otherwise
  */
 int
-xmmsc_value_list_first (xmmsc_value_t *val)
+xmmsc_value_list_first (xmms_value_t *val)
 {
 	if (!val || val->error != XMMS_ERROR_NONE) {
 		return 0;
@@ -1267,12 +1267,12 @@ xmmsc_value_list_first (xmmsc_value_t *val)
 	val->current = val->list;
 
 	if (val->current) {
-		xmmsc_value_t *val = val->current->data;
+		xmms_value_t *val = val->current->data;
 		val->value.generic = val->value.generic;
 		val->type = val->type;
 	} else {
 		val->value.generic = NULL;
-		val->type = XMMSC_VALUE_TYPE_NONE;
+		val->type = XMMS_VALUE_TYPE_NONE;
 	}
 
 	return 1;
@@ -1308,13 +1308,13 @@ xmmsc_value_list_first (xmmsc_value_t *val)
  * offer you tissues and a blanket if you come crying to us with
  * broken code.
  *
- * @param val the #xmmsc_value_t that the string comes from
+ * @param val the #xmms_value_t that the string comes from
  * @param string the url encoded string
- * @return decoded string, owned by the #xmmsc_value_t
+ * @return decoded string, owned by the #xmms_value_t
  *
  */
 const char *
-xmmsc_value_decode_url (xmmsc_value_t *val, const char *string)
+xmmsc_value_decode_url (xmms_value_t *val, const char *string)
 {
 	int i = 0, j = 0;
 	char *url;
@@ -1370,7 +1370,7 @@ xmmsc_value_decode_url (xmmsc_value_t *val, const char *string)
 /** @internal */
 
 static void
-xmmsc_value_seterror (xmmsc_value_t *val, const char *errstr)
+xmmsc_value_seterror (xmms_value_t *val, const char *errstr)
 {
 	val->error_str = strdup (errstr);
 	val->error = 1;
@@ -1494,10 +1494,10 @@ xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type,
 	return res;
 }
 
-static xmmsc_value_t *
+static xmms_value_t *
 xmmsc_parse_value (xmms_ipc_msg_t *msg)
 {
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	uint32_t len;
 
 	val = xmmsc_value_new ();
@@ -1507,35 +1507,35 @@ xmmsc_parse_value (xmms_ipc_msg_t *msg)
 	}
 
 	switch (val->type) {
-		case XMMSC_VALUE_TYPE_STRING:
+		case XMMS_VALUE_TYPE_STRING:
 			if (!xmms_ipc_msg_get_string_alloc (msg, &val->value.string, &len)) {
 				goto err;
 			}
 			break;
-		case XMMSC_VALUE_TYPE_UINT32:
+		case XMMS_VALUE_TYPE_UINT32:
 			if (!xmms_ipc_msg_get_uint32 (msg, &val->value.uint32)) {
 				goto err;
 			}
 			break;
-		case XMMSC_VALUE_TYPE_INT32:
+		case XMMS_VALUE_TYPE_INT32:
 			if (!xmms_ipc_msg_get_int32 (msg, &val->value.int32)) {
 				goto err;
 			}
 			break;
-		case XMMSC_VALUE_TYPE_DICT:
+		case XMMS_VALUE_TYPE_DICT:
 			val->value.dict = xmmsc_deserialize_dict (msg);
 			if (!val->value.dict) {
 				goto err;
 			}
 			break;
-		case XMMSC_VALUE_TYPE_COLL:
+		case XMMS_VALUE_TYPE_COLL:
 			xmms_ipc_msg_get_collection_alloc (msg, &val->value.coll);
 			if (!val->value.coll) {
 				goto err;
 			}
 			xmmsc_coll_ref (val->value.coll);
 			break;
-		case XMMSC_VALUE_TYPE_NONE:
+		case XMMS_VALUE_TYPE_NONE:
 			break;
 		default:
 			goto err;
@@ -1564,7 +1564,7 @@ xmmsc_deserialize_dict (xmms_ipc_msg_t *msg)
 	}
 
 	while (entries--) {
-		xmmsc_value_t *val;
+		xmms_value_t *val;
 
 		if (!xmms_ipc_msg_get_string_alloc (msg, &key, &len)) {
 			goto err;
@@ -1602,7 +1602,7 @@ free_dict_list (x_list_t *list)
 		 */
 		assert (list);
 
-		xmmsc_value_unref ((xmmsc_value_t *) list->data); /* value */
+		xmmsc_value_unref ((xmms_value_t *) list->data); /* value */
 		list = x_list_delete_link (list, list);
 	}
 }

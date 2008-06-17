@@ -20,11 +20,11 @@
 /**
  * Function prototypes
  */
-static int handle_current_id (xmmsc_value_t *res, void *userdata);
-static int handle_playtime (xmmsc_value_t *res, void *userdata);
-static int handle_mediainfo_update (xmmsc_value_t *res, void *userdata);
-static int handle_status_change (xmmsc_value_t *res, void *userdata);
-static int do_mediainfo (xmmsc_value_t *res, void *userdata);
+static int handle_current_id (xmms_value_t *res, void *userdata);
+static int handle_playtime (xmms_value_t *res, void *userdata);
+static int handle_mediainfo_update (xmms_value_t *res, void *userdata);
+static int handle_status_change (xmms_value_t *res, void *userdata);
+static int do_mediainfo (xmms_value_t *res, void *userdata);
 static void update_display ();
 static void quit (void *data);
 
@@ -85,7 +85,7 @@ void
 cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	gchar print_text[256];
 	guint id;
 
@@ -122,7 +122,7 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 }
 
 static int
-handle_status_change (xmmsc_value_t *val, void *userdata)
+handle_status_change (xmms_value_t *val, void *userdata)
 {
 	guint new_status;
 
@@ -141,7 +141,7 @@ handle_status_change (xmmsc_value_t *val, void *userdata)
 }
 
 static int
-handle_current_id (xmmsc_value_t *val, void *userdata)
+handle_current_id (xmms_value_t *val, void *userdata)
 {
 	xmmsc_result_t *res;
 	xmmsc_connection_t *conn = userdata;
@@ -166,7 +166,7 @@ handle_current_id (xmmsc_value_t *val, void *userdata)
 
 
 static int
-handle_playtime (xmmsc_value_t *val, void *userdata)
+handle_playtime (xmms_value_t *val, void *userdata)
 {
 	guint dur;
 
@@ -228,7 +228,7 @@ static void update_display ()
 }
 
 static int
-handle_mediainfo_update (xmmsc_value_t *val, void *userdata)
+handle_mediainfo_update (xmms_value_t *val, void *userdata)
 {
 	guint id;
 	xmmsc_result_t *res;
@@ -253,7 +253,7 @@ handle_mediainfo_update (xmmsc_value_t *val, void *userdata)
 
 
 static int
-do_mediainfo (xmmsc_value_t *val, void *userdata)
+do_mediainfo (xmms_value_t *val, void *userdata)
 {
 	if (xmmsc_value_iserror (val)) {
 		print_error ("%s", xmmsc_value_get_error (val));

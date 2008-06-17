@@ -20,7 +20,7 @@ void
 cmd_stats (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 
 	res = xmmsc_main_stats (conn);
 	xmmsc_result_wait (res);
@@ -39,7 +39,7 @@ void
 cmd_plugin_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	xmms_plugin_type_t type = XMMS_PLUGIN_TYPE_ALL;
 
 	if (argc > 2) {
@@ -92,7 +92,7 @@ void
 cmd_browse (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 
 	if (argc < 3) {
 		print_error ("Need to specify a URL to browse");
@@ -107,12 +107,12 @@ cmd_browse (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	for (;xmmsc_value_list_valid (val); xmmsc_value_list_next (val)) {
-		xmmsc_value_type_t type;
+		xmms_value_type_t type;
 		const gchar *r;
 		gint d;
 
 		type = xmmsc_value_get_dict_entry_type (val, "realpath");
-		if (type != XMMSC_VALUE_TYPE_NONE) {
+		if (type != XMMS_VALUE_TYPE_NONE) {
 			xmmsc_value_get_dict_entry_string (val, "realpath", &r);
 		} else {
 			xmmsc_value_get_dict_entry_string (val, "path", &r);

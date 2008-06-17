@@ -26,7 +26,7 @@ void
 cmd_config (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	gchar *key;
 	const gchar *value;
 
@@ -82,7 +82,7 @@ void
 cmd_config_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 
 	res = xmmsc_configval_list (conn);
 	xmmsc_result_wait (res);
@@ -97,7 +97,7 @@ cmd_config_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 }
 
 void
-get_keys (const void *key, xmmsc_value_type_t type, const void *value, void *user_data)
+get_keys (const void *key, xmms_value_type_t type, const void *value, void *user_data)
 {
 	GList **l = user_data;
 	volume_channel_t *chan;
@@ -115,7 +115,7 @@ guint
 volume_get (xmmsc_connection_t *conn, const gchar *name)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	guint ret;
 
 	res = xmmsc_playback_volume_get (conn);
@@ -140,7 +140,7 @@ void
 cmd_volume (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 	int i;
 	GList *channels, *cur;
 	gchar *end = NULL;
@@ -211,7 +211,7 @@ void
 cmd_volume_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_value_t *val;
+	xmms_value_t *val;
 
 	res = xmmsc_playback_volume_get (conn);
 	xmmsc_result_wait (res);
