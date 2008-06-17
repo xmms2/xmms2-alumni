@@ -41,12 +41,12 @@ cmd_config (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		xmmsc_result_wait (res);
 		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_value_iserror (val)) {
+		if (xmms_value_iserror (val)) {
 			print_error ("Couldn't get config value: %s",
-			             xmmsc_value_get_error (val));
+			             xmms_value_get_error (val));
 		}
 
-		xmmsc_value_get_string (val, &value);
+		xmms_value_get_string (val, &value);
 		print_info ("%s", value);
 
 		xmmsc_result_unref (res);
@@ -88,11 +88,11 @@ cmd_config_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	}
 
-	xmmsc_value_dict_foreach (val, print_hash, NULL);
+	xmms_value_dict_foreach (val, print_hash, NULL);
 	xmmsc_result_unref (res);
 }
 
@@ -122,12 +122,12 @@ volume_get (xmmsc_connection_t *conn, const gchar *name)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
+	if (xmms_value_iserror (val)) {
 		print_error ("Failed to get volume: %s",
-		             xmmsc_value_get_error (val));
+		             xmms_value_get_error (val));
 	}
 
-	if (!xmmsc_value_get_dict_entry_uint (val, name, &ret)) {
+	if (!xmms_value_get_dict_entry_uint (val, name, &ret)) {
 		ret = 0;
 	}
 
@@ -173,12 +173,12 @@ cmd_volume (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		xmmsc_result_wait (res);
 		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_value_iserror (val)) {
+		if (xmms_value_iserror (val)) {
 			print_error ("Failed to get channel information: %s",
-			             xmmsc_value_get_error (val));
+			             xmms_value_get_error (val));
 		}
 
-		xmmsc_value_dict_foreach (val, get_keys, &channels);
+		xmms_value_dict_foreach (val, get_keys, &channels);
 
 		xmmsc_result_unref (res);
 	}
@@ -217,11 +217,11 @@ cmd_volume_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
+	if (xmms_value_iserror (val)) {
 		print_error ("Failed to get volume: %s",
-		             xmmsc_value_get_error (val));
+		             xmms_value_get_error (val));
 	}
-	xmmsc_value_dict_foreach (val, print_hash, NULL);
+	xmms_value_dict_foreach (val, print_hash, NULL);
 
 	xmmsc_result_unref (res);
 }

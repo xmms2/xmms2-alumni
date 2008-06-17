@@ -4,7 +4,7 @@
 
 void
 perl_xmmsclient_extract_keys_from_propdict (const void *key,
-                                            xmmsc_result_value_type_t type,
+                                            xmms_value_type_t type,
                                             const void *value,
                                             const char *source,
                                             void *user_data)
@@ -100,16 +100,16 @@ FETCH (res, key)
 		SV **he;
 	CODE:
 		switch (xmmsc_result_get_dict_entry_type (res, key)) {
-			case XMMS_OBJECT_CMD_ARG_UINT32:
+			case XMMS_VALUE_TYPE_UINT32:
 				ret = xmmsc_result_get_dict_entry_uint (res, key, &uint32_val);
 
 				RETVAL = newSVuv (uint32_val);
 				break;
-			case XMMS_OBJECT_CMD_ARG_INT32:
+			case XMMS_VALUE_TYPE_INT32:
 				ret = xmmsc_result_get_dict_entry_int (res, key, &int32_val);
 				RETVAL = newSViv (int32_val);
 				break;
-			case XMMS_OBJECT_CMD_ARG_STRING:
+			case XMMS_VALUE_TYPE_STRING:
 				ret = xmmsc_result_get_dict_entry_string (res, key, &string_val);
 				RETVAL = newSVpv (string_val, 0);
 				break;

@@ -2,7 +2,7 @@
 
 void
 perl_xmmsclient_xmmsc_result_propdict_foreach_cb (const void *key,
-                                                  xmmsc_result_value_type_t type,
+                                                  xmms_value_type_t type,
                                                   const void *value,
                                                   const char *source,
                                                   void *user_data)

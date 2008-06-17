@@ -19,7 +19,7 @@
 gint
 val_has_key (xmms_value_t *val, const gchar *key)
 {
-	return xmmsc_value_get_dict_entry_type (val, key) != XMMS_VALUE_TYPE_NONE;
+	return xmms_value_get_dict_entry_type (val, key) != XMMS_VALUE_TYPE_NONE;
 }
 
 
@@ -102,7 +102,7 @@ print_entry (const void *key, xmms_value_type_t type,
 		 */
 		if (strcmp (key, "url") == 0 && strcmp (source, "server") == 0) {
 			/* First decode the URL encoding */
-			const gchar *tmp = xmmsc_value_decode_url ((xmms_value_t *)udata, value);
+			const gchar *tmp = xmms_value_decode_url ((xmms_value_t *)udata, value);
 
 			/* Let's see if the result is valid utf-8. This must be done
 			 * since we don't know the charset of the binary string */
@@ -207,20 +207,20 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 		xmmsc_result_wait (res);
 		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_value_get_dict_entry_string (val, "title", &title)) {
+		if (xmms_value_get_dict_entry_string (val, "title", &title)) {
 			const gchar *artist, *album;
-			if (!xmmsc_value_get_dict_entry_string (val, "artist", &artist)) {
+			if (!xmms_value_get_dict_entry_string (val, "artist", &artist)) {
 				artist = "Unknown";
 			}
 
-			if (!xmmsc_value_get_dict_entry_string (val, "album", &album)) {
+			if (!xmms_value_get_dict_entry_string (val, "album", &album)) {
 				album = "Unknown";
 			}
 
 			print_info (format_rows, mid, artist, album, title);
 		} else {
 			const gchar *url;
-			xmmsc_value_get_dict_entry_string (val, "url", &url);
+			xmms_value_get_dict_entry_string (val, "url", &url);
 			if (url) {
 				gchar *filename = g_path_get_basename (url);
 				if (filename) {

@@ -93,11 +93,11 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	}
 
-	if (!xmmsc_value_get_uint (val, &id)) {
+	if (!xmms_value_get_uint (val, &id)) {
 		print_error ("Broken resultset");
 	}
 	xmmsc_result_unref (res);
@@ -106,8 +106,8 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	}
 
 	if (argc > 2) {
@@ -126,11 +126,11 @@ handle_status_change (xmms_value_t *val, void *userdata)
 {
 	guint new_status;
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	}
 
-	if (!xmmsc_value_get_uint (val, &new_status)) {
+	if (!xmms_value_get_uint (val, &new_status)) {
 		print_error ("Broken resultset");
 	}
 
@@ -146,11 +146,11 @@ handle_current_id (xmms_value_t *val, void *userdata)
 	xmmsc_result_t *res;
 	xmmsc_connection_t *conn = userdata;
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	}
 
-	if (!xmmsc_value_get_uint (val, &current_id)) {
+	if (!xmms_value_get_uint (val, &current_id)) {
 		print_error ("Broken resultset");
 	}
 
@@ -170,11 +170,11 @@ handle_playtime (xmms_value_t *val, void *userdata)
 {
 	guint dur;
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	}
 
-	if (!xmmsc_value_get_uint (val, &dur)) {
+	if (!xmms_value_get_uint (val, &dur)) {
 		print_error ("Broken resultset");
 	}
 
@@ -234,11 +234,11 @@ handle_mediainfo_update (xmms_value_t *val, void *userdata)
 	xmmsc_result_t *res;
 	xmmsc_connection_t *conn = userdata;
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	}
 
-	if (!xmmsc_value_get_uint (val, &id)) {
+	if (!xmms_value_get_uint (val, &id)) {
 		print_error ("Broken resultset");
 	}
 
@@ -255,8 +255,8 @@ handle_mediainfo_update (xmms_value_t *val, void *userdata)
 static int
 do_mediainfo (xmms_value_t *val, void *userdata)
 {
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	}
 
 	print_info ("");
@@ -270,7 +270,7 @@ do_mediainfo (xmms_value_t *val, void *userdata)
 	} else if (!val_has_key (val, "title")) {
 		const gchar *url;
 
-		if (xmmsc_value_get_dict_entry_string (val, "url", &url)) {
+		if (xmms_value_get_dict_entry_string (val, "url", &url)) {
 			gchar *filename = g_path_get_basename (url);
 
 			if (filename) {
@@ -285,7 +285,7 @@ do_mediainfo (xmms_value_t *val, void *userdata)
 		has_songname = TRUE;
 	}
 
-	if (xmmsc_value_get_dict_entry_int (val, "duration", &curr_dur)) {
+	if (xmms_value_get_dict_entry_int (val, "duration", &curr_dur)) {
 		/* rounding */
 		curr_dur += 500;
 	} else {

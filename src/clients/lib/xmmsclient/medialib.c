@@ -96,7 +96,7 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 		if (strcmp (key, "seconds") == 0) {
 			int duration;
 
-			xmmsc_value_get_dict_entry_int (val, "duration", &duration);
+			xmms_value_get_dict_entry_int (val, "duration", &duration);
 
 			if (!duration) {
 				strncat (target, "00", len - strlen (target) - 1);
@@ -110,7 +110,7 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 		} else if (strcmp (key, "minutes") == 0) {
 			int duration;
 
-			xmmsc_value_get_dict_entry_int (val, "duration", &duration);
+			xmms_value_get_dict_entry_int (val, "duration", &duration);
 
 			if (!duration) {
 				strncat (target, "00", len - strlen (target) - 1);
@@ -125,17 +125,17 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 			const char *result = NULL;
 			char tmp[12];
 
-			xmms_value_type_t type = xmmsc_value_get_dict_entry_type (val, key);
+			xmms_value_type_t type = xmms_value_get_dict_entry_type (val, key);
 			if (type == XMMS_VALUE_TYPE_STRING) {
-				xmmsc_value_get_dict_entry_string (val, key, &result);
+				xmms_value_get_dict_entry_string (val, key, &result);
 			} else if (type == XMMS_VALUE_TYPE_UINT32) {
 				uint32_t ui;
-				xmmsc_value_get_dict_entry_uint (val, key, &ui);
+				xmms_value_get_dict_entry_uint (val, key, &ui);
 				snprintf (tmp, 12, "%u", ui);
 				result = tmp;
 			} else if (type == XMMS_VALUE_TYPE_INT32) {
 				int32_t i;
-				xmmsc_value_get_dict_entry_int (val, key, &i);
+				xmms_value_get_dict_entry_int (val, key, &i);
 				snprintf (tmp, 12, "%d", i);
 				result = tmp;
 			}

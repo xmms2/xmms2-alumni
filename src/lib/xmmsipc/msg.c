@@ -20,13 +20,16 @@
 
 #include <errno.h>
 #include <time.h>
+#include <assert.h>
 
+#include "xmmspriv/xmms_list.h"
 #include "xmmsc/xmmsc_ipc_transport.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 #include "xmmsc/xmmsc_util.h"
 #include "xmmsc/xmmsc_sockets.h"
 #include "xmmsc/xmmsc_stdint.h"
 #include "xmmsc/xmmsc_coll.h"
+
 
 typedef union {
 	struct {
@@ -666,3 +669,303 @@ err:
 
 	return false;
 }
+
+
+
+
+
+
+
+
+
+
+static void
+free_dict_list (x_list_t *list)
+{
+	while (list) {
+		free (list->data); /* key */
+		list = x_list_delete_link (list, list);
+
+		/* xmmsc_deserialize_dict guarantees that the list is
+		 * well-formed
+		 */
+		assert (list);
+
+		xmms_value_unref ((xmms_value_t *) list->data); /* value */
+		list = x_list_delete_link (list, list);
+	}
+}
+
+static xmms_value_t *
+xmmsc_parse_value (xmms_ipc_msg_t *msg)
+{
+	xmms_value_t *val;
+
+	val = xmms_value_new ();
+
+	if (!xmms_ipc_msg_get_value (msg, val)) {
+		x_internal_error ("Message from server did not parse correctly!");
+		free (val);
+		val = NULL;
+	}
+
+	return val;
+}
+
+static x_list_t *
+xmmsc_deserialize_dict (xmms_ipc_msg_t *msg)
+{
+	unsigned int entries;
+	unsigned int len;
+	x_list_t *n = NULL;
+	char *key;
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &entries)) {
+		return NULL;
+	}
+
+	while (entries--) {
+		xmms_value_t *val;
+
+		if (!xmms_ipc_msg_get_string_alloc (msg, &key, &len)) {
+			goto err;
+		}
+
+		val = xmmsc_parse_value (msg);
+		if (!val) {
+			free (key);
+			goto err;
+		}
+
+		n = x_list_prepend (n, key);
+		n = x_list_prepend (n, val);
+	}
+
+	return x_list_reverse (n);
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+
+	free_dict_list (x_list_reverse (n));
+
+	return NULL;
+}
+
+/*
+static bool
+xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
+{
+	int type;
+	x_list_t *list = NULL;
+
+	if (xmms_value_iserror (res->data)) {
+		res->parsed = true;
+		return true;
+	}
+
+	if (!xmms_ipc_msg_get_int32 (msg, &type))
+		return false;
+
+	res->data->type = type;
+
+	switch (type) {
+
+		case XMMS_VALUE_TYPE_UINT32 :
+			if (!xmms_ipc_msg_get_uint32 (msg, &res->data->value.uint32)) {
+				return false;
+			}
+			break;
+		case XMMS_VALUE_TYPE_INT32 :
+			if (!xmms_ipc_msg_get_int32 (msg, &res->data->value.int32)) {
+				return false;
+			}
+			break;
+		case XMMS_VALUE_TYPE_BIN:
+			{
+				xmms_value_bin_t *bin;
+				bin = x_new0 (xmms_value_bin_t, 1);
+				if (!xmms_ipc_msg_get_bin_alloc (msg, &bin->data, &bin->len)) {
+					free (bin);
+					return false;
+				}
+				res->data->value.bin = bin;
+				break;
+			}
+		case XMMS_VALUE_TYPE_STRING :
+			{
+				uint32_t len;
+
+				if (!xmms_ipc_msg_get_string_alloc (msg,
+				                                    &res->data->value.string,
+				                                    &len)) {
+					return false;
+				}
+			}
+			break;
+		case XMMS_VALUE_TYPE_DICT:
+			{
+				x_list_t *dict;
+
+				dict = xmmsc_deserialize_dict (msg);
+				if (!dict)
+					return false;
+
+				res->data->value.dict = dict;
+
+			}
+			break;
+		case XMMS_VALUE_TYPE_LIST :
+		case XMMS_VALUE_TYPE_PROPDICT :
+			{
+				uint32_t len, i;
+
+				if (!xmms_ipc_msg_get_uint32 (msg, &len))
+					return false;
+
+				for (i = 0; i < len; i ++) {
+					xmms_value_t *val;
+					val = xmmsc_parse_value (msg);
+					list = x_list_prepend (list, val);
+				}
+
+				if (list)
+					list = x_list_reverse (list);
+
+				res->data->current = res->data->list = list;
+
+				if (type == XMMS_VALUE_TYPE_LIST) {
+					res->data->islist = 1;
+
+					if (res->data->current) {
+						xmms_value_t *val = res->data->current->data;
+						res->data->value.generic = val->value.generic;
+						res->data->type = val->type;
+					} else {
+						res->data->value.generic = NULL;
+						res->data->type = XMMS_VALUE_TYPE_NONE;
+					}
+				}
+			}
+			break;
+
+		case XMMS_VALUE_TYPE_COLL:
+			{
+				xmmsc_coll_t *coll;
+
+				if (!xmms_ipc_msg_get_collection_alloc (msg, &coll))
+					return false;
+
+				res->data->value.coll = coll;
+				xmmsc_coll_ref (res->data->value.coll);
+			}
+			break;
+
+		case XMMS_VALUE_TYPE_NONE :
+			break;
+
+		default :
+			return false;
+	}
+
+	res->parsed = true;
+
+	return true;
+}
+*/
+
+
+bool
+xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmms_value_t *val)
+{
+	int32_t type, i;
+	uint32_t len, u;
+	x_list_t *list = NULL;
+	char *s;
+	xmmsc_coll_t *c;
+	unsigned char *d;
+
+	if (xmms_value_iserror (val)) {
+		return true;
+	}
+
+	if (!xmms_ipc_msg_get_int32 (msg, (int32_t *) &type)) {
+		return false;
+	}
+
+	switch (type) {
+		case XMMS_VALUE_TYPE_UINT32:
+			if (!xmms_ipc_msg_get_uint32 (msg, &u)) {
+				return false;
+			}
+			xmms_value_set_uint (val, u);
+			break;
+		case XMMS_VALUE_TYPE_INT32:
+			if (!xmms_ipc_msg_get_int32 (msg, &i)) {
+				return false;
+			}
+			xmms_value_set_int (val, i);
+			break;
+		case XMMS_VALUE_TYPE_STRING:
+			if (!xmms_ipc_msg_get_string_alloc (msg, &s, &len)) {
+				return false;
+			}
+			xmms_value_set_string (val, s);
+			break;
+		case XMMS_VALUE_TYPE_DICT:
+			list = xmmsc_deserialize_dict (msg);
+			if (!list) {
+				return false;
+			}
+
+			xmms_value_set_dict (val, list);
+			break;
+
+		case XMMS_VALUE_TYPE_LIST :
+		case XMMS_VALUE_TYPE_PROPDICT :
+			if (!xmms_ipc_msg_get_uint32 (msg, &len)) {
+				return false;
+			}
+
+			for (u = 0; u < len; u ++) {
+				xmms_value_t *v;
+				v = xmms_value_new ();
+				if (xmms_ipc_msg_get_value (msg, v)) {
+					list = x_list_prepend (list, v);
+				} else {
+					/* FIXME: free all, error! */
+				}
+			}
+			list = x_list_reverse (list);
+
+			if (type == XMMS_VALUE_TYPE_LIST) {
+				xmms_value_set_list (val, list);
+			} else {
+				xmms_value_set_propdict (val, list);
+			}
+			break;
+
+		case XMMS_VALUE_TYPE_COLL:
+			xmms_ipc_msg_get_collection_alloc (msg, &c);
+			if (!c) {
+				return false;
+			}
+			xmms_value_set_collection (val, c);
+			break;
+
+		case XMMS_VALUE_TYPE_BIN:
+			if (!xmms_ipc_msg_get_bin_alloc (msg, &d, &len)) {
+				return false;
+			}
+			xmms_value_set_bin (val, d, len);
+			break;
+
+		case XMMS_VALUE_TYPE_NONE:
+			break;
+		default:
+			return false;
+			break;
+	}
+
+	return true;
+}
+

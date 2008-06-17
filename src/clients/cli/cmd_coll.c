@@ -77,16 +77,16 @@ coll_list (xmmsc_connection_t *conn, const gchar *namespace)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
+	if (xmms_value_iserror (val)) {
 		print_error ("Couldn't list collections in namespace %s: %s",
-		             namespace, xmmsc_value_get_error (val));
+		             namespace, xmms_value_get_error (val));
 	} else {
-		while (xmmsc_value_list_valid (val)) {
+		while (xmms_value_list_valid (val)) {
 			const gchar *name;
 
-			xmmsc_value_get_string (val, &name);
+			xmms_value_get_string (val, &name);
 			print_info ("%s", name);
-			xmmsc_value_list_next (val);
+			xmms_value_list_next (val);
 		}
 	}
 	xmmsc_result_unref (res);
@@ -102,16 +102,16 @@ coll_find (xmmsc_connection_t *conn, const gchar *namespace, guint mid)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
+	if (xmms_value_iserror (val)) {
 		print_error ("Couldn't find collections containing media %d in namespace %s: %s",
-		             mid, namespace, xmmsc_value_get_error (val));
+		             mid, namespace, xmms_value_get_error (val));
 	} else {
-		while (xmmsc_value_list_valid (val)) {
+		while (xmms_value_list_valid (val)) {
 			const gchar *name;
 
-			xmmsc_value_get_string (val, &name);
+			xmms_value_get_string (val, &name);
 			print_info ("%s", name);
-			xmmsc_value_list_next (val);
+			xmms_value_list_next (val);
 		}
 	}
 	xmmsc_result_unref (res);
@@ -417,19 +417,19 @@ cmd_coll_query (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	}
 
-	while (xmmsc_value_list_valid (val)) {
+	while (xmms_value_list_valid (val)) {
 		guint id;
 
-		if (!xmmsc_value_get_uint (val, &id)) {
+		if (!xmms_value_get_uint (val, &id)) {
 			print_error ("Broken resultset");
 		}
 
 		n = g_list_prepend (n, XINT_TO_POINTER (id));
-		xmmsc_value_list_next (val);
+		xmms_value_list_next (val);
 	}
 	n = g_list_reverse (n);
 	format_pretty_list (conn, n);
@@ -535,11 +535,11 @@ cmd_coll_get (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	} else {
 		xmmsc_coll_t *coll;
-		xmmsc_value_get_collection (val, &coll);
+		xmms_value_get_collection (val, &coll);
 		coll_print (coll);
 	}
 
@@ -593,11 +593,11 @@ cmd_coll_attr (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	} else {
 		xmmsc_coll_t *coll;
-		xmmsc_value_get_collection (val, &coll);
+		xmms_value_get_collection (val, &coll);
 
 		/* Print all attributes */
 		if (argc == 4) {

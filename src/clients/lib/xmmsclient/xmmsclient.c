@@ -178,8 +178,8 @@ xmmsc_connect (xmmsc_connection_t *c, const char *ipcpath)
 	result = xmmsc_send_hello (c);
 	xmmsc_result_wait (result);
 	value = xmmsc_result_get_value (result);
-	if (xmmsc_value_iserror (value)) {
-		c->error = strdup (xmmsc_value_get_error (value));
+	if (xmms_value_iserror (value)) {
+		c->error = strdup (xmms_value_get_error (value));
 		xmmsc_result_unref (result);
 		return false;
 	}

@@ -20,6 +20,7 @@
 #include "xmmsc/xmmsc_stdint.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 #include "xmmsc/xmmsc_idnumbers.h"
+#include "xmmsc/xmmsc_value.h"
 #include "xmmsc/xmmsc_coll.h"
 
 #ifdef __cplusplus
@@ -33,7 +34,6 @@ extern "C" {
 #endif
 
 typedef struct xmmsc_connection_St xmmsc_connection_t;
-typedef struct xmmsc_value_St xmms_value_t;
 typedef struct xmmsc_result_St xmmsc_result_t;
 
 typedef enum {
@@ -303,59 +303,9 @@ void xmmsc_result_wait (xmmsc_result_t *res);
 
 xmms_value_t *xmmsc_result_get_value (xmmsc_result_t *res);
 
-/*
- * VALUES
- */
-
-xmms_value_t *xmmsc_value_ref (xmms_value_t *val);
-void xmmsc_value_unref (xmms_value_t *val);
-
-int xmmsc_value_iserror (xmms_value_t *val);
-const char * xmmsc_value_get_error (xmms_value_t *val);
-
-int xmmsc_value_get_int (xmms_value_t *val, int32_t *r);
-int xmmsc_value_get_uint (xmms_value_t *val, uint32_t *r);
-int xmmsc_value_get_string (xmms_value_t *val, const char **r);
-int xmmsc_value_get_collection (xmms_value_t *val, xmmsc_coll_t **coll);
-int xmmsc_value_get_bin (xmms_value_t *val, unsigned char **r, unsigned int *rlen);
-
-typedef enum {
-	XMMS_VALUE_TYPE_NONE = XMMS_OBJECT_CMD_ARG_NONE,
-	XMMS_VALUE_TYPE_UINT32 = XMMS_OBJECT_CMD_ARG_UINT32,
-	XMMS_VALUE_TYPE_INT32 = XMMS_OBJECT_CMD_ARG_INT32,
-	XMMS_VALUE_TYPE_STRING = XMMS_OBJECT_CMD_ARG_STRING,
-	XMMS_VALUE_TYPE_DICT = XMMS_OBJECT_CMD_ARG_DICT,
-	XMMS_VALUE_TYPE_LIST = XMMS_OBJECT_CMD_ARG_LIST,
-	XMMS_VALUE_TYPE_PROPDICT = XMMS_OBJECT_CMD_ARG_PROPDICT,
-	XMMS_VALUE_TYPE_COLL = XMMS_OBJECT_CMD_ARG_COLL,
-	XMMS_VALUE_TYPE_BIN = XMMS_OBJECT_CMD_ARG_BIN
-} xmms_value_type_t;
-
-typedef void (*xmmsc_propdict_foreach_func) (const void *key, xmms_value_type_t type, const void *value, const char *source, void *user_data);
-typedef void (*xmmsc_dict_foreach_func) (const void *key, xmms_value_type_t type, const void *value, void *user_data);
-
-xmms_value_type_t xmmsc_value_get_dict_entry_type (xmms_value_t *val, const char *key);
-int xmmsc_value_get_dict_entry_string (xmms_value_t *val, const char *key, const char **r);
-int xmmsc_value_get_dict_entry_int (xmms_value_t *val, const char *key, int32_t *r);
-int xmmsc_value_get_dict_entry_uint (xmms_value_t *val, const char *key, uint32_t *r);
-int xmmsc_value_get_dict_entry_collection (xmms_value_t *val, const char *key, xmmsc_coll_t **coll);
-int xmmsc_value_dict_foreach (xmms_value_t *val, xmmsc_dict_foreach_func func, void *user_data);
-int xmmsc_value_propdict_foreach (xmms_value_t *val, xmmsc_propdict_foreach_func func, void *user_data);
-void xmmsc_value_source_preference_set (xmms_value_t *val, const char **preference);
-const char **xmmsc_value_source_preference_get (xmms_value_t *val);
-
-int xmmsc_value_is_list (xmms_value_t *val);
-int xmmsc_value_list_next (xmms_value_t *val);
-int xmmsc_value_list_first (xmms_value_t *val);
-int xmmsc_value_list_valid (xmms_value_t *val);
-
-xmms_value_type_t xmmsc_value_get_type (xmms_value_t *val);
-
-const char *xmmsc_value_decode_url (xmms_value_t *val, const char *string);
-
 /* Legacy aliases for convenience. */
-#define xmmsc_result_iserror(res) xmmsc_value_iserror(xmmsc_result_get_value(res))
-#define xmmsc_result_get_error(res) xmmsc_value_get_error(xmmsc_result_get_value(res))
+#define xmmsc_result_iserror(res) xmms_value_iserror(xmmsc_result_get_value(res))
+#define xmmsc_result_get_error(res) xmms_value_get_error(xmmsc_result_get_value(res))
 
 #ifdef __cplusplus
 }

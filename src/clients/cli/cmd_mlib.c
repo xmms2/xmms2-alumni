@@ -111,11 +111,11 @@ cmd_info (xmmsc_connection_t *conn, gint argc, gchar **argv)
 			xmmsc_result_wait (res);
 			val = xmmsc_result_get_value (res);
 
-			if (xmmsc_value_iserror (val)) {
-				print_error ("%s", xmmsc_value_get_error (val));
+			if (xmms_value_iserror (val)) {
+				print_error ("%s", xmms_value_get_error (val));
 			}
 
-			xmmsc_value_propdict_foreach (val, print_entry, val);
+			xmms_value_propdict_foreach (val, print_entry, val);
 			xmmsc_result_unref (res);
 		}
 
@@ -124,11 +124,11 @@ cmd_info (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		xmmsc_result_wait (res);
 		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_value_iserror (val)) {
-			print_error ("%s", xmmsc_value_get_error (val));
+		if (xmms_value_iserror (val)) {
+			print_error ("%s", xmms_value_get_error (val));
 		}
 
-		if (!xmmsc_value_get_uint (val, &id)) {
+		if (!xmms_value_get_uint (val, &id)) {
 			print_error ("Broken resultset");
 		}
 		xmmsc_result_unref (res);
@@ -137,11 +137,11 @@ cmd_info (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		xmmsc_result_wait (res);
 		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_value_iserror (val)) {
-			print_error ("%s", xmmsc_value_get_error (val));
+		if (xmms_value_iserror (val)) {
+			print_error ("%s", xmms_value_get_error (val));
 		}
 
-		xmmsc_value_propdict_foreach (val, print_entry, val);
+		xmms_value_propdict_foreach (val, print_entry, val);
 		xmmsc_result_unref (res);
 	}
 }
@@ -372,19 +372,19 @@ cmd_mlib_search (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_coll_unref (query);
 	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_value_iserror (val)) {
-		print_error ("%s", xmmsc_value_get_error (val));
+	if (xmms_value_iserror (val)) {
+		print_error ("%s", xmms_value_get_error (val));
 	}
 
-	while (xmmsc_value_list_valid (val)) {
+	while (xmms_value_list_valid (val)) {
 		guint id;
 
-		if (!xmmsc_value_get_uint (val, &id)) {
+		if (!xmms_value_get_uint (val, &id)) {
 			print_error ("Broken resultset");
 		}
 
 		n = g_list_prepend (n, XINT_TO_POINTER (id));
-		xmmsc_value_list_next (val);
+		xmms_value_list_next (val);
 	}
 	n = g_list_reverse (n);
 	format_pretty_list (conn, n);
@@ -514,11 +514,11 @@ cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 		g_free (contents);
 
-		if (xmmsc_value_iserror (val)) {
-			print_error ("%s", xmmsc_value_get_error (val));
+		if (xmms_value_iserror (val)) {
+			print_error ("%s", xmms_value_get_error (val));
 		}
 
-		if (!xmmsc_value_get_string (val, &hash)) {
+		if (!xmms_value_get_string (val, &hash)) {
 			print_error ("Could not extract hash from result!");
 		}
 

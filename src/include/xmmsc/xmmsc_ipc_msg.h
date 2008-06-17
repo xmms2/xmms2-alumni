@@ -23,6 +23,7 @@
 #include "xmmsc/xmmsc_ipc_transport.h"
 #include "xmmsc/xmmsc_inline.h"
 #include "xmmsc/xmmsc_coll.h"
+#include "xmmsc/xmmsc_value.h"
 
 #define XMMS_IPC_MSG_DEFAULT_SIZE 128 /*32768*/
 #define XMMS_IPC_MSG_HEAD_LEN 16 /* all but data */
@@ -62,5 +63,7 @@ bool xmms_ipc_msg_get_string (xmms_ipc_msg_t *msg, char *str, unsigned int maxle
 bool xmms_ipc_msg_get_string_alloc (xmms_ipc_msg_t *msg, char **buf, unsigned int *len);
 bool xmms_ipc_msg_get_collection_alloc (xmms_ipc_msg_t *msg, xmmsc_coll_t **coll);
 bool xmms_ipc_msg_get_bin_alloc (xmms_ipc_msg_t *msg, unsigned char **buf, unsigned int *len);
+
+bool xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmms_value_t *val);
 
 #endif 
