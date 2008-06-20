@@ -1,4 +1,4 @@
-xmms2 (0.5DrLecter-1) unstable; urgency=low
+xmms2 (0.5DrLecter-1) experimental; urgency=low
 
   * New upstream release.
     + Remove the xmms2-plugin-gnomevfs package. The plugin has been
