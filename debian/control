@@ -744,7 +744,8 @@ Package: xmms2-plugin-gvfs
 Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends},
-         xmms2-core (= ${binary:Version})
+         xmms2-core (= ${binary:Version}),
+         gvfs-backends
 Enhances: xmms2-core
 Description: XMMS2 - gvfs plugin
  Glib virtual filesystem trasport for xmms2.
