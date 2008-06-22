@@ -61,6 +61,7 @@ src/plugins/sid/*:
 
 src/plugins/sid/md5.*:
         Copyright (C) 1999 Aladdin Enterprises.
+        Licensed under BSD-style license.
 
 src/plugins/equalizer/eq.c:
         Licensed under GPL license.
@@ -144,6 +145,9 @@ src/plugins/karaoke/*
         Licensed under GPL license.
 
 src/plugins/samba/samba.c
+        Licensed under the GNU General Public License.
+
+src/plugins/faad/faad.c
         Licensed under the GNU General Public License.
 
 

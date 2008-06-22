@@ -12,8 +12,11 @@ xmms2 (0.5DrLecter-1) unstable; urgency=low
     + Add xmms2-plugin-gvfs.
     + Rename library packages to reflect SONAME changes.
   * Bump Standards-Version to 3.8.0 (no changes required).
+  * Update COPYING and debian/copyright.
+    + Cherry-pick 615391: Add license for src/plugin/sid/md5.* to COPYING.
+    + Cherry-pick 58a583: Mention the GPLed faad plugin in COPYING.
 
- -- Florian Ragwitz <rafl@debian.org>  Sun, 15 Jun 2008 17:18:46 +0200
+ -- Florian Ragwitz <rafl@debian.org>  Sun, 22 Jun 2008 12:53:18 +0200
 
 xmms2 (0.4DrKosmos-4) unstable; urgency=low
 
