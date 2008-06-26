@@ -31,8 +31,8 @@ struct xmms_service_St {
 	xmms_object_t object;
 
 	GMutex *mutex;
-	GHashTable *registry;
-	GHashTable *clients;
+	GTree *registry;
+	GTree *clients;
 };
 
 /**
@@ -45,7 +45,7 @@ typedef struct xmms_service_entry_St {
 	guint major_version;
 	guint minor_version;
 
-	GHashTable *methods;
+	xmmsc_value_t *methods;
 
 	/* Service client fd */
 	xmms_socket_t sc;
@@ -65,8 +65,7 @@ struct xmms_service_method_St {
 
 	guint cookie;
 
-	GHashTable *rets;
-	GHashTable *args;
+	xmmsc_value_t *args;
 
 	gchar *service_name;
 	xmms_service_t *service_obj;
@@ -74,7 +73,7 @@ struct xmms_service_method_St {
 
 struct xmms_service_argument_St {
 	gchar *name;
-	xmms_object_cmd_arg_type_t type;
+	xmmsc_value_type_t type;
 	gboolean optional;
 };
 

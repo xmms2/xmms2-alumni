@@ -39,8 +39,46 @@
  * @{
  */
 
+struct xmmsc_service_St {
+	char *name;
+	char *desc;
+	uint32_t major;
+	uint32_t minor;
+	x_list_t *methods;
+
+	uint32_t ref;
+};
+
+typedef struct xmmsc_service_method_St {
+	char *name;
+	char *desc;
+	void *udata;
+	xmmsc_service_notifier_t func;
+	xmmsc_user_data_free_func_t ufree;
+	xmms_value_type_t rettype;
+	xmms_value_t *args;
+} xmmsc_service_method_t;
+
+typedef struct xmmsc_service_method_arg_St {
+	char *name;
+	xmmsc_value_type_t *type;
+} xmmsc_service_method_arg_t;
+
+static int xmmsc_service_method_add_valist (xmmsc_service_t *svc,
+                                            const char *name, const char *desc,
+                                            xmms_value_type_t rettype,
+                                            xmmsc_service_notifier_t func,
+                                            void *udata,
+                                            xmmsc_user_data_free_func_t ufree,
+                                            va_list ap);
+static void xmmsc_service_free (xmmsc_service_t *svc);
+static void xmmsc_service_method_free (xmmsc_service_method_t *meth);
+
+/* Strange, old crap. Will stick these methods above this comment line one-by-
+ * one as they are checked/updated. */
+/*
 static xmmsc_result_t *method_return (xmmsc_connection_t *conn,
-                                      xmmsc_result_t *res,
+                                      xmmsc_value_t *val,
                                       xmmsc_service_method_t *method);
 static int arg_attribute_get (xmmsc_service_argument_t *arg,
                               xmmsc_service_arg_type_t *type, uint32_t *optional,
@@ -49,83 +87,356 @@ static int data_copy (void *dest, const void *src, uint32_t len);
 static void arg_value_free (xmmsc_service_argument_t *arg);
 static void arg_reset (xmmsc_service_method_t *method);
 static void ret_reset (xmmsc_service_method_t *method);
-/* static int arg_value_get (xmmsc_service_argument_t *arg, void *value); */
+static int arg_value_get (xmmsc_service_argument_t *arg, void *value);
 static int argument_write (xmms_ipc_msg_t *msg, xmmsc_service_argument_t *arg);
 static int arg_lookup (const void *arg, const void *name);
 static void free_infos (void *data);
-static void dispatch (xmmsc_result_t *res, void *data);
+static void dispatch (xmmsc_value_t *val, void *data);
 static xmmsc_coll_t *coll_copy (xmmsc_coll_t *coll);
 static void coll_attr_copy (const char *key, const char *value, void *userdata);
+*/
 
 /**
- * Register a new service.
+ * Create a new service.
  *
- * @param conn The connection to the server.
  * @param name Service name (will be duplicated).
- * @param description Service description (will be duplicated).
+ * @param desc Service description (will be duplicated).
  * @param major Service major version.
  * @param minor Service minor version.
+ * @return The newly created #xmmsc_service_t or NULL on failure. This must be
+ * freed using #xmmsc_service_unref.
  */
-xmmsc_result_t *
-xmmsc_service_register (xmmsc_connection_t *conn,
-                        const char *name, const char *description,
-                        uint32_t major, uint32_t minor)
+xmmsc_service_t *
+xmmsc_service_new (const char *name, const char *desc,
+                   uint32_t major, uint32_t minor)
 {
-	xmmsc_result_t *res;
-	xmms_ipc_msg_t *msg;
+	xmmsc_service_t *svc;
 
-	x_check_conn (conn, NULL);
 	x_return_null_if_fail (name);
 	x_return_null_if_fail (description);
 
+	svc = x_new (xmmsc_service_t, 1);
+	x_return_null_if_fail (svc);
+
+	svc->name = strdup (name);
+	svc->desc = strdup (desc);
+	svc->major = major;
+	svc->minor = minor;
+	svc->methods = x_list_alloc ();
+	svc->ref = 1;
+
+	if (!(svc->name && svc->desc && svc->methods)) {
+		xmmsc_service_free (svc);
+		return NULL;
+	}
+
+	svc->methods->data = NULL;
+
+	return svc;
+}
+
+/**
+ * Create a new service method.
+ *
+ * Caller is responsible for freeing the returned structure using
+ * #xmmsc_service_method_unref.
+ *
+ * @param svc The #xmmsc_service_t to which the method will be added.
+ * @param name Method name (will be duplicated).
+ * @param desc Method description (will be duplicated).
+ * @param rettype Type of the return value, an #xmms_value_type_t.
+ * @param func Callback function, an #xmmsc_service_notifier_t.
+ * @param udata User data to pass to func.
+ * @param ... NULL-terminated list of const char *, xmms_value_type_t.
+ * @return 1 on success, 0 otherwise.
+ */
+int
+xmmsc_service_method_add (xmmsc_service_t *svc, const char *name,
+                          const char *desc, xmms_value_type_t rettype,
+                          xmmsc_service_notifier_t func, void *udata, ...)
+{
+	int ret;
+	va_list ap;
+
+	va_start (ap, udata);
+	ret = xmmsc_service_method_add_valist (svc, name, desc, rettype, func,
+	                                       udata, NULL, ap);
+	va_end (ap);
+
+	return ret;
+}
+
+/**
+ * Create a new service method.
+ *
+ * Udata will be freed by free_func if this call fails.
+ *
+ * @param svc The #xmmsc_service_t to which the method will be added.
+ * @param name Method name (will be duplicated).
+ * @param desc Method description (will be duplicated).
+ * @param rettype Type of the return value, a #xmms_value_type_t.
+ * @param func Callback function, an #xmmsc_service_notifier_t.
+ * @param udata User data to pass to func.
+ * @param ufree Optional function that should be called to free udata, an
+ * #xmmsc_user_data_free_func_t.
+ * @param ... NULL-terminated list of const char *, xmms_value_type_t.
+ * @return 1 on success, 0 otherwise.
+ */
+int
+xmmsc_service_method_add_full (xmmsc_service_t *svc, const char *name,
+                               const char *desc, xmms_value_type_t rettype,
+                               xmmsc_service_notifier_t func, void *udata,
+                               xmmsc_user_data_free_func_t ufree, ...)
+{
+	int ret;
+	va_list ap;
+
+	va_start (ap, free_func);
+	ret = xmmsc_service_method_add_valist (svc, name, desc, rettype, func,
+	                                       udata, ufree, ap);
+	va_end (ap);
+
+	return ret;
+}
+
+static int
+xmmsc_service_method_add_valist (xmmsc_service_t *svc, const char *name,
+                                 const char *desc, xmms_value_type_t rettype,
+                                 xmmsc_service_notifier_t func, void *udata,
+                                 xmmsc_user_data_free_func_t ufree, va_list ap)
+{
+	xmmsc_service_method_arg_t *arg;
+	xmms_value_type_t type;
+	const char* arg;
+
+	x_return_val_if_fail (xmmsc_service_method_add_noarg (svc, name, desc,
+	                                                      rettype, func, udata,
+	                                                      ufree));
+
+	while (42) {
+		/* FIXME: "If there is no next argument, or if type is not compatible
+		   with the type of the actual next argument (as promoted according to
+		   the default argument promotions), random errors will occur."
+		   Maybe we can get away with just blaming the client author, but it is
+		   likely that his error will crash our code--not good. */
+		arg = va_arg (ap, const char *);
+		if (!arg) {
+			i++;
+			break;
+		}
+		type = va_arg (ap, xmms_value_type_t);
+		/* FIXME: Same issue with checking type_t as above. */
+
+		xmmsc_service_method_add_arg (svc, arg, type);
+	}
+
+	return 1;
+}
+
+/**
+ * Create a new service method with no arguments. Arguments can be added
+ * individually by calling #xmmsc_service_add_arg immediately after calling
+ * this function.
+ *
+ * Udata will be freed by free_func if this call fails.
+ *
+ * @param svc The #xmmsc_service_t to which the method will be added.
+ * @param name Method name (will be duplicated).
+ * @param desc Method description (will be duplicated).
+ * @param rettype Type of the return value, a #xmms_value_type_t.
+ * @param func Callback function, an #xmmsc_service_notifier_t.
+ * @param udata User data to pass to func.
+ * @param ufree Optional function that should be called to free udata, an
+ * #xmmsc_user_data_free_func_t.
+ * @return 1 on success, 0 otherwise.
+ */
+int
+xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
+                                const char *desc, xmms_value_type_t rettype,
+                                xmmsc_service_notifier_t func, void *udata,
+                                xmmsc_user_data_free_func_t ufree)
+{
+	xmmsc_service_method_t *meth;
+
+	x_return_val_if_fail (svc, 0);
+	x_return_val_if_fail (name, 0);
+	x_return_val_if_fail (desc, 0);
+	/* FIXME: check that rettype is actually one of value_type_t?
+	   This looks like a job for Superman, or a new xmmsv_type_check, maybe. */
+	x_return_val_if_fail (rettype > XMMS_VALUE_TYPE_NONE, 0;)
+
+	meth = x_new (xmmsc_service_method_t, 1);
+	meth->name = strdup (name);
+	meth->desc = strdup (desc);
+	meth->rettype = rettype;
+	meth->func = func;
+	meth->udata = udata;
+	meth->ufree = ufree;
+	meth->args = NULL;
+	if (!(meth->name && meth->desc)) {
+		xmmsc_service_method_free (meth);
+		return 0;
+	}
+
+	svc->methods = x_list_append (svc->methods, (void *) meth);
+	if (!svc->methods) {
+		return 0;
+	}
+
+	return 1;
+}
+
+/**
+ * Add an argument to a method. This will add an argument to the last method
+ * added to the service.
+ *
+ * @param svc The #xmmsc_service_t containing the method to which this argument
+ * will be added.
+ * @param name The name of the argument.
+ * @param type The type of the argument, an #xmms_value_type_t.
+ * @return 1 on success, 0 otherwise.
+ */
+int
+xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
+                              xmms_value_type_t type)
+{
+	x_list_t *tmp;
+	xmms_value_t *val;
+	xmms_value_dict_iter_t *iter;
+
+	x_return_val_if_fail (svc, 0);
+	x_return_val_if_fail (name, 0);
+	x_return_val_if_fail (type > XMMS_VALUE_TYPE_NONE, 0);
+
+	tmp = x_list_last (svc->methods);
+	x_return_val_if_fail (tmp, 0);
+
+	val = xmms_value_new_int ((int32_t) type);
+	x_return_val_if_fail (val, 0);
+
+	if (!tmp->args) {
+		tmp->args = xmms_value_new_dict ();
+	}
+
+	if (!(tmp->args && xmms_value_dict_iter_new (tmp->args, &iter))) {
+		xmms_value_unref (val);
+		return 0;
+	}
+
+	/* FIXME: This is destined to change. It's a void return type now, but will
+	   not be in the future. And we might not have to use these annoying iters
+	   after there is a convenience method added, also. */
+	xmms_value_dict_iter_insert (iter, name, val);
+
+	return 1;
+}
+
+/* TODO: Add _ref and _unref functions here. */
+
+/**
+ * Free a service.
+ *
+ * @param svc The Service.
+ */
+static void
+xmmsc_service_free (xmmsc_service_t *svc)
+{
+	x_return_if_fail (svc);
+
+	if (svc->name) {
+		free (svc->name);
+	}
+	if (svc->desc) {
+		free (svc->desc);
+	}
+	if (svc->methods) {
+		/* Walk the list, deleting each link as we do so. */
+		while (svc->methods) {
+			if (tmp->data) {
+				xmmsc_service_method_free ((xmmsc_service_method_t *)tmp->data);
+			}
+			svc->methods = x_list_delete_link (svc->methods, svc->methods);
+		}
+	}
+
+	free (svc);
+}
+
+/**
+ * Free the given #xmmsc_service_method_t.
+ *
+ * @param meth The #xmmsc_service_method_t.
+ */
+static void
+xmmsc_service_method_free (xmmsc_service_method_t *meth)
+{
+	x_return_if_fail (meth);
+
+	if (meth->name) {
+		free (name);
+	}
+	if (meth->desc) {
+		free (meth->desc);
+	}
+	if (meth->ufree) {
+		meth->ufree (udata);
+	}
+	if (meth->args) {
+		/* FIXME: Currently this is not recursive, i.e. the values stored in
+		   this dict are not unreffed. Theefer says there may be an
+		   xmmsv_list_clear that does what we want here. */
+		xmms_value_unref (meth->args);
+	}
+
+	free (meth);
+}
+
+/* Stuff below this line hasn't been updated yet. */
+/**
+ * Register a new service.
+ * @param conn The connection to the server.
+ * @param svc The Service.
+ */
+xmmsc_result_t *
+xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
+{
+	xmmsc_result_t *res;
+	xmms_ipc_msg_t *msg;
+	x_list_t *n;
+
+	x_check_conn (conn, NULL);
+	x_return_null_if_fail (svc);
+
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_REGISTER);
-	xmms_ipc_msg_put_string (msg, name);
-	xmms_ipc_msg_put_string (msg, description);
-	xmms_ipc_msg_put_uint32 (msg, major);
-	xmms_ipc_msg_put_uint32 (msg, minor);
+	xmms_ipc_msg_put_string (msg, svc->name);
+	xmms_ipc_msg_put_string (msg, svc->description);
+	xmms_ipc_msg_put_uint32 (msg, svc->major);
+	xmms_ipc_msg_put_uint32 (msg, svc->minor);
+
+	xmms_ipc_msg_put_uint32 (msg, x_list_length (svc->methods));
+	if (svc->methods) {
+		for (n = svc->methods; n; x_list_next (n)) {
+			service_method_register (msg, (xmms_service_method_t *)n->data);
+		}
+	}
 
 	res = xmmsc_send_msg (conn, msg);
 
 	return res;
 }
 
-/**
- * Register a new method.
- *
- * @param conn The connection to the server.
- * @param service Service name of which the method belongs to.
- * @param method #xmmsc_service_method_t which contains the method's information. Don't free it manually, it'll be freed automatically when it's no longer needed.
- */
-xmmsc_result_t *
-xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service,
-                               xmmsc_service_method_t *method)
+static void
+service_method_register (xmms_ipc_msg_t *msg, xmmsc_service_method_t *method)
 {
-	xmmsc_result_t *res;
-	xmms_ipc_msg_t *msg;
 	x_list_t *n;
 	xmmsc_service_argument_t *arg = NULL;
 
-	x_check_conn (conn, NULL);
-	x_return_null_if_fail (service);
-	x_return_null_if_fail (method);
-
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_METHOD_REGISTER);
-	xmms_ipc_msg_put_string (msg, service);
 	xmms_ipc_msg_put_string (msg, method->name);
 	xmms_ipc_msg_put_string (msg, method->description);
 
-	xmms_ipc_msg_put_uint32 (msg, x_list_length (method->ret_list));
-	for (n = method->ret_list; n; n = x_list_next (n)) {
-		arg = (xmmsc_service_argument_t *)n->data;
-		xmms_ipc_msg_put_string (msg, arg->name);
-		xmms_ipc_msg_put_uint32 (msg, arg->type);
-		xmms_ipc_msg_put_int32 (msg, arg->optional);
-	}
-
-	xmms_ipc_msg_put_uint32 (msg, x_list_length (method->arg_list));
-	for (n = method->arg_list; n; n = x_list_next (n)) {
+	xmms_ipc_msg_put_uint32 (msg, x_list_length (method->args));
+	for (n = method->args; n; n = x_list_next (n)) {
 		arg = (xmmsc_service_argument_t *)n->data;
 		xmms_ipc_msg_put_string (msg, arg->name);
 		xmms_ipc_msg_put_uint32 (msg, arg->type);
@@ -134,16 +445,8 @@ xmmsc_service_method_register (xmmsc_connection_t *conn, const char *service,
 
 	res = xmmsc_send_msg (conn, msg);
 
-	if (xmmsc_result_iserror (res)) {
-		return res;
-	}
-
-	method->conn = conn;
-
 	xmmsc_result_notifier_set_full (res, dispatch, method, free_infos);
 	xmmsc_service_method_ref (method);
-
-	return res;
 }
 
 /**
@@ -288,10 +591,6 @@ xmmsc_service_request (xmmsc_connection_t *conn, const char *service,
 			arg = (xmmsc_service_argument_t *)n->data;
 
 			xmms_ipc_msg_put_string (msg, arg->name);
-			xmms_ipc_msg_put_uint32 (msg, arg->none);
-			if (arg->none) {
-				continue;
-			}
 			if (!argument_write (msg, arg)) {
 				xmms_ipc_msg_destroy (msg);
 				return 0;
@@ -379,105 +678,6 @@ xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c)
 }
 
 /**
- * Create a new #xmmsc_service_method_t.
- *
- * Caller is responsible for freeing the returned structure using
- * #xmmsc_service_method_unref.
- *
- * @param name Method name (will be duplicated).
- * @param description Method description (will be duplicated).
- * @param func Callback function.
- * @param user_data User data to pass to func.
- * @return The newly created #xmmsc_service_method_t.
- */
-xmmsc_service_method_t *
-xmmsc_service_method_new (const char *name, const char *description,
-                          xmmsc_service_notifier_t func, void *user_data)
-{
-	return xmmsc_service_method_new_full (name, description, func,
-	                                      user_data, NULL);
-}
-
-/**
- * Create a new #xmmsc_service_method_t.
- *
- * Caller is responsible for freeing the returned structure using
- * #xmmsc_service_method_unref.
- *
- * @param name Method name (will be duplicated).
- * @param description Method description (will be duplicated).
- * @param func Callback function.
- * @param user_data User data to pass to func.
- * @param free_func Optional function that should be called to free user_data.
- * @return The newly created #xmmsc_service_method_t.
- */
-xmmsc_service_method_t *
-xmmsc_service_method_new_full (const char *name, const char *description,
-                               xmmsc_service_notifier_t func, void *user_data,
-                               xmmsc_user_data_free_func_t free_func)
-{
-	xmmsc_service_method_t *ret = NULL;
-
-	if (!name || !description) {
-		return NULL;
-	}
-
-	ret = x_new0 (xmmsc_service_method_t, 1);
-
-	ret->name = strdup (name);
-	ret->description = strdup (description);
-	ret->arg_list = NULL;
-	ret->ret_list = NULL;
-
-	ret->udata = user_data;
-	ret->func = func;
-	ret->free_func = free_func;
-
-	xmmsc_service_method_ref (ret);
-
-	return ret;
-}
-
-/**
- * Free the given #xmmsc_service_method_t.
- *
- * @param method The #xmmsc_service_method_t list.
- */
-void
-xmmsc_service_method_free (xmmsc_service_method_t *method)
-{
-	x_list_t *n;
-	xmmsc_service_argument_t *arg;
-
-	if (!method) {
-		return;
-	}
-
-	free (method->name);
-	free (method->description);
-	for (n = method->ret_list; n; n = x_list_next (n)) {
-		arg = (xmmsc_service_argument_t *)n->data;
-		free (arg->name);
-		arg_value_free (arg);
-		free (arg);
-	}
-	for (n = method->arg_list; n; n = x_list_next (n)) {
-		arg = (xmmsc_service_argument_t *)n->data;
-		free (arg->name);
-		arg_value_free (arg);
-		free (arg);
-	}
-	x_list_free (method->ret_list);
-	x_list_free (method->arg_list);
-	free (method->error_str);
-
-	if (method->free_func) {
-		method->free_func (method->udata);
-	}
-	free (method);
-}
-
-/**
  * Increase the reference count.
  *
  * @param method The method to increase reference count on.
@@ -548,7 +748,7 @@ xmmsc_service_method_attribute_get (xmmsc_service_method_t *method,
 int
 xmmsc_service_method_arg_type_add (xmmsc_service_method_t *method,
                                    const char *name,
-                                   xmmsc_service_arg_type_t type,
+                                   xmmsc_value_t type,
                                    int32_t optional)
 {
 	xmmsc_service_argument_t *arg;
@@ -567,7 +767,6 @@ xmmsc_service_method_arg_type_add (xmmsc_service_method_t *method,
 	arg->name = strdup (name);
 	arg->type = type;
 	arg->optional = optional;
-	arg->none = 1;
 	method->arg_list = x_list_append (method->arg_list, arg);
 
 	return 1;
@@ -1187,14 +1386,13 @@ xmmsc_service_method_arg_attribute_get (xmmsc_service_method_t *method,
  * @param name The name of the argument.
  * @param type The returned type of the argument.
  * @param optional The returned optionality of the argument.
- * @param none The returned value of the none field of the argument.
  * @return 1 for success, 0 otherwise.
  */
 int
 xmmsc_service_method_ret_attribute_get (xmmsc_service_method_t *method,
                                         const char *name,
                                         xmmsc_service_arg_type_t *type,
-                                        uint32_t *optional, uint32_t *none)
+                                        uint32_t *optional)
 {
 	x_list_t *item;
 	xmmsc_service_argument_t *arg;
@@ -1211,140 +1409,10 @@ xmmsc_service_method_ret_attribute_get (xmmsc_service_method_t *method,
 }
 
 /**
- * Set an argument value to none.
- *
- * @param method The method which contains the argument.
- * @param name The name of the argument.
- * @return 1 for success, 0 otherwise.
- */
-int
-xmmsc_service_method_arg_remove (xmmsc_service_method_t *method,
-                                 const char *name)
-{
-	x_list_t *item;
-	xmmsc_service_argument_t *arg;
-
-	x_return_val_if_fail (method, 0);
-	x_return_val_if_fail (name, 0);
-
-	if (!(item = x_list_find_custom (method->arg_list, name, arg_lookup))) {
-		return 0;
-	}
-	arg = (xmmsc_service_argument_t *)item->data;
-
-	arg_value_free (arg);
-
-	arg->none = 1;
-
-	return 1;
-}
-
-/**
- * Set a return argument value to none.
- *
- * @param method The method which contains the return argument.
- * @param name The name of the argument.
- * @return 1 for success, 0 otherwise.
- */
-int
-xmmsc_service_method_ret_remove (xmmsc_service_method_t *method,
-                                 const char *name)
-{
-	x_list_t *item;
-	xmmsc_service_argument_t *arg;
-
-	x_return_val_if_fail (method, 0);
-	x_return_val_if_fail (name, 0);
-
-	if (!(item = x_list_find_custom (method->ret_list, name, arg_lookup))) {
-		return 0;
-	}
-	arg = (xmmsc_service_argument_t *)item->data;
-
-	arg_value_free (arg);
-
-	arg->none = 1;
-
-	return 1;
-}
-
-/**
- * Get error message.
- *
- * @param method The method which contains the error message.
- * @return The error message.
- */
-const char *
-xmmsc_service_method_error_get (xmmsc_service_method_t *method)
-{
-	x_return_val_if_fail (method, 0);
-
-	if (method->error && method->error_str) {
-		return method->error_str;
-	}
-
-	return NULL;
-}
-
-/**
- * Set an error message.
- *
- * @param method The method which you want to set the error message to.
- * @param err The error message willing to set.
- * @return 1 for success, 0 otherwise.
- */
-int
-xmmsc_service_method_error_set (xmmsc_service_method_t *method, const char *err)
-{
-	x_return_val_if_fail (method, 0);
-	x_return_val_if_fail (err, 0);
-
-	if (method->error && method->error_str) {
-		free (method->error_str);
-	}
-
-	method->error = 1;
-	if (!(method->error_str = strdup (err))) {
-		return 0;
-	}
-
-	return 1;
-}
-
-/**
- * Reset error message.
- *
- * @param method The method that will contain the error message.
- */
-void
-xmmsc_service_method_error_reset (xmmsc_service_method_t *method)
-{
-	x_return_if_fail (method);
-
-	method->error = 0;
-	free (method->error_str);
-	method->error_str = NULL;
-}
-
-/**
- * Check if a method already contains an error message.
- *
- * @param method The method to check.
- * @return 1 means yes, 0 otherwise.
- */
-int
-xmmsc_service_method_error_isset (xmmsc_service_method_t *method)
-{
-	x_return_val_if_fail (method, 0);
-
-	return method->error;
-}
-
-/**
  * @internal
  */
 static xmmsc_result_t *
-method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
+method_return (xmmsc_connection_t *conn, xmmsc_value_t *val,
                xmmsc_service_method_t *method)
 {
 	xmms_ipc_msg_t *msg;
@@ -1353,13 +1421,13 @@ method_return (xmmsc_connection_t *conn, xmmsc_result_t *res,
 	xmmsc_service_argument_t *arg;
 
 	x_check_conn (conn, NULL);
-	x_return_null_if_fail (res);
+	x_return_null_if_fail (val);
 	x_return_null_if_fail (method);
 	if (!method->error && !method->ret_list) {
 		return NULL;
 	}
 
-	if (!xmmsc_result_get_service_cookie (res, &cookie)) {
+	if (!xmmsc_value_get_service_cookie (val, &cookie)) {
 		return NULL;
 	}
 
@@ -1540,22 +1608,22 @@ free_infos (void *data)
 }
 
 static void
-dummy_handler (xmmsc_result_t *res, void *data)
+dummy_handler (xmmsc_value_t *val, void *data)
 {
 
 }
 
 static void
-dispatch (xmmsc_result_t *res, void *data)
+dispatch (xmmsc_value_t *val, void *data)
 {
 	xmmsc_service_method_t *method = (xmmsc_service_method_t *)data;
 	xmmsc_result_t *result;
 
 	x_return_if_fail (method);
 
-	method->func (method->conn, res, method, method->udata);
+	method->func (method->conn, val, method, method->udata);
 
-	result = method_return (method->conn, res, method);
+	result = method_return (method->conn, val, method);
 	if (result) {
 		xmmsc_result_notifier_set (result, dummy_handler, NULL);
 		xmmsc_result_unref (result);
