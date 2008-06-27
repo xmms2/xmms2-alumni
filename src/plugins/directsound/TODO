@@ -1,0 +1,13 @@
+16:00 < anders_> Why does xmms_directsound_volume_get take the detour via channel_map?
+16:03 < anders_> af_str2fmt_short seems unused.
+16:04 < Zharf> ew, camel case functioname too
+16:04 < puzzles> auke-: ping
+16:06 < puzzles> i pretty much just cleaned up the code style-wise and did some trivial changes. haven't reviewed it thoroughly.
+16:06 < anders_> puzzles: Also: http://1c0dab1c80b9af87.paste.se/
+16:06 < ~SkitIDet> Title: check (at 1c0dab1c80b9af87.paste.se)
+16:07 < puzzles> oh boo
+16:08 < anders_> Is all crap in directsound.h needed?
+16:08 < puzzles> probably not
+16:08 < puzzles> it was largely c&p afaik
+16:08 < anders_> Guess it can be much smaller. And that means that it could be folded into directsound.c.
+16:08 < anders_> To look more like other plugins.
