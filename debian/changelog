@@ -1,4 +1,4 @@
-xmms2 (0.5DrLecter-2) unstable; urgency=low
+xmms2 (0.5DrLecter-2) unstable; urgency=medium
 
   * Make wma playback work with the latest libavcodec.
     + Cherry-pick fae1d0: Move ALAC hack from avcodec to mp4 to make
