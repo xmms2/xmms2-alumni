@@ -202,7 +202,6 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
 			xmms_ipc_msg_put_int32 (msg, val->value.int32);
 			break;
 		case XMMS_VALUE_TYPE_LIST:
-		case XMMS_VALUE_TYPE_PROPDICT:
 			/* store a dummy value first, and get the offset at where
 			 * it was put, so we can store the real count later.
 			 */

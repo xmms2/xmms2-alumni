@@ -74,6 +74,8 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 	while (strlen (target) + 1 < len) {
 		char *next_key, *key, *end;
 		int keylen;
+		xmms_value_dict_iter_t *it;
+		xmms_value_t *v;
 
 		next_key = strstr (pos, "${");
 		if (!next_key) {
@@ -93,10 +95,14 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 		memset (key, 0, keylen + 1);
 		strncpy (key, next_key + 2, keylen);
 
+		xmms_value_get_dict_iter (val, &it);
+
 		if (strcmp (key, "seconds") == 0) {
 			int duration;
 
-			xmms_value_get_dict_entry_int (val, "duration", &duration);
+			xmms_value_dict_iter_seek (it, "duration");
+			xmms_value_dict_iter_pair (it, NULL, &v);
+			xmms_value_get_int (v, &duration);
 
 			if (!duration) {
 				strncat (target, "00", len - strlen (target) - 1);
@@ -110,7 +116,9 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 		} else if (strcmp (key, "minutes") == 0) {
 			int duration;
 
-			xmms_value_get_dict_entry_int (val, "duration", &duration);
+			xmms_value_dict_iter_seek (it, "duration");
+			xmms_value_dict_iter_pair (it, NULL, &v);
+			xmms_value_get_int (v, &duration);
 
 			if (!duration) {
 				strncat (target, "00", len - strlen (target) - 1);
@@ -125,17 +133,20 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 			const char *result = NULL;
 			char tmp[12];
 
-			xmms_value_type_t type = xmms_value_get_dict_entry_type (val, key);
+			xmms_value_dict_iter_seek (it, "duration");
+			xmms_value_dict_iter_pair (it, NULL, &v);
+
+			xmms_value_type_t type = xmms_value_get_type (v);
 			if (type == XMMS_VALUE_TYPE_STRING) {
-				xmms_value_get_dict_entry_string (val, key, &result);
+				xmms_value_get_string (v, &result);
 			} else if (type == XMMS_VALUE_TYPE_UINT32) {
 				uint32_t ui;
-				xmms_value_get_dict_entry_uint (val, key, &ui);
+				xmms_value_get_uint (v, &ui);
 				snprintf (tmp, 12, "%u", ui);
 				result = tmp;
 			} else if (type == XMMS_VALUE_TYPE_INT32) {
 				int32_t i;
-				xmms_value_get_dict_entry_int (val, key, &i);
+				xmms_value_get_int (v, &i);
 				snprintf (tmp, 12, "%d", i);
 				result = tmp;
 			}

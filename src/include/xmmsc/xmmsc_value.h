@@ -27,22 +27,79 @@ extern "C" {
 
 typedef struct xmms_value_St xmms_value_t;
 
-typedef void (*xmmsc_propdict_foreach_func) (const void *key, xmms_value_type_t type, const void *value, const char *source, void *user_data);
-typedef void (*xmmsc_dict_foreach_func) (const void *key, xmms_value_type_t type, const void *value, void *user_data);
+typedef struct xmms_value_list_iter_St xmms_value_list_iter_t;
+typedef struct xmms_value_dict_iter_St xmms_value_dict_iter_t;
 
-xmms_value_t *xmms_value_new ();
+xmms_value_t *xmms_value_new_error (const char *errstr); /* FIXME: err id? */
+xmms_value_t *xmms_value_new_int (int32_t i);
+xmms_value_t *xmms_value_new_uint (uint32_t u);
+xmms_value_t *xmms_value_new_string (const char *s);
+xmms_value_t *xmms_value_new_coll (xmmsc_coll_t *coll);
+xmms_value_t *xmms_value_new_bin (unsigned char *data, unsigned int len);
+
+xmms_value_t *xmms_value_new_list ();
+xmms_value_t *xmms_value_new_dict ();
+
 xmms_value_t *xmms_value_ref (xmms_value_t *val);
 void xmms_value_unref (xmms_value_t *val);
 
-int xmms_value_iserror (xmms_value_t *val);
-const char * xmms_value_get_error (xmms_value_t *val);
-void xmms_value_seterror (xmms_value_t *val, const char *errstr);
+xmms_value_type_t xmms_value_get_type (xmms_value_t *val);
 
+/* legacy aliases */
+int xmms_value_iserror (xmms_value_t *val);
+int xmms_value_is_list (xmms_value_t *val);
+
+int xmms_value_get_error (xmms_value_t *val, const char **r);
 int xmms_value_get_int (xmms_value_t *val, int32_t *r);
 int xmms_value_get_uint (xmms_value_t *val, uint32_t *r);
 int xmms_value_get_string (xmms_value_t *val, const char **r);
 int xmms_value_get_collection (xmms_value_t *val, xmmsc_coll_t **coll);
 int xmms_value_get_bin (xmms_value_t *val, unsigned char **r, unsigned int *rlen);
+
+int xmms_value_get_list_iter (xmms_value_t *val, xmms_value_list_iter_t **it);
+int xmms_value_get_dict_iter (xmms_value_t *val, xmms_value_dict_iter_t **it);
+
+int  xmms_value_list_iter_entry (xmms_value_list_iter_t *it, xmms_value_t **val);
+int  xmms_value_list_iter_valid (xmms_value_list_iter_t *it);
+void xmms_value_list_iter_first (xmms_value_list_iter_t *it);
+void xmms_value_list_iter_next (xmms_value_list_iter_t *it);
+
+/* FIXME: return a new iter, or keep 'state' */
+int xmms_value_list_iter_insert (xmms_value_list_iter_t *it, xmms_value_t *val);
+int xmms_value_list_iter_remove (xmms_value_list_iter_t *it);
+
+int xmms_value_list_iter_append (xmms_value_list_iter_t *it, xmms_value_t *val);
+
+
+int  xmms_value_dict_iter_pair (xmms_value_dict_iter_t *it, const char **key, xmms_value_t **val);
+int  xmms_value_dict_iter_valid (xmms_value_dict_iter_t *it);
+void xmms_value_dict_iter_first (xmms_value_dict_iter_t *it);
+void xmms_value_dict_iter_next (xmms_value_dict_iter_t *it);
+int  xmms_value_dict_iter_seek (xmms_value_dict_iter_t *it, const char *key);
+
+void xmms_value_dict_iter_insert (xmms_value_dict_iter_t *it, const char *key, xmms_value_t *val);
+void xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it, const char *key);
+
+/* FIXME: utilities:
+
+make_string_list
+prepend
+goto N
+foreach
+
+*/
+
+/* FIXME: move to utils or something! */
+const char *xmms_value_decode_url (const char *string);
+
+
+/* Obsolete: 
+
+typedef void (*xmmsc_propdict_foreach_func) (const void *key, xmms_value_type_t type, const void *value, const char *source, void *user_data);
+typedef void (*xmmsc_dict_foreach_func) (const void *key, xmms_value_type_t type, const void *value, void *user_data);
+
+void xmms_value_seterror (xmms_value_t *val, const char *errstr);
+
 
 xmms_value_type_t xmms_value_get_dict_entry_type (xmms_value_t *val, const char *key);
 int xmms_value_get_dict_entry_string (xmms_value_t *val, const char *key, const char **r);
@@ -54,29 +111,19 @@ int xmms_value_propdict_foreach (xmms_value_t *val, xmmsc_propdict_foreach_func 
 void xmms_value_source_preference_set (xmms_value_t *val, const char **preference);
 const char **xmms_value_source_preference_get (xmms_value_t *val);
 
-int xmms_value_is_list (xmms_value_t *val);
 int xmms_value_list_next (xmms_value_t *val);
 int xmms_value_list_first (xmms_value_t *val);
 int xmms_value_list_valid (xmms_value_t *val);
 
-xmms_value_type_t xmms_value_get_type (xmms_value_t *val);
-
-void xmms_value_set_int (xmms_value_t *val, int32_t r);
-void xmms_value_set_uint (xmms_value_t *val, uint32_t r);
-void xmms_value_set_string (xmms_value_t *val, const char *r);
-void xmms_value_set_collection (xmms_value_t *val, xmmsc_coll_t *coll);
-void xmms_value_set_bin (xmms_value_t *val, unsigned char *r, unsigned int rlen);
-
-/* FIXME: Allah will punish me for this someday
-void xmms_value_set_list (xmms_value_t *val, x_list_t *r);
-void xmms_value_set_dict (xmms_value_t *val, x_list_t *r);
-void xmms_value_set_propdict (xmms_value_t *val, x_list_t *r);
 */
-void xmms_value_set_list (xmms_value_t *val, void *r);
-void xmms_value_set_dict (xmms_value_t *val, void *r);
-void xmms_value_set_propdict (xmms_value_t *val, void *r);
 
-const char *xmms_value_decode_url (xmms_value_t *val, const char *string);
+/* anders' EG:
+
+for (i = value_iter_get(value); value_iter_inside (i);
+	 value_iter_next (i)) { xmms_value_t *subval = iter_get(i); }
+
+i = value_iter_get (value); iter_goto_key(i, "apan"); iter_set(i, subvalue);
+*/
 
 
 #ifdef __cplusplus

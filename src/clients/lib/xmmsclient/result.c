@@ -254,7 +254,7 @@ xmmsc_result_restart (xmmsc_result_t *res)
 static bool
 xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 {
-	if (xmms_ipc_msg_get_value (msg, res->data)) {
+	if (xmms_ipc_msg_get_value (msg, &res->data)) {
 		res->parsed = true;
 		return true;
 	} else {
@@ -354,7 +354,8 @@ xmmsc_result_wait (xmmsc_result_t *res)
 	}
 
 	if (err) {
-		xmms_value_seterror (res->data, err);
+		/* FIXME: xmms_value_unref (res->data) or not allocated ? */
+		res->data = xmms_value_new_error (err);
 	}
 }
 
@@ -389,7 +390,8 @@ xmmsc_result_get_value (xmmsc_result_t *res)
 void
 xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr)
 {
-	xmms_value_seterror (res->data, errstr);
+	xmms_value_unref (res->data);
+	res->data = xmms_value_new_error (errstr);
 }
 
 void
@@ -461,7 +463,6 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 		   just renew the value because it went out of scope.
 		   (freeing the payload) */
 		xmms_value_unref (res->data);
-		res->data = xmms_value_new ();
 	}
 
 	xmmsc_result_unref (res);
@@ -487,7 +488,7 @@ xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t type,
 
 	res->c = xmmsc_ref (c);
 
-	res->data = xmms_value_new ();
+	res->data = NULL;
 	res->type = type;
 	res->cookie = cookie;
 

@@ -225,17 +225,6 @@ xmms_object_cmd_value_dict_new (GTree *dict)
 }
 
 xmms_object_cmd_value_t *
-xmms_object_cmd_value_propdict_new (GList *list)
-{
-	xmms_object_cmd_value_t *val;
-	val = g_new0 (xmms_object_cmd_value_t, 1);
-	val->value.list = list;
-	val->type = XMMS_VALUE_TYPE_PROPDICT;
-	val->refcount = 1;
-	return val;
-}
-
-xmms_object_cmd_value_t *
 xmms_object_cmd_value_list_new (GList *list)
 {
 	xmms_object_cmd_value_t *val;
@@ -280,7 +269,6 @@ xmms_object_cmd_value_free (xmms_object_cmd_value_t *v)
 				g_string_free (v->value.bin, TRUE);
 			break;
 		case XMMS_VALUE_TYPE_LIST:
-		case XMMS_VALUE_TYPE_PROPDICT:
 			while (v->value.list) {
 				xmms_object_cmd_value_unref (v->value.list->data);
 				v->value.list = g_list_delete_link (v->value.list,
@@ -370,6 +358,9 @@ xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
 	va_start (ap, type);
 
 	switch (type) {
+		case XMMS_VALUE_TYPE_ERROR:
+			/* FIXME: We never have ERROR as return type, right? */
+			break;
 		case XMMS_VALUE_TYPE_UINT32:
 			arg.retval = xmms_object_cmd_value_uint_new (va_arg (ap, guint32));
 			break;
@@ -386,7 +377,6 @@ xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
 			arg.retval = xmms_object_cmd_value_dict_new (va_arg (ap, GTree *));
 			break;
 		case XMMS_VALUE_TYPE_LIST:
-		case XMMS_VALUE_TYPE_PROPDICT:
 		case XMMS_VALUE_TYPE_STRINGLIST:
 			arg.retval = xmms_object_cmd_value_list_new (va_arg (ap, GList *));
 			break;

@@ -64,6 +64,6 @@ bool xmms_ipc_msg_get_string_alloc (xmms_ipc_msg_t *msg, char **buf, unsigned in
 bool xmms_ipc_msg_get_collection_alloc (xmms_ipc_msg_t *msg, xmmsc_coll_t **coll);
 bool xmms_ipc_msg_get_bin_alloc (xmms_ipc_msg_t *msg, unsigned char **buf, unsigned int *len);
 
-bool xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmms_value_t *val);
+bool xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmms_value_t **val);
 
 #endif 

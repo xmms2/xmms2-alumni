@@ -671,85 +671,78 @@ err:
 }
 
 
-
-
-
-
-
-
-
-
-static void
-free_dict_list (x_list_t *list)
+static int
+xmmsc_deserialize_dict (xmms_ipc_msg_t *msg, xmms_value_t **val)
 {
-	while (list) {
-		free (list->data); /* key */
-		list = x_list_delete_link (list, list);
-
-		/* xmmsc_deserialize_dict guarantees that the list is
-		 * well-formed
-		 */
-		assert (list);
-
-		xmms_value_unref ((xmms_value_t *) list->data); /* value */
-		list = x_list_delete_link (list, list);
-	}
-}
-
-static xmms_value_t *
-xmmsc_parse_value (xmms_ipc_msg_t *msg)
-{
-	xmms_value_t *val;
-
-	val = xmms_value_new ();
-
-	if (!xmms_ipc_msg_get_value (msg, val)) {
-		x_internal_error ("Message from server did not parse correctly!");
-		free (val);
-		val = NULL;
-	}
-
-	return val;
-}
-
-static x_list_t *
-xmmsc_deserialize_dict (xmms_ipc_msg_t *msg)
-{
-	unsigned int entries;
-	unsigned int len;
-	x_list_t *n = NULL;
+	xmms_value_t *tmpval;
+	xmms_value_dict_iter_t *dit;
+	unsigned int len, ignore;
 	char *key;
 
-	if (!xmms_ipc_msg_get_uint32 (msg, &entries)) {
-		return NULL;
+	tmpval = xmms_value_new_dict ();
+	xmms_value_get_dict_iter (tmpval, &dit);
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &len)) {
+		goto err;
 	}
 
-	while (entries--) {
-		xmms_value_t *val;
+	while (len--) {
+		xmms_value_t *v;
 
-		if (!xmms_ipc_msg_get_string_alloc (msg, &key, &len)) {
+		if (!xmms_ipc_msg_get_string_alloc (msg, &key, &ignore)) {
 			goto err;
 		}
 
-		val = xmmsc_parse_value (msg);
-		if (!val) {
-			free (key);
+		if (!xmms_ipc_msg_get_value (msg, &v)) {
 			goto err;
 		}
 
-		n = x_list_prepend (n, key);
-		n = x_list_prepend (n, val);
+		xmms_value_dict_iter_insert (dit, key, v);
 	}
 
-	return x_list_reverse (n);
+	*val = tmpval;
+
+	return true;
 
 err:
 	x_internal_error ("Message from server did not parse correctly!");
-
-	free_dict_list (x_list_reverse (n));
-
-	return NULL;
+	xmms_value_unref (tmpval);
+	return false;
 }
+
+static int
+xmmsc_deserialize_list (xmms_ipc_msg_t *msg, xmms_value_t **val)
+{
+	xmms_value_t *tmpval;
+	xmms_value_list_iter_t *lit;
+	unsigned int len;
+
+    tmpval = xmms_value_new_list ();
+	xmms_value_get_list_iter (tmpval, &lit);
+
+	if (!xmms_ipc_msg_get_uint32 (msg, &len)) {
+		goto err;
+	}
+
+	while (len--) {
+		xmms_value_t *v;
+		if (xmms_ipc_msg_get_value (msg, &v)) {
+			xmms_value_list_iter_append (lit, v);
+		} else {
+			goto err;
+		}
+	}
+
+	*val = tmpval;
+
+	return true;
+
+err:
+	x_internal_error ("Message from server did not parse correctly!");
+	xmms_value_unref (tmpval);
+	return false;
+}
+
 
 /*
 static bool
@@ -875,18 +868,19 @@ xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 
 
 bool
-xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmms_value_t *val)
+xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmms_value_t **val)
 {
 	int32_t type, i;
 	uint32_t len, u;
-	x_list_t *list = NULL;
 	char *s;
 	xmmsc_coll_t *c;
 	unsigned char *d;
 
+/* FIXME: ?
 	if (xmms_value_iserror (val)) {
 		return true;
 	}
+*/
 
 	if (!xmms_ipc_msg_get_int32 (msg, (int32_t *) &type)) {
 		return false;
@@ -897,50 +891,29 @@ xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmms_value_t *val)
 			if (!xmms_ipc_msg_get_uint32 (msg, &u)) {
 				return false;
 			}
-			xmms_value_set_uint (val, u);
+			*val = xmms_value_new_uint (u);
 			break;
 		case XMMS_VALUE_TYPE_INT32:
 			if (!xmms_ipc_msg_get_int32 (msg, &i)) {
 				return false;
 			}
-			xmms_value_set_int (val, i);
+			*val = xmms_value_new_int (i);
 			break;
 		case XMMS_VALUE_TYPE_STRING:
 			if (!xmms_ipc_msg_get_string_alloc (msg, &s, &len)) {
 				return false;
 			}
-			xmms_value_set_string (val, s);
+			*val = xmms_value_new_string (s);
 			break;
 		case XMMS_VALUE_TYPE_DICT:
-			list = xmmsc_deserialize_dict (msg);
-			if (!list) {
+			if (!xmmsc_deserialize_dict (msg, val)) {
 				return false;
 			}
-
-			xmms_value_set_dict (val, list);
 			break;
 
 		case XMMS_VALUE_TYPE_LIST :
-		case XMMS_VALUE_TYPE_PROPDICT :
-			if (!xmms_ipc_msg_get_uint32 (msg, &len)) {
+			if (!xmmsc_deserialize_list (msg, val)) {
 				return false;
-			}
-
-			for (u = 0; u < len; u ++) {
-				xmms_value_t *v;
-				v = xmms_value_new ();
-				if (xmms_ipc_msg_get_value (msg, v)) {
-					list = x_list_prepend (list, v);
-				} else {
-					/* FIXME: free all, error! */
-				}
-			}
-			list = x_list_reverse (list);
-
-			if (type == XMMS_VALUE_TYPE_LIST) {
-				xmms_value_set_list (val, list);
-			} else {
-				xmms_value_set_propdict (val, list);
 			}
 			break;
 
@@ -949,14 +922,14 @@ xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmms_value_t *val)
 			if (!c) {
 				return false;
 			}
-			xmms_value_set_collection (val, c);
+			*val = xmms_value_new_coll (c);
 			break;
 
 		case XMMS_VALUE_TYPE_BIN:
 			if (!xmms_ipc_msg_get_bin_alloc (msg, &d, &len)) {
 				return false;
 			}
-			xmms_value_set_bin (val, d, len);
+			*val = xmms_value_new_bin (d, len);
 			break;
 
 		case XMMS_VALUE_TYPE_NONE:
@@ -968,4 +941,3 @@ xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmms_value_t *val)
 
 	return true;
 }
-

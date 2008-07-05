@@ -52,7 +52,7 @@ static void xmms_medialib_property_remove_method (xmms_medialib_t *medialib, gui
 static guint32 xmms_medialib_entry_get_id (xmms_medialib_t *medialib, gchar *url, xmms_error_t *error);
 
 
-XMMS_CMD_DEFINE (info, xmms_medialib_info, xmms_medialib_t *, PROPDICT, UINT32, NONE);
+XMMS_CMD_DEFINE (info, xmms_medialib_info, xmms_medialib_t *, DICT, UINT32, NONE);
 XMMS_CMD_DEFINE (mlib_add, xmms_medialib_add_entry, xmms_medialib_t *, NONE, STRING, NONE);
 XMMS_CMD_DEFINE (mlib_remove, xmms_medialib_entry_remove_method, xmms_medialib_t *, NONE, UINT32, NONE);
 XMMS_CMD_DEFINE (mlib_move, xmms_medialib_move_entry, xmms_medialib_t *, NONE, UINT32, STRING);
@@ -1127,6 +1127,8 @@ xmms_medialib_info (xmms_medialib_t *medialib, guint32 id, xmms_error_t *err)
 			                "Could not retrive info for that entry!");
 		}
 	}
+
+/* FIXME: Return a DICT/GTree !!!! */
 
 	return ret;
 }
