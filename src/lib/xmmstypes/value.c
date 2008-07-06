@@ -404,6 +404,77 @@ xmms_value_is_list (xmms_value_t *val)
 	return xmms_value_get_type (val) == XMMS_VALUE_TYPE_LIST;
 }
 
+const char *
+xmms_value_get_error (xmms_value_t *val)
+{
+	if (!val || val->type != XMMS_VALUE_TYPE_ERROR) {
+		return NULL;
+	}
+
+	return val->value.error;
+}
+
+
+xmms_value_type_t
+xmms_value_get_dict_entry_type (xmms_value_t *val, const char *key)
+{
+	xmms_value_dict_iter_t *it;
+	xmms_value_t *v;
+
+	if (!val || !xmms_value_get_dict_iter (val, &it) ||
+		!xmms_value_dict_iter_seek (it, key)) {
+		return 0;
+	}
+
+	xmms_value_dict_iter_pair (it, NULL, &v);
+
+	return xmms_value_get_type (v);
+}
+
+
+/* macro-magically define legacy dict extractors */
+#define GEN_COMPAT_DICT_EXTRACTOR_FUNC(typename, type) \
+	int \
+	xmms_value_get_dict_entry_##typename (xmms_value_t *val, const char *key, \
+	                                      type *r) \
+	{ \
+		xmms_value_dict_iter_t *it; \
+		xmms_value_t *v; \
+		if (!val || !xmms_value_get_dict_iter (val, &it) || \
+			!xmms_value_dict_iter_seek (it, key)) { \
+			return 0; \
+		} \
+		xmms_value_dict_iter_pair (it, NULL, &v); \
+		return xmms_value_get_##typename (v, r); \
+	}
+
+GEN_COMPAT_DICT_EXTRACTOR_FUNC(string, const char *)
+GEN_COMPAT_DICT_EXTRACTOR_FUNC(int, int32_t)
+GEN_COMPAT_DICT_EXTRACTOR_FUNC(uint, uint32_t)
+GEN_COMPAT_DICT_EXTRACTOR_FUNC(collection, xmmsc_coll_t *)
+
+
+int
+xmms_value_dict_foreach (xmms_value_t *val, xmmsc_dict_foreach_func func,
+                         void *user_data)
+{
+	xmms_value_dict_iter_t *it;
+	const char *key;
+	xmms_value_t *v;
+
+	if (!val || !xmms_value_get_dict_iter (val, &it)) {
+		return 0;
+	}
+
+	while (xmms_value_dict_iter_valid (it)) {
+		xmms_value_dict_iter_pair (it, &key, &v);
+		func (key, v, user_data);
+		xmms_value_dict_iter_next (it);
+	}
+
+	return 1;
+}
+
 
 /**
  * Retrieves an error string describing the server error from the

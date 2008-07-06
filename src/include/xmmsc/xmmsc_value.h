@@ -48,6 +48,17 @@ xmms_value_type_t xmms_value_get_type (xmms_value_t *val);
 /* legacy aliases */
 int xmms_value_iserror (xmms_value_t *val);
 int xmms_value_is_list (xmms_value_t *val);
+const char * xmms_value_get_error_old (xmms_value_t *val);
+
+/* legacy transitional utilities */
+typedef void (*xmmsc_dict_foreach_func) (const void *key, xmms_value_t *value, void *user_data);
+
+xmms_value_type_t xmms_value_get_dict_entry_type (xmms_value_t *val, const char *key);
+int xmms_value_get_dict_entry_string (xmms_value_t *val, const char *key, const char **r);
+int xmms_value_get_dict_entry_int (xmms_value_t *val, const char *key, int32_t *r);
+int xmms_value_get_dict_entry_uint (xmms_value_t *val, const char *key, uint32_t *r);
+int xmms_value_get_dict_entry_collection (xmms_value_t *val, const char *key, xmmsc_coll_t **coll);
+int xmms_value_dict_foreach (xmms_value_t *val, xmmsc_dict_foreach_func func, void *user_data);
 
 int xmms_value_get_error (xmms_value_t *val, const char **r);
 int xmms_value_get_int (xmms_value_t *val, int32_t *r);
