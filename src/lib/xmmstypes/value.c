@@ -434,6 +434,7 @@ xmmsv_is_dict (const xmmsv_t *val)
 	return xmmsv_get_type (val) == XMMSV_TYPE_DICT;
 }
 
+
 const char *
 xmmsv_get_error_old (const xmmsv_t *val)
 {
