@@ -76,7 +76,7 @@ struct xmms_value_St {
 		int32_t int32;
 		char *string;
 		xmmsc_coll_t *coll;
-		xmms_value_bin_t *bin;
+		xmms_value_bin_t bin;
 		xmms_value_list_t *list;
 		xmms_value_dict_t *dict;
 	} value;
@@ -165,8 +165,11 @@ xmms_value_new_uint (uint32_t u)
 xmms_value_t *
 xmms_value_new_string (const char *s)
 {
-	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_STRING);
+	xmms_value_t *val;
 
+	x_return_val_if_fail (s, NULL);
+
+	val = xmms_value_new (XMMS_VALUE_TYPE_STRING);
 	if (val) {
 		val->value.string = strdup (s);
 	}
@@ -183,8 +186,11 @@ xmms_value_new_string (const char *s)
 xmms_value_t *
 xmms_value_new_coll (xmmsc_coll_t *c)
 {
-	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_COLL);
+	xmms_value_t *val;
 
+	x_return_val_if_fail (c, NULL);
+
+	val = xmms_value_new (XMMS_VALUE_TYPE_COLL);
 	if (val) {
 		val->value.coll = c;
 		xmmsc_coll_ref (c);
@@ -206,16 +212,9 @@ xmms_value_new_bin (unsigned char *data, unsigned int len)
 	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_BIN);
 
 	if (val) {
-		val->value.bin = x_new0 (xmms_value_bin_t, 1);
-		if (!val->value.bin) {
-			xmms_value_free (val);
-			x_oom ();
-			return NULL;
-		}
-
 		/* FIXME: data is copied? it will be freed!*/
-		val->value.bin->data = data;
-		val->value.bin->len = len;
+		val->value.bin.data = data;
+		val->value.bin.len = len;
 	}
 
 	return val;
@@ -346,9 +345,8 @@ value_data_free (xmms_value_t *val)
 			val->value.coll = NULL;
 			break;
 		case XMMS_VALUE_TYPE_BIN :
-			free (val->value.bin->data);
-			free (val->value.bin);
-			val->value.bin = NULL;
+			free (val->value.bin.data);
+			val->value.bin.len = 0;
 			break;
 		case XMMS_VALUE_TYPE_LIST:
 			xmms_value_list_free (val->value.list);
@@ -358,7 +356,7 @@ value_data_free (xmms_value_t *val)
 			xmms_value_dict_free (val->value.dict);
 			val->value.dict = NULL;
 			break;
-		/* FIXME: handle STRINGLIST? */
+		/* FIXME: handle default? */
 	}
 
 	val->type = XMMS_VALUE_TYPE_NONE;
@@ -405,7 +403,7 @@ xmms_value_is_list (xmms_value_t *val)
 }
 
 const char *
-xmms_value_get_error (xmms_value_t *val)
+xmms_value_get_error_old (xmms_value_t *val)
 {
 	if (!val || val->type != XMMS_VALUE_TYPE_ERROR) {
 		return NULL;
@@ -583,8 +581,8 @@ xmms_value_get_bin (xmms_value_t *val, unsigned char **r, unsigned int *rlen)
 		return 0;
 	}
 
-	*r = val->value.bin->data;
-	*rlen = val->value.bin->len;
+	*r = val->value.bin.data;
+	*rlen = val->value.bin.len;
 
 	return 1;
 }
@@ -630,11 +628,7 @@ xmms_value_get_dict_iter (xmms_value_t *val, xmms_value_dict_iter_t **it)
 }
 
 
-
-/* FIXME: implem?
-   - dicts as key-sorted ... what? beware of insertion time!
- */
-
+/* List stuff */
 
 static xmms_value_list_t *
 xmms_value_list_new ()
@@ -657,6 +651,7 @@ xmms_value_list_free (xmms_value_list_t *l)
 {
 	x_list_t *n;
 	xmms_value_list_iter_t *it;
+	size_t i;
 
 	/* free iterators */
 	for (n = l->iterators; n; n = n->next) {
@@ -664,6 +659,11 @@ xmms_value_list_free (xmms_value_list_t *l)
 		xmms_value_list_iter_free (it);
 	}
 	x_list_free (l->iterators);
+
+	/* unref contents */
+	for (i = 0; i < l->size; i++) {
+		xmms_value_unref (l->list[i]);
+	}
 
 	free (l->list);
 	free (l);
@@ -684,7 +684,12 @@ xmms_value_list_insert (xmms_value_list_t *l, unsigned int index,
 	/* We need more memory, reallocate */
 	if (l->size == l->allocated) {
 		int success;
-		size_t double_size = l->allocated << 2; /* FIXME: if alloc==0? */
+		size_t double_size;
+		if (l->allocated > 0) {
+			double_size = l->allocated << 1;
+		} else {
+			double_size = 1;
+		}
 		success = xmms_value_list_resize (l, double_size);
 		x_return_val_if_fail (success, 0);
 	}
@@ -729,7 +734,7 @@ xmms_value_list_remove (xmms_value_list_t *l, unsigned int index)
 	}
 
 	/* Reduce memory usage by two if possible */
-	half_size = l->allocated >> 2; /* FIXME: if alloc==0 or 1? */
+	half_size = l->allocated >> 1;
 	if (l->size <= half_size) {
 		xmms_value_list_resize (l, half_size);
 	}
@@ -855,6 +860,7 @@ xmms_value_list_iter_append (xmms_value_list_iter_t *it, xmms_value_t *val)
 }
 
 
+/* Dict stuff */
 
 struct xmms_value_dict_St {
 	/* dict implemented as a flat [key1, val1, key2, val2, ...] list */
@@ -983,7 +989,6 @@ xmms_value_dict_iter_seek (xmms_value_dict_iter_t *it, const char *key)
 	const char *startkey, *k;
 	xmms_value_t *v;
 
-	/* FIXME: implem */
 	xmms_value_dict_iter_pair (it, &k, &v);
 	startkey = k;
 
@@ -1004,48 +1009,60 @@ xmms_value_dict_iter_seek (xmms_value_dict_iter_t *it, const char *key)
 	return 1;
 }
 
-void
+int
 xmms_value_dict_iter_insert (xmms_value_dict_iter_t *it, const char *key,
                              xmms_value_t *val)
 {
 	unsigned int orig;
+	int ret;
 
 	/* FIXME: avoid leaking abstraction! */
 	orig = it->lit->position;
 
 	/* if key already present, replace value */
 	if (xmms_value_dict_iter_seek (it, key)) {
-
 		xmms_value_list_iter_next (it->lit);
 		xmms_value_list_iter_remove (it->lit);
-		xmms_value_list_iter_insert (it->lit, val);
+		ret = xmms_value_list_iter_insert (it->lit, val);
 
 	/* else, insert a new key-value pair */
 	} else {
 		xmms_value_t *keyval;
 		keyval = xmms_value_new_string (key);
-		xmms_value_list_iter_append (it->lit, keyval);
-		xmms_value_list_iter_append (it->lit, val);
+		if (ret = xmms_value_list_iter_append (it->lit, keyval)) {
+			ret = xmms_value_list_iter_append (it->lit, val);
+			if (!ret) {
+				/* FIXME: oops, remove previously inserted key */
+			}
+		}
 		xmms_value_unref (keyval);
 	}
 
 	it->lit->position = orig;
+
+	return ret;
 }
 
-void
+int
 xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it, const char *key)
 {
-	unsigned int orig;
+	unsigned int orig, size;
+	int ret;
 
 	/* FIXME: avoid leaking abstraction! */
 	orig = it->lit->position;
 
 	if (xmms_value_dict_iter_seek (it, key)) {
-		xmms_value_list_iter_remove (it->lit);
-		xmms_value_list_iter_remove (it->lit);
+		ret = xmms_value_list_iter_remove (it->lit) &&
+		      xmms_value_list_iter_remove (it->lit);
+		/* FIXME: cleanup if only the first fails */
 	}
 
-	it->lit->position = orig;
+	/* make sure the pointer is still in the list */
+	size = it->lit->parent->size;
+	it->lit->position = (orig <= size ? orig : size);
+
+	return ret;
 }
 
 
@@ -1422,7 +1439,7 @@ FIXME: er so how do we manually free this stuff? free()?
  * @return decoded string, owned by the #xmms_value_t
  *
  */
-const char *
+char *
 xmms_value_decode_url (const char *string)
 {
 	int i = 0, j = 0;

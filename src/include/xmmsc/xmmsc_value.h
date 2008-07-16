@@ -88,8 +88,16 @@ void xmms_value_dict_iter_first (xmms_value_dict_iter_t *it);
 void xmms_value_dict_iter_next (xmms_value_dict_iter_t *it);
 int  xmms_value_dict_iter_seek (xmms_value_dict_iter_t *it, const char *key);
 
-void xmms_value_dict_iter_insert (xmms_value_dict_iter_t *it, const char *key, xmms_value_t *val);
-void xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it, const char *key);
+int xmms_value_dict_iter_insert (xmms_value_dict_iter_t *it, const char *key, xmms_value_t *val);
+int xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it, const char *key);
+
+
+/* Utils */
+
+#define xmms_value_check_type(type) \
+        ((type) > XMMS_VALUE_TYPE_NONE && \
+         (type) < XMMS_VALUE_TYPE_END)
+
 
 /* FIXME: utilities:
 
@@ -101,7 +109,7 @@ foreach
 */
 
 /* FIXME: move to utils or something! */
-const char *xmms_value_decode_url (const char *string);
+char *xmms_value_decode_url (const char *string);
 
 
 /* Obsolete: 
