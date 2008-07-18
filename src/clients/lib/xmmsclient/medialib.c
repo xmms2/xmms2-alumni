@@ -133,7 +133,7 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmmsv_t *val)
 			const char *result = NULL;
 			char tmp[12];
 
-			xmmsv_dict_iter_seek (it, "duration");
+			xmmsv_dict_iter_seek (it, key);
 			xmmsv_dict_iter_pair (it, NULL, &v);
 
 			xmmsv_type_t type = xmmsv_get_type (v);

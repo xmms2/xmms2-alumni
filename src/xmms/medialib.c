@@ -1068,6 +1068,30 @@ xmms_medialib_entry_get_id (xmms_medialib_t *medialib, gchar *url, xmms_error_t 
 	return id;
 }
 
+static void
+xmms_medialib_tree_add_tuple (GTree *tree, xmms_object_cmd_value_t *key,
+                              xmms_object_cmd_value_t *source,
+                              xmms_object_cmd_value_t *value)
+{
+	xmms_object_cmd_value_t *keytreeval;
+	GTree *keytree;
+
+	/* Find (or insert) subtree matching the prop key */
+	keytreeval = (xmms_object_cmd_value_t *) g_tree_lookup (tree, key->value.string);
+	if (keytreeval) {
+		keytree = keytreeval->value.dict;
+	} else {
+		keytree = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, g_free,
+	                               (GDestroyNotify) xmms_object_cmd_value_unref);
+		keytreeval = xmms_object_cmd_value_dict_new (keytree);
+		g_tree_insert (tree, g_strdup (key->value.string), keytreeval);
+	}
+
+	/* Replace (or insert) value matching the prop source */
+	g_tree_insert (keytree, g_strdup (source->value.string),
+	               xmms_object_cmd_value_ref (value));
+}
+
 static gboolean
 xmms_medialib_list_cb (xmms_object_cmd_value_t **row, gpointer udata)
 {
@@ -1081,6 +1105,21 @@ xmms_medialib_list_cb (xmms_object_cmd_value_t **row, gpointer udata)
 
 	/* Value */
 	*list = g_list_prepend (*list, xmms_object_cmd_value_ref (row[2]));
+
+	return TRUE;
+}
+
+static gboolean
+xmms_medialib_tree_cb (xmms_object_cmd_value_t **row, gpointer udata)
+{
+	xmms_object_cmd_value_t *key, *source, *value;
+	GTree **tree = (GTree**)udata;
+
+	source = row[0];
+	key = row[1];
+	value = row[2];
+
+	xmms_medialib_tree_add_tuple (*tree, key, source, value);
 
 	return TRUE;
 }
@@ -1128,9 +1167,48 @@ xmms_medialib_entry_to_list (xmms_medialib_session_t *session, xmms_medialib_ent
 	return g_list_reverse (ret);
 }
 
+/**
+ * Convert a entry and all properties to a key-source-value tree that
+ * could be feed to the client or somewhere else in the daemon.
+ *
+ * @param session The medialib session to be used for the transaction.
+ * @param entry Entry to convert.
+ *
+ * @returns Newly allocated tree with newly allocated strings
+ * make sure to free them all.
+ */
 
+GTree *
+xmms_medialib_entry_to_tree (xmms_medialib_session_t *session, xmms_medialib_entry_t entry)
+{
+	GTree *ret = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, g_free,
+	                              (GDestroyNotify) xmms_object_cmd_value_unref);
+	gboolean s;
+
+	g_return_val_if_fail (session, NULL);
+	g_return_val_if_fail (entry, NULL);
+
+	s = xmms_sqlite_query_array (session->sql, xmms_medialib_tree_cb,
+	                             &ret,
+	                             "select s.source, m.key, "
+	                             "m.value from Media m left join "
+	                             "Sources s on m.source = s.id "
+	                             "where m.id=%d",
+	                             entry);
+	if (!s || !ret) {
+		return NULL;
+	}
+
+	xmms_medialib_tree_add_tuple (ret, xmms_object_cmd_value_str_new ("id"),
+	                              xmms_object_cmd_value_str_new ("server"),
+	                              xmms_object_cmd_value_int_new (entry));
+
+	return ret;
+}
+
+/* Legacy, still used by collections. */
 GList *
-xmms_medialib_info (xmms_medialib_t *medialib, guint32 id, xmms_error_t *err)
+xmms_medialib_info_list (xmms_medialib_t *medialib, guint32 id, xmms_error_t *err)
 {
 	xmms_medialib_session_t *session;
 	GList *ret = NULL;
@@ -1148,7 +1226,27 @@ xmms_medialib_info (xmms_medialib_t *medialib, guint32 id, xmms_error_t *err)
 		}
 	}
 
-/* FIXME: Return a DICT/GTree !!!! */
+	return ret;
+}
+
+GTree *
+xmms_medialib_info (xmms_medialib_t *medialib, guint32 id, xmms_error_t *err)
+{
+	xmms_medialib_session_t *session;
+	GTree *ret = NULL;
+
+	if (!id) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "No such entry, 0");
+	} else {
+		session = xmms_medialib_begin ();
+		ret = xmms_medialib_entry_to_tree (session, id);
+		xmms_medialib_end (session);
+
+		if (!ret) {
+			xmms_error_set (err, XMMS_ERROR_NOENT,
+			                "Could not retrieve info for that entry!");
+		}
+	}
 
 	return ret;
 }
