@@ -55,6 +55,7 @@ typedef void (*xmms_object_handler_t) (xmms_object_t *object, gconstpointer data
 
 typedef struct {
 	union {
+		gchar *error;
 		gint32 int32;
 		guint32 uint32;
 		gchar *string;
@@ -67,6 +68,7 @@ typedef struct {
 	gint refcount;
 } xmms_object_cmd_value_t;
 
+xmms_object_cmd_value_t *xmms_object_cmd_value_error_new (const gchar *error);
 xmms_object_cmd_value_t *xmms_object_cmd_value_str_new (const gchar *string);
 xmms_object_cmd_value_t *xmms_object_cmd_value_bin_new (GString *bin);
 xmms_object_cmd_value_t *xmms_object_cmd_value_uint_new (guint32 uint);
@@ -129,15 +131,15 @@ void xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_a
 #define __XMMS_CMD_DO_ARG_STRING(a) ,arg->values[a].value.string
 #define __XMMS_CMD_DO_ARG_UINT32(a) ,arg->values[a].value.uint32
 #define __XMMS_CMD_DO_ARG_INT32(a) ,arg->values[a].value.int32
-#define __XMMS_CMD_DO_ARG_STRINGLIST(a) ,arg->values[a].value.list
 #define __XMMS_CMD_DO_ARG_COLL(a) ,arg->values[a].value.coll
 #define __XMMS_CMD_DO_ARG_BIN(a) ,arg->values[a].value.bin
+#define __XMMS_CMD_DO_ARG_LIST(a) ,arg->values[a].value.list
+#define __XMMS_CMD_DO_ARG_DICT(a) ,arg->values[a].value.dict
 #define __XMMS_CMD_DO_RETVAL_NONE() arg->retval = xmms_object_cmd_value_none_new();
 #define __XMMS_CMD_DO_RETVAL_DICT() arg->retval = xmms_object_cmd_value_dict_new
 #define __XMMS_CMD_DO_RETVAL_UINT32() arg->retval = xmms_object_cmd_value_uint_new
 #define __XMMS_CMD_DO_RETVAL_INT32() arg->retval = xmms_object_cmd_value_int_new
 #define __XMMS_CMD_DO_RETVAL_LIST() arg->retval = xmms_object_cmd_value_list_new
-#define __XMMS_CMD_DO_RETVAL_PROPDICT() arg->retval = xmms_object_cmd_value_propdict_new
 #define __XMMS_CMD_DO_RETVAL_STRING() arg->retval = xmms_object_cmd_value_str_new
 #define __XMMS_CMD_DO_RETVAL_COLL() arg->retval = xmms_object_cmd_value_coll_new
 #define __XMMS_CMD_DO_RETVAL_BIN() arg->retval = xmms_object_cmd_value_bin_new

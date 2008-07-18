@@ -139,8 +139,8 @@ XMMS_CMD_DEFINE  (collection_from_pls, xmms_collection_idlist_from_pls, xmms_col
 XMMS_CMD_DEFINE  (collection_sync, xmms_collection_sync, xmms_coll_dag_t *, NONE, NONE, NONE);
 
 
-XMMS_CMD_DEFINE4 (query_ids, xmms_collection_query_ids, xmms_coll_dag_t *, LIST, COLL, UINT32, UINT32, STRINGLIST);
-XMMS_CMD_DEFINE6 (query_infos, xmms_collection_query_infos, xmms_coll_dag_t *, LIST, COLL, UINT32, UINT32, STRINGLIST, STRINGLIST, STRINGLIST);
+XMMS_CMD_DEFINE4 (query_ids, xmms_collection_query_ids, xmms_coll_dag_t *, LIST, COLL, UINT32, UINT32, LIST);
+XMMS_CMD_DEFINE6 (query_infos, xmms_collection_query_infos, xmms_coll_dag_t *, LIST, COLL, UINT32, UINT32, LIST, LIST, LIST);
 
 
 GTree *
@@ -303,6 +303,26 @@ add_metadata_from_tree (gpointer key, gpointer value, gpointer user_data)
 
 	return FALSE; /* keep going */
 }
+
+/**
+ * Checks that the list only contains string values.
+ */
+static gboolean
+check_string_list (GList *list)
+{
+	GList *n;
+	xmms_object_cmd_value_t *valstr;
+
+	for (n = list; n; n = n->next) {
+		valstr = (xmms_object_cmd_value_t *) n->data;
+		if (valstr->type != XMMS_VALUE_TYPE_STRING) {
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
 
 /** Create a idlist from a playlist file
  * @param dag  The collection DAG.
@@ -743,7 +763,8 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
                            xmms_error_t *err)
 {
 	GList *res, *n;
-	GList *fetch = g_list_prepend (NULL, (gpointer) "id");
+	xmms_object_cmd_value_t *idval = xmms_object_cmd_value_str_new ("id");
+	GList *fetch = g_list_prepend (NULL, idval);
 
 	res = xmms_collection_query_infos (dag, coll, lim_start, lim_len, order, fetch, NULL, err);
 
@@ -780,6 +801,26 @@ xmms_collection_query_infos (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 {
 	GList *res = NULL;
 	GString *query;
+
+	/* check that fetch is not empty */
+	if (!fetch) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "fetch list must not be empty!");
+		return NULL;
+	}
+
+	/* check for invalid property strings */
+	if (check_string_list (order)) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid order list!");
+		return NULL;
+	}
+	if (check_string_list (fetch)) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid fetch list!");
+		return NULL;
+	}
+	if (check_string_list (group)) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid group list!");
+		return NULL;
+	}
 
 	/* validate the collection to query */
 	if (!xmms_collection_validate (dag, coll, NULL, NULL)) {
@@ -1891,7 +1932,8 @@ xmms_collection_media_info (guint mid, xmms_error_t *err)
 	xmms_object_cmd_value_t *value;
 	guint state;
 
-	res = xmms_medialib_info (NULL, mid, err);
+	/* FIXME: could probably reuse tree from medialib_info directly. ignores sources? */
+	res = xmms_medialib_info_list (NULL, mid, err);
 
 	/* Transform the list into a HashMap */
 	infos = g_hash_table_new_full (g_str_hash, g_str_equal,

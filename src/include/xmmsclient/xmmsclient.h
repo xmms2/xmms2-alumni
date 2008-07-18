@@ -85,12 +85,12 @@ xmmsc_result_t *xmmsc_playlist_add_url (xmmsc_connection_t *c, const char *playl
 xmmsc_result_t *xmmsc_playlist_add_id (xmmsc_connection_t *c, const char *playlist, uint32_t id);
 xmmsc_result_t *xmmsc_playlist_add_encoded (xmmsc_connection_t *c, const char *playlist, const char *url);
 xmmsc_result_t *xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist, xmmsc_coll_t *coll);
-xmmsc_result_t *xmmsc_playlist_add_collection (xmmsc_connection_t *c, const char *playlist, xmmsc_coll_t *coll, const char **order);
+xmmsc_result_t *xmmsc_playlist_add_collection (xmmsc_connection_t *c, const char *playlist, xmmsc_coll_t *coll, xmms_value_t *order);
 xmmsc_result_t *xmmsc_playlist_remove_entry (xmmsc_connection_t *c, const char *playlist, uint32_t);
 xmmsc_result_t *xmmsc_playlist_clear (xmmsc_connection_t *c, const char *playlist);
 xmmsc_result_t *xmmsc_playlist_remove (xmmsc_connection_t *c, const char *playlist);
 xmmsc_result_t *xmmsc_playlist_list_entries (xmmsc_connection_t *c, const char *playlist);
-xmmsc_result_t *xmmsc_playlist_sort (xmmsc_connection_t *c, const char *playlist, const char** properties);
+xmmsc_result_t *xmmsc_playlist_sort (xmmsc_connection_t *c, const char *playlist, xmms_value_t *properties);
 xmmsc_result_t *xmmsc_playlist_set_next (xmmsc_connection_t *c, uint32_t);
 xmmsc_result_t *xmmsc_playlist_set_next_rel (xmmsc_connection_t *c, int32_t);
 xmmsc_result_t *xmmsc_playlist_move_entry (xmmsc_connection_t *c, const char *playlist, uint32_t, uint32_t);
@@ -100,7 +100,7 @@ xmmsc_result_t *xmmsc_playlist_insert_args (xmmsc_connection_t *c, const char *p
 xmmsc_result_t *xmmsc_playlist_insert_url (xmmsc_connection_t *c, const char *playlist, int pos, const char *url);
 xmmsc_result_t *xmmsc_playlist_insert_id (xmmsc_connection_t *c, const char *playlist, int pos, uint32_t id);
 xmmsc_result_t *xmmsc_playlist_insert_encoded (xmmsc_connection_t *c, const char *playlist, int pos, const char *url);
-xmmsc_result_t *xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist, int pos, xmmsc_coll_t *coll, const char **order);
+xmmsc_result_t *xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist, int pos, xmmsc_coll_t *coll, xmms_value_t *order);
 xmmsc_result_t *xmmsc_playlist_load (xmmsc_connection_t *c, const char *playlist);
 xmmsc_result_t *xmmsc_playlist_radd (xmmsc_connection_t *c, const char *playlist, const char *url);
 xmmsc_result_t *xmmsc_playlist_radd_encoded (xmmsc_connection_t *c, const char *playlist, const char *url);
@@ -221,8 +221,8 @@ xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn, const char* from_na
 xmmsc_result_t *xmmsc_coll_idlist_from_playlist_file (xmmsc_connection_t *conn, const char *path);
 xmmsc_result_t* xmmsc_coll_sync (xmmsc_connection_t *conn);
 
-xmmsc_result_t* xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll, const char **order, unsigned int limit_start, unsigned int limit_len);
-xmmsc_result_t* xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsc_coll_t *coll, const char **order, unsigned int limit_start, unsigned int limit_len, const char **fetch, const char **group);
+xmmsc_result_t* xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll, xmms_value_t *order, unsigned int limit_start, unsigned int limit_len);
+xmmsc_result_t* xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsc_coll_t *coll, xmms_value_t *order, unsigned int limit_start, unsigned int limit_len, xmms_value_t *fetch, xmms_value_t *group);
 
 /* string-to-collection parser */
 typedef enum {
@@ -305,7 +305,7 @@ xmms_value_t *xmmsc_result_get_value (xmmsc_result_t *res);
 
 /* Legacy aliases for convenience. */
 #define xmmsc_result_iserror(res) xmms_value_iserror(xmmsc_result_get_value(res))
-#define xmmsc_result_get_error(res) xmms_value_get_error(xmmsc_result_get_value(res))
+#define xmmsc_result_get_error(res) xmms_value_get_error_old(xmmsc_result_get_value(res))
 
 #ifdef __cplusplus
 }

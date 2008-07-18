@@ -169,6 +169,17 @@ xmms_object_emit (xmms_object_t *object, guint32 signalid, gconstpointer data)
 }
 
 xmms_object_cmd_value_t *
+xmms_object_cmd_value_error_new (const gchar *error)
+{
+	xmms_object_cmd_value_t *val;
+	val = g_new0 (xmms_object_cmd_value_t, 1);
+	val->value.error = g_strdup (error);
+	val->type = XMMS_VALUE_TYPE_ERROR;
+	val->refcount = 1;
+	return val;
+}
+
+xmms_object_cmd_value_t *
 xmms_object_cmd_value_bin_new (GString *bin)
 {
 	xmms_object_cmd_value_t *val;
@@ -177,7 +188,6 @@ xmms_object_cmd_value_bin_new (GString *bin)
 	val->type = XMMS_VALUE_TYPE_BIN;
 	val->refcount = 1;
 	return val;
-
 }
 
 xmms_object_cmd_value_t *
@@ -275,13 +285,6 @@ xmms_object_cmd_value_free (xmms_object_cmd_value_t *v)
 				                                    v->value.list);
 			}
 			break;
-		case XMMS_VALUE_TYPE_STRINGLIST:
-			while (v->value.list) {
-				g_free (v->value.list->data);
-				v->value.list = g_list_delete_link (v->value.list,
-				                                    v->value.list);
-			}
-			break;
 		case XMMS_VALUE_TYPE_DICT:
 			if (v->value.dict) {
 				g_tree_destroy (v->value.dict);
@@ -359,7 +362,7 @@ xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
 
 	switch (type) {
 		case XMMS_VALUE_TYPE_ERROR:
-			/* FIXME: We never have ERROR as return type, right? */
+			arg.retval = xmms_object_cmd_value_error_new (va_arg (ap, gchar *));
 			break;
 		case XMMS_VALUE_TYPE_UINT32:
 			arg.retval = xmms_object_cmd_value_uint_new (va_arg (ap, guint32));
@@ -377,7 +380,6 @@ xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
 			arg.retval = xmms_object_cmd_value_dict_new (va_arg (ap, GTree *));
 			break;
 		case XMMS_VALUE_TYPE_LIST:
-		case XMMS_VALUE_TYPE_STRINGLIST:
 			arg.retval = xmms_object_cmd_value_list_new (va_arg (ap, GList *));
 			break;
 		case XMMS_VALUE_TYPE_COLL:
@@ -385,6 +387,11 @@ xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
 			break;
 		case XMMS_VALUE_TYPE_NONE:
 			arg.retval = xmms_object_cmd_value_none_new ();
+			break;
+		case XMMS_VALUE_TYPE_END:
+		default:
+			XMMS_DBG ("OBJECT: trying to emit value of invalid type!");
+			g_assert_not_reached ();
 			break;
 	}
 	va_end (ap);

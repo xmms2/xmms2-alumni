@@ -329,6 +329,7 @@ value_data_free (xmms_value_t *val)
 
 	switch (val->type) {
 		case XMMS_VALUE_TYPE_NONE :
+		case XMMS_VALUE_TYPE_END :
 		case XMMS_VALUE_TYPE_UINT32 :
 		case XMMS_VALUE_TYPE_INT32 :
 			break;
@@ -1029,7 +1030,8 @@ xmms_value_dict_iter_insert (xmms_value_dict_iter_t *it, const char *key,
 	} else {
 		xmms_value_t *keyval;
 		keyval = xmms_value_new_string (key);
-		if (ret = xmms_value_list_iter_append (it->lit, keyval)) {
+		ret = xmms_value_list_iter_append (it->lit, keyval);
+		if (ret) {
 			ret = xmms_value_list_iter_append (it->lit, val);
 			if (!ret) {
 				/* FIXME: oops, remove previously inserted key */
