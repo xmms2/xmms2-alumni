@@ -206,13 +206,13 @@ xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn,
  *
  * @param conn  The connection to the server.
  * @param coll  The collection used to query.
- * @param order  The list of properties to order by (NULL to disable).
+ * @param order  The list of properties to order by, passed as an #xmms_value_t list of strings.
  * @param limit_start  The offset at which to start retrieving results (0 to disable).
  * @param limit_len  The maximum number of entries to retrieve (0 to disable).
  */
 xmmsc_result_t*
 xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
-                      const char **order, unsigned int limit_start,
+                      xmms_value_t *order, unsigned int limit_start,
                       unsigned int limit_len)
 {
 	xmms_ipc_msg_t *msg;
@@ -224,7 +224,7 @@ xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
 	xmms_ipc_msg_put_collection (msg, coll);
 	xmms_ipc_msg_put_uint32 (msg, limit_start);
 	xmms_ipc_msg_put_uint32 (msg, limit_len);
-	xmms_ipc_msg_put_string_list (msg, order);
+	xmms_ipc_msg_put_value (msg, order);
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -238,32 +238,34 @@ xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
  *
  * @param conn  The connection to the server.
  * @param coll  The collection used to query.
- * @param order  The list of properties to order by (NULL to disable).
+ * @param order The list of properties to order by, passed as an
+ *              #xmms_value_t list of strings.
  * @param limit_start  The offset at which to start retrieving results (0 to disable).
  * @param limit_len  The maximum number of entries to retrieve (0 to disable).
- * @param fetch  The list of properties to retrieve (at least one property).
- * @param group  The list of properties to group by (NULL to disable).
+ * @param fetch  The list of properties to retrieve, passed as an
+ *               #xmms_value_t list of strings. At least one property is required.
+ * @param group  The list of properties to group by, passed as an
+ *               #xmms_value_t list of strings.
  */
 xmmsc_result_t*
 xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
-                        const char **order, unsigned int limit_start,
-                        unsigned int limit_len, const char **fetch,
-                        const char **group)
+                        xmms_value_t *order, unsigned int limit_start,
+                        unsigned int limit_len, xmms_value_t *fetch,
+                        xmms_value_t *group)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
 	x_api_error_if (!coll, "with a NULL collection", NULL);
 	x_api_error_if (!fetch, "with a NULL fetch list", NULL);
-	x_api_error_if (!fetch[0], "with an empty fetch list", NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_COLLECTION, XMMS_IPC_CMD_QUERY_INFOS);
 	xmms_ipc_msg_put_collection (msg, coll);
 	xmms_ipc_msg_put_uint32 (msg, limit_start);
 	xmms_ipc_msg_put_uint32 (msg, limit_len);
-	xmms_ipc_msg_put_string_list (msg, order);
-	xmms_ipc_msg_put_string_list (msg, fetch);
-	xmms_ipc_msg_put_string_list (msg, group);
+	xmms_ipc_msg_put_value (msg, order);
+	xmms_ipc_msg_put_value (msg, fetch);
+	xmms_ipc_msg_put_value (msg, group);
 
 	return xmmsc_send_msg (conn, msg);
 }

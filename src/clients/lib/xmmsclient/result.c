@@ -254,7 +254,7 @@ xmmsc_result_restart (xmmsc_result_t *res)
 static bool
 xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 {
-	if (xmms_ipc_msg_get_value (msg, &res->data)) {
+	if (xmms_ipc_msg_get_value_alloc (msg, &res->data)) {
 		res->parsed = true;
 		return true;
 	} else {
