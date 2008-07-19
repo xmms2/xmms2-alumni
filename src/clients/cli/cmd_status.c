@@ -94,7 +94,7 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	val = xmmsc_result_get_value (res);
 
 	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error (val));
+		print_error ("%s", xmms_value_get_error_old (val));
 	}
 
 	if (!xmms_value_get_uint (val, &id)) {
@@ -107,7 +107,7 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	val = xmmsc_result_get_value (res);
 
 	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error (val));
+		print_error ("%s", xmms_value_get_error_old (val));
 	}
 
 	if (argc > 2) {
@@ -127,7 +127,7 @@ handle_status_change (xmms_value_t *val, void *userdata)
 	guint new_status;
 
 	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error (val));
+		print_error ("%s", xmms_value_get_error_old (val));
 	}
 
 	if (!xmms_value_get_uint (val, &new_status)) {
@@ -147,7 +147,7 @@ handle_current_id (xmms_value_t *val, void *userdata)
 	xmmsc_connection_t *conn = userdata;
 
 	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error (val));
+		print_error ("%s", xmms_value_get_error_old (val));
 	}
 
 	if (!xmms_value_get_uint (val, &current_id)) {
@@ -171,7 +171,7 @@ handle_playtime (xmms_value_t *val, void *userdata)
 	guint dur;
 
 	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error (val));
+		print_error ("%s", xmms_value_get_error_old (val));
 	}
 
 	if (!xmms_value_get_uint (val, &dur)) {
@@ -235,7 +235,7 @@ handle_mediainfo_update (xmms_value_t *val, void *userdata)
 	xmmsc_connection_t *conn = userdata;
 
 	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error (val));
+		print_error ("%s", xmms_value_get_error_old (val));
 	}
 
 	if (!xmms_value_get_uint (val, &id)) {
@@ -256,7 +256,7 @@ static int
 do_mediainfo (xmms_value_t *val, void *userdata)
 {
 	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error (val));
+		print_error ("%s", xmms_value_get_error_old (val));
 	}
 
 	print_info ("");

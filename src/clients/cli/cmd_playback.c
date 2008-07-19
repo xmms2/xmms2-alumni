@@ -55,7 +55,7 @@ cmd_toggleplay (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	if (xmms_value_iserror (val)) {
 		print_error ("Couldn't get playback status: %s",
-		             xmms_value_get_error (val));
+		             xmms_value_get_error_old (val));
 	}
 
 	if (!xmms_value_get_uint (val, &status)) {

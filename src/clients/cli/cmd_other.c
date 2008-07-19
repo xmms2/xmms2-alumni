@@ -27,7 +27,7 @@ cmd_stats (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	val = xmmsc_result_get_value (res);
 
 	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error (val));
+		print_error ("%s", xmms_value_get_error_old (val));
 	}
 
 	xmms_value_dict_foreach (val, print_hash, NULL);
@@ -40,6 +40,7 @@ cmd_plugin_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
 	xmms_value_t *val;
+	xmms_value_list_iter_t *it;
 	xmms_plugin_type_t type = XMMS_PLUGIN_TYPE_ALL;
 
 	if (argc > 2) {
@@ -57,18 +58,21 @@ cmd_plugin_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	val = xmmsc_result_get_value (res);
 
 	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error (val));
+		print_error ("%s", xmms_value_get_error_old (val));
 	}
 
-	while (xmms_value_list_valid (val)) {
+	xmms_value_get_list_iter (val, &it);
+	while (xmms_value_list_iter_valid (it)) {
+		xmms_value_t *dict;
 		const gchar *shortname, *desc;
 
-		if (xmms_value_get_dict_entry_string (val, "shortname", &shortname) &&
-		    xmms_value_get_dict_entry_string (val, "description", &desc)) {
+		if (xmms_value_list_iter_entry (it, &dict) &&
+		    xmms_value_get_dict_entry_string (dict, "shortname", &shortname) &&
+		    xmms_value_get_dict_entry_string (dict, "description", &desc)) {
 			print_info ("%s - %s", shortname, desc);
 		}
 
-		xmms_value_list_next (val);
+		xmms_value_list_iter_next (it);
 	}
 	xmmsc_result_unref (res);
 }
@@ -92,6 +96,7 @@ void
 cmd_browse (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmms_value_list_iter_t *it;
 	xmms_value_t *val;
 
 	if (argc < 3) {
@@ -103,23 +108,27 @@ cmd_browse (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	val = xmmsc_result_get_value (res);
 
 	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error (val));
+		print_error ("%s", xmms_value_get_error_old (val));
 	}
 
-	for (;xmms_value_list_valid (val); xmms_value_list_next (val)) {
+	xmms_value_get_list_iter (val, &it);
+	while (xmms_value_list_iter_valid (it)) {
+		xmms_value_t *dict;
 		xmms_value_type_t type;
 		const gchar *r;
 		gint d;
 
-		type = xmms_value_get_dict_entry_type (val, "realpath");
+		xmms_value_list_iter_entry (it, &dict);
+		type = xmms_value_get_dict_entry_type (dict, "realpath");
 		if (type != XMMS_VALUE_TYPE_NONE) {
-			xmms_value_get_dict_entry_string (val, "realpath", &r);
+			xmms_value_get_dict_entry_string (dict, "realpath", &r);
 		} else {
-			xmms_value_get_dict_entry_string (val, "path", &r);
+			xmms_value_get_dict_entry_string (dict, "path", &r);
 		}
 
-		xmms_value_get_dict_entry_int (val, "isdir", &d);
+		xmms_value_get_dict_entry_int (dict, "isdir", &d);
 		print_info ("%s%c", r, d ? '/' : ' ');
+		xmms_value_list_iter_next (it);
 	}
 
 	xmmsc_result_unref (res);
