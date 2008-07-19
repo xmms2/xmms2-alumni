@@ -30,6 +30,7 @@ typedef struct xmms_value_St xmms_value_t;
 typedef struct xmms_value_list_iter_St xmms_value_list_iter_t;
 typedef struct xmms_value_dict_iter_St xmms_value_dict_iter_t;
 
+xmms_value_t *xmms_value_new_none ();
 xmms_value_t *xmms_value_new_error (const char *errstr); /* FIXME: err id? */
 xmms_value_t *xmms_value_new_int (int32_t i);
 xmms_value_t *xmms_value_new_uint (uint32_t u);

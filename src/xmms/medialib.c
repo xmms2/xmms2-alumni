@@ -1048,14 +1048,6 @@ xmms_medialib_entry_get_id (xmms_medialib_t *medialib, gchar *url, xmms_error_t 
 	return id;
 }
 
-static gint
-strcmp_object_cmd_value (gconstpointer a, gconstpointer b, gpointer udata)
-{
-	const gchar *stra = ((xmms_object_cmd_value_t *) a)->value.string;
-	const gchar *strb = ((xmms_object_cmd_value_t *) b)->value.string;
-	return strcmp (stra, strb);
-}
-
 static void
 xmms_medialib_tree_add_tuple (GTree *tree, xmms_object_cmd_value_t *key,
                               xmms_object_cmd_value_t *source,
@@ -1064,16 +1056,18 @@ xmms_medialib_tree_add_tuple (GTree *tree, xmms_object_cmd_value_t *key,
 	GTree *keytree;
 
 	/* Find (or insert) subtree matching the prop key */
-	keytree = (GTree*) g_tree_lookup (tree, key);
+	keytree = (GTree*) g_tree_lookup (tree, key->value.string);
 	if (!keytree) {
-		keytree = g_tree_new_full (strcmp_object_cmd_value, NULL,
-		                           (GDestroyNotify) xmms_object_cmd_value_unref,
+		xmms_object_cmd_value_t *keytreeval;
+		keytree = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, g_free,
 	                               (GDestroyNotify) xmms_object_cmd_value_unref);
-		g_tree_insert (tree, xmms_object_cmd_value_ref (key), keytree);
+		keytreeval = xmms_object_cmd_value_dict_new (keytree);
+		/* FIXME: ref? */
+		g_tree_insert (tree, g_strdup (key->value.string), keytreeval);
 	}
 
 	/* Replace (or insert) value matching the prop source */
-	g_tree_insert (keytree, xmms_object_cmd_value_ref (source),
+	g_tree_insert (keytree, g_strdup (source->value.string),
 	               xmms_object_cmd_value_ref (value));
 }
 
@@ -1166,10 +1160,8 @@ xmms_medialib_entry_to_list (xmms_medialib_session_t *session, xmms_medialib_ent
 GTree *
 xmms_medialib_entry_to_tree (xmms_medialib_session_t *session, xmms_medialib_entry_t entry)
 {
-	/* GTree of GTree of xmms_object_cmd_value_t* */
-	GTree *ret = g_tree_new_full (strcmp_object_cmd_value, NULL,
-	                              (GDestroyNotify) xmms_object_cmd_value_unref,
-	                              (GDestroyNotify) g_tree_destroy);
+	GTree *ret = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, g_free,
+	                              (GDestroyNotify) xmms_object_cmd_value_unref);
 	gboolean s;
 
 	g_return_val_if_fail (session, NULL);

@@ -101,6 +101,18 @@ static void value_data_free (xmms_value_t *val);
  */
 
 /**
+ * Allocates a new empty #xmms_value_t.
+ * @return The new #xmms_value_t. Must be unreferenced with
+ * #xmms_value_unref.
+ */
+xmms_value_t *
+xmms_value_new_none ()
+{
+	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_NONE);
+	return val;
+}
+
+/**
  * Allocates a new error #xmms_value_t.
  * @param s The error message to store in the #xmms_value_t. The
  * string is copied in the value.
@@ -388,7 +400,7 @@ xmms_value_get_type (xmms_value_t *val)
 int
 xmms_value_iserror (xmms_value_t *val)
 {
-	return xmms_value_get_type (val) == XMMS_VALUE_TYPE_ERROR;
+	return !val || xmms_value_get_type (val) == XMMS_VALUE_TYPE_ERROR;
 }
 
 /**
@@ -723,7 +735,7 @@ xmms_value_list_remove (xmms_value_list_t *l, unsigned int index)
 	x_list_t *n;
 	int i;
 
-	if (index >= l->size - 1) {
+	if (index + 1 >= l->size) {
 		return 0;
 	}
 
@@ -801,7 +813,7 @@ xmms_value_list_iter_free (xmms_value_list_iter_t *it)
 int
 xmms_value_list_iter_entry (xmms_value_list_iter_t *it, xmms_value_t **val)
 {
-	x_return_val_if_fail (!xmms_value_list_iter_valid (it), 0);
+	x_return_val_if_fail (xmms_value_list_iter_valid (it), 0);
 
 	*val = it->parent->list[it->position];
 
@@ -987,11 +999,16 @@ xmms_value_dict_iter_next (xmms_value_dict_iter_t *it)
 int
 xmms_value_dict_iter_seek (xmms_value_dict_iter_t *it, const char *key)
 {
-	const char *startkey, *k;
-	xmms_value_t *v;
+	const char *startkey, *k = NULL;
+	xmms_value_t *v = NULL;
 
 	xmms_value_dict_iter_pair (it, &k, &v);
 	startkey = k;
+
+	/* FIXME: temp hack, make nicer */
+	if (!k) {
+		return 0;
+	}
 
 	while (strcmp (k, key) != 0) {
 		/* walk the list */

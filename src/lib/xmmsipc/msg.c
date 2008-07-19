@@ -951,6 +951,7 @@ xmms_ipc_msg_get_value_alloc (xmms_ipc_msg_t *msg, xmms_value_t **val)
 			break;
 
 		case XMMS_VALUE_TYPE_NONE:
+			*val = xmms_value_new_none ();
 			break;
 		default:
 			return false;
