@@ -85,11 +85,57 @@ print_hash (const void *key, xmms_value_t *value, void *udata)
 	if (xmms_value_get_type (value) == XMMS_VALUE_TYPE_STRING) {
 		const char *s;
 		xmms_value_get_string (value, &s);
-		print_info ("%s = %s", key, value);
+		print_info ("%s = %s", key, s);
 	} else {
 		int i;
 		xmms_value_get_int (value, &i);
-		print_info ("%s = %d", key, XPOINTER_TO_INT (value));
+		print_info ("%s = %d", key, i);
+	}
+}
+
+
+static void
+print_entry_string (xmms_value_t *v, const gchar *key, const gchar *source)
+{
+	const gchar *value;
+
+	xmms_value_get_string (v, &value);
+
+	/* Ok it's a string, if it's the URL property from the
+	 * server source we need to decode it since it's
+	 * encoded in the server
+	 */
+	if (strcmp (key, "url") == 0 && strcmp (source, "server") == 0) {
+		/* First decode the URL encoding */
+		char *tmp;
+		tmp = xmms_value_decode_url (value);
+
+		/* Let's see if the result is valid utf-8. This must be done
+		 * since we don't know the charset of the binary string */
+		if (g_utf8_validate (tmp, -1, NULL)) {
+			/* If it's valid utf-8 we don't have any problem just
+			 * printing it to the screen
+			 */
+			print_info ("[%s] %s = %s", source, key, tmp);
+		} else {
+			/* Not valid utf-8 :-( We make a valid guess here that
+			 * the string when it was encoded with URL it was in the
+			 * same charset as we have on the terminal now.
+			 *
+			 * THIS MIGHT BE WRONG since different clients can have
+			 * different charsets and DIFFERENT computers most likely
+			 * have it.
+			 */
+			gchar *tmp2 = g_locale_to_utf8 (tmp, -1, NULL, NULL, NULL);
+			/* Lets add a disclaimer */
+			print_info ("[%s] %s = %s (charset guessed)", source, key, tmp2);
+			g_free (tmp2);
+		}
+
+		free (tmp); /* free decoded url */
+	} else {
+		/* Normal strings is ALWAYS utf-8 no problem */
+		print_info ("[%s] %s = %s", source, key, value);
 	}
 }
 
@@ -98,51 +144,36 @@ void
 print_entry (const void *key, xmms_value_t *dict, void *udata)
 {
 	xmms_value_t *v;
-	const gchar *source, *value;
+	const gchar *source;
 	if (xmms_value_get_type (dict) == XMMS_VALUE_TYPE_DICT) {
 		xmms_value_dict_iter_t *it;
 		xmms_value_get_dict_iter (dict, &it);
 
 		while (xmms_value_dict_iter_valid (it)) {
 			xmms_value_dict_iter_pair (it, &source, &v);
-			xmms_value_get_string (v, &value);
-
-			/* Ok it's a string, if it's the URL property from the
-			 * server source we need to decode it since it's
-			 * encoded in the server
-			 */
-			if (strcmp (key, "url") == 0 && strcmp (source, "server") == 0) {
-				/* First decode the URL encoding */
-				char *tmp;
-				tmp = xmms_value_decode_url (value);
-
-				/* Let's see if the result is valid utf-8. This must be done
-				 * since we don't know the charset of the binary string */
-				if (g_utf8_validate (tmp, -1, NULL)) {
-					/* If it's valid utf-8 we don't have any problem just
-					 * printing it to the screen
-					 */
-					print_info ("[%s] %s = %s", source, key, tmp);
-				} else {
-					/* Not valid utf-8 :-( We make a valid guess here that
-					 * the string when it was encoded with URL it was in the
-					 * same charset as we have on the terminal now.
-					 *
-					 * THIS MIGHT BE WRONG since different clients can have
-					 * different charsets and DIFFERENT computers most likely
-					 * have it.
-					 */
-					gchar *tmp2 = g_locale_to_utf8 (tmp, -1, NULL, NULL, NULL);
-					/* Lets add a disclaimer */
-					print_info ("[%s] %s = %s (charset guessed)", source, key, tmp2);
-					g_free (tmp2);
-				}
-
-				free (tmp); /* free decoded url */
-			} else {
-				/* Normal strings is ALWAYS utf-8 no problem */
-				print_info ("[%s] %s = %s", source, key, value);
+			switch (xmms_value_get_type (v)) {
+			case XMMS_VALUE_TYPE_STRING:
+				print_entry_string (v, key, source);
+				break;
+			case XMMS_VALUE_TYPE_INT32:
+			{
+				gint i;
+				xmms_value_get_int (v, &i);
+				print_info ("[%s] %s = %d", source, key, i);
+				break;
 			}
+			case XMMS_VALUE_TYPE_UINT32:
+			{
+				guint u;
+				xmms_value_get_uint (v, &u);
+				print_info ("[%s] %s = %u", source, key, u);
+				break;
+			}
+			default:
+				print_info ("[%s] %s = (unknown data)", source, key);
+				break;
+			}
+			xmms_value_dict_iter_next (it);
 		}
 	}
 
