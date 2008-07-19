@@ -14,6 +14,7 @@
  *  Lesser General Public License for more details.
  */
 
+#include "cmd_status.h"
 #include "common.h"
 
 
@@ -85,7 +86,7 @@ void
 cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsv_t *val;
+	xmmsv_t *propdict, *val;
 	gchar print_text[256];
 	guint id;
 
@@ -94,7 +95,7 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	val = xmmsc_result_get_value (res);
 
 	if (xmmsv_is_error (val)) {
-		print_error ("%s", xmmsv_get_error (val));
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
 	if (!xmmsv_get_uint (val, &id)) {
@@ -104,10 +105,11 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	res = xmmsc_medialib_get_info (conn, id);
 	xmmsc_result_wait (res);
-	val = xmmsc_result_get_value (res);
+	propdict = xmmsc_result_get_value (res);
+	val = xmmsv_propdict_to_dict (propdict, default_source_pref);
 
 	if (xmmsv_is_error (val)) {
-		print_error ("%s", xmmsv_get_error (val));
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
 	if (argc > 2) {
@@ -127,7 +129,7 @@ handle_status_change (xmmsv_t *val, void *userdata)
 	guint new_status;
 
 	if (xmmsv_is_error (val)) {
-		print_error ("%s", xmmsv_get_error (val));
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
 	if (!xmmsv_get_uint (val, &new_status)) {
@@ -147,7 +149,7 @@ handle_current_id (xmmsv_t *val, void *userdata)
 	xmmsc_connection_t *conn = userdata;
 
 	if (xmmsv_is_error (val)) {
-		print_error ("%s", xmmsv_get_error (val));
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
 	if (!xmmsv_get_uint (val, &current_id)) {
@@ -171,7 +173,7 @@ handle_playtime (xmmsv_t *val, void *userdata)
 	guint dur;
 
 	if (xmmsv_is_error (val)) {
-		print_error ("%s", xmmsv_get_error (val));
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
 	if (!xmmsv_get_uint (val, &dur)) {
@@ -235,7 +237,7 @@ handle_mediainfo_update (xmmsv_t *val, void *userdata)
 	xmmsc_connection_t *conn = userdata;
 
 	if (xmmsv_is_error (val)) {
-		print_error ("%s", xmmsv_get_error (val));
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
 	if (!xmmsv_get_uint (val, &id)) {
@@ -253,11 +255,15 @@ handle_mediainfo_update (xmmsv_t *val, void *userdata)
 
 
 static int
-do_mediainfo (xmmsv_t *val, void *userdata)
+do_mediainfo (xmmsv_t *propdict, void *userdata)
 {
-	if (xmmsv_is_error (val)) {
-		print_error ("%s", xmmsv_get_error (val));
+	xmmsv_t *val;
+
+	if (xmmsv_is_error (propdict)) {
+		print_error ("%s", xmmsv_get_error_old (propdict));
 	}
+
+	val = xmmsv_propdict_to_dict (propdict, default_source_pref);
 
 	print_info ("");
 	if (val_has_key (val, "channel") && val_has_key (val, "title")) {
