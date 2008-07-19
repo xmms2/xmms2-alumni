@@ -49,9 +49,6 @@ struct xmms_ipc_msg_St {
 	uint32_t xfered;
 };
 
-static uint32_t xmms_ipc_msg_put_value_list (xmms_ipc_msg_t *msg, xmmsv_t *v);
-static uint32_t xmms_ipc_msg_put_value_dict (xmms_ipc_msg_t *msg, xmmsv_t *v);
-
 
 void
 xmms_ipc_append_coll_attr (const char* key, const char* value, void *userdata) {
@@ -511,7 +508,7 @@ xmms_ipc_msg_put_value (xmms_ipc_msg_t *msg, xmmsv_t *v)
 	return ret;
 }
 
-static uint32_t
+uint32_t
 xmms_ipc_msg_put_value_list (xmms_ipc_msg_t *msg, xmmsv_t *v)
 {
 	xmmsv_list_iter_t *it;
@@ -539,7 +536,7 @@ xmms_ipc_msg_put_value_list (xmms_ipc_msg_t *msg, xmmsv_t *v)
 	return ret;
 }
 
-static uint32_t
+uint32_t
 xmms_ipc_msg_put_value_dict (xmms_ipc_msg_t *msg, xmmsv_t *v)
 {
 	xmmsv_dict_iter_t *it;
