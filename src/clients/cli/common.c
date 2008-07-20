@@ -16,6 +16,16 @@
 
 #include "common.h"
 
+const char *default_source_pref[] = {
+	"server",
+	"client/*",
+	"plugin/id3v2",
+	"plugin/segment",
+	"plugin/*",
+	"*",
+	NULL
+};
+
 gint
 val_has_key (xmms_value_t *val, const gchar *key)
 {
@@ -283,7 +293,7 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 	for (n = list; n; n = g_list_next (n)) {
 		const gchar *title;
 		xmmsc_result_t *res;
-		xmms_value_t *val;
+		xmms_value_t *propdict, *val;
 		gint mid = XPOINTER_TO_INT (n->data);
 
 		if (!mid) {
@@ -292,7 +302,8 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 
 		res = xmmsc_medialib_get_info (conn, mid);
 		xmmsc_result_wait (res);
-		val = xmmsc_result_get_value (res);
+		propdict = xmmsc_result_get_value (res);
+		val = xmms_value_propdict_to_dict (propdict, default_source_pref);
 
 		if (xmms_value_get_dict_entry_string (val, "title", &title)) {
 			const gchar *artist, *album;

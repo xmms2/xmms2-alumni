@@ -1053,16 +1053,17 @@ xmms_medialib_tree_add_tuple (GTree *tree, xmms_object_cmd_value_t *key,
                               xmms_object_cmd_value_t *source,
                               xmms_object_cmd_value_t *value)
 {
+	xmms_object_cmd_value_t *keytreeval;
 	GTree *keytree;
 
 	/* Find (or insert) subtree matching the prop key */
-	keytree = (GTree*) g_tree_lookup (tree, key->value.string);
-	if (!keytree) {
-		xmms_object_cmd_value_t *keytreeval;
+	keytreeval = (xmms_object_cmd_value_t *) g_tree_lookup (tree, key->value.string);
+	if (keytreeval) {
+		keytree = keytreeval->value.dict;
+	} else {
 		keytree = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, g_free,
 	                               (GDestroyNotify) xmms_object_cmd_value_unref);
 		keytreeval = xmms_object_cmd_value_dict_new (keytree);
-		/* FIXME: ref? */
 		g_tree_insert (tree, g_strdup (key->value.string), keytreeval);
 	}
 

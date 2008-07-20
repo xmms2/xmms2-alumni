@@ -60,6 +60,7 @@ int xmms_value_get_dict_entry_int (xmms_value_t *val, const char *key, int32_t *
 int xmms_value_get_dict_entry_uint (xmms_value_t *val, const char *key, uint32_t *r);
 int xmms_value_get_dict_entry_collection (xmms_value_t *val, const char *key, xmmsc_coll_t **coll);
 int xmms_value_dict_foreach (xmms_value_t *val, xmmsc_dict_foreach_func func, void *user_data);
+xmms_value_t *xmms_value_propdict_to_dict (xmms_value_t *propdict, const char **src_prefs);
 
 int xmms_value_get_error (xmms_value_t *val, const char **r);
 int xmms_value_get_int (xmms_value_t *val, int32_t *r);

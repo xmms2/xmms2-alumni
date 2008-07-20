@@ -14,6 +14,7 @@
  *  Lesser General Public License for more details.
  */
 
+#include "cmd_status.h"
 #include "common.h"
 
 
@@ -85,7 +86,7 @@ void
 cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmms_value_t *val;
+	xmms_value_t *propdict, *val;
 	gchar print_text[256];
 	guint id;
 
@@ -104,7 +105,8 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	res = xmmsc_medialib_get_info (conn, id);
 	xmmsc_result_wait (res);
-	val = xmmsc_result_get_value (res);
+	propdict = xmmsc_result_get_value (res);
+	val = xmms_value_propdict_to_dict (propdict, default_source_pref);
 
 	if (xmms_value_iserror (val)) {
 		print_error ("%s", xmms_value_get_error_old (val));
@@ -253,11 +255,15 @@ handle_mediainfo_update (xmms_value_t *val, void *userdata)
 
 
 static int
-do_mediainfo (xmms_value_t *val, void *userdata)
+do_mediainfo (xmms_value_t *propdict, void *userdata)
 {
-	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error_old (val));
+	xmms_value_t *val;
+
+	if (xmms_value_iserror (propdict)) {
+		print_error ("%s", xmms_value_get_error_old (propdict));
 	}
+
+	val = xmms_value_propdict_to_dict (propdict, default_source_pref);
 
 	print_info ("");
 	if (val_has_key (val, "channel") && val_has_key (val, "title")) {

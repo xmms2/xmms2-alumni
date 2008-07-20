@@ -469,6 +469,72 @@ GEN_COMPAT_DICT_EXTRACTOR_FUNC(int, int32_t)
 GEN_COMPAT_DICT_EXTRACTOR_FUNC(uint, uint32_t)
 GEN_COMPAT_DICT_EXTRACTOR_FUNC(collection, xmmsc_coll_t *)
 
+static int
+source_match_pattern (const char *source, const char *pattern)
+{
+	int match = 0;
+	int lpos = strlen (pattern) - 1;
+
+	if (strcasecmp (pattern, source) == 0) {
+		match = 1;
+	} else if (lpos >= 0 && pattern[lpos] == '*' &&
+	           (lpos == 0 || strncasecmp (source, pattern, lpos) == 0)) {
+		match = 1;
+	}
+
+	return match;
+}
+
+static int
+find_match_index (const char *source, const char **src_prefs)
+{
+	int i;
+
+	for (i = 0; src_prefs[i]; i++) {
+		if (source_match_pattern (source, src_prefs[i])) {
+			break;
+		}
+	}
+
+	return i;
+}
+
+xmms_value_t *
+xmms_value_propdict_to_dict (xmms_value_t *propdict, const char **src_prefs)
+{
+	xmms_value_t *dict, *source_dict, *value, *best_value;
+	xmms_value_dict_iter_t *dict_it, *key_it, *source_it;
+	const char *key, *source;
+	int match_index, best_index;
+
+	dict = xmms_value_new_dict ();
+	xmms_value_get_dict_iter (dict, &dict_it);
+
+	xmms_value_get_dict_iter (propdict, &key_it);
+	while (xmms_value_dict_iter_valid (key_it)) {
+		xmms_value_dict_iter_pair (key_it, &key, &source_dict);
+
+		best_value = NULL;
+		best_index = -1;
+		xmms_value_get_dict_iter (source_dict, &source_it);
+		while (xmms_value_dict_iter_valid (source_it)) {
+			xmms_value_dict_iter_pair (source_it, &source, &value);
+			match_index = find_match_index (source, src_prefs);
+			if (best_index < 0 || match_index < best_index) {
+				best_value = value;
+				best_index = match_index;
+			}
+			xmms_value_dict_iter_next (source_it);
+		}
+
+		xmms_value_dict_iter_insert (dict_it, key, best_value);
+
+		xmms_value_dict_iter_next (key_it);
+	}
+
+	return dict;
+}
+
 
 int
 xmms_value_dict_foreach (xmms_value_t *val, xmmsc_dict_foreach_func func,

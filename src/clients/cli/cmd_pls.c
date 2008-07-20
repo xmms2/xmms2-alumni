@@ -16,6 +16,7 @@
 #include "cmd_pls.h"
 #include "common.h"
 
+extern const char *default_source_pref[];
 
 cmds plist_commands[] = {
 	{ "list", "List all available playlists", cmd_playlists_list },
@@ -513,7 +514,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmms_value_get_list_iter (val, &it);
 	while (xmms_value_list_iter_valid (it)) {
 		xmmsc_result_t *info_res;
-		xmms_value_t *val_id, *info_val;
+		xmms_value_t *val_id, *propdict, *info_val;
 		gchar line[80];
 		gint playtime = 0;
 		guint ui;
@@ -525,7 +526,8 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 		info_res = xmmsc_medialib_get_info (conn, ui);
 		xmmsc_result_wait (info_res);
-		info_val = xmmsc_result_get_value (info_res);
+		propdict = xmmsc_result_get_value (info_res);
+		info_val = xmms_value_propdict_to_dict (propdict, default_source_pref);
 
 		if (xmms_value_iserror (info_val)) {
 			print_error ("%s", xmms_value_get_error_old (info_val));
@@ -572,6 +574,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		pos++;
 
 		xmmsc_result_unref (info_res);
+		xmms_value_unref (info_val);
 		xmms_value_list_iter_next (it);
 	}
 	xmmsc_result_unref (res);
