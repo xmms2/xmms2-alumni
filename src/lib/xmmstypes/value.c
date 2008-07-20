@@ -775,7 +775,7 @@ xmms_value_list_resize (xmms_value_list_t *l, size_t newsize)
 
 	newmem = realloc (l->list, newsize * sizeof (xmms_value_t *));
 
-	if (newmem == NULL) {
+	if (newsize != 0 && newmem == NULL) {
 		x_oom ();
 		return 0;
 	}
@@ -1071,7 +1071,7 @@ int
 xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it, const char *key)
 {
 	unsigned int orig, size;
-	int ret;
+	int ret = 0;
 
 	/* FIXME: avoid leaking abstraction! */
 	orig = it->lit->position;
