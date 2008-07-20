@@ -647,8 +647,6 @@ cmd_coll_attr (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 			xmmsc_result_unref (saveres);
 		}
-
-		xmmsc_coll_unref (coll);
 	}
 
 	xmmsc_result_unref (res);
