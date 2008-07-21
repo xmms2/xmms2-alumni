@@ -1046,6 +1046,7 @@ struct xmms_value_dict_St {
 struct xmms_value_dict_iter_St {
 	/* iterator of the contained flatlist */
 	xmms_value_list_iter_t *lit;
+	xmms_value_dict_t *parent;
 };
 
 static xmms_value_dict_t *
@@ -1067,17 +1068,13 @@ xmms_value_dict_new ()
 static void
 xmms_value_dict_free (xmms_value_dict_t *dict)
 {
-	x_list_t *n;
 	xmms_value_dict_iter_t *it;
 
-	/* FIXME: or alias dict iter to list iter? */
-
 	/* free iterators */
-	for (n = dict->iterators; n; n = n->next) {
-		it = (xmms_value_dict_iter_t *) n->data;
+	while (dict->iterators) {
+		it = (xmms_value_dict_iter_t *) dict->iterators;
 		xmms_value_dict_iter_free (it);
 	}
-	x_list_free (dict->iterators);
 
 	xmms_value_list_free (dict->flatlist);
 
@@ -1216,6 +1213,7 @@ xmms_value_dict_iter_new (xmms_value_dict_t *d)
 	}
 
 	it->lit = xmms_value_list_iter_new (d->flatlist);
+	it->parent = d;
 
 	/* register iterator into parent */
 	d->iterators = x_list_prepend (d->iterators, it);
@@ -1226,7 +1224,10 @@ xmms_value_dict_iter_new (xmms_value_dict_t *d)
 static void
 xmms_value_dict_iter_free (xmms_value_dict_iter_t *it)
 {
-	xmms_value_list_iter_free (it->lit);
+	/* we don't free the parent list iter, already managed by the flatlist */
+
+	/* unref iterator from dict and free it */
+	it->parent->iterators = x_list_remove (it->parent->iterators, it);
 	free (it);
 }
 
