@@ -425,7 +425,9 @@ xmmsc_result_get_value (xmmsc_result_t *res)
 void
 xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr)
 {
-	xmmsv_unref (res->data);
+	if (res->data) {
+		xmmsv_unref (res->data);
+	}
 	res->data = xmmsv_new_error (errstr);
 }
 
