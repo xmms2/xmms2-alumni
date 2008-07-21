@@ -46,9 +46,10 @@ struct xmms_value_list_St {
 
 static xmms_value_list_t *xmms_value_list_new ();
 static void xmms_value_list_free (xmms_value_list_t *l);
-static int xmms_value_list_insert (xmms_value_list_t *l, unsigned int index, xmms_value_t *val);
-static int xmms_value_list_remove (xmms_value_list_t *l, unsigned int index);
 static int xmms_value_list_resize (xmms_value_list_t *l, size_t newsize);
+static int _xmms_value_list_insert (xmms_value_list_t *l, int pos, xmms_value_t *val);
+static int _xmms_value_list_remove (xmms_value_list_t *l, int pos);
+static int _xmms_value_list_clear (xmms_value_list_t *l);
 
 static xmms_value_dict_t *xmms_value_dict_new ();
 static void xmms_value_dict_free (xmms_value_dict_t *dict);
@@ -89,6 +90,7 @@ struct xmms_value_St {
 static xmms_value_t *xmms_value_new (xmms_value_type_t type);
 static void xmms_value_free (xmms_value_t *val);
 static void value_data_free (xmms_value_t *val);
+static int get_absolute_position (int pos, unsigned int size, unsigned int *abspos);
 
 
 
@@ -374,7 +376,6 @@ value_data_free (xmms_value_t *val)
 			xmms_value_dict_free (val->value.dict);
 			val->value.dict = NULL;
 			break;
-		/* FIXME: handle default? */
 	}
 
 	val->type = XMMS_VALUE_TYPE_NONE;
@@ -418,6 +419,18 @@ int
 xmms_value_is_list (xmms_value_t *val)
 {
 	return xmms_value_get_type (val) == XMMS_VALUE_TYPE_LIST;
+}
+
+/**
+ * Check if the value stores a dict.
+ *
+ * @param val a #xmms_value_t
+ * @return 1 if value stores a dict, 0 otherwise.
+ */
+int
+xmms_value_is_dict (xmms_value_t *val)
+{
+	return xmms_value_get_type (val) == XMMS_VALUE_TYPE_DICT;
 }
 
 const char *
@@ -503,12 +516,11 @@ xmms_value_t *
 xmms_value_propdict_to_dict (xmms_value_t *propdict, const char **src_prefs)
 {
 	xmms_value_t *dict, *source_dict, *value, *best_value;
-	xmms_value_dict_iter_t *dict_it, *key_it, *source_it;
+	xmms_value_dict_iter_t *key_it, *source_it;
 	const char *key, *source;
 	int match_index, best_index;
 
 	dict = xmms_value_new_dict ();
-	xmms_value_get_dict_iter (dict, &dict_it);
 
 	xmms_value_get_dict_iter (propdict, &key_it);
 	while (xmms_value_dict_iter_valid (key_it)) {
@@ -527,34 +539,12 @@ xmms_value_propdict_to_dict (xmms_value_t *propdict, const char **src_prefs)
 			xmms_value_dict_iter_next (source_it);
 		}
 
-		xmms_value_dict_iter_insert (dict_it, key, best_value);
+		xmms_value_dict_insert (dict, key, best_value);
 
 		xmms_value_dict_iter_next (key_it);
 	}
 
 	return dict;
-}
-
-
-int
-xmms_value_dict_foreach (xmms_value_t *val, xmmsc_dict_foreach_func func,
-                         void *user_data)
-{
-	xmms_value_dict_iter_t *it;
-	const char *key;
-	xmms_value_t *v;
-
-	if (!val || !xmms_value_get_dict_iter (val, &it)) {
-		return 0;
-	}
-
-	while (xmms_value_dict_iter_valid (it)) {
-		xmms_value_dict_iter_pair (it, &key, &v);
-		func (key, v, user_data);
-		xmms_value_dict_iter_next (it);
-	}
-
-	return 1;
 }
 
 
@@ -733,16 +723,14 @@ xmms_value_list_new ()
 static void
 xmms_value_list_free (xmms_value_list_t *l)
 {
-	x_list_t *n;
 	xmms_value_list_iter_t *it;
 	size_t i;
 
 	/* free iterators */
-	for (n = l->iterators; n; n = n->next) {
-		it = (xmms_value_list_iter_t *) n->data;
+	while (l->iterators) {
+		it = (xmms_value_list_iter_t *) l->iterators;
 		xmms_value_list_iter_free (it);
 	}
-	x_list_free (l->iterators);
 
 	/* unref contents */
 	for (i = 0; i < l->size; i++) {
@@ -751,87 +739,6 @@ xmms_value_list_free (xmms_value_list_t *l)
 
 	free (l->list);
 	free (l);
-}
-
-static int
-xmms_value_list_insert (xmms_value_list_t *l, unsigned int index,
-                        xmms_value_t *val)
-{
-	xmms_value_list_iter_t *it;
-	x_list_t *n;
-	int i;
-
-	if (index > l->size) {
-		return 0;
-	}
-
-	/* We need more memory, reallocate */
-	if (l->size == l->allocated) {
-		int success;
-		size_t double_size;
-		if (l->allocated > 0) {
-			double_size = l->allocated << 1;
-		} else {
-			double_size = 1;
-		}
-		success = xmms_value_list_resize (l, double_size);
-		x_return_val_if_fail (success, 0);
-	}
-
-	for (i = l->size; i > index; i--) {
-		l->list[i] = l->list[i - 1];
-	}
-
-	l->list[index] = val;
-	l->size++;
-
-	xmms_value_ref (val);
-
-	/* update iterators pos */
-	for (n = l->iterators; n; n = n->next) {
-		it = (xmms_value_list_iter_t *) n->data;
-		if (it->position >= index) {
-			it->position++;
-		}
-	}
-
-	return 1;
-}
-
-static int
-xmms_value_list_remove (xmms_value_list_t *l, unsigned int index)
-{
-	xmms_value_list_iter_t *it;
-	size_t half_size;
-	x_list_t *n;
-	int i;
-
-	if (index + 1 > l->size) {
-		return 0;
-	}
-
-	xmms_value_unref (l->list[index]);
-
-	l->size--;
-	for (i = index; i < l->size; i++) {
-		l->list[i] = l->list[i + 1];
-	}
-
-	/* Reduce memory usage by two if possible */
-	half_size = l->allocated >> 1;
-	if (l->size <= half_size) {
-		xmms_value_list_resize (l, half_size);
-	}
-
-	/* update iterator pos */
-	for (n = l->iterators; n; n = n->next) {
-		it = (xmms_value_list_iter_t *) n->data;
-		if (it->position > index) {
-			it->position--;
-		}
-	}
-
-	return 1;
 }
 
 static int
@@ -852,7 +759,183 @@ xmms_value_list_resize (xmms_value_list_t *l, size_t newsize)
 	return 1;
 }
 
+static int
+_xmms_value_list_insert (xmms_value_list_t *l, int pos, xmms_value_t *val)
+{
+	unsigned int abspos;
+	xmms_value_list_iter_t *it;
+	x_list_t *n;
+	int i;
 
+	if (!get_absolute_position (pos, l->size, &abspos)) {
+		return 0;
+	}
+
+	/* We need more memory, reallocate */
+	if (l->size == l->allocated) {
+		int success;
+		size_t double_size;
+		if (l->allocated > 0) {
+			double_size = l->allocated << 1;
+		} else {
+			double_size = 1;
+		}
+		success = xmms_value_list_resize (l, double_size);
+		x_return_val_if_fail (success, 0);
+	}
+
+	for (i = l->size; i > pos; i--) {
+		l->list[i] = l->list[i - 1];
+	}
+
+	l->list[pos] = val;
+	l->size++;
+
+	xmms_value_ref (val);
+
+	/* update iterators pos */
+	for (n = l->iterators; n; n = n->next) {
+		it = (xmms_value_list_iter_t *) n->data;
+		if (it->position >= pos) {
+			it->position++;
+		}
+	}
+
+	return 1;
+}
+
+static int
+_xmms_value_list_remove (xmms_value_list_t *l, int pos)
+{
+	unsigned int abspos;
+	xmms_value_list_iter_t *it;
+	size_t half_size;
+	x_list_t *n;
+	int i;
+
+	/* prevent removing after the last element */
+	x_return_val_if_fail (pos < l->size, 0);
+	if (!get_absolute_position (pos, l->size, &abspos)) {
+		return 0;
+	}
+
+	xmms_value_unref (l->list[pos]);
+
+	l->size--;
+	for (i = pos; i < l->size; i++) {
+		l->list[i] = l->list[i + 1];
+	}
+
+	/* Reduce memory usage by two if possible */
+	half_size = l->allocated >> 1;
+	if (l->size <= half_size) {
+		xmms_value_list_resize (l, half_size);
+	}
+
+	/* update iterator pos */
+	for (n = l->iterators; n; n = n->next) {
+		it = (xmms_value_list_iter_t *) n->data;
+		if (it->position > pos) {
+			it->position--;
+		}
+	}
+
+	return 1;
+}
+
+int
+_xmms_value_list_clear (xmms_value_list_t *l)
+{
+	/* FIXME: could be optimized */
+	while (l->size > 0) {
+		_xmms_value_list_remove (l, 0);
+	}
+
+	return 1;
+}
+
+int
+xmms_value_list_get (xmms_value_t *listv, int pos, xmms_value_t **val)
+{
+	unsigned int abspos;
+	xmms_value_list_t *l;
+
+	x_return_val_if_fail (listv, 0);
+	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+
+	/* prevent accessing after the last element */
+	l = listv->value.list;
+	x_return_val_if_fail (pos < l->size, 0);
+	if (!get_absolute_position (pos, l->size, &abspos)) {
+		return 0;
+	}
+
+	if (val) {
+		*val = l->list[pos];
+	}
+
+	return 1;
+}
+
+int
+xmms_value_list_insert (xmms_value_t *listv, int pos, xmms_value_t *val)
+{
+	x_return_val_if_fail (listv, 0);
+	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+	x_return_val_if_fail (val, 0);
+
+	return _xmms_value_list_insert (listv->value.list, pos, val);
+}
+
+int
+xmms_value_list_remove (xmms_value_t *listv, int pos)
+{
+	x_return_val_if_fail (listv, 0);
+	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+
+	return _xmms_value_list_remove (listv->value.list, pos);
+}
+
+int
+xmms_value_list_append (xmms_value_t *listv, xmms_value_t *val)
+{
+	x_return_val_if_fail (listv, 0);
+	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+	x_return_val_if_fail (val, 0);
+
+	return xmms_value_list_insert (listv, -1, val);
+}
+
+int
+xmms_value_list_clear (xmms_value_t *listv)
+{
+	x_return_val_if_fail (listv, 0);
+	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+
+	return _xmms_value_list_clear (listv->value.list);
+}
+
+int
+xmms_value_list_foreach (xmms_value_t *listv, xmmsc_list_foreach_func func,
+                         void* user_data)
+{
+	xmms_value_list_iter_t *it;
+	xmms_value_t *v;
+
+	x_return_val_if_fail (listv, 0);
+	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+	x_return_val_if_fail (xmms_value_get_list_iter (listv, &it), 0);
+
+	while (xmms_value_list_iter_valid (it)) {
+		xmms_value_list_iter_entry (it, &v);
+		func (v, user_data);
+		xmms_value_list_iter_next (it);
+	}
+
+	xmms_value_list_iter_free (it);
+
+	return 1;
+}
 
 
 static xmms_value_list_iter_t *
@@ -878,6 +961,8 @@ xmms_value_list_iter_new (xmms_value_list_t *l)
 static void
 xmms_value_list_iter_free (xmms_value_list_iter_t *it)
 {
+	/* unref iterator from list and free it */
+	it->parent->iterators = x_list_remove (it->parent->iterators, it);
 	free (it);
 }
 
@@ -918,12 +1003,27 @@ xmms_value_list_iter_next (xmms_value_list_iter_t *it)
 }
 
 int
+xmms_value_list_iter_goto (xmms_value_list_iter_t *it, int pos)
+{
+	unsigned int abspos;
+
+	x_return_val_if_fail (it, 0);
+
+	if (!get_absolute_position (pos, it->parent->size, &abspos)) {
+		return 0;
+	}
+	it->position = abspos;
+
+	return 1;
+}
+
+int
 xmms_value_list_iter_insert (xmms_value_list_iter_t *it, xmms_value_t *val)
 {
 	x_return_val_if_fail (it, 0);
 	x_return_val_if_fail (val, 0);
 
-	return xmms_value_list_insert (it->parent, it->position, val);
+	return _xmms_value_list_insert (it->parent, it->position, val);
 }
 
 int
@@ -931,16 +1031,7 @@ xmms_value_list_iter_remove (xmms_value_list_iter_t *it)
 {
 	x_return_val_if_fail (it, 0);
 
-	return xmms_value_list_remove (it->parent, it->position);
-}
-
-int
-xmms_value_list_iter_append (xmms_value_list_iter_t *it, xmms_value_t *val)
-{
-	x_return_val_if_fail (it, 0);
-	x_return_val_if_fail (val, 0);
-
-	return xmms_value_list_insert (it->parent, it->parent->size, val);
+	return _xmms_value_list_remove (it->parent, it->position);
 }
 
 
@@ -950,6 +1041,11 @@ struct xmms_value_dict_St {
 	/* dict implemented as a flat [key1, val1, key2, val2, ...] list */
 	xmms_value_list_t *flatlist;
 	x_list_t *iterators;
+};
+
+struct xmms_value_dict_iter_St {
+	/* iterator of the contained flatlist */
+	xmms_value_list_iter_t *lit;
 };
 
 static xmms_value_dict_t *
@@ -974,6 +1070,8 @@ xmms_value_dict_free (xmms_value_dict_t *dict)
 	x_list_t *n;
 	xmms_value_dict_iter_t *it;
 
+	/* FIXME: or alias dict iter to list iter? */
+
 	/* free iterators */
 	for (n = dict->iterators; n; n = n->next) {
 		it = (xmms_value_dict_iter_t *) n->data;
@@ -986,11 +1084,125 @@ xmms_value_dict_free (xmms_value_dict_t *dict)
 	free (dict);
 }
 
+int
+xmms_value_dict_get (xmms_value_t *dictv, const char *key, xmms_value_t **val)
+{
+	xmms_value_dict_iter_t *it;
+	int ret = 1;
 
-struct xmms_value_dict_iter_St {
-	/* iterator of the contained flatlist */
-	xmms_value_list_iter_t *lit;
-};
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (dictv, 0);
+	x_return_val_if_fail (xmms_value_is_dict (dictv), 0);
+	x_return_val_if_fail (xmms_value_get_dict_iter (dictv, &it), 0);
+
+	if (!xmms_value_dict_iter_seek (it, key)) {
+		ret = 0;
+	}
+
+	/* If found, return value and success */
+	if (ret && val) {
+		xmms_value_dict_iter_pair (it, NULL, val);
+	}
+
+	xmms_value_dict_iter_free (it);
+
+	return ret;
+}
+
+int xmms_value_dict_insert (xmms_value_t *dictv, const char *key, xmms_value_t *val)
+{
+	xmms_value_dict_iter_t *it;
+	int ret;
+
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (val, 0);
+	x_return_val_if_fail (dictv, 0);
+	x_return_val_if_fail (xmms_value_is_dict (dictv), 0);
+	x_return_val_if_fail (xmms_value_get_dict_iter (dictv, &it), 0);
+
+	/* if key already present, replace value */
+	if (xmms_value_dict_iter_seek (it, key)) {
+		ret = xmms_value_dict_iter_set (it, val);
+
+	/* else, insert a new key-value pair */
+	} else {
+		xmms_value_list_t *l;
+		xmms_value_t *keyval;
+		l = dictv->value.dict->flatlist;
+		keyval = xmms_value_new_string (key);
+
+		ret = _xmms_value_list_insert (l, -1, keyval);
+		if (ret) {
+			ret = _xmms_value_list_insert (l, -1, val);
+			if (!ret) {
+				/* FIXME: oops, remove previously inserted key */
+			}
+		}
+		xmms_value_unref (keyval);
+	}
+
+	xmms_value_dict_iter_free (it);
+
+	return ret;
+}
+
+int
+xmms_value_dict_remove (xmms_value_t *dictv, const char *key)
+{
+	xmms_value_dict_iter_t *it;
+	int ret = 1;
+
+	x_return_val_if_fail (key, 0);
+	x_return_val_if_fail (dictv, 0);
+	x_return_val_if_fail (xmms_value_is_dict (dictv), 0);
+	x_return_val_if_fail (xmms_value_get_dict_iter (dictv, &it), 0);
+
+	if (!xmms_value_dict_iter_seek (it, key)) {
+		ret = 0;
+	} else {
+		ret = xmms_value_list_iter_remove (it->lit) &&
+		      xmms_value_list_iter_remove (it->lit);
+		/* FIXME: cleanup if only the first fails */
+	}
+
+	xmms_value_dict_iter_free (it);
+
+	return ret;
+}
+
+
+int
+xmms_value_dict_clear (xmms_value_t *dictv)
+{
+	x_return_val_if_fail (dictv, 0);
+	x_return_val_if_fail (xmms_value_is_dict (dictv), 0);
+
+	return _xmms_value_list_clear (dictv->value.dict->flatlist);
+}
+
+int
+xmms_value_dict_foreach (xmms_value_t *dictv, xmmsc_dict_foreach_func func,
+                         void *user_data)
+{
+	xmms_value_dict_iter_t *it;
+	const char *key;
+	xmms_value_t *v;
+
+	x_return_val_if_fail (dictv, 0);
+	x_return_val_if_fail (xmms_value_is_dict (dictv), 0);
+	x_return_val_if_fail (xmms_value_get_dict_iter (dictv, &it), 0);
+
+	while (xmms_value_dict_iter_valid (it)) {
+		xmms_value_dict_iter_pair (it, &key, &v);
+		func (key, v, user_data);
+		xmms_value_dict_iter_next (it);
+	}
+
+	xmms_value_dict_iter_free (it);
+
+	return 1;
+}
+
 
 static xmms_value_dict_iter_t *
 xmms_value_dict_iter_new (xmms_value_dict_t *d)
@@ -1009,12 +1221,12 @@ xmms_value_dict_iter_new (xmms_value_dict_t *d)
 	d->iterators = x_list_prepend (d->iterators, it);
 
 	return it;
-
 }
 
 static void
 xmms_value_dict_iter_free (xmms_value_dict_iter_t *it)
 {
+	xmms_value_list_iter_free (it->lit);
 	free (it);
 }
 
@@ -1056,12 +1268,16 @@ xmms_value_dict_iter_valid (xmms_value_dict_iter_t *it)
 void
 xmms_value_dict_iter_first (xmms_value_dict_iter_t *it)
 {
+	x_return_if_fail (it);
+
 	xmms_value_list_iter_first (it->lit);
 }
 
 void
 xmms_value_dict_iter_next (xmms_value_dict_iter_t *it)
 {
+	x_return_if_fail (it);
+
 	/* skip a pair */
 	xmms_value_list_iter_next (it->lit);
 	xmms_value_list_iter_next (it->lit);
@@ -1071,62 +1287,48 @@ int
 xmms_value_dict_iter_seek (xmms_value_dict_iter_t *it, const char *key)
 {
 	const char *startkey, *k = NULL;
-	xmms_value_t *v = NULL;
+	xmms_value_t *v;
+
+	x_return_val_if_fail (it, 0);
+	x_return_val_if_fail (key, 0);
 
 	xmms_value_dict_iter_pair (it, &k, &v);
 	startkey = k;
 
-	/* FIXME: temp hack, make nicer */
-	if (!k) {
-		return 0;
-	}
-
-	while (strcmp (k, key) != 0) {
-		/* walk the list */
+	/* walk the list once */
+	do {
+		/* read next pair */
 		xmms_value_dict_iter_next (it);
 		if (!xmms_value_dict_iter_valid (it)) {
 			xmms_value_dict_iter_first (it);
 		}
 		xmms_value_dict_iter_pair (it, &k, &v);
 
-		/* back to start, nothing found! */
-		if (k == startkey) {
-			return 0;
+		/* matching keys, quit now! */
+		if (strcmp (k, key) != 0) {
+			return 1;
 		}
-	}
+	} while (k != startkey);
 
-	return 1;
+	/* not found, too bad */
+	return 0;
 }
 
 int
-xmms_value_dict_iter_insert (xmms_value_dict_iter_t *it, const char *key,
-                             xmms_value_t *val)
+xmms_value_dict_iter_set (xmms_value_dict_iter_t *it, xmms_value_t *val)
 {
 	unsigned int orig;
 	int ret;
 
+	x_return_val_if_fail (xmms_value_dict_iter_valid (it), 0);
+
 	/* FIXME: avoid leaking abstraction! */
 	orig = it->lit->position;
 
-	/* if key already present, replace value */
-	if (xmms_value_dict_iter_seek (it, key)) {
-		xmms_value_list_iter_next (it->lit);
-		xmms_value_list_iter_remove (it->lit);
-		ret = xmms_value_list_iter_insert (it->lit, val);
-
-	/* else, insert a new key-value pair */
-	} else {
-		xmms_value_t *keyval;
-		keyval = xmms_value_new_string (key);
-		ret = xmms_value_list_iter_append (it->lit, keyval);
-		if (ret) {
-			ret = xmms_value_list_iter_append (it->lit, val);
-			if (!ret) {
-				/* FIXME: oops, remove previously inserted key */
-			}
-		}
-		xmms_value_unref (keyval);
-	}
+	xmms_value_list_iter_next (it->lit);
+	xmms_value_list_iter_remove (it->lit);
+	ret = xmms_value_list_iter_insert (it->lit, val);
+	/* FIXME: check remove success, swap operations? */
 
 	it->lit->position = orig;
 
@@ -1134,23 +1336,13 @@ xmms_value_dict_iter_insert (xmms_value_dict_iter_t *it, const char *key,
 }
 
 int
-xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it, const char *key)
+xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it)
 {
-	unsigned int orig, size;
 	int ret = 0;
 
-	/* FIXME: avoid leaking abstraction! */
-	orig = it->lit->position;
-
-	if (xmms_value_dict_iter_seek (it, key)) {
-		ret = xmms_value_list_iter_remove (it->lit) &&
-		      xmms_value_list_iter_remove (it->lit);
-		/* FIXME: cleanup if only the first fails */
-	}
-
-	/* make sure the pointer is still in the list */
-	size = it->lit->parent->size;
-	it->lit->position = (orig <= size ? orig : size);
+	ret = xmms_value_list_iter_remove (it->lit) &&
+	      xmms_value_list_iter_remove (it->lit);
+	/* FIXME: cleanup if only the first fails */
 
 	return ret;
 }
@@ -1243,3 +1435,21 @@ xmms_value_decode_url (const char *string)
 }
 
 /** @} */
+
+static int
+get_absolute_position (int pos, unsigned int size, unsigned int *abspos)
+{
+	int ret;
+
+	if (pos >= 0 && pos <= size) {
+		*abspos = pos;
+		ret = 1;
+	} else if (pos < 0 && -pos <= size) {
+		*abspos = (size + pos); /* negative index, compute from end */
+		ret = 1;
+	} else {
+		ret = 0; /* out of bounds index */
+	}
+
+	return ret;
+}

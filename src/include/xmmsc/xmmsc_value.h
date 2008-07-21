@@ -49,11 +49,13 @@ xmms_value_type_t xmms_value_get_type (xmms_value_t *val);
 /* legacy aliases */
 int xmms_value_iserror (xmms_value_t *val);
 int xmms_value_is_list (xmms_value_t *val);
+int xmms_value_is_dict (xmms_value_t *val);
 const char * xmms_value_get_error_old (xmms_value_t *val);
 
-/* legacy transitional utilities */
+typedef void (*xmmsc_list_foreach_func) (xmms_value_t *value, void *user_data);
 typedef void (*xmmsc_dict_foreach_func) (const void *key, xmms_value_t *value, void *user_data);
 
+/* legacy transitional utilities */
 xmms_value_type_t xmms_value_get_dict_entry_type (xmms_value_t *val, const char *key);
 int xmms_value_get_dict_entry_string (xmms_value_t *val, const char *key, const char **r);
 int xmms_value_get_dict_entry_int (xmms_value_t *val, const char *key, int32_t *r);
@@ -72,17 +74,31 @@ int xmms_value_get_bin (xmms_value_t *val, unsigned char **r, unsigned int *rlen
 int xmms_value_get_list_iter (xmms_value_t *val, xmms_value_list_iter_t **it);
 int xmms_value_get_dict_iter (xmms_value_t *val, xmms_value_dict_iter_t **it);
 
+/* List */
+int xmms_value_list_get (xmms_value_t *listv, int pos, xmms_value_t **val);
+int xmms_value_list_append (xmms_value_t *listv, xmms_value_t *val);
+int xmms_value_list_insert (xmms_value_t *listv, int pos, xmms_value_t *val);
+int xmms_value_list_remove (xmms_value_t *listv, int pos);
+int xmms_value_list_clear (xmms_value_t *listv);
+int xmms_value_list_foreach (xmms_value_t *listv, xmmsc_list_foreach_func func, void* user_data);
+
 int  xmms_value_list_iter_entry (xmms_value_list_iter_t *it, xmms_value_t **val);
 int  xmms_value_list_iter_valid (xmms_value_list_iter_t *it);
 void xmms_value_list_iter_first (xmms_value_list_iter_t *it);
 void xmms_value_list_iter_next (xmms_value_list_iter_t *it);
+int  xmms_value_list_iter_goto (xmms_value_list_iter_t *it, int pos);
 
-/* FIXME: return a new iter, or keep 'state' */
-int xmms_value_list_iter_insert (xmms_value_list_iter_t *it, xmms_value_t *val);
-int xmms_value_list_iter_remove (xmms_value_list_iter_t *it);
+int  xmms_value_list_iter_insert (xmms_value_list_iter_t *it, xmms_value_t *val);
+int  xmms_value_list_iter_remove (xmms_value_list_iter_t *it);
 
-int xmms_value_list_iter_append (xmms_value_list_iter_t *it, xmms_value_t *val);
+/* Dict */
+int xmms_value_dict_get (xmms_value_t *dictv, const char *key, xmms_value_t **val);
+int xmms_value_dict_insert (xmms_value_t *dictv, const char *key, xmms_value_t *val);
+int xmms_value_dict_remove (xmms_value_t *dictv, const char *key);
+int xmms_value_dict_clear (xmms_value_t *dictv);
+int xmms_value_dict_foreach (xmms_value_t *dictv, xmmsc_dict_foreach_func func, void *user_data);
 
+int xmms_value_get_dict_iter (xmms_value_t *val, xmms_value_dict_iter_t **it);
 
 int  xmms_value_dict_iter_pair (xmms_value_dict_iter_t *it, const char **key, xmms_value_t **val);
 int  xmms_value_dict_iter_valid (xmms_value_dict_iter_t *it);
@@ -90,9 +106,8 @@ void xmms_value_dict_iter_first (xmms_value_dict_iter_t *it);
 void xmms_value_dict_iter_next (xmms_value_dict_iter_t *it);
 int  xmms_value_dict_iter_seek (xmms_value_dict_iter_t *it, const char *key);
 
-int xmms_value_dict_iter_insert (xmms_value_dict_iter_t *it, const char *key, xmms_value_t *val);
-int xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it, const char *key);
-
+int  xmms_value_dict_iter_set (xmms_value_dict_iter_t *it, xmms_value_t *val);
+int  xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it);
 
 /* Utils */
 
@@ -104,48 +119,11 @@ int xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it, const char *key);
 /* FIXME: utilities:
 
 make_string_list
-prepend
-goto N
-foreach
 
 */
 
 /* FIXME: move to utils or something! */
 char *xmms_value_decode_url (const char *string);
-
-
-/* Obsolete: 
-
-typedef void (*xmmsc_propdict_foreach_func) (const void *key, xmms_value_type_t type, const void *value, const char *source, void *user_data);
-typedef void (*xmmsc_dict_foreach_func) (const void *key, xmms_value_type_t type, const void *value, void *user_data);
-
-void xmms_value_seterror (xmms_value_t *val, const char *errstr);
-
-
-xmms_value_type_t xmms_value_get_dict_entry_type (xmms_value_t *val, const char *key);
-int xmms_value_get_dict_entry_string (xmms_value_t *val, const char *key, const char **r);
-int xmms_value_get_dict_entry_int (xmms_value_t *val, const char *key, int32_t *r);
-int xmms_value_get_dict_entry_uint (xmms_value_t *val, const char *key, uint32_t *r);
-int xmms_value_get_dict_entry_collection (xmms_value_t *val, const char *key, xmmsc_coll_t **coll);
-int xmms_value_dict_foreach (xmms_value_t *val, xmmsc_dict_foreach_func func, void *user_data);
-int xmms_value_propdict_foreach (xmms_value_t *val, xmmsc_propdict_foreach_func func, void *user_data);
-void xmms_value_source_preference_set (xmms_value_t *val, const char **preference);
-const char **xmms_value_source_preference_get (xmms_value_t *val);
-
-int xmms_value_list_next (xmms_value_t *val);
-int xmms_value_list_first (xmms_value_t *val);
-int xmms_value_list_valid (xmms_value_t *val);
-
-*/
-
-/* anders' EG:
-
-for (i = value_iter_get(value); value_iter_inside (i);
-	 value_iter_next (i)) { xmms_value_t *subval = iter_get(i); }
-
-i = value_iter_get (value); iter_goto_key(i, "apan"); iter_set(i, subvalue);
-*/
-
 
 #ifdef __cplusplus
 }

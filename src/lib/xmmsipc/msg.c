@@ -815,13 +815,11 @@ err:
 static int
 xmmsc_deserialize_dict (xmms_ipc_msg_t *msg, xmms_value_t **val)
 {
-	xmms_value_t *tmpval;
-	xmms_value_dict_iter_t *dit;
+	xmms_value_t *dict;
 	unsigned int len, ignore;
 	char *key;
 
-	tmpval = xmms_value_new_dict ();
-	xmms_value_get_dict_iter (tmpval, &dit);
+	dict = xmms_value_new_dict ();
 
 	if (!xmms_ipc_msg_get_uint32 (msg, &len)) {
 		goto err;
@@ -838,30 +836,28 @@ xmmsc_deserialize_dict (xmms_ipc_msg_t *msg, xmms_value_t **val)
 			goto err;
 		}
 
-		xmms_value_dict_iter_insert (dit, key, v);
+		xmms_value_dict_insert (dict, key, v);
 		free (key);
 		xmms_value_unref (v);
 	}
 
-	*val = tmpval;
+	*val = dict;
 
 	return true;
 
 err:
 	x_internal_error ("Message from server did not parse correctly!");
-	xmms_value_unref (tmpval);
+	xmms_value_unref (dict);
 	return false;
 }
 
 static int
 xmmsc_deserialize_list (xmms_ipc_msg_t *msg, xmms_value_t **val)
 {
-	xmms_value_t *tmpval;
-	xmms_value_list_iter_t *lit;
+	xmms_value_t *list;
 	unsigned int len;
 
-    tmpval = xmms_value_new_list ();
-	xmms_value_get_list_iter (tmpval, &lit);
+    list = xmms_value_new_list ();
 
 	if (!xmms_ipc_msg_get_uint32 (msg, &len)) {
 		goto err;
@@ -870,20 +866,20 @@ xmmsc_deserialize_list (xmms_ipc_msg_t *msg, xmms_value_t **val)
 	while (len--) {
 		xmms_value_t *v;
 		if (xmms_ipc_msg_get_value_alloc (msg, &v)) {
-			xmms_value_list_iter_append (lit, v);
+			xmms_value_list_append (list, v);
 		} else {
 			goto err;
 		}
 		xmms_value_unref (v);
 	}
 
-	*val = tmpval;
+	*val = list;
 
 	return true;
 
 err:
 	x_internal_error ("Message from server did not parse correctly!");
-	xmms_value_unref (tmpval);
+	xmms_value_unref (list);
 	return false;
 }
 
