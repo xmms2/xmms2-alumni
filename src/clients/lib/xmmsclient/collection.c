@@ -235,6 +235,8 @@ xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
 
 	xmmsv_unref (order);
 
+	xmmsv_unref (order);
+
 	return xmmsc_send_msg (conn, msg);
 }
 
@@ -289,6 +291,9 @@ xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
 	xmms_ipc_msg_put_value_list (msg, order); /* purposedly skip typing */
 	xmms_ipc_msg_put_value_list (msg, fetch); /* purposedly skip typing */
 	xmms_ipc_msg_put_value_list (msg, group); /* purposedly skip typing */
+
+	xmmsv_unref (order);
+	xmmsv_unref (group);
 
 	xmmsv_unref (order);
 	xmmsv_unref (group);
