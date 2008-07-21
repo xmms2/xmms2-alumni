@@ -422,14 +422,12 @@ make_value_stringlist (gchar **array, gint num)
 {
 	gint i;
 	xmms_value_t *ret, *v;
-	xmms_value_list_iter_t *it;
 
 	ret = xmms_value_new_list ();
-	xmms_value_get_list_iter (ret, &it);
 
 	for (i = 0; (num >= 0 && i < num) || array[i]; i++) {
 		v = xmms_value_new_string (array[i]);
-		xmms_value_list_iter_append (it, v);
+		xmms_value_list_append (ret, v);
 		xmms_value_unref (v);
 	}
 

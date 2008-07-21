@@ -220,11 +220,20 @@ xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
 	x_check_conn (conn, NULL);
 	x_api_error_if (!coll, "with a NULL collection", NULL);
 
+	/* default to empty ordering */
+	if (!order) {
+		order = xmms_value_new_list ();
+	} else {
+		xmms_value_ref (order);
+	}
+
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_COLLECTION, XMMS_IPC_CMD_QUERY_IDS);
 	xmms_ipc_msg_put_collection (msg, coll);
 	xmms_ipc_msg_put_uint32 (msg, limit_start);
 	xmms_ipc_msg_put_uint32 (msg, limit_len);
 	xmms_ipc_msg_put_value (msg, order);
+
+	xmms_value_unref (order);
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -259,6 +268,20 @@ xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
 	x_api_error_if (!coll, "with a NULL collection", NULL);
 	x_api_error_if (!fetch, "with a NULL fetch list", NULL);
 
+	/* default to empty ordering */
+	if (!order) {
+		order = xmms_value_new_list ();
+	} else {
+		xmms_value_ref (order);
+	}
+
+	/* default to empty grouping */
+	if (!group) {
+		group = xmms_value_new_list ();
+	} else {
+		xmms_value_ref (group);
+	}
+
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_COLLECTION, XMMS_IPC_CMD_QUERY_INFOS);
 	xmms_ipc_msg_put_collection (msg, coll);
 	xmms_ipc_msg_put_uint32 (msg, limit_start);
@@ -266,6 +289,9 @@ xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
 	xmms_ipc_msg_put_value (msg, order);
 	xmms_ipc_msg_put_value (msg, fetch);
 	xmms_ipc_msg_put_value (msg, group);
+
+	xmms_value_unref (order);
+	xmms_value_unref (group);
 
 	return xmmsc_send_msg (conn, msg);
 }

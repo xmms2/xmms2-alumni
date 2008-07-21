@@ -390,7 +390,9 @@ xmmsc_result_get_value (xmmsc_result_t *res)
 void
 xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr)
 {
-	xmms_value_unref (res->data);
+	if (res->data) {
+		xmms_value_unref (res->data);
+	}
 	res->data = xmms_value_new_error (errstr);
 }
 
