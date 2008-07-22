@@ -312,7 +312,7 @@ xmmsv_t *xmmsc_result_get_value (xmmsc_result_t *res);
  * Service Client
  */
 typedef xmmsc_service_client_St xmmsc_service_client_t;
-typedef void (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn, xmms_value_t *val, xmmsc_service_method_t *method, void *user_data);
+typedef void (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn, xmmsv_t *val, xmmsc_service_method_t *method, void *user_data);
 
 /* OMG NO!!!
 xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn, const char *name, const char *description, uint32_t major, uint32_t minor);

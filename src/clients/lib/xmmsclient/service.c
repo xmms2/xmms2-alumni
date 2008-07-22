@@ -55,8 +55,8 @@ typedef struct xmmsc_service_method_St {
 	void *udata;
 	xmmsc_service_notifier_t func;
 	xmmsc_user_data_free_func_t ufree;
-	xmms_value_type_t rettype;
-	xmms_value_t *args;
+	xmmsv_type_t rettype;
+	xmmsv_t *args;
 } xmmsc_service_method_t;
 
 typedef struct xmmsc_service_method_arg_St {
@@ -66,7 +66,7 @@ typedef struct xmmsc_service_method_arg_St {
 
 static int xmmsc_service_method_add_valist (xmmsc_service_t *svc,
                                             const char *name, const char *desc,
-                                            xmms_value_type_t rettype,
+                                            xmmsv_type_t rettype,
                                             xmmsc_service_notifier_t func,
                                             void *udata,
                                             xmmsc_user_data_free_func_t ufree,
@@ -144,15 +144,15 @@ xmmsc_service_new (const char *name, const char *desc,
  * @param svc The #xmmsc_service_t to which the method will be added.
  * @param name Method name (will be duplicated).
  * @param desc Method description (will be duplicated).
- * @param rettype Type of the return value, an #xmms_value_type_t.
+ * @param rettype Type of the return value, an #xmmsv_type_t.
  * @param func Callback function, an #xmmsc_service_notifier_t.
  * @param udata User data to pass to func.
- * @param ... NULL-terminated list of const char *, xmms_value_type_t.
+ * @param ... NULL-terminated list of const char *, xmmsv_type_t.
  * @return 1 on success, 0 otherwise.
  */
 int
 xmmsc_service_method_add (xmmsc_service_t *svc, const char *name,
-                          const char *desc, xmms_value_type_t rettype,
+                          const char *desc, xmmsv_type_t rettype,
                           xmmsc_service_notifier_t func, void *udata, ...)
 {
 	int ret;
@@ -174,17 +174,17 @@ xmmsc_service_method_add (xmmsc_service_t *svc, const char *name,
  * @param svc The #xmmsc_service_t to which the method will be added.
  * @param name Method name (will be duplicated).
  * @param desc Method description (will be duplicated).
- * @param rettype Type of the return value, a #xmms_value_type_t.
+ * @param rettype Type of the return value, a #xmmsv_type_t.
  * @param func Callback function, an #xmmsc_service_notifier_t.
  * @param udata User data to pass to func.
  * @param ufree Optional function that should be called to free udata, an
  * #xmmsc_user_data_free_func_t.
- * @param ... NULL-terminated list of const char *, xmms_value_type_t.
+ * @param ... NULL-terminated list of const char *, xmmsv_type_t.
  * @return 1 on success, 0 otherwise.
  */
 int
 xmmsc_service_method_add_full (xmmsc_service_t *svc, const char *name,
-                               const char *desc, xmms_value_type_t rettype,
+                               const char *desc, xmmsv_type_t rettype,
                                xmmsc_service_notifier_t func, void *udata,
                                xmmsc_user_data_free_func_t ufree, ...)
 {
@@ -201,31 +201,25 @@ xmmsc_service_method_add_full (xmmsc_service_t *svc, const char *name,
 
 static int
 xmmsc_service_method_add_valist (xmmsc_service_t *svc, const char *name,
-                                 const char *desc, xmms_value_type_t rettype,
+                                 const char *desc, xmmsv_type_t rettype,
                                  xmmsc_service_notifier_t func, void *udata,
                                  xmmsc_user_data_free_func_t ufree, va_list ap)
 {
 	xmmsc_service_method_arg_t *arg;
-	xmms_value_type_t type;
+	xmmsv_type_t type;
 	const char* arg;
 
 	x_return_val_if_fail (xmmsc_service_method_add_noarg (svc, name, desc,
 	                                                      rettype, func, udata,
-	                                                      ufree));
+	                                                      ufree), 0);
 
 	while (42) {
-		/* FIXME: "If there is no next argument, or if type is not compatible
-		   with the type of the actual next argument (as promoted according to
-		   the default argument promotions), random errors will occur."
-		   Maybe we can get away with just blaming the client author, but it is
-		   likely that his error will crash our code--not good. */
 		arg = va_arg (ap, const char *);
 		if (!arg) {
-			i++;
 			break;
 		}
-		type = va_arg (ap, xmms_value_type_t);
-		/* FIXME: Same issue with checking type_t as above. */
+		type = va_arg (ap, xmmsv_type_t);
+		x_return_val_if_fail (xmmsv_check_type (type), 0);
 
 		xmmsc_service_method_add_arg (svc, arg, type);
 	}
@@ -243,7 +237,7 @@ xmmsc_service_method_add_valist (xmmsc_service_t *svc, const char *name,
  * @param svc The #xmmsc_service_t to which the method will be added.
  * @param name Method name (will be duplicated).
  * @param desc Method description (will be duplicated).
- * @param rettype Type of the return value, a #xmms_value_type_t.
+ * @param rettype Type of the return value, a #xmmsv_type_t.
  * @param func Callback function, an #xmmsc_service_notifier_t.
  * @param udata User data to pass to func.
  * @param ufree Optional function that should be called to free udata, an
@@ -252,7 +246,7 @@ xmmsc_service_method_add_valist (xmmsc_service_t *svc, const char *name,
  */
 int
 xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
-                                const char *desc, xmms_value_type_t rettype,
+                                const char *desc, xmmsv_type_t rettype,
                                 xmmsc_service_notifier_t func, void *udata,
                                 xmmsc_user_data_free_func_t ufree)
 {
@@ -261,9 +255,7 @@ xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
 	x_return_val_if_fail (svc, 0);
 	x_return_val_if_fail (name, 0);
 	x_return_val_if_fail (desc, 0);
-	/* FIXME: check that rettype is actually one of value_type_t?
-	   This looks like a job for Superman, or a new xmmsv_type_check, maybe. */
-	x_return_val_if_fail (rettype > XMMS_VALUE_TYPE_NONE, 0;)
+	x_return_val_if_fail (xmmsv_check_type (rettype), 0);
 
 	meth = x_new (xmmsc_service_method_t, 1);
 	meth->name = strdup (name);
@@ -293,45 +285,39 @@ xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
  * @param svc The #xmmsc_service_t containing the method to which this argument
  * will be added.
  * @param name The name of the argument.
- * @param type The type of the argument, an #xmms_value_type_t.
+ * @param type The type of the argument, an #xmmsv_type_t.
  * @return 1 on success, 0 otherwise.
  */
 int
 xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
-                              xmms_value_type_t type)
+                              xmmsv_type_t type)
 {
 	x_list_t *tmp;
-	xmms_value_t *val;
-	xmms_value_dict_iter_t *iter;
+	xmmsv_t *val;
 
 	x_return_val_if_fail (svc, 0);
 	x_return_val_if_fail (name, 0);
-	x_return_val_if_fail (type > XMMS_VALUE_TYPE_NONE, 0);
+	x_return_val_if_fail (xmmsv_check_type (type), 0);
 
 	tmp = x_list_last (svc->methods);
 	x_return_val_if_fail (tmp, 0);
 
-	val = xmms_value_new_int ((int32_t) type);
+	val = xmmsv_new_int ((int32_t) type);
 	x_return_val_if_fail (val, 0);
 
 	if (!tmp->args) {
-		tmp->args = xmms_value_new_dict ();
+		tmp->args = xmmsv_new_dict ();
 	}
 
-	if (!(tmp->args && xmms_value_dict_iter_new (tmp->args, &iter))) {
-		xmms_value_unref (val);
+	if (!(tmp->args && xmmsv_dict_insert (tmp->args, name, val))) {
+		xmmsv_unref (val);
 		return 0;
 	}
 
-	/* FIXME: This is destined to change. It's a void return type now, but will
-	   not be in the future. And we might not have to use these annoying iters
-	   after there is a convenience method added, also. */
-	xmms_value_dict_iter_insert (iter, name, val);
+	xmmsv_unref (val);
 
 	return 1;
 }
-
-/* TODO: Add _ref and _unref functions here. */
 
 /**
  * Free a service.
@@ -382,10 +368,8 @@ xmmsc_service_method_free (xmmsc_service_method_t *meth)
 		meth->ufree (udata);
 	}
 	if (meth->args) {
-		/* FIXME: Currently this is not recursive, i.e. the values stored in
-		   this dict are not unreffed. Theefer says there may be an
-		   xmmsv_list_clear that does what we want here. */
-		xmms_value_unref (meth->args);
+		xmmsv_list_clear (meth->args);
+		xmmsv_unref (meth->args);
 	}
 
 	free (meth);

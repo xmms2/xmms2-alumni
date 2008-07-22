@@ -43,18 +43,18 @@ typedef struct xmmsc_service_St xmmsc_service_t;
 
 /* Declarations */
 int xmmsc_service_method_add (xmmsc_service_t *svc, const char *name,
-                              const char *desc, xmms_value_type_t rettype,
+                              const char *desc, xmmsv_type_t rettype,
                               xmmsc_service_notifier_t func, void *udata, ...);
 int xmmsc_service_method_add_full (xmmsc_service_t *svc, const char *name,
-                                   const char *desc, xmms_value_type_t rettype,
+                                   const char *desc, xmmsv_type_t rettype,
                                    xmmsc_service_notifier_t func, void *udata,
                                    xmmsc_user_data_free_func_t ufree, ...);
 int xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
-                                    const char *desc, xmms_value_type_t rettype,
+                                    const char *desc, xmmsv_type_t rettype,
                                     xmmsc_service_notifier_t func, void *udata,
                                     xmmsc_user_data_free_func_t ufree);
 int xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
-                                  xmms_value_type_t type);
+                                  xmmsv_type_t type);
 
 /* OOOOOLD */
 /*
