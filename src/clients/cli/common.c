@@ -409,27 +409,3 @@ string_escape (const char *s)
 
 	return res;
 }
-
-/** Make a #xmmsv_t string list from a string array.
- *
- * If num is specified, read num entries from array. If num is -1,
- * read array until NULL is found.
- *
- * The returned #xmmsv_t must be unref'd manually afterwards.
- */
-xmmsv_t *
-make_value_stringlist (gchar **array, gint num)
-{
-	gint i;
-	xmmsv_t *ret, *v;
-
-	ret = xmmsv_new_list ();
-
-	for (i = 0; (num >= 0 && i < num) || array[i]; i++) {
-		v = xmmsv_new_string (array[i]);
-		xmmsv_list_append (ret, v);
-		xmmsv_unref (v);
-	}
-
-	return ret;
-}

@@ -400,10 +400,10 @@ cmd_sort (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		print_error ("Sort needs a property to sort on, %d", argc);
 	} else if (argc == 3) {
 		playlist = NULL;
-		sortby = make_value_stringlist (&argv[2], argc - 2);
+		sortby = xmms_value_make_stringlist (&argv[2], argc - 2);
 	} else {
 		playlist = argv[2];
-		sortby = make_value_stringlist (&argv[3], argc - 3);
+		sortby = xmms_value_make_stringlist (&argv[3], argc - 3);
 	}
 
 	res = xmmsc_playlist_sort (conn, playlist, sortby);
