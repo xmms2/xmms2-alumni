@@ -444,6 +444,35 @@ xmmsv_get_error_old (const xmmsv_t *val)
 	return val->value.error;
 }
 
+/**
+ * Helper function to build a list #xmms_value_t containing the
+ * strings from the input array.
+ *
+ * @param array An array of C strings. Must be NULL-terminated if num
+ *              is -1.
+ * @param num The optional number of elements to read from the array. Set to
+ *            -1 if the array is NULL-terminated.
+ * @return An #xmms_value_t containing the list of strings. Must be
+ *         unreffed manually when done.
+ */
+xmms_value_t *
+xmms_value_make_stringlist (char *array[], int num)
+{
+	xmms_value_t *list, *elem;
+	int i;
+
+	x_return_val_if_fail (array, NULL);
+
+	list = xmms_value_new_list ();
+	for (i = 0; (num >= 0 && i < num) || array[i]; i++) {
+		elem = xmms_value_new_string (array[i]);
+		xmms_value_list_append (list, elem);
+		xmms_value_unref (elem);
+	}
+
+	return list;
+}
+
 
 xmmsv_type_t
 xmmsv_get_dict_entry_type (xmmsv_t *val, const char *key)
