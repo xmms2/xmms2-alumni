@@ -45,7 +45,7 @@ typedef struct xmms_service_entry_St {
 	guint major_version;
 	guint minor_version;
 
-	xmmsc_value_t *methods;
+	xmmsv_t *methods;
 
 	/* Service client fd */
 	xmms_socket_t sc;
@@ -65,7 +65,7 @@ struct xmms_service_method_St {
 
 	guint cookie;
 
-	xmmsc_value_t *args;
+	xmmsv_t *args;
 
 	gchar *service_name;
 	xmms_service_t *service_obj;
@@ -73,7 +73,7 @@ struct xmms_service_method_St {
 
 struct xmms_service_argument_St {
 	gchar *name;
-	xmmsc_value_type_t type;
+	xmmsv_type_t type;
 	gboolean optional;
 };
 

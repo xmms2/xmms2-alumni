@@ -61,7 +61,7 @@ typedef struct xmmsc_service_method_St {
 
 typedef struct xmmsc_service_method_arg_St {
 	char *name;
-	xmmsc_value_type_t *type;
+	xmmsv_type_t *type;
 } xmmsc_service_method_arg_t;
 
 static int xmmsc_service_method_add_valist (xmmsc_service_t *svc,
@@ -73,6 +73,7 @@ static int xmmsc_service_method_add_valist (xmmsc_service_t *svc,
                                             va_list ap);
 static void xmmsc_service_free (xmmsc_service_t *svc);
 static void xmmsc_service_method_free (xmmsc_service_method_t *meth);
+static xmmsv_t *xmmsc_service_methods_to_value (x_list_t *methods);
 
 /* Strange, old crap. Will stick these methods above this comment line one-by-
  * one as they are checked/updated. */
@@ -113,7 +114,7 @@ xmmsc_service_new (const char *name, const char *desc,
 	xmmsc_service_t *svc;
 
 	x_return_null_if_fail (name);
-	x_return_null_if_fail (description);
+	x_return_null_if_fail (desc);
 
 	svc = x_new (xmmsc_service_t, 1);
 	x_return_null_if_fail (svc);
@@ -191,7 +192,7 @@ xmmsc_service_method_add_full (xmmsc_service_t *svc, const char *name,
 	int ret;
 	va_list ap;
 
-	va_start (ap, free_func);
+	va_start (ap, ufree);
 	ret = xmmsc_service_method_add_valist (svc, name, desc, rettype, func,
 	                                       udata, ufree, ap);
 	va_end (ap);
@@ -205,7 +206,6 @@ xmmsc_service_method_add_valist (xmmsc_service_t *svc, const char *name,
                                  xmmsc_service_notifier_t func, void *udata,
                                  xmmsc_user_data_free_func_t ufree, va_list ap)
 {
-	xmmsc_service_method_arg_t *arg;
 	xmmsv_type_t type;
 	const char* arg;
 
@@ -293,6 +293,7 @@ xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
                               xmmsv_type_t type)
 {
 	x_list_t *tmp;
+	xmmsc_service_method_t *meth;
 	xmmsv_t *val;
 
 	x_return_val_if_fail (svc, 0);
@@ -302,14 +303,16 @@ xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
 	tmp = x_list_last (svc->methods);
 	x_return_val_if_fail (tmp, 0);
 
+	meth = (xmmsc_service_method_t *) tmp->data;
+
 	val = xmmsv_new_int ((int32_t) type);
 	x_return_val_if_fail (val, 0);
 
-	if (!tmp->args) {
-		tmp->args = xmmsv_new_dict ();
+	if (!meth->args) {
+		meth->args = xmmsv_new_dict ();
 	}
 
-	if (!(tmp->args && xmmsv_dict_insert (tmp->args, name, val))) {
+	if (!meth->args || !xmmsv_dict_insert (meth->args, name, val)) {
 		xmmsv_unref (val);
 		return 0;
 	}
@@ -361,6 +364,8 @@ xmmsc_service_unref (xmmsc_service_t *svc)
 static void
 xmmsc_service_free (xmmsc_service_t *svc)
 {
+	x_list_t *tmp;
+
 	x_return_if_fail (svc);
 
 	if (svc->name) {
@@ -371,7 +376,7 @@ xmmsc_service_free (xmmsc_service_t *svc)
 	}
 	if (svc->methods) {
 		/* Walk the list, deleting each link as we do so. */
-		while (svc->methods) {
+		for (tmp = svc->methods; tmp; tmp = x_list_next (tmp)) {
 			if (tmp->data) {
 				xmmsc_service_method_free ((xmmsc_service_method_t *)tmp->data);
 			}
@@ -393,13 +398,13 @@ xmmsc_service_method_free (xmmsc_service_method_t *meth)
 	x_return_if_fail (meth);
 
 	if (meth->name) {
-		free (name);
+		free (meth->name);
 	}
 	if (meth->desc) {
 		free (meth->desc);
 	}
-	if (meth->ufree) {
-		meth->ufree (udata);
+	if (meth->ufree && meth->udata) {
+		meth->ufree (meth->udata);
 	}
 	if (meth->args) {
 		xmmsv_list_clear (meth->args);
@@ -409,64 +414,131 @@ xmmsc_service_method_free (xmmsc_service_method_t *meth)
 	free (meth);
 }
 
-/* Stuff below this line hasn't been updated yet. */
 /**
  * Register a new service.
  * @param conn The connection to the server.
- * @param svc The Service.
+ * @param svc The service.
  */
 xmmsc_result_t *
 xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 {
 	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
-	x_list_t *n;
+	xmmsv_t *service;
+	xmmsv_t *tmp;
 
 	x_check_conn (conn, NULL);
 	x_return_null_if_fail (svc);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_REGISTER);
-	xmms_ipc_msg_put_string (msg, svc->name);
-	xmms_ipc_msg_put_string (msg, svc->description);
-	xmms_ipc_msg_put_uint32 (msg, svc->major);
-	xmms_ipc_msg_put_uint32 (msg, svc->minor);
+	x_return_null_if_fail (msg);
 
-	xmms_ipc_msg_put_uint32 (msg, x_list_length (svc->methods));
-	if (svc->methods) {
-		for (n = svc->methods; n; x_list_next (n)) {
-			service_method_register (msg, (xmms_service_method_t *)n->data);
-		}
+	service = xmmsv_new_dict ();
+	x_return_null_if_fail (service);
+
+	tmp = xmmsv_new_string ((const char *) svc->name);
+	if (!tmp || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_NAME, tmp)) {
+		goto err;
 	}
+	xmmsv_unref (tmp);
+	tmp = xmmsv_new_string ((const char *) svc->desc);
+	if (!tmp || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_DESCRIPTION,
+	                                 tmp)) {
+		goto err;
+	}
+	xmmsv_unref (tmp);
+	tmp = xmmsv_new_uint (svc->major);
+	if (!tmp || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_MAJOR, tmp)) {
+		goto err;
+	}
+	xmmsv_unref (tmp);
+	tmp = xmmsv_new_uint (svc->minor);
+	if (!tmp || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_MINOR, tmp)) {
+		goto err;
+	}
+	xmmsv_unref (tmp);
+
+	tmp = xmmsc_service_methods_to_value (svc->methods);
+	if (!tmp || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_METHODS, tmp)) {
+		goto err;
+	}
+	xmmsv_unref (tmp);
+
+	xmms_ipc_msg_put_value (msg, service);
+	xmmsv_unref (service);
 
 	res = xmmsc_send_msg (conn, msg);
 
 	return res;
+
+err:
+	if (tmp) {
+		xmmsv_unref (tmp);
+	}
+	xmmsv_unref (service);
+
+	return NULL;
 }
 
-static void
-service_method_register (xmms_ipc_msg_t *msg, xmmsc_service_method_t *method)
+static xmmsv_t *
+xmmsc_service_methods_to_value (x_list_t *meths)
 {
-	x_list_t *n;
-	xmmsc_service_argument_t *arg = NULL;
+	xmmsc_service_method_t *meth;
+	x_list_t *tmp;
+	xmmsv_t *methods;
+	xmmsv_t *method;
+	xmmsv_t *val;
 
-	xmms_ipc_msg_put_string (msg, method->name);
-	xmms_ipc_msg_put_string (msg, method->description);
+	methods = xmmsv_new_dict ();
+	x_return_null_if_fail (methods);
 
-	xmms_ipc_msg_put_uint32 (msg, x_list_length (method->args));
-	for (n = method->args; n; n = x_list_next (n)) {
-		arg = (xmmsc_service_argument_t *)n->data;
-		xmms_ipc_msg_put_string (msg, arg->name);
-		xmms_ipc_msg_put_uint32 (msg, arg->type);
-		xmms_ipc_msg_put_uint32 (msg, arg->optional);
+	for (tmp = meths; tmp; tmp = x_list_next (tmp)) {
+		meth = (xmmsc_service_method_t *) tmp->data;
+		method = xmmsv_new_dict ();
+		if (!method) {
+			goto err;
+		}
+		val = xmmsv_new_string ((const char *) meth->desc);
+		if (!val || !xmmsv_dict_insert (method,
+		                                XMMSC_SERVICE_METHOD_PROP_DESCRIPTION,
+		                                val)) {
+			goto err;
+		}
+		xmmsv_unref (val);
+		if (!xmmsv_dict_insert (method, XMMSC_SERVICE_METHOD_PROP_ARGUMENTS,
+		                        meth->args)) {
+			goto err;
+		}
+		val = xmmsv_new_int ((int) meth->rettype);
+		if (!xmmsv_dict_insert (method, XMMSC_SERVICE_METHOD_PROP_RETURN_TYPE,
+		                        meth->args)) {
+			goto err;
+		}
+		xmmsv_unref (val);
+
+		if (!xmmsv_dict_insert (methods, XMMSC_SERVICE_METHOD_PROP_NAME,
+		                        method)) {
+			goto err;
+		}
 	}
 
-	res = xmmsc_send_msg (conn, msg);
+	return methods;
 
-	xmmsc_result_notifier_set_full (res, dispatch, method, free_infos);
-	xmmsc_service_method_ref (method);
+err:
+	if (val) {
+		xmmsv_unref (val);
+	}
+	if (method) {
+		xmmsv_dict_clear (method);
+		xmmsv_unref (method);
+	}
+	xmmsv_dict_clear (methods);
+	xmmsv_unref (methods);
+	return NULL;
 }
 
+/* Stuff below this line hasn't been updated yet. */
 /**
  * Unregister an existing method.
  *
