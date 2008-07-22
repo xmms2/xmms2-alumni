@@ -28,49 +28,49 @@
 #include "xmmspriv/xmms_list.h"
 
 
-typedef struct xmms_value_list_St xmms_value_list_t;
-typedef struct xmms_value_dict_St xmms_value_dict_t;
+typedef struct xmmsv_list_St xmmsv_list_t;
+typedef struct xmmsv_dict_St xmmsv_dict_t;
 
 
-typedef struct xmms_value_bin_St {
+typedef struct xmmsv_bin_St {
 	unsigned char *data;
 	uint32_t len;
-} xmms_value_bin_t;
+} xmmsv_bin_t;
 
-struct xmms_value_list_St {
-	xmms_value_t **list;
+struct xmmsv_list_St {
+	xmmsv_t **list;
 	size_t size;
 	size_t allocated;
 	x_list_t *iterators;
 };
 
-static xmms_value_list_t *xmms_value_list_new ();
-static void xmms_value_list_free (xmms_value_list_t *l);
-static int xmms_value_list_resize (xmms_value_list_t *l, size_t newsize);
-static int _xmms_value_list_insert (xmms_value_list_t *l, int pos, xmms_value_t *val);
-static int _xmms_value_list_append (xmms_value_list_t *l, xmms_value_t *val);
-static int _xmms_value_list_remove (xmms_value_list_t *l, int pos);
-static int _xmms_value_list_clear (xmms_value_list_t *l);
+static xmmsv_list_t *xmmsv_list_new ();
+static void xmmsv_list_free (xmmsv_list_t *l);
+static int xmmsv_list_resize (xmmsv_list_t *l, size_t newsize);
+static int _xmmsv_list_insert (xmmsv_list_t *l, int pos, xmmsv_t *val);
+static int _xmmsv_list_append (xmmsv_list_t *l, xmmsv_t *val);
+static int _xmmsv_list_remove (xmmsv_list_t *l, int pos);
+static int _xmmsv_list_clear (xmmsv_list_t *l);
 
-static xmms_value_dict_t *xmms_value_dict_new ();
-static void xmms_value_dict_free (xmms_value_dict_t *dict);
+static xmmsv_dict_t *xmmsv_dict_new ();
+static void xmmsv_dict_free (xmmsv_dict_t *dict);
 
 
-struct xmms_value_list_iter_St {
-	xmms_value_list_t *parent;
+struct xmmsv_list_iter_St {
+	xmmsv_list_t *parent;
 	unsigned int position;
 };
 
-static xmms_value_list_iter_t *xmms_value_list_iter_new (xmms_value_list_t *l);
-static void xmms_value_list_iter_free (xmms_value_list_iter_t *it);
+static xmmsv_list_iter_t *xmmsv_list_iter_new (xmmsv_list_t *l);
+static void xmmsv_list_iter_free (xmmsv_list_iter_t *it);
 
 
-static xmms_value_dict_iter_t *xmms_value_dict_iter_new (xmms_value_dict_t *d);
-static void xmms_value_dict_iter_free (xmms_value_dict_iter_t *it);
+static xmmsv_dict_iter_t *xmmsv_dict_iter_new (xmmsv_dict_t *d);
+static void xmmsv_dict_iter_free (xmmsv_dict_iter_t *it);
 
 
 
-struct xmms_value_St {
+struct xmmsv_St {
 	union {
 		void *generic;
 		char *error;
@@ -78,19 +78,19 @@ struct xmms_value_St {
 		int32_t int32;
 		char *string;
 		xmmsc_coll_t *coll;
-		xmms_value_bin_t bin;
-		xmms_value_list_t *list;
-		xmms_value_dict_t *dict;
+		xmmsv_bin_t bin;
+		xmmsv_list_t *list;
+		xmmsv_dict_t *dict;
 	} value;
-	xmms_value_type_t type;
+	xmmsv_type_t type;
 
 	int ref;  /* refcounting */
 };
 
 
-static xmms_value_t *xmms_value_new (xmms_value_type_t type);
-static void xmms_value_free (xmms_value_t *val);
-static void value_data_free (xmms_value_t *val);
+static xmmsv_t *xmmsv_new (xmmsv_type_t type);
+static void xmmsv_free (xmmsv_t *val);
+static void value_data_free (xmmsv_t *val);
 static int get_absolute_position (int pos, unsigned int size, unsigned int *abspos);
 
 
@@ -104,28 +104,28 @@ static int get_absolute_position (int pos, unsigned int size, unsigned int *absp
  */
 
 /**
- * Allocates a new empty #xmms_value_t.
- * @return The new #xmms_value_t. Must be unreferenced with
- * #xmms_value_unref.
+ * Allocates a new empty #xmmsv_t.
+ * @return The new #xmmsv_t. Must be unreferenced with
+ * #xmmsv_unref.
  */
-xmms_value_t *
-xmms_value_new_none ()
+xmmsv_t *
+xmmsv_new_none ()
 {
-	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_NONE);
+	xmmsv_t *val = xmmsv_new (XMMSV_TYPE_NONE);
 	return val;
 }
 
 /**
- * Allocates a new error #xmms_value_t.
- * @param s The error message to store in the #xmms_value_t. The
+ * Allocates a new error #xmmsv_t.
+ * @param s The error message to store in the #xmmsv_t. The
  * string is copied in the value.
- * @return The new #xmms_value_t. Must be unreferenced with
- * #xmms_value_unref.
+ * @return The new #xmmsv_t. Must be unreferenced with
+ * #xmmsv_unref.
  */
-xmms_value_t *
-xmms_value_new_error (const char *errstr)
+xmmsv_t *
+xmmsv_new_error (const char *errstr)
 {
-	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_ERROR);
+	xmmsv_t *val = xmmsv_new (XMMSV_TYPE_ERROR);
 
 	if (val) {
 		val->value.error = strdup (errstr);
@@ -135,15 +135,15 @@ xmms_value_new_error (const char *errstr)
 }
 
 /**
- * Allocates a new integer #xmms_value_t.
- * @param i The value to store in the #xmms_value_t.
- * @return The new #xmms_value_t. Must be unreferenced with
- * #xmms_value_unref.
+ * Allocates a new integer #xmmsv_t.
+ * @param i The value to store in the #xmmsv_t.
+ * @return The new #xmmsv_t. Must be unreferenced with
+ * #xmmsv_unref.
  */
-xmms_value_t *
-xmms_value_new_int (int32_t i)
+xmmsv_t *
+xmmsv_new_int (int32_t i)
 {
-	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_INT32);
+	xmmsv_t *val = xmmsv_new (XMMSV_TYPE_INT32);
 
 	if (val) {
 		val->value.int32 = i;
@@ -153,15 +153,15 @@ xmms_value_new_int (int32_t i)
 }
 
 /**
- * Allocates a new unsigned integer #xmms_value_t.
- * @param u The value to store in the #xmms_value_t.
- * @return The new #xmms_value_t. Must be unreferenced with
- * #xmms_value_unref.
+ * Allocates a new unsigned integer #xmmsv_t.
+ * @param u The value to store in the #xmmsv_t.
+ * @return The new #xmmsv_t. Must be unreferenced with
+ * #xmmsv_unref.
  */
-xmms_value_t *
-xmms_value_new_uint (uint32_t u)
+xmmsv_t *
+xmmsv_new_uint (uint32_t u)
 {
-	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_UINT32);
+	xmmsv_t *val = xmmsv_new (XMMSV_TYPE_UINT32);
 
 	if (val) {
 		val->value.uint32 = u;
@@ -171,20 +171,20 @@ xmms_value_new_uint (uint32_t u)
 }
 
 /**
- * Allocates a new string #xmms_value_t.
- * @param s The value to store in the #xmms_value_t. The string is
+ * Allocates a new string #xmmsv_t.
+ * @param s The value to store in the #xmmsv_t. The string is
  * copied in the value.
- * @return The new #xmms_value_t. Must be unreferenced with
- * #xmms_value_unref.
+ * @return The new #xmmsv_t. Must be unreferenced with
+ * #xmmsv_unref.
  */
-xmms_value_t *
-xmms_value_new_string (const char *s)
+xmmsv_t *
+xmmsv_new_string (const char *s)
 {
-	xmms_value_t *val;
+	xmmsv_t *val;
 
 	x_return_val_if_fail (s, NULL);
 
-	val = xmms_value_new (XMMS_VALUE_TYPE_STRING);
+	val = xmmsv_new (XMMSV_TYPE_STRING);
 	if (val) {
 		val->value.string = strdup (s);
 	}
@@ -193,19 +193,19 @@ xmms_value_new_string (const char *s)
 }
 
 /**
- * Allocates a new collection #xmms_value_t.
- * @param s The value to store in the #xmms_value_t.
- * @return The new #xmms_value_t. Must be unreferenced with
- * #xmms_value_unref.
+ * Allocates a new collection #xmmsv_t.
+ * @param s The value to store in the #xmmsv_t.
+ * @return The new #xmmsv_t. Must be unreferenced with
+ * #xmmsv_unref.
  */
-xmms_value_t *
-xmms_value_new_coll (xmmsc_coll_t *c)
+xmmsv_t *
+xmmsv_new_coll (xmmsc_coll_t *c)
 {
-	xmms_value_t *val;
+	xmmsv_t *val;
 
 	x_return_val_if_fail (c, NULL);
 
-	val = xmms_value_new (XMMS_VALUE_TYPE_COLL);
+	val = xmmsv_new (XMMSV_TYPE_COLL);
 	if (val) {
 		val->value.coll = c;
 		xmmsc_coll_ref (c);
@@ -215,16 +215,16 @@ xmms_value_new_coll (xmmsc_coll_t *c)
 }
 
 /**
- * Allocates a new binary data #xmms_value_t.
- * @param data The data to store in the #xmms_value_t.
+ * Allocates a new binary data #xmmsv_t.
+ * @param data The data to store in the #xmmsv_t.
  * @param len The size of the data.
- * @return The new #xmms_value_t. Must be unreferenced with
- * #xmms_value_unref.
+ * @return The new #xmmsv_t. Must be unreferenced with
+ * #xmmsv_unref.
  */
-xmms_value_t *
-xmms_value_new_bin (unsigned char *data, unsigned int len)
+xmmsv_t *
+xmmsv_new_bin (unsigned char *data, unsigned int len)
 {
-	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_BIN);
+	xmmsv_t *val = xmmsv_new (XMMSV_TYPE_BIN);
 
 	if (val) {
 		/* copy the data! */
@@ -241,34 +241,34 @@ xmms_value_new_bin (unsigned char *data, unsigned int len)
 }
 
 /**
- * Allocates a new list #xmms_value_t.
- * @return The new #xmms_value_t. Must be unreferenced with
- * #xmms_value_unref.
+ * Allocates a new list #xmmsv_t.
+ * @return The new #xmmsv_t. Must be unreferenced with
+ * #xmmsv_unref.
  */
-xmms_value_t *
-xmms_value_new_list ()
+xmmsv_t *
+xmmsv_new_list ()
 {
-	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_LIST);
+	xmmsv_t *val = xmmsv_new (XMMSV_TYPE_LIST);
 
 	if (val) {
-		val->value.list = xmms_value_list_new ();
+		val->value.list = xmmsv_list_new ();
 	}
 
 	return val;
 }
 
 /**
- * Allocates a new dict #xmms_value_t.
- * @return The new #xmms_value_t. Must be unreferenced with
- * #xmms_value_unref.
+ * Allocates a new dict #xmmsv_t.
+ * @return The new #xmmsv_t. Must be unreferenced with
+ * #xmmsv_unref.
  */
-xmms_value_t *
-xmms_value_new_dict ()
+xmmsv_t *
+xmmsv_new_dict ()
 {
-	xmms_value_t *val = xmms_value_new (XMMS_VALUE_TYPE_DICT);
+	xmmsv_t *val = xmmsv_new (XMMSV_TYPE_DICT);
 
 	if (val) {
-		val->value.dict = xmms_value_dict_new ();
+		val->value.dict = xmmsv_dict_new ();
 	}
 
 	return val;
@@ -277,13 +277,13 @@ xmms_value_new_dict ()
 
 
 /**
- * References the #xmms_value_t
+ * References the #xmmsv_t
  *
  * @param val the value to reference.
  * @return val
  */
-xmms_value_t *
-xmms_value_ref (xmms_value_t *val)
+xmmsv_t *
+xmmsv_ref (xmmsv_t *val)
 {
 	x_return_val_if_fail (val, NULL);
 	val->ref++;
@@ -292,34 +292,34 @@ xmms_value_ref (xmms_value_t *val)
 }
 
 /**
- * Decreases the references for the #xmms_value_t
+ * Decreases the references for the #xmmsv_t
  * When the number of references reaches 0 it will
  * be freed. And thus all data you extracted from it
  * will be deallocated.
  */
 void
-xmms_value_unref (xmms_value_t *val)
+xmmsv_unref (xmmsv_t *val)
 {
 	x_return_if_fail (val);
 	x_api_error_if (val->ref < 1, "with a freed value",);
 
 	val->ref--;
 	if (val->ref == 0) {
-		xmms_value_free (val);
+		xmmsv_free (val);
 	}
 }
 
 
 /**
- * Allocates new #xmms_value_t and references it.
+ * Allocates new #xmmsv_t and references it.
  * @internal
  */
-static xmms_value_t *
-xmms_value_new (xmms_value_type_t type)
+static xmmsv_t *
+xmmsv_new (xmmsv_type_t type)
 {
-	xmms_value_t *val;
+	xmmsv_t *val;
 
-	val = x_new0 (xmms_value_t, 1);
+	val = x_new0 (xmmsv_t, 1);
 	if (!val) {
 		x_oom ();
 		return NULL;
@@ -327,12 +327,12 @@ xmms_value_new (xmms_value_type_t type)
 
 	val->type = type;
 
-	xmms_value_ref (val);
+	xmmsv_ref (val);
 	return val;
 }
 
 static void
-xmms_value_free (xmms_value_t *val)
+xmmsv_free (xmmsv_t *val)
 {
 	x_return_if_fail (val);
 
@@ -343,56 +343,56 @@ xmms_value_free (xmms_value_t *val)
 
 
 static void
-value_data_free (xmms_value_t *val)
+value_data_free (xmmsv_t *val)
 {
 	x_return_if_fail (val);
 
 	switch (val->type) {
-		case XMMS_VALUE_TYPE_NONE :
-		case XMMS_VALUE_TYPE_END :
-		case XMMS_VALUE_TYPE_UINT32 :
-		case XMMS_VALUE_TYPE_INT32 :
+		case XMMSV_TYPE_NONE :
+		case XMMSV_TYPE_END :
+		case XMMSV_TYPE_UINT32 :
+		case XMMSV_TYPE_INT32 :
 			break;
-		case XMMS_VALUE_TYPE_ERROR :
+		case XMMSV_TYPE_ERROR :
 			free (val->value.error);
 			val->value.error = NULL;
 			break;
-		case XMMS_VALUE_TYPE_STRING :
+		case XMMSV_TYPE_STRING :
 			free (val->value.string);
 			val->value.string = NULL;
 			break;
-		case XMMS_VALUE_TYPE_COLL:
+		case XMMSV_TYPE_COLL:
 			xmmsc_coll_unref (val->value.coll);
 			val->value.coll = NULL;
 			break;
-		case XMMS_VALUE_TYPE_BIN :
+		case XMMSV_TYPE_BIN :
 			free (val->value.bin.data);
 			val->value.bin.len = 0;
 			break;
-		case XMMS_VALUE_TYPE_LIST:
-			xmms_value_list_free (val->value.list);
+		case XMMSV_TYPE_LIST:
+			xmmsv_list_free (val->value.list);
 			val->value.list = NULL;
 			break;
-		case XMMS_VALUE_TYPE_DICT:
-			xmms_value_dict_free (val->value.dict);
+		case XMMSV_TYPE_DICT:
+			xmmsv_dict_free (val->value.dict);
 			val->value.dict = NULL;
 			break;
 	}
 
-	val->type = XMMS_VALUE_TYPE_NONE;
+	val->type = XMMSV_TYPE_NONE;
 }
 
 
 /**
  * Get the type of the value.
- * @param val a #xmms_value_t to get the type from.
+ * @param val a #xmmsv_t to get the type from.
  * @returns The data type in the value.
  */
-xmms_value_type_t
-xmms_value_get_type (xmms_value_t *val)
+xmmsv_type_t
+xmmsv_get_type (xmmsv_t *val)
 {
 	x_api_error_if (!val, "NULL value",
-	                XMMS_VALUE_TYPE_NONE);
+	                XMMSV_TYPE_NONE);
 
 	return val->type;
 }
@@ -401,43 +401,43 @@ xmms_value_get_type (xmms_value_t *val)
 /* Merely legacy aliases */
 
 /**
- * Check the #xmms_value_t for error.
+ * Check the #xmmsv_t for error.
  * @return 1 if error was encountered, else 0
  */
 int
-xmms_value_iserror (xmms_value_t *val)
+xmmsv_iserror (xmmsv_t *val)
 {
-	return !val || xmms_value_get_type (val) == XMMS_VALUE_TYPE_ERROR;
+	return !val || xmmsv_get_type (val) == XMMSV_TYPE_ERROR;
 }
 
 /**
  * Check if the value stores a list.
  *
- * @param val a #xmms_value_t
+ * @param val a #xmmsv_t
  * @return 1 if value stores a list, 0 otherwise.
  */
 int
-xmms_value_is_list (xmms_value_t *val)
+xmmsv_is_list (xmmsv_t *val)
 {
-	return xmms_value_get_type (val) == XMMS_VALUE_TYPE_LIST;
+	return xmmsv_get_type (val) == XMMSV_TYPE_LIST;
 }
 
 /**
  * Check if the value stores a dict.
  *
- * @param val a #xmms_value_t
+ * @param val a #xmmsv_t
  * @return 1 if value stores a dict, 0 otherwise.
  */
 int
-xmms_value_is_dict (xmms_value_t *val)
+xmmsv_is_dict (xmmsv_t *val)
 {
-	return xmms_value_get_type (val) == XMMS_VALUE_TYPE_DICT;
+	return xmmsv_get_type (val) == XMMSV_TYPE_DICT;
 }
 
 const char *
-xmms_value_get_error_old (xmms_value_t *val)
+xmmsv_get_error_old (xmmsv_t *val)
 {
-	if (!val || val->type != XMMS_VALUE_TYPE_ERROR) {
+	if (!val || val->type != XMMSV_TYPE_ERROR) {
 		return NULL;
 	}
 
@@ -445,40 +445,40 @@ xmms_value_get_error_old (xmms_value_t *val)
 }
 
 
-xmms_value_type_t
-xmms_value_get_dict_entry_type (xmms_value_t *val, const char *key)
+xmmsv_type_t
+xmmsv_get_dict_entry_type (xmmsv_t *val, const char *key)
 {
-	xmms_value_dict_iter_t *it;
-	xmms_value_t *v;
+	xmmsv_dict_iter_t *it;
+	xmmsv_t *v;
 
-	if (!val || !xmms_value_get_dict_iter (val, &it) ||
-		!xmms_value_dict_iter_seek (it, key)) {
+	if (!val || !xmmsv_get_dict_iter (val, &it) ||
+		!xmmsv_dict_iter_seek (it, key)) {
 		return 0;
 	}
 
-	xmms_value_dict_iter_pair (it, NULL, &v);
+	xmmsv_dict_iter_pair (it, NULL, &v);
 
-	xmms_value_dict_iter_free (it);
+	xmmsv_dict_iter_free (it);
 
-	return xmms_value_get_type (v);
+	return xmmsv_get_type (v);
 }
 
 
 /* macro-magically define legacy dict extractors */
 #define GEN_COMPAT_DICT_EXTRACTOR_FUNC(typename, type) \
 	int \
-	xmms_value_get_dict_entry_##typename (xmms_value_t *val, const char *key, \
+	xmmsv_get_dict_entry_##typename (xmmsv_t *val, const char *key, \
 	                                      type *r) \
 	{ \
-		xmms_value_dict_iter_t *it; \
-		xmms_value_t *v; \
-		if (!val || !xmms_value_get_dict_iter (val, &it) || \
-			!xmms_value_dict_iter_seek (it, key)) { \
+		xmmsv_dict_iter_t *it; \
+		xmmsv_t *v; \
+		if (!val || !xmmsv_get_dict_iter (val, &it) || \
+			!xmmsv_dict_iter_seek (it, key)) { \
 			return 0; \
 		} \
-		xmms_value_dict_iter_pair (it, NULL, &v); \
-		xmms_value_dict_iter_free (it); \
-		return xmms_value_get_##typename (v, r); \
+		xmmsv_dict_iter_pair (it, NULL, &v); \
+		xmmsv_dict_iter_free (it); \
+		return xmmsv_get_##typename (v, r); \
 	}
 
 GEN_COMPAT_DICT_EXTRACTOR_FUNC(string, const char *)
@@ -516,36 +516,36 @@ find_match_index (const char *source, const char **src_prefs)
 	return i;
 }
 
-xmms_value_t *
-xmms_value_propdict_to_dict (xmms_value_t *propdict, const char **src_prefs)
+xmmsv_t *
+xmmsv_propdict_to_dict (xmmsv_t *propdict, const char **src_prefs)
 {
-	xmms_value_t *dict, *source_dict, *value, *best_value;
-	xmms_value_dict_iter_t *key_it, *source_it;
+	xmmsv_t *dict, *source_dict, *value, *best_value;
+	xmmsv_dict_iter_t *key_it, *source_it;
 	const char *key, *source;
 	int match_index, best_index;
 
-	dict = xmms_value_new_dict ();
+	dict = xmmsv_new_dict ();
 
-	xmms_value_get_dict_iter (propdict, &key_it);
-	while (xmms_value_dict_iter_valid (key_it)) {
-		xmms_value_dict_iter_pair (key_it, &key, &source_dict);
+	xmmsv_get_dict_iter (propdict, &key_it);
+	while (xmmsv_dict_iter_valid (key_it)) {
+		xmmsv_dict_iter_pair (key_it, &key, &source_dict);
 
 		best_value = NULL;
 		best_index = -1;
-		xmms_value_get_dict_iter (source_dict, &source_it);
-		while (xmms_value_dict_iter_valid (source_it)) {
-			xmms_value_dict_iter_pair (source_it, &source, &value);
+		xmmsv_get_dict_iter (source_dict, &source_it);
+		while (xmmsv_dict_iter_valid (source_it)) {
+			xmmsv_dict_iter_pair (source_it, &source, &value);
 			match_index = find_match_index (source, src_prefs);
 			if (best_index < 0 || match_index < best_index) {
 				best_value = value;
 				best_index = match_index;
 			}
-			xmms_value_dict_iter_next (source_it);
+			xmmsv_dict_iter_next (source_it);
 		}
 
-		xmms_value_dict_insert (dict, key, best_value);
+		xmmsv_dict_insert (dict, key, best_value);
 
-		xmms_value_dict_iter_next (key_it);
+		xmmsv_dict_iter_next (key_it);
 	}
 
 	return dict;
@@ -555,14 +555,14 @@ xmms_value_propdict_to_dict (xmms_value_t *propdict, const char **src_prefs)
 /**
  * Retrieves an error string describing the server error from the
  * value.
- * @param val a #xmms_value_t containing a integer.
+ * @param val a #xmmsv_t containing a integer.
  * @param r the return error.
  * @return 1 upon success otherwise 0
  */
 int
-xmms_value_get_error (xmms_value_t *val, const char **r)
+xmmsv_get_error (xmmsv_t *val, const char **r)
 {
-	if (!val || val->type != XMMS_VALUE_TYPE_ERROR) {
+	if (!val || val->type != XMMSV_TYPE_ERROR) {
 		return 0;
 	}
 
@@ -573,14 +573,14 @@ xmms_value_get_error (xmms_value_t *val, const char **r)
 
 /**
  * Retrieves a signed integer from the value.
- * @param val a #xmms_value_t containing a integer.
+ * @param val a #xmmsv_t containing a integer.
  * @param r the return integer.
  * @return 1 upon success otherwise 0
  */
 int
-xmms_value_get_int (xmms_value_t *val, int32_t *r)
+xmmsv_get_int (xmmsv_t *val, int32_t *r)
 {
-	if (!val || val->type != XMMS_VALUE_TYPE_INT32) {
+	if (!val || val->type != XMMSV_TYPE_INT32) {
 		return 0;
 	}
 
@@ -591,14 +591,14 @@ xmms_value_get_int (xmms_value_t *val, int32_t *r)
 
 /**
  * Retrieves a unsigned integer from the resultset.
- * @param val a #xmms_value_t containing a integer.
+ * @param val a #xmmsv_t containing a integer.
  * @param r the return unsigned integer.
  * @return 1 upon success otherwise 0
  */
 int
-xmms_value_get_uint (xmms_value_t *val, uint32_t *r)
+xmmsv_get_uint (xmmsv_t *val, uint32_t *r)
 {
-	if (!val || val->type != XMMS_VALUE_TYPE_UINT32)
+	if (!val || val->type != XMMSV_TYPE_UINT32)
 		return 0;
 
 	*r = val->value.uint32;
@@ -608,15 +608,15 @@ xmms_value_get_uint (xmms_value_t *val, uint32_t *r)
 
 /**
  * Retrieves a string from the resultset.
- * @param val a #xmms_value_t containing a string.
+ * @param val a #xmmsv_t containing a string.
  * @param r the return string. This string is owned by the value and
  * will be freed when the value is freed.
  * @return 1 upon success otherwise 0
  */
 int
-xmms_value_get_string (xmms_value_t *val, const char **r)
+xmmsv_get_string (xmmsv_t *val, const char **r)
 {
-	if (!val || val->type != XMMS_VALUE_TYPE_STRING) {
+	if (!val || val->type != XMMSV_TYPE_STRING) {
 		return 0;
 	}
 
@@ -627,15 +627,15 @@ xmms_value_get_string (xmms_value_t *val, const char **r)
 
 /**
  * Retrieves a collection from the resultset.
- * @param val a #xmms_value_t containing a collection.
+ * @param val a #xmmsv_t containing a collection.
  * @param c the return collection. This collection is owned by the
  * value and will be unref'd when the value is freed.
  * @return 1 upon success otherwise 0
  */
 int
-xmms_value_get_collection (xmms_value_t *val, xmmsc_coll_t **c)
+xmmsv_get_collection (xmmsv_t *val, xmmsc_coll_t **c)
 {
-	if (!val || val->type != XMMS_VALUE_TYPE_COLL) {
+	if (!val || val->type != XMMSV_TYPE_COLL) {
 		return 0;
 	}
 
@@ -646,16 +646,16 @@ xmms_value_get_collection (xmms_value_t *val, xmmsc_coll_t **c)
 
 /**
  * Retrieves binary data from the resultset.
- * @param val a #xmms_value_t containing a string.
+ * @param val a #xmmsv_t containing a string.
  * @param r the return data. This data is owned by the value and will
  * be freed when the value is freed.
  * @param rlen the return length of data.
  * @return 1 upon success otherwise 0
  */
 int
-xmms_value_get_bin (xmms_value_t *val, unsigned char **r, unsigned int *rlen)
+xmmsv_get_bin (xmmsv_t *val, unsigned char **r, unsigned int *rlen)
 {
-	if (!val || val->type != XMMS_VALUE_TYPE_BIN) {
+	if (!val || val->type != XMMSV_TYPE_BIN) {
 		return 0;
 	}
 
@@ -668,15 +668,15 @@ xmms_value_get_bin (xmms_value_t *val, unsigned char **r, unsigned int *rlen)
 
 
 int
-xmms_value_get_list_iter (xmms_value_t *val, xmms_value_list_iter_t **it)
+xmmsv_get_list_iter (xmmsv_t *val, xmmsv_list_iter_t **it)
 {
-	xmms_value_list_iter_t *new_it;
+	xmmsv_list_iter_t *new_it;
 
-	if (!val || val->type != XMMS_VALUE_TYPE_LIST) {
+	if (!val || val->type != XMMSV_TYPE_LIST) {
 		return 0;
 	}
 
-	new_it = xmms_value_list_iter_new (val->value.list);
+	new_it = xmmsv_list_iter_new (val->value.list);
 	if (!new_it) {
 		return 0;
 	}
@@ -687,15 +687,15 @@ xmms_value_get_list_iter (xmms_value_t *val, xmms_value_list_iter_t **it)
 }
 
 int
-xmms_value_get_dict_iter (xmms_value_t *val, xmms_value_dict_iter_t **it)
+xmmsv_get_dict_iter (xmmsv_t *val, xmmsv_dict_iter_t **it)
 {
-	xmms_value_dict_iter_t *new_it;
+	xmmsv_dict_iter_t *new_it;
 
-	if (!val || val->type != XMMS_VALUE_TYPE_DICT) {
+	if (!val || val->type != XMMSV_TYPE_DICT) {
 		return 0;
 	}
 
-	new_it = xmms_value_dict_iter_new (val->value.dict);
+	new_it = xmmsv_dict_iter_new (val->value.dict);
 	if (!new_it) {
 		return 0;
 	}
@@ -708,12 +708,12 @@ xmms_value_get_dict_iter (xmms_value_t *val, xmms_value_dict_iter_t **it)
 
 /* List stuff */
 
-static xmms_value_list_t *
-xmms_value_list_new ()
+static xmmsv_list_t *
+xmmsv_list_new ()
 {
-	xmms_value_list_t *list;
+	xmmsv_list_t *list;
 
-	list = x_new0 (xmms_value_list_t, 1);
+	list = x_new0 (xmmsv_list_t, 1);
 	if (!list) {
 		x_oom ();
 		return NULL;
@@ -725,20 +725,20 @@ xmms_value_list_new ()
 }
 
 static void
-xmms_value_list_free (xmms_value_list_t *l)
+xmmsv_list_free (xmmsv_list_t *l)
 {
-	xmms_value_list_iter_t *it;
+	xmmsv_list_iter_t *it;
 	size_t i;
 
 	/* free iterators */
 	while (l->iterators) {
-		it = (xmms_value_list_iter_t *) l->iterators->data;
-		xmms_value_list_iter_free (it);
+		it = (xmmsv_list_iter_t *) l->iterators->data;
+		xmmsv_list_iter_free (it);
 	}
 
 	/* unref contents */
 	for (i = 0; i < l->size; i++) {
-		xmms_value_unref (l->list[i]);
+		xmmsv_unref (l->list[i]);
 	}
 
 	free (l->list);
@@ -746,11 +746,11 @@ xmms_value_list_free (xmms_value_list_t *l)
 }
 
 static int
-xmms_value_list_resize (xmms_value_list_t *l, size_t newsize)
+xmmsv_list_resize (xmmsv_list_t *l, size_t newsize)
 {
-	xmms_value_t **newmem;
+	xmmsv_t **newmem;
 
-	newmem = realloc (l->list, newsize * sizeof (xmms_value_t *));
+	newmem = realloc (l->list, newsize * sizeof (xmmsv_t *));
 
 	if (newsize != 0 && newmem == NULL) {
 		x_oom ();
@@ -764,10 +764,10 @@ xmms_value_list_resize (xmms_value_list_t *l, size_t newsize)
 }
 
 static int
-_xmms_value_list_insert (xmms_value_list_t *l, int pos, xmms_value_t *val)
+_xmmsv_list_insert (xmmsv_list_t *l, int pos, xmmsv_t *val)
 {
 	unsigned int abspos;
-	xmms_value_list_iter_t *it;
+	xmmsv_list_iter_t *it;
 	x_list_t *n;
 	int i;
 
@@ -784,7 +784,7 @@ _xmms_value_list_insert (xmms_value_list_t *l, int pos, xmms_value_t *val)
 		} else {
 			double_size = 1;
 		}
-		success = xmms_value_list_resize (l, double_size);
+		success = xmmsv_list_resize (l, double_size);
 		x_return_val_if_fail (success, 0);
 	}
 
@@ -795,11 +795,11 @@ _xmms_value_list_insert (xmms_value_list_t *l, int pos, xmms_value_t *val)
 	l->list[abspos] = val;
 	l->size++;
 
-	xmms_value_ref (val);
+	xmmsv_ref (val);
 
 	/* update iterators pos */
 	for (n = l->iterators; n; n = n->next) {
-		it = (xmms_value_list_iter_t *) n->data;
+		it = (xmmsv_list_iter_t *) n->data;
 		if (it->position > abspos) {
 			it->position++;
 		}
@@ -809,16 +809,16 @@ _xmms_value_list_insert (xmms_value_list_t *l, int pos, xmms_value_t *val)
 }
 
 static int
-_xmms_value_list_append (xmms_value_list_t *l, xmms_value_t *val)
+_xmmsv_list_append (xmmsv_list_t *l, xmmsv_t *val)
 {
-	return _xmms_value_list_insert (l, l->size, val);
+	return _xmmsv_list_insert (l, l->size, val);
 }
 
 static int
-_xmms_value_list_remove (xmms_value_list_t *l, int pos)
+_xmmsv_list_remove (xmmsv_list_t *l, int pos)
 {
 	unsigned int abspos;
-	xmms_value_list_iter_t *it;
+	xmmsv_list_iter_t *it;
 	size_t half_size;
 	x_list_t *n;
 	int i;
@@ -829,7 +829,7 @@ _xmms_value_list_remove (xmms_value_list_t *l, int pos)
 		return 0;
 	}
 
-	xmms_value_unref (l->list[abspos]);
+	xmmsv_unref (l->list[abspos]);
 
 	l->size--;
 	for (i = abspos; i < l->size; i++) {
@@ -839,12 +839,12 @@ _xmms_value_list_remove (xmms_value_list_t *l, int pos)
 	/* Reduce memory usage by two if possible */
 	half_size = l->allocated >> 1;
 	if (l->size <= half_size) {
-		xmms_value_list_resize (l, half_size);
+		xmmsv_list_resize (l, half_size);
 	}
 
 	/* update iterator pos */
 	for (n = l->iterators; n; n = n->next) {
-		it = (xmms_value_list_iter_t *) n->data;
+		it = (xmmsv_list_iter_t *) n->data;
 		if (it->position > abspos) {
 			it->position--;
 		}
@@ -854,24 +854,24 @@ _xmms_value_list_remove (xmms_value_list_t *l, int pos)
 }
 
 int
-_xmms_value_list_clear (xmms_value_list_t *l)
+_xmmsv_list_clear (xmmsv_list_t *l)
 {
 	/* FIXME: could be optimized */
 	while (l->size > 0) {
-		_xmms_value_list_remove (l, 0);
+		_xmmsv_list_remove (l, 0);
 	}
 
 	return 1;
 }
 
 int
-xmms_value_list_get (xmms_value_t *listv, int pos, xmms_value_t **val)
+xmmsv_list_get (xmmsv_t *listv, int pos, xmmsv_t **val)
 {
 	unsigned int abspos;
-	xmms_value_list_t *l;
+	xmmsv_list_t *l;
 
 	x_return_val_if_fail (listv, 0);
-	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+	x_return_val_if_fail (xmmsv_is_list (listv), 0);
 
 	/* prevent accessing after the last element */
 	l = listv->value.list;
@@ -888,72 +888,72 @@ xmms_value_list_get (xmms_value_t *listv, int pos, xmms_value_t **val)
 }
 
 int
-xmms_value_list_insert (xmms_value_t *listv, int pos, xmms_value_t *val)
+xmmsv_list_insert (xmmsv_t *listv, int pos, xmmsv_t *val)
 {
 	x_return_val_if_fail (listv, 0);
-	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+	x_return_val_if_fail (xmmsv_is_list (listv), 0);
 	x_return_val_if_fail (val, 0);
 
-	return _xmms_value_list_insert (listv->value.list, pos, val);
+	return _xmmsv_list_insert (listv->value.list, pos, val);
 }
 
 int
-xmms_value_list_remove (xmms_value_t *listv, int pos)
+xmmsv_list_remove (xmmsv_t *listv, int pos)
 {
 	x_return_val_if_fail (listv, 0);
-	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+	x_return_val_if_fail (xmmsv_is_list (listv), 0);
 
-	return _xmms_value_list_remove (listv->value.list, pos);
+	return _xmmsv_list_remove (listv->value.list, pos);
 }
 
 int
-xmms_value_list_append (xmms_value_t *listv, xmms_value_t *val)
+xmmsv_list_append (xmmsv_t *listv, xmmsv_t *val)
 {
 	x_return_val_if_fail (listv, 0);
-	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+	x_return_val_if_fail (xmmsv_is_list (listv), 0);
 	x_return_val_if_fail (val, 0);
 
-	return _xmms_value_list_append (listv->value.list, val);
+	return _xmmsv_list_append (listv->value.list, val);
 }
 
 int
-xmms_value_list_clear (xmms_value_t *listv)
+xmmsv_list_clear (xmmsv_t *listv)
 {
 	x_return_val_if_fail (listv, 0);
-	x_return_val_if_fail (xmms_value_is_list (listv), 0);
+	x_return_val_if_fail (xmmsv_is_list (listv), 0);
 
-	return _xmms_value_list_clear (listv->value.list);
+	return _xmmsv_list_clear (listv->value.list);
 }
 
 int
-xmms_value_list_foreach (xmms_value_t *listv, xmmsc_list_foreach_func func,
+xmmsv_list_foreach (xmmsv_t *listv, xmmsc_list_foreach_func func,
                          void* user_data)
 {
-	xmms_value_list_iter_t *it;
-	xmms_value_t *v;
+	xmmsv_list_iter_t *it;
+	xmmsv_t *v;
 
 	x_return_val_if_fail (listv, 0);
-	x_return_val_if_fail (xmms_value_is_list (listv), 0);
-	x_return_val_if_fail (xmms_value_get_list_iter (listv, &it), 0);
+	x_return_val_if_fail (xmmsv_is_list (listv), 0);
+	x_return_val_if_fail (xmmsv_get_list_iter (listv, &it), 0);
 
-	while (xmms_value_list_iter_valid (it)) {
-		xmms_value_list_iter_entry (it, &v);
+	while (xmmsv_list_iter_valid (it)) {
+		xmmsv_list_iter_entry (it, &v);
 		func (v, user_data);
-		xmms_value_list_iter_next (it);
+		xmmsv_list_iter_next (it);
 	}
 
-	xmms_value_list_iter_free (it);
+	xmmsv_list_iter_free (it);
 
 	return 1;
 }
 
 
-static xmms_value_list_iter_t *
-xmms_value_list_iter_new (xmms_value_list_t *l)
+static xmmsv_list_iter_t *
+xmmsv_list_iter_new (xmmsv_list_t *l)
 {
-	xmms_value_list_iter_t *it;
+	xmmsv_list_iter_t *it;
 
-	it = x_new0 (xmms_value_list_iter_t, 1);
+	it = x_new0 (xmmsv_list_iter_t, 1);
 	if (!it) {
 		x_oom ();
 		return NULL;
@@ -969,7 +969,7 @@ xmms_value_list_iter_new (xmms_value_list_t *l)
 }
 
 static void
-xmms_value_list_iter_free (xmms_value_list_iter_t *it)
+xmmsv_list_iter_free (xmmsv_list_iter_t *it)
 {
 	/* unref iterator from list and free it */
 	it->parent->iterators = x_list_remove (it->parent->iterators, it);
@@ -977,9 +977,9 @@ xmms_value_list_iter_free (xmms_value_list_iter_t *it)
 }
 
 int
-xmms_value_list_iter_entry (xmms_value_list_iter_t *it, xmms_value_t **val)
+xmmsv_list_iter_entry (xmmsv_list_iter_t *it, xmmsv_t **val)
 {
-	x_return_val_if_fail (xmms_value_list_iter_valid (it), 0);
+	x_return_val_if_fail (xmmsv_list_iter_valid (it), 0);
 
 	*val = it->parent->list[it->position];
 
@@ -987,7 +987,7 @@ xmms_value_list_iter_entry (xmms_value_list_iter_t *it, xmms_value_t **val)
 }
 
 int
-xmms_value_list_iter_valid (xmms_value_list_iter_t *it)
+xmmsv_list_iter_valid (xmmsv_list_iter_t *it)
 {
 	x_return_val_if_fail (it, 0);
 
@@ -995,7 +995,7 @@ xmms_value_list_iter_valid (xmms_value_list_iter_t *it)
 }
 
 void
-xmms_value_list_iter_first (xmms_value_list_iter_t *it)
+xmmsv_list_iter_first (xmmsv_list_iter_t *it)
 {
 	x_return_if_fail (it);
 
@@ -1003,7 +1003,7 @@ xmms_value_list_iter_first (xmms_value_list_iter_t *it)
 }
 
 void
-xmms_value_list_iter_next (xmms_value_list_iter_t *it)
+xmmsv_list_iter_next (xmmsv_list_iter_t *it)
 {
 	x_return_if_fail (it);
 
@@ -1013,7 +1013,7 @@ xmms_value_list_iter_next (xmms_value_list_iter_t *it)
 }
 
 int
-xmms_value_list_iter_goto (xmms_value_list_iter_t *it, int pos)
+xmmsv_list_iter_goto (xmmsv_list_iter_t *it, int pos)
 {
 	unsigned int abspos;
 
@@ -1028,201 +1028,201 @@ xmms_value_list_iter_goto (xmms_value_list_iter_t *it, int pos)
 }
 
 int
-xmms_value_list_iter_insert (xmms_value_list_iter_t *it, xmms_value_t *val)
+xmmsv_list_iter_insert (xmmsv_list_iter_t *it, xmmsv_t *val)
 {
 	x_return_val_if_fail (it, 0);
 	x_return_val_if_fail (val, 0);
 
-	return _xmms_value_list_insert (it->parent, it->position, val);
+	return _xmmsv_list_insert (it->parent, it->position, val);
 }
 
 int
-xmms_value_list_iter_remove (xmms_value_list_iter_t *it)
+xmmsv_list_iter_remove (xmmsv_list_iter_t *it)
 {
 	x_return_val_if_fail (it, 0);
 
-	return _xmms_value_list_remove (it->parent, it->position);
+	return _xmmsv_list_remove (it->parent, it->position);
 }
 
 
 /* Dict stuff */
 
-struct xmms_value_dict_St {
+struct xmmsv_dict_St {
 	/* dict implemented as a flat [key1, val1, key2, val2, ...] list */
-	xmms_value_list_t *flatlist;
+	xmmsv_list_t *flatlist;
 	x_list_t *iterators;
 };
 
-struct xmms_value_dict_iter_St {
+struct xmmsv_dict_iter_St {
 	/* iterator of the contained flatlist */
-	xmms_value_list_iter_t *lit;
-	xmms_value_dict_t *parent;
+	xmmsv_list_iter_t *lit;
+	xmmsv_dict_t *parent;
 };
 
-static xmms_value_dict_t *
-xmms_value_dict_new ()
+static xmmsv_dict_t *
+xmmsv_dict_new ()
 {
-	xmms_value_dict_t *dict;
+	xmmsv_dict_t *dict;
 
-	dict = x_new0 (xmms_value_dict_t, 1);
+	dict = x_new0 (xmmsv_dict_t, 1);
 	if (!dict) {
 		x_oom ();
 		return NULL;
 	}
 
-	dict->flatlist = xmms_value_list_new ();
+	dict->flatlist = xmmsv_list_new ();
 
 	return dict;
 }
 
 static void
-xmms_value_dict_free (xmms_value_dict_t *dict)
+xmmsv_dict_free (xmmsv_dict_t *dict)
 {
-	xmms_value_dict_iter_t *it;
+	xmmsv_dict_iter_t *it;
 
 	/* free iterators */
 	while (dict->iterators) {
-		it = (xmms_value_dict_iter_t *) dict->iterators->data;
-		xmms_value_dict_iter_free (it);
+		it = (xmmsv_dict_iter_t *) dict->iterators->data;
+		xmmsv_dict_iter_free (it);
 	}
 
-	xmms_value_list_free (dict->flatlist);
+	xmmsv_list_free (dict->flatlist);
 
 	free (dict);
 }
 
 int
-xmms_value_dict_get (xmms_value_t *dictv, const char *key, xmms_value_t **val)
+xmmsv_dict_get (xmmsv_t *dictv, const char *key, xmmsv_t **val)
 {
-	xmms_value_dict_iter_t *it;
+	xmmsv_dict_iter_t *it;
 	int ret = 1;
 
 	x_return_val_if_fail (key, 0);
 	x_return_val_if_fail (dictv, 0);
-	x_return_val_if_fail (xmms_value_is_dict (dictv), 0);
-	x_return_val_if_fail (xmms_value_get_dict_iter (dictv, &it), 0);
+	x_return_val_if_fail (xmmsv_is_dict (dictv), 0);
+	x_return_val_if_fail (xmmsv_get_dict_iter (dictv, &it), 0);
 
-	if (!xmms_value_dict_iter_seek (it, key)) {
+	if (!xmmsv_dict_iter_seek (it, key)) {
 		ret = 0;
 	}
 
 	/* If found, return value and success */
 	if (ret && val) {
-		xmms_value_dict_iter_pair (it, NULL, val);
+		xmmsv_dict_iter_pair (it, NULL, val);
 	}
 
-	xmms_value_dict_iter_free (it);
+	xmmsv_dict_iter_free (it);
 
 	return ret;
 }
 
-int xmms_value_dict_insert (xmms_value_t *dictv, const char *key, xmms_value_t *val)
+int xmmsv_dict_insert (xmmsv_t *dictv, const char *key, xmmsv_t *val)
 {
-	xmms_value_dict_iter_t *it;
+	xmmsv_dict_iter_t *it;
 	int ret;
 
 	x_return_val_if_fail (key, 0);
 	x_return_val_if_fail (val, 0);
 	x_return_val_if_fail (dictv, 0);
-	x_return_val_if_fail (xmms_value_is_dict (dictv), 0);
-	x_return_val_if_fail (xmms_value_get_dict_iter (dictv, &it), 0);
+	x_return_val_if_fail (xmmsv_is_dict (dictv), 0);
+	x_return_val_if_fail (xmmsv_get_dict_iter (dictv, &it), 0);
 
 	/* if key already present, replace value */
-	if (xmms_value_dict_iter_seek (it, key)) {
-		ret = xmms_value_dict_iter_set (it, val);
+	if (xmmsv_dict_iter_seek (it, key)) {
+		ret = xmmsv_dict_iter_set (it, val);
 
 	/* else, insert a new key-value pair */
 	} else {
-		xmms_value_list_t *l;
-		xmms_value_t *keyval;
+		xmmsv_list_t *l;
+		xmmsv_t *keyval;
 		l = dictv->value.dict->flatlist;
-		keyval = xmms_value_new_string (key);
+		keyval = xmmsv_new_string (key);
 
-		ret = _xmms_value_list_append (l, keyval);
+		ret = _xmmsv_list_append (l, keyval);
 		if (ret) {
-			ret = _xmms_value_list_append (l, val);
+			ret = _xmmsv_list_append (l, val);
 			if (!ret) {
 				/* FIXME: oops, remove previously inserted key */
 			}
 		}
-		xmms_value_unref (keyval);
+		xmmsv_unref (keyval);
 	}
 
-	xmms_value_dict_iter_free (it);
+	xmmsv_dict_iter_free (it);
 
 	return ret;
 }
 
 int
-xmms_value_dict_remove (xmms_value_t *dictv, const char *key)
+xmmsv_dict_remove (xmmsv_t *dictv, const char *key)
 {
-	xmms_value_dict_iter_t *it;
+	xmmsv_dict_iter_t *it;
 	int ret = 1;
 
 	x_return_val_if_fail (key, 0);
 	x_return_val_if_fail (dictv, 0);
-	x_return_val_if_fail (xmms_value_is_dict (dictv), 0);
-	x_return_val_if_fail (xmms_value_get_dict_iter (dictv, &it), 0);
+	x_return_val_if_fail (xmmsv_is_dict (dictv), 0);
+	x_return_val_if_fail (xmmsv_get_dict_iter (dictv, &it), 0);
 
-	if (!xmms_value_dict_iter_seek (it, key)) {
+	if (!xmmsv_dict_iter_seek (it, key)) {
 		ret = 0;
 	} else {
-		ret = xmms_value_list_iter_remove (it->lit) &&
-		      xmms_value_list_iter_remove (it->lit);
+		ret = xmmsv_list_iter_remove (it->lit) &&
+		      xmmsv_list_iter_remove (it->lit);
 		/* FIXME: cleanup if only the first fails */
 	}
 
-	xmms_value_dict_iter_free (it);
+	xmmsv_dict_iter_free (it);
 
 	return ret;
 }
 
 
 int
-xmms_value_dict_clear (xmms_value_t *dictv)
+xmmsv_dict_clear (xmmsv_t *dictv)
 {
 	x_return_val_if_fail (dictv, 0);
-	x_return_val_if_fail (xmms_value_is_dict (dictv), 0);
+	x_return_val_if_fail (xmmsv_is_dict (dictv), 0);
 
-	return _xmms_value_list_clear (dictv->value.dict->flatlist);
+	return _xmmsv_list_clear (dictv->value.dict->flatlist);
 }
 
 int
-xmms_value_dict_foreach (xmms_value_t *dictv, xmmsc_dict_foreach_func func,
+xmmsv_dict_foreach (xmmsv_t *dictv, xmmsc_dict_foreach_func func,
                          void *user_data)
 {
-	xmms_value_dict_iter_t *it;
+	xmmsv_dict_iter_t *it;
 	const char *key;
-	xmms_value_t *v;
+	xmmsv_t *v;
 
 	x_return_val_if_fail (dictv, 0);
-	x_return_val_if_fail (xmms_value_is_dict (dictv), 0);
-	x_return_val_if_fail (xmms_value_get_dict_iter (dictv, &it), 0);
+	x_return_val_if_fail (xmmsv_is_dict (dictv), 0);
+	x_return_val_if_fail (xmmsv_get_dict_iter (dictv, &it), 0);
 
-	while (xmms_value_dict_iter_valid (it)) {
-		xmms_value_dict_iter_pair (it, &key, &v);
+	while (xmmsv_dict_iter_valid (it)) {
+		xmmsv_dict_iter_pair (it, &key, &v);
 		func (key, v, user_data);
-		xmms_value_dict_iter_next (it);
+		xmmsv_dict_iter_next (it);
 	}
 
-	xmms_value_dict_iter_free (it);
+	xmmsv_dict_iter_free (it);
 
 	return 1;
 }
 
 
-static xmms_value_dict_iter_t *
-xmms_value_dict_iter_new (xmms_value_dict_t *d)
+static xmmsv_dict_iter_t *
+xmmsv_dict_iter_new (xmmsv_dict_t *d)
 {
-	xmms_value_dict_iter_t *it;
+	xmmsv_dict_iter_t *it;
 
-	it = x_new0 (xmms_value_dict_iter_t, 1);
+	it = x_new0 (xmmsv_dict_iter_t, 1);
 	if (!it) {
 		x_oom ();
 		return NULL;
 	}
 
-	it->lit = xmms_value_list_iter_new (d->flatlist);
+	it->lit = xmmsv_list_iter_new (d->flatlist);
 	it->parent = d;
 
 	/* register iterator into parent */
@@ -1232,7 +1232,7 @@ xmms_value_dict_iter_new (xmms_value_dict_t *d)
 }
 
 static void
-xmms_value_dict_iter_free (xmms_value_dict_iter_t *it)
+xmmsv_dict_iter_free (xmmsv_dict_iter_t *it)
 {
 	/* we don't free the parent list iter, already managed by the flatlist */
 
@@ -1242,13 +1242,13 @@ xmms_value_dict_iter_free (xmms_value_dict_iter_t *it)
 }
 
 int
-xmms_value_dict_iter_pair (xmms_value_dict_iter_t *it, const char **key,
-                           xmms_value_t **val)
+xmmsv_dict_iter_pair (xmmsv_dict_iter_t *it, const char **key,
+                           xmmsv_t **val)
 {
 	unsigned int orig;
-	xmms_value_t *v;
+	xmmsv_t *v;
 
-	if (!xmms_value_dict_iter_valid (it)) {
+	if (!xmmsv_dict_iter_valid (it)) {
 		return 0;
 	}
 
@@ -1256,13 +1256,13 @@ xmms_value_dict_iter_pair (xmms_value_dict_iter_t *it, const char **key,
 	orig = it->lit->position;
 
 	if (key) {
-		xmms_value_list_iter_entry (it->lit, &v);
-		xmms_value_get_string (v, key);
+		xmmsv_list_iter_entry (it->lit, &v);
+		xmmsv_get_string (v, key);
 	}
 
 	if (val) {
-		xmms_value_list_iter_next (it->lit);
-		xmms_value_list_iter_entry (it->lit, val);
+		xmmsv_list_iter_next (it->lit);
+		xmmsv_list_iter_entry (it->lit, val);
 	}
 
 	it->lit->position = orig;
@@ -1271,48 +1271,48 @@ xmms_value_dict_iter_pair (xmms_value_dict_iter_t *it, const char **key,
 }
 
 int
-xmms_value_dict_iter_valid (xmms_value_dict_iter_t *it)
+xmmsv_dict_iter_valid (xmmsv_dict_iter_t *it)
 {
-	return xmms_value_list_iter_valid (it->lit);
+	return xmmsv_list_iter_valid (it->lit);
 }
 
 void
-xmms_value_dict_iter_first (xmms_value_dict_iter_t *it)
+xmmsv_dict_iter_first (xmmsv_dict_iter_t *it)
 {
 	x_return_if_fail (it);
 
-	xmms_value_list_iter_first (it->lit);
+	xmmsv_list_iter_first (it->lit);
 }
 
 void
-xmms_value_dict_iter_next (xmms_value_dict_iter_t *it)
+xmmsv_dict_iter_next (xmmsv_dict_iter_t *it)
 {
 	x_return_if_fail (it);
 
 	/* skip a pair */
-	xmms_value_list_iter_next (it->lit);
-	xmms_value_list_iter_next (it->lit);
+	xmmsv_list_iter_next (it->lit);
+	xmmsv_list_iter_next (it->lit);
 }
 
 int
-xmms_value_dict_iter_seek (xmms_value_dict_iter_t *it, const char *key)
+xmmsv_dict_iter_seek (xmmsv_dict_iter_t *it, const char *key)
 {
 	const char *startkey, *k = NULL;
 
 	x_return_val_if_fail (it, 0);
 	x_return_val_if_fail (key, 0);
 
-	xmms_value_dict_iter_pair (it, &k, NULL);
+	xmmsv_dict_iter_pair (it, &k, NULL);
 	startkey = k;
 
 	/* walk the list once */
 	do {
 		/* read next pair */
-		xmms_value_dict_iter_next (it);
-		if (!xmms_value_dict_iter_valid (it)) {
-			xmms_value_dict_iter_first (it);
+		xmmsv_dict_iter_next (it);
+		if (!xmmsv_dict_iter_valid (it)) {
+			xmmsv_dict_iter_first (it);
 		}
-		xmms_value_dict_iter_pair (it, &k, NULL);
+		xmmsv_dict_iter_pair (it, &k, NULL);
 
 		/* matching keys, quit now! */
 		if (k && strcmp (k, key) == 0) {
@@ -1325,19 +1325,19 @@ xmms_value_dict_iter_seek (xmms_value_dict_iter_t *it, const char *key)
 }
 
 int
-xmms_value_dict_iter_set (xmms_value_dict_iter_t *it, xmms_value_t *val)
+xmmsv_dict_iter_set (xmmsv_dict_iter_t *it, xmmsv_t *val)
 {
 	unsigned int orig;
 	int ret;
 
-	x_return_val_if_fail (xmms_value_dict_iter_valid (it), 0);
+	x_return_val_if_fail (xmmsv_dict_iter_valid (it), 0);
 
 	/* FIXME: avoid leaking abstraction! */
 	orig = it->lit->position;
 
-	xmms_value_list_iter_next (it->lit);
-	xmms_value_list_iter_remove (it->lit);
-	ret = xmms_value_list_iter_insert (it->lit, val);
+	xmmsv_list_iter_next (it->lit);
+	xmmsv_list_iter_remove (it->lit);
+	ret = xmmsv_list_iter_insert (it->lit, val);
 	/* FIXME: check remove success, swap operations? */
 
 	it->lit->position = orig;
@@ -1346,12 +1346,12 @@ xmms_value_dict_iter_set (xmms_value_dict_iter_t *it, xmms_value_t *val)
 }
 
 int
-xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it)
+xmmsv_dict_iter_remove (xmmsv_dict_iter_t *it)
 {
 	int ret = 0;
 
-	ret = xmms_value_list_iter_remove (it->lit) &&
-	      xmms_value_list_iter_remove (it->lit);
+	ret = xmmsv_list_iter_remove (it->lit) &&
+	      xmmsv_list_iter_remove (it->lit);
 	/* FIXME: cleanup if only the first fails */
 
 	return ret;
@@ -1392,13 +1392,13 @@ FIXME: er so how do we manually free this stuff? free()?
  * offer you tissues and a blanket if you come crying to us with
  * broken code.
  *
- * @param val the #xmms_value_t that the string comes from
+ * @param val the #xmmsv_t that the string comes from
  * @param string the url encoded string
- * @return decoded string, owned by the #xmms_value_t
+ * @return decoded string, owned by the #xmmsv_t
  *
  */
 char *
-xmms_value_decode_url (const char *string)
+xmmsv_decode_url (const char *string)
 {
 	int i = 0, j = 0;
 	char *url;

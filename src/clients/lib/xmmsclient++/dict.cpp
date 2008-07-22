@@ -126,7 +126,7 @@ namespace Xmms
 	}
 
 	static void
-	getValue( Dict::Variant& val, xmms_value_type_t type,
+	getValue( Dict::Variant& val, xmmsv_type_t type,
 	          const void* value )
 	{
 		switch( type ) {
@@ -161,7 +161,7 @@ namespace Xmms
 	}
 
 	static void
-	dict_foreach( const void* key, xmms_value_type_t type,
+	dict_foreach( const void* key, xmmsv_type_t type,
 	              const void* value, void* userdata )
 	{
 		Xmms::Dict::ForEachFunc* func =
@@ -217,7 +217,7 @@ namespace Xmms
 	}
 
 	static void
-	propdict_foreach( const void* key, xmms_value_type_t type,
+	propdict_foreach( const void* key, xmmsv_type_t type,
 	                  const void* value, const char* source,
 	                  void* userdata )
 	{

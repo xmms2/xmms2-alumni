@@ -27,9 +27,9 @@ const char *default_source_pref[] = {
 };
 
 gint
-val_has_key (xmms_value_t *val, const gchar *key)
+val_has_key (xmmsv_t *val, const gchar *key)
 {
-	return xmms_value_get_dict_entry_type (val, key) != XMMS_VALUE_TYPE_NONE;
+	return xmmsv_get_dict_entry_type (val, key) != XMMSV_TYPE_NONE;
 }
 
 
@@ -90,26 +90,26 @@ print_error (const gchar *fmt, ...)
 
 
 void
-print_hash (const void *key, xmms_value_t *value, void *udata)
+print_hash (const void *key, xmmsv_t *value, void *udata)
 {
-	if (xmms_value_get_type (value) == XMMS_VALUE_TYPE_STRING) {
+	if (xmmsv_get_type (value) == XMMSV_TYPE_STRING) {
 		const char *s;
-		xmms_value_get_string (value, &s);
+		xmmsv_get_string (value, &s);
 		print_info ("%s = %s", key, s);
 	} else {
 		int i;
-		xmms_value_get_int (value, &i);
+		xmmsv_get_int (value, &i);
 		print_info ("%s = %d", key, i);
 	}
 }
 
 
 static void
-print_entry_string (xmms_value_t *v, const gchar *key, const gchar *source)
+print_entry_string (xmmsv_t *v, const gchar *key, const gchar *source)
 {
 	const gchar *value;
 
-	xmms_value_get_string (v, &value);
+	xmmsv_get_string (v, &value);
 
 	/* Ok it's a string, if it's the URL property from the
 	 * server source we need to decode it since it's
@@ -118,7 +118,7 @@ print_entry_string (xmms_value_t *v, const gchar *key, const gchar *source)
 	if (strcmp (key, "url") == 0 && strcmp (source, "server") == 0) {
 		/* First decode the URL encoding */
 		char *tmp;
-		tmp = xmms_value_decode_url (value);
+		tmp = xmmsv_decode_url (value);
 
 		/* Let's see if the result is valid utf-8. This must be done
 		 * since we don't know the charset of the binary string */
@@ -151,31 +151,31 @@ print_entry_string (xmms_value_t *v, const gchar *key, const gchar *source)
 
 /* dumps a recursive key-source-val dict */
 void
-print_entry (const void *key, xmms_value_t *dict, void *udata)
+print_entry (const void *key, xmmsv_t *dict, void *udata)
 {
-	xmms_value_t *v;
+	xmmsv_t *v;
 	const gchar *source;
-	if (xmms_value_get_type (dict) == XMMS_VALUE_TYPE_DICT) {
-		xmms_value_dict_iter_t *it;
-		xmms_value_get_dict_iter (dict, &it);
+	if (xmmsv_get_type (dict) == XMMSV_TYPE_DICT) {
+		xmmsv_dict_iter_t *it;
+		xmmsv_get_dict_iter (dict, &it);
 
-		while (xmms_value_dict_iter_valid (it)) {
-			xmms_value_dict_iter_pair (it, &source, &v);
-			switch (xmms_value_get_type (v)) {
-			case XMMS_VALUE_TYPE_STRING:
+		while (xmmsv_dict_iter_valid (it)) {
+			xmmsv_dict_iter_pair (it, &source, &v);
+			switch (xmmsv_get_type (v)) {
+			case XMMSV_TYPE_STRING:
 				print_entry_string (v, key, source);
 				break;
-			case XMMS_VALUE_TYPE_INT32:
+			case XMMSV_TYPE_INT32:
 			{
 				gint i;
-				xmms_value_get_int (v, &i);
+				xmmsv_get_int (v, &i);
 				print_info ("[%s] %s = %d", source, key, i);
 				break;
 			}
-			case XMMS_VALUE_TYPE_UINT32:
+			case XMMSV_TYPE_UINT32:
 			{
 				guint u;
-				xmms_value_get_uint (v, &u);
+				xmmsv_get_uint (v, &u);
 				print_info ("[%s] %s = %u", source, key, u);
 				break;
 			}
@@ -183,11 +183,11 @@ print_entry (const void *key, xmms_value_t *dict, void *udata)
 				print_info ("[%s] %s = (unknown data)", source, key);
 				break;
 			}
-			xmms_value_dict_iter_next (it);
+			xmmsv_dict_iter_next (it);
 		}
 	}
 
-/* 	if (xmms_value_get_type (value) == XMMS_VALUE_TYPE_STRING) { */
+/* 	if (xmmsv_get_type (value) == XMMSV_TYPE_STRING) { */
 /* 		/\* Ok it's a string, if it's the URL property from the */
 /* 		 * server source we need to decode it since it's */
 /* 		 * encoded in the server */
@@ -196,8 +196,8 @@ print_entry (const void *key, xmms_value_t *dict, void *udata)
 /* 			/\* First decode the URL encoding *\/ */
 /* 			const gchar *url; */
 /* 			char *tmp; */
-/* 			xmms_value_get_string (value, &url); */
-/* 			tmp = xmms_value_decode_url (url); */
+/* 			xmmsv_get_string (value, &url); */
+/* 			tmp = xmmsv_decode_url (url); */
 
 /* 			/\* Let's see if the result is valid utf-8. This must be done */
 /* 			 * since we don't know the charset of the binary string *\/ */
@@ -293,7 +293,7 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 	for (n = list; n; n = g_list_next (n)) {
 		const gchar *title;
 		xmmsc_result_t *res;
-		xmms_value_t *propdict, *val;
+		xmmsv_t *propdict, *val;
 		gint mid = XPOINTER_TO_INT (n->data);
 
 		if (!mid) {
@@ -303,22 +303,22 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 		res = xmmsc_medialib_get_info (conn, mid);
 		xmmsc_result_wait (res);
 		propdict = xmmsc_result_get_value (res);
-		val = xmms_value_propdict_to_dict (propdict, default_source_pref);
+		val = xmmsv_propdict_to_dict (propdict, default_source_pref);
 
-		if (xmms_value_get_dict_entry_string (val, "title", &title)) {
+		if (xmmsv_get_dict_entry_string (val, "title", &title)) {
 			const gchar *artist, *album;
-			if (!xmms_value_get_dict_entry_string (val, "artist", &artist)) {
+			if (!xmmsv_get_dict_entry_string (val, "artist", &artist)) {
 				artist = "Unknown";
 			}
 
-			if (!xmms_value_get_dict_entry_string (val, "album", &album)) {
+			if (!xmmsv_get_dict_entry_string (val, "album", &album)) {
 				album = "Unknown";
 			}
 
 			print_info (format_rows, mid, artist, album, title);
 		} else {
 			const gchar *url;
-			xmms_value_get_dict_entry_string (val, "url", &url);
+			xmmsv_get_dict_entry_string (val, "url", &url);
 			if (url) {
 				gchar *filename = g_path_get_basename (url);
 				if (filename) {
@@ -410,25 +410,25 @@ string_escape (const char *s)
 	return res;
 }
 
-/** Make a #xmms_value_t string list from a string array.
+/** Make a #xmmsv_t string list from a string array.
  *
  * If num is specified, read num entries from array. If num is -1,
  * read array until NULL is found.
  *
- * The returned #xmms_value_t must be unref'd manually afterwards.
+ * The returned #xmmsv_t must be unref'd manually afterwards.
  */
-xmms_value_t *
+xmmsv_t *
 make_value_stringlist (gchar **array, gint num)
 {
 	gint i;
-	xmms_value_t *ret, *v;
+	xmmsv_t *ret, *v;
 
-	ret = xmms_value_new_list ();
+	ret = xmmsv_new_list ();
 
 	for (i = 0; (num >= 0 && i < num) || array[i]; i++) {
-		v = xmms_value_new_string (array[i]);
-		xmms_value_list_append (ret, v);
-		xmms_value_unref (v);
+		v = xmmsv_new_string (array[i]);
+		xmmsv_list_append (ret, v);
+		xmmsv_unref (v);
 	}
 
 	return ret;

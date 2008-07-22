@@ -110,7 +110,7 @@ perl_xmmsclient_xmmsc_result_get_bin (xmmsc_result_t *res)
 }
 
 SV *
-perl_xmmsclient_xmms_result_cast_value (xmms_value_type_t type, const void *value)
+perl_xmmsclient_xmms_result_cast_value (xmmsv_type_t type, const void *value)
 {
 	SV *perl_value;
 
@@ -132,7 +132,7 @@ perl_xmmsclient_xmms_result_cast_value (xmms_value_type_t type, const void *valu
 }
 
 void
-perl_xmmsclient_xmmsc_result_dict_foreach_cb (const void *key, xmms_value_type_t type, const void *value, void *user_data)
+perl_xmmsclient_xmmsc_result_dict_foreach_cb (const void *key, xmmsv_type_t type, const void *value, void *user_data)
 {
 	HV *hash = (HV *)user_data;
 
@@ -190,25 +190,25 @@ perl_xmmsclient_result_get_value (xmmsc_result_t *res)
 	SV *ret;
 
 	switch (xmmsc_result_get_type (res)) {
-		case XMMS_VALUE_TYPE_UINT32:
+		case XMMSV_TYPE_UINT32:
 			ret = perl_xmmsclient_xmmsc_result_get_uint (res);
 			break;
-		case XMMS_VALUE_TYPE_INT32:
+		case XMMSV_TYPE_INT32:
 			ret = perl_xmmsclient_xmmsc_result_get_int (res);
 			break;
-		case XMMS_VALUE_TYPE_STRING:
+		case XMMSV_TYPE_STRING:
 			ret = perl_xmmsclient_xmmsc_result_get_string (res);
 			break;
-		case XMMS_VALUE_TYPE_COLL:
+		case XMMSV_TYPE_COLL:
 			ret = perl_xmmsclient_xmmsc_result_get_coll (res);
 			break;
-		case XMMS_VALUE_TYPE_BIN:
+		case XMMSV_TYPE_BIN:
 			ret = perl_xmmsclient_xmmsc_result_get_bin (res);
 			break;
-		case XMMS_VALUE_TYPE_DICT:
+		case XMMSV_TYPE_DICT:
 			ret = perl_xmmsclient_xmmsc_result_get_dict (res);
 			break;
-		case XMMS_VALUE_TYPE_PROPDICT:
+		case XMMSV_TYPE_PROPDICT:
 			ret = perl_xmmsclient_xmmsc_result_get_propdict (res);
 			break;
 		default:
@@ -611,7 +611,7 @@ Get the type of the result. May be one of "none", "uint", "int", "dict", "bin",
 
 =cut
 
-xmms_value_t
+xmmsv_t
 xmmsc_result_get_type (res)
 		xmmsc_result_t *res
 

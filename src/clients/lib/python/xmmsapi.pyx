@@ -26,16 +26,16 @@ cdef extern from "xmms_pyrex_hacks.h":
 		pass
 
 cdef extern from "xmmsc/xmmsc_idnumbers.h":
-	ctypedef enum xmms_value_t:
-		XMMS_VALUE_TYPE_NONE,
-		XMMS_VALUE_TYPE_UINT32,
-		XMMS_VALUE_TYPE_INT32,
-		XMMS_VALUE_TYPE_STRING,
-		XMMS_VALUE_TYPE_DICT,
-		XMMS_VALUE_TYPE_LIST,
-		XMMS_VALUE_TYPE_PROPDICT,
-		XMMS_VALUE_TYPE_COLL
-		XMMS_VALUE_TYPE_BIN
+	ctypedef enum xmmsv_t:
+		XMMSV_TYPE_NONE,
+		XMMSV_TYPE_UINT32,
+		XMMSV_TYPE_INT32,
+		XMMSV_TYPE_STRING,
+		XMMSV_TYPE_DICT,
+		XMMSV_TYPE_LIST,
+		XMMSV_TYPE_PROPDICT,
+		XMMSV_TYPE_COLL
+		XMMSV_TYPE_BIN
 	ctypedef enum xmmsc_coll_type_t:
 		XMMS_COLLECTION_TYPE_REFERENCE
 		XMMS_COLLECTION_TYPE_UNION
@@ -54,14 +54,14 @@ cdef extern from "xmmsc/xmmsc_idnumbers.h":
 
 # The following constants are meant for interpreting the return value of
 # XMMSResult.get_type ()
-OBJECT_CMD_ARG_NONE = XMMS_VALUE_TYPE_NONE
-OBJECT_CMD_ARG_UINT32 = XMMS_VALUE_TYPE_UINT32
-OBJECT_CMD_ARG_INT32 = XMMS_VALUE_TYPE_INT32
-OBJECT_CMD_ARG_STRING = XMMS_VALUE_TYPE_STRING
-OBJECT_CMD_ARG_DICT = XMMS_VALUE_TYPE_DICT
-OBJECT_CMD_ARG_LIST = XMMS_VALUE_TYPE_LIST
-OBJECT_CMD_ARG_BIN = XMMS_VALUE_TYPE_BIN
-OBJECT_CMD_ARG_COLL = XMMS_VALUE_TYPE_COLL
+OBJECT_CMD_ARG_NONE = XMMSV_TYPE_NONE
+OBJECT_CMD_ARG_UINT32 = XMMSV_TYPE_UINT32
+OBJECT_CMD_ARG_INT32 = XMMSV_TYPE_INT32
+OBJECT_CMD_ARG_STRING = XMMSV_TYPE_STRING
+OBJECT_CMD_ARG_DICT = XMMSV_TYPE_DICT
+OBJECT_CMD_ARG_LIST = XMMSV_TYPE_LIST
+OBJECT_CMD_ARG_BIN = XMMSV_TYPE_BIN
+OBJECT_CMD_ARG_COLL = XMMSV_TYPE_COLL
 
 cdef extern from "xmmsc/xmmsc_idnumbers.h":
 	ctypedef enum xmms_playback_status_t:
@@ -132,7 +132,7 @@ COLLECTION_CHANGED_RENAME = XMMS_COLLECTION_CHANGED_RENAME
 COLLECTION_CHANGED_REMOVE = XMMS_COLLECTION_CHANGED_REMOVE
 
 cdef extern from "xmmsclient/xmmsclient.h":
-	ctypedef enum xmms_value_type_t:
+	ctypedef enum xmmsv_type_t:
 		XMMSC_RESULT_VALUE_TYPE_NONE,
 		XMMSC_RESULT_VALUE_TYPE_UINT32,
 		XMMSC_RESULT_VALUE_TYPE_INT32,
@@ -164,7 +164,7 @@ cdef extern from "xmmsclient/xmmsclient.h":
 	void xmmsc_result_wait(xmmsc_result_t *res)
 	int xmmsc_result_iserror(xmmsc_result_t *res)
 	char *xmmsc_result_get_error(xmmsc_result_t *res)
-	xmms_value_type_t xmmsc_result_get_type(xmmsc_result_t *res)
+	xmmsv_type_t xmmsc_result_get_type(xmmsc_result_t *res)
 	xmmsc_result_type_t xmmsc_result_get_class(xmmsc_result_t *res)
 
 	int xmmsc_result_get_int(xmmsc_result_t *res, int *r)
@@ -174,8 +174,8 @@ cdef extern from "xmmsclient/xmmsclient.h":
 	int xmmsc_result_get_playlist_change(xmmsc_result_t *res, unsigned int *change, unsigned int *id, unsigned int *argument)
 	int xmmsc_result_get_collection (xmmsc_result_t *conn, xmmsc_coll_t **coll)
 
-	ctypedef void(*xmmsc_dict_foreach_func)(void *key, xmms_value_type_t type, void *value, void *user_data)
-	ctypedef void(*xmmsc_propdict_foreach_func)(void *key, xmms_value_type_t type, void *value, char *source, void *user_data)
+	ctypedef void(*xmmsc_dict_foreach_func)(void *key, xmmsv_type_t type, void *value, void *user_data)
+	ctypedef void(*xmmsc_propdict_foreach_func)(void *key, xmmsv_type_t type, void *value, char *source, void *user_data)
 
 	int xmmsc_result_get_dict_entry(xmmsc_result_t *res, char *key, char **r)
 	int xmmsc_result_dict_foreach(xmmsc_result_t *res, xmmsc_dict_foreach_func func, void *user_data)
@@ -396,7 +396,7 @@ cdef class _ListConverter:
 			i = i + 1
 		free(self.lst) 
 
-cdef foreach_source_hash(char *key, xmms_value_type_t typ, void *value, char *source, udata):
+cdef foreach_source_hash(char *key, xmmsv_type_t typ, void *value, char *source, udata):
 	if typ == XMMSC_RESULT_VALUE_TYPE_STRING:
 		v = to_unicode(<char *>value)
 	elif typ == XMMSC_RESULT_VALUE_TYPE_UINT32:
@@ -406,7 +406,7 @@ cdef foreach_source_hash(char *key, xmms_value_type_t typ, void *value, char *so
 
 	udata[(source,key)]=v
 
-cdef foreach_hash(char *key, xmms_value_type_t typ, void *value, udata):
+cdef foreach_hash(char *key, xmmsv_type_t typ, void *value, udata):
 	if typ == XMMSC_RESULT_VALUE_TYPE_STRING:
 		v = to_unicode(<char *>value)
 	elif typ == XMMSC_RESULT_VALUE_TYPE_UINT32:
@@ -884,7 +884,7 @@ cdef class XMMSResult:
 		return xmmsc_result_get_type(self.res)
 
 	def _value(self):
-		cdef xmms_value_type_t typ
+		cdef xmmsv_type_t typ
 		typ = xmmsc_result_get_type(self.res)
 
 		if typ == XMMSC_RESULT_VALUE_TYPE_UINT32:

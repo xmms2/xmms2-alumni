@@ -14,8 +14,8 @@
  *  Lesser General Public License for more details.
  */
 
-#ifndef __XMMS_VALUE_H__
-#define __XMMS_VALUE_H__
+#ifndef __XMMSV_H__
+#define __XMMSV_H__
 
 #include "xmmsc/xmmsc_stdint.h"
 #include "xmmsc/xmmsc_idnumbers.h"
@@ -25,95 +25,95 @@
 extern "C" {
 #endif
 
-typedef struct xmms_value_St xmms_value_t;
+typedef struct xmmsv_St xmmsv_t;
 
-typedef struct xmms_value_list_iter_St xmms_value_list_iter_t;
-typedef struct xmms_value_dict_iter_St xmms_value_dict_iter_t;
+typedef struct xmmsv_list_iter_St xmmsv_list_iter_t;
+typedef struct xmmsv_dict_iter_St xmmsv_dict_iter_t;
 
-xmms_value_t *xmms_value_new_none ();
-xmms_value_t *xmms_value_new_error (const char *errstr); /* FIXME: err id? */
-xmms_value_t *xmms_value_new_int (int32_t i);
-xmms_value_t *xmms_value_new_uint (uint32_t u);
-xmms_value_t *xmms_value_new_string (const char *s);
-xmms_value_t *xmms_value_new_coll (xmmsc_coll_t *coll);
-xmms_value_t *xmms_value_new_bin (unsigned char *data, unsigned int len);
+xmmsv_t *xmmsv_new_none ();
+xmmsv_t *xmmsv_new_error (const char *errstr); /* FIXME: err id? */
+xmmsv_t *xmmsv_new_int (int32_t i);
+xmmsv_t *xmmsv_new_uint (uint32_t u);
+xmmsv_t *xmmsv_new_string (const char *s);
+xmmsv_t *xmmsv_new_coll (xmmsc_coll_t *coll);
+xmmsv_t *xmmsv_new_bin (unsigned char *data, unsigned int len);
 
-xmms_value_t *xmms_value_new_list ();
-xmms_value_t *xmms_value_new_dict ();
+xmmsv_t *xmmsv_new_list ();
+xmmsv_t *xmmsv_new_dict ();
 
-xmms_value_t *xmms_value_ref (xmms_value_t *val);
-void xmms_value_unref (xmms_value_t *val);
+xmmsv_t *xmmsv_ref (xmmsv_t *val);
+void xmmsv_unref (xmmsv_t *val);
 
-xmms_value_type_t xmms_value_get_type (xmms_value_t *val);
+xmmsv_type_t xmmsv_get_type (xmmsv_t *val);
 
 /* legacy aliases */
-int xmms_value_iserror (xmms_value_t *val);
-int xmms_value_is_list (xmms_value_t *val);
-int xmms_value_is_dict (xmms_value_t *val);
-const char * xmms_value_get_error_old (xmms_value_t *val);
+int xmmsv_iserror (xmmsv_t *val);
+int xmmsv_is_list (xmmsv_t *val);
+int xmmsv_is_dict (xmmsv_t *val);
+const char * xmmsv_get_error_old (xmmsv_t *val);
 
-typedef void (*xmmsc_list_foreach_func) (xmms_value_t *value, void *user_data);
-typedef void (*xmmsc_dict_foreach_func) (const void *key, xmms_value_t *value, void *user_data);
+typedef void (*xmmsc_list_foreach_func) (xmmsv_t *value, void *user_data);
+typedef void (*xmmsc_dict_foreach_func) (const void *key, xmmsv_t *value, void *user_data);
 
 /* legacy transitional utilities */
-xmms_value_type_t xmms_value_get_dict_entry_type (xmms_value_t *val, const char *key);
-int xmms_value_get_dict_entry_string (xmms_value_t *val, const char *key, const char **r);
-int xmms_value_get_dict_entry_int (xmms_value_t *val, const char *key, int32_t *r);
-int xmms_value_get_dict_entry_uint (xmms_value_t *val, const char *key, uint32_t *r);
-int xmms_value_get_dict_entry_collection (xmms_value_t *val, const char *key, xmmsc_coll_t **coll);
-int xmms_value_dict_foreach (xmms_value_t *val, xmmsc_dict_foreach_func func, void *user_data);
-xmms_value_t *xmms_value_propdict_to_dict (xmms_value_t *propdict, const char **src_prefs);
+xmmsv_type_t xmmsv_get_dict_entry_type (xmmsv_t *val, const char *key);
+int xmmsv_get_dict_entry_string (xmmsv_t *val, const char *key, const char **r);
+int xmmsv_get_dict_entry_int (xmmsv_t *val, const char *key, int32_t *r);
+int xmmsv_get_dict_entry_uint (xmmsv_t *val, const char *key, uint32_t *r);
+int xmmsv_get_dict_entry_collection (xmmsv_t *val, const char *key, xmmsc_coll_t **coll);
+int xmmsv_dict_foreach (xmmsv_t *val, xmmsc_dict_foreach_func func, void *user_data);
+xmmsv_t *xmmsv_propdict_to_dict (xmmsv_t *propdict, const char **src_prefs);
 
-int xmms_value_get_error (xmms_value_t *val, const char **r);
-int xmms_value_get_int (xmms_value_t *val, int32_t *r);
-int xmms_value_get_uint (xmms_value_t *val, uint32_t *r);
-int xmms_value_get_string (xmms_value_t *val, const char **r);
-int xmms_value_get_collection (xmms_value_t *val, xmmsc_coll_t **coll);
-int xmms_value_get_bin (xmms_value_t *val, unsigned char **r, unsigned int *rlen);
+int xmmsv_get_error (xmmsv_t *val, const char **r);
+int xmmsv_get_int (xmmsv_t *val, int32_t *r);
+int xmmsv_get_uint (xmmsv_t *val, uint32_t *r);
+int xmmsv_get_string (xmmsv_t *val, const char **r);
+int xmmsv_get_collection (xmmsv_t *val, xmmsc_coll_t **coll);
+int xmmsv_get_bin (xmmsv_t *val, unsigned char **r, unsigned int *rlen);
 
-int xmms_value_get_list_iter (xmms_value_t *val, xmms_value_list_iter_t **it);
-int xmms_value_get_dict_iter (xmms_value_t *val, xmms_value_dict_iter_t **it);
+int xmmsv_get_list_iter (xmmsv_t *val, xmmsv_list_iter_t **it);
+int xmmsv_get_dict_iter (xmmsv_t *val, xmmsv_dict_iter_t **it);
 
 /* List */
-int xmms_value_list_get (xmms_value_t *listv, int pos, xmms_value_t **val);
-int xmms_value_list_append (xmms_value_t *listv, xmms_value_t *val);
-int xmms_value_list_insert (xmms_value_t *listv, int pos, xmms_value_t *val);
-int xmms_value_list_remove (xmms_value_t *listv, int pos);
-int xmms_value_list_clear (xmms_value_t *listv);
-int xmms_value_list_foreach (xmms_value_t *listv, xmmsc_list_foreach_func func, void* user_data);
+int xmmsv_list_get (xmmsv_t *listv, int pos, xmmsv_t **val);
+int xmmsv_list_append (xmmsv_t *listv, xmmsv_t *val);
+int xmmsv_list_insert (xmmsv_t *listv, int pos, xmmsv_t *val);
+int xmmsv_list_remove (xmmsv_t *listv, int pos);
+int xmmsv_list_clear (xmmsv_t *listv);
+int xmmsv_list_foreach (xmmsv_t *listv, xmmsc_list_foreach_func func, void* user_data);
 
-int  xmms_value_list_iter_entry (xmms_value_list_iter_t *it, xmms_value_t **val);
-int  xmms_value_list_iter_valid (xmms_value_list_iter_t *it);
-void xmms_value_list_iter_first (xmms_value_list_iter_t *it);
-void xmms_value_list_iter_next (xmms_value_list_iter_t *it);
-int  xmms_value_list_iter_goto (xmms_value_list_iter_t *it, int pos);
+int  xmmsv_list_iter_entry (xmmsv_list_iter_t *it, xmmsv_t **val);
+int  xmmsv_list_iter_valid (xmmsv_list_iter_t *it);
+void xmmsv_list_iter_first (xmmsv_list_iter_t *it);
+void xmmsv_list_iter_next (xmmsv_list_iter_t *it);
+int  xmmsv_list_iter_goto (xmmsv_list_iter_t *it, int pos);
 
-int  xmms_value_list_iter_insert (xmms_value_list_iter_t *it, xmms_value_t *val);
-int  xmms_value_list_iter_remove (xmms_value_list_iter_t *it);
+int  xmmsv_list_iter_insert (xmmsv_list_iter_t *it, xmmsv_t *val);
+int  xmmsv_list_iter_remove (xmmsv_list_iter_t *it);
 
 /* Dict */
-int xmms_value_dict_get (xmms_value_t *dictv, const char *key, xmms_value_t **val);
-int xmms_value_dict_insert (xmms_value_t *dictv, const char *key, xmms_value_t *val);
-int xmms_value_dict_remove (xmms_value_t *dictv, const char *key);
-int xmms_value_dict_clear (xmms_value_t *dictv);
-int xmms_value_dict_foreach (xmms_value_t *dictv, xmmsc_dict_foreach_func func, void *user_data);
+int xmmsv_dict_get (xmmsv_t *dictv, const char *key, xmmsv_t **val);
+int xmmsv_dict_insert (xmmsv_t *dictv, const char *key, xmmsv_t *val);
+int xmmsv_dict_remove (xmmsv_t *dictv, const char *key);
+int xmmsv_dict_clear (xmmsv_t *dictv);
+int xmmsv_dict_foreach (xmmsv_t *dictv, xmmsc_dict_foreach_func func, void *user_data);
 
-int xmms_value_get_dict_iter (xmms_value_t *val, xmms_value_dict_iter_t **it);
+int xmmsv_get_dict_iter (xmmsv_t *val, xmmsv_dict_iter_t **it);
 
-int  xmms_value_dict_iter_pair (xmms_value_dict_iter_t *it, const char **key, xmms_value_t **val);
-int  xmms_value_dict_iter_valid (xmms_value_dict_iter_t *it);
-void xmms_value_dict_iter_first (xmms_value_dict_iter_t *it);
-void xmms_value_dict_iter_next (xmms_value_dict_iter_t *it);
-int  xmms_value_dict_iter_seek (xmms_value_dict_iter_t *it, const char *key);
+int  xmmsv_dict_iter_pair (xmmsv_dict_iter_t *it, const char **key, xmmsv_t **val);
+int  xmmsv_dict_iter_valid (xmmsv_dict_iter_t *it);
+void xmmsv_dict_iter_first (xmmsv_dict_iter_t *it);
+void xmmsv_dict_iter_next (xmmsv_dict_iter_t *it);
+int  xmmsv_dict_iter_seek (xmmsv_dict_iter_t *it, const char *key);
 
-int  xmms_value_dict_iter_set (xmms_value_dict_iter_t *it, xmms_value_t *val);
-int  xmms_value_dict_iter_remove (xmms_value_dict_iter_t *it);
+int  xmmsv_dict_iter_set (xmmsv_dict_iter_t *it, xmmsv_t *val);
+int  xmmsv_dict_iter_remove (xmmsv_dict_iter_t *it);
 
 /* Utils */
 
-#define xmms_value_check_type(type) \
-        ((type) > XMMS_VALUE_TYPE_NONE && \
-         (type) < XMMS_VALUE_TYPE_END)
+#define xmmsv_check_type(type) \
+        ((type) > XMMSV_TYPE_NONE && \
+         (type) < XMMSV_TYPE_END)
 
 
 /* FIXME: utilities:
@@ -123,7 +123,7 @@ make_string_list
 */
 
 /* FIXME: move to utils or something! */
-char *xmms_value_decode_url (const char *string);
+char *xmmsv_decode_url (const char *string);
 
 #ifdef __cplusplus
 }

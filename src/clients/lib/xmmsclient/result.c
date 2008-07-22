@@ -61,7 +61,7 @@ struct xmmsc_result_St {
 
 	int parsed;
 
-	xmms_value_t *data;
+	xmmsv_t *data;
 };
 
 /**
@@ -77,29 +77,29 @@ struct xmmsc_result_St {
  * is a sync example:
  * @code
  * xmmsc_result_t *res;
- * xmms_value_t *val;
+ * xmmsv_t *val;
  * uint32_t id;
  * res = xmmsc_playback_get_current_id (connection);
  * xmmsc_result_wait (res);
  * if (!val = xmmsc_result_get_value (res)) {
  *   printf ("error: failed to retrieve value!");
  * }
- * if (xmms_value_iserror (val)) {
- *   printf ("error: %s", xmms_value_get_error (val));
+ * if (xmmsv_iserror (val)) {
+ *   printf ("error: %s", xmmsv_get_error (val));
  * }
- * xmms_value_get_uint (val, &id);
+ * xmmsv_get_uint (val, &id);
  * xmmsc_result_unref (res);
  * printf ("current id is: %d", id);
  * @endcode
  *
  * an async example is a bit more complex...
  * @code
- * static void handler (xmms_value_t *val, void *userdata) {
+ * static void handler (xmmsv_t *val, void *userdata) {
  *   uint32_t id;
- *   if (xmms_value_iserror (val)) {
- *      printf ("error: %s", xmms_value_get_error (val));
+ *   if (xmmsv_iserror (val)) {
+ *      printf ("error: %s", xmmsv_get_error (val));
  *   }
- *   xmms_value_get_uint (val, &id);
+ *   xmmsv_get_uint (val, &id);
  *   printf ("current id is: %d", id);
  * }
  *
@@ -111,7 +111,7 @@ struct xmmsc_result_St {
  *   xmmsc_result_unref (res);
  * }
  * @endcode
- * When the answer arrives handler will be called. with the resulting #xmms_value_t
+ * When the answer arrives handler will be called. with the resulting #xmmsv_t
  * @{
 **/
 
@@ -146,7 +146,7 @@ xmmsc_result_free (xmmsc_result_t *res)
 
 	xmmsc_unref (res->c);
 
-	xmms_value_unref (res->data);
+	xmmsv_unref (res->data);
 
 	n = res->notifiers;
 	while (n) {
@@ -354,8 +354,8 @@ xmmsc_result_wait (xmmsc_result_t *res)
 	}
 
 	if (err) {
-		/* FIXME: xmms_value_unref (res->data) or not allocated ? */
-		res->data = xmms_value_new_error (err);
+		/* FIXME: xmmsv_unref (res->data) or not allocated ? */
+		res->data = xmmsv_new_error (err);
 	}
 }
 
@@ -371,7 +371,7 @@ xmmsc_result_wait (xmmsc_result_t *res)
  * @param res a #xmmsc_result_t containing the value.
  * @returns The value received by the result.
  */
-xmms_value_t *
+xmmsv_t *
 xmmsc_result_get_value (xmmsc_result_t *res)
 {
 	x_return_val_if_fail (res, NULL);
@@ -391,9 +391,9 @@ void
 xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr)
 {
 	if (res->data) {
-		xmms_value_unref (res->data);
+		xmmsv_unref (res->data);
 	}
-	res->data = xmms_value_new_error (errstr);
+	res->data = xmmsv_new_error (errstr);
 }
 
 void
@@ -464,7 +464,7 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 		/* We keep the results alive with broadcasts, but we
 		   just renew the value because it went out of scope.
 		   (freeing the payload) */
-		xmms_value_unref (res->data);
+		xmmsv_unref (res->data);
 	}
 
 	xmmsc_result_unref (res);

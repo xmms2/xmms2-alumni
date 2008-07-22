@@ -393,7 +393,7 @@ void
 cmd_sort (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *playlist;
-	xmms_value_t *sortby;
+	xmmsv_t *sortby;
 	xmmsc_result_t *res;
 
 	if (argc < 3) {
@@ -413,7 +413,7 @@ cmd_sort (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		print_error ("%s", xmmsc_result_get_error (res));
 	}
 	xmmsc_result_unref (res);
-	xmms_value_unref (sortby);
+	xmmsv_unref (sortby);
 }
 
 
@@ -482,8 +482,8 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *playlist = NULL;
 	xmmsc_result_t *res;
-	xmms_value_t *val;
-	xmms_value_list_iter_t *it;
+	xmmsv_t *val;
+	xmmsv_list_iter_t *it;
 	gulong total_playtime = 0;
 	guint p = 0;
 	guint pos = 0;
@@ -496,8 +496,8 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (!xmms_value_iserror (val)) {
-		if (!xmms_value_get_dict_entry_uint (val, "position", &p)) {
+	if (!xmmsv_iserror (val)) {
+		if (!xmmsv_get_dict_entry_uint (val, "position", &p)) {
 			print_error ("Broken resultset");
 		}
 		xmmsc_result_unref (res);
@@ -507,33 +507,33 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error_old (val));
+	if (xmmsv_iserror (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	xmms_value_get_list_iter (val, &it);
-	while (xmms_value_list_iter_valid (it)) {
+	xmmsv_get_list_iter (val, &it);
+	while (xmmsv_list_iter_valid (it)) {
 		xmmsc_result_t *info_res;
-		xmms_value_t *val_id, *propdict, *info_val;
+		xmmsv_t *val_id, *propdict, *info_val;
 		gchar line[80];
 		gint playtime = 0;
 		guint ui;
 
-		xmms_value_list_iter_entry (it, &val_id);
-		if (!xmms_value_get_uint (val_id, &ui)) {
+		xmmsv_list_iter_entry (it, &val_id);
+		if (!xmmsv_get_uint (val_id, &ui)) {
 			print_error ("Broken resultset");
 		}
 
 		info_res = xmmsc_medialib_get_info (conn, ui);
 		xmmsc_result_wait (info_res);
 		propdict = xmmsc_result_get_value (info_res);
-		info_val = xmms_value_propdict_to_dict (propdict, default_source_pref);
+		info_val = xmmsv_propdict_to_dict (propdict, default_source_pref);
 
-		if (xmms_value_iserror (info_val)) {
-			print_error ("%s", xmms_value_get_error_old (info_val));
+		if (xmmsv_iserror (info_val)) {
+			print_error ("%s", xmmsv_get_error_old (info_val));
 		}
 
-		if (xmms_value_get_dict_entry_int (info_val, "duration", &playtime)) {
+		if (xmmsv_get_dict_entry_int (info_val, "duration", &playtime)) {
 			total_playtime += playtime;
 		}
 
@@ -552,7 +552,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 			xmmsc_entry_format (dur, sizeof (dur),
 			                    "(${minutes}:${seconds})", info_val);
 
-			if (xmms_value_get_dict_entry_string (info_val, "url", &url)) {
+			if (xmmsv_get_dict_entry_string (info_val, "url", &url)) {
 				gchar *filename = g_path_get_basename (url);
 				if (filename) {
 					g_snprintf (line, sizeof (line), "%s %s", filename, dur);
@@ -574,8 +574,8 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		pos++;
 
 		xmmsc_result_unref (info_res);
-		xmms_value_unref (info_val);
-		xmms_value_list_iter_next (it);
+		xmmsv_unref (info_val);
+		xmmsv_list_iter_next (it);
 	}
 	xmmsc_result_unref (res);
 
@@ -668,7 +668,7 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	gchar *name;
 	xmmsc_coll_type_t prevtype, newtype;
 	xmmsc_result_t *res;
-	xmms_value_t *val;
+	xmmsv_t *val;
 	xmmsc_coll_t *coll;
 
 	/* Read playlist name */
@@ -682,11 +682,11 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error_old (val));
+	if (xmmsv_iserror (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	xmms_value_get_collection (val, &coll);
+	xmmsv_get_collection (val, &coll);
 	prevtype = xmmsc_coll_get_type (coll);
 
 	/* No type argument, simply display the current type */
@@ -757,15 +757,15 @@ cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	const gchar *active_name;
 	xmmsc_result_t *res, *active_res;
-	xmms_value_t *val, *active_val;
-	xmms_value_list_iter_t *it;
+	xmmsv_t *val, *active_val;
+	xmmsv_list_iter_t *it;
 
 	active_res = xmmsc_playlist_current_active (conn);
 	xmmsc_result_wait (active_res);
 	active_val = xmmsc_result_get_value (active_res);
 
-	if (xmms_value_iserror (active_val) ||
-	    !xmms_value_get_string (active_val, &active_name)) {
+	if (xmmsv_iserror (active_val) ||
+	    !xmmsv_get_string (active_val, &active_name)) {
 		active_name = NULL;
 	}
 
@@ -773,17 +773,17 @@ cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error_old (val));
+	if (xmmsv_iserror (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	xmms_value_get_list_iter (val, &it);
-	while (xmms_value_list_iter_valid (it)) {
-		xmms_value_t *valstr;
+	xmmsv_get_list_iter (val, &it);
+	while (xmmsv_list_iter_valid (it)) {
+		xmmsv_t *valstr;
 		const gchar *name;
 
-		xmms_value_list_iter_entry (it, &valstr);
-		if (!xmms_value_get_string (valstr, &name)) {
+		xmmsv_list_iter_entry (it, &valstr);
+		if (!xmmsv_get_string (valstr, &name)) {
 			print_error ("Broken resultset");
 		}
 
@@ -795,7 +795,7 @@ cmd_playlists_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 				print_info ("  %s", name);
 			}
 		}
-		xmms_value_list_iter_next (it);
+		xmmsv_list_iter_next (it);
 	}
 	xmmsc_result_unref (res);
 	xmmsc_result_unref (active_res);
@@ -806,14 +806,14 @@ cmd_playlist_active (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	const gchar *active_name;
 	xmmsc_result_t *active_res;
-	xmms_value_t *active_val;
+	xmmsv_t *active_val;
 
 	active_res = xmmsc_playlist_current_active (conn);
 	xmmsc_result_wait (active_res);
 	active_val = xmmsc_result_get_value (active_res);
 
-	if (!xmms_value_iserror (active_val) &&
-	    xmms_value_get_string (active_val, &active_name)) {
+	if (!xmmsv_iserror (active_val) &&
+	    xmmsv_get_string (active_val, &active_name)) {
 		print_info ("%s",active_name);
 	}
 
@@ -845,7 +845,7 @@ cmd_addpls (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *playlist;
 	xmmsc_result_t *res, *res2;
-	xmms_value_t *val;
+	xmmsv_t *val;
 	xmmsc_coll_t *coll;
 	gchar *url;
 
@@ -867,11 +867,11 @@ cmd_addpls (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error_old (val));
+	if (xmmsv_iserror (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	if (!xmms_value_get_collection (val, &coll)) {
+	if (!xmmsv_get_collection (val, &coll)) {
 		print_error ("Couldn't get collection from result!");
 	}
 

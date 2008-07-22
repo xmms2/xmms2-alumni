@@ -47,18 +47,18 @@ cmd_toggleplay (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	uint32_t status;
 	xmmsc_result_t *res;
-	xmms_value_t *val;
+	xmmsv_t *val;
 
 	res = xmmsc_playback_status (conn);
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmms_value_iserror (val)) {
+	if (xmmsv_iserror (val)) {
 		print_error ("Couldn't get playback status: %s",
-		             xmms_value_get_error_old (val));
+		             xmmsv_get_error_old (val));
 	}
 
-	if (!xmms_value_get_uint (val, &status)) {
+	if (!xmmsv_get_uint (val, &status)) {
 		print_error ("Broken resultset");
 	}
 

@@ -118,10 +118,10 @@ xmmsc_playlist_shuffle (xmmsc_connection_t *c, const char *playlist)
 
 /**
  * Sorts the playlist according to the list of properties
- * (#xmms_value_t containing a list of strings).
+ * (#xmmsv_t containing a list of strings).
  */
 xmmsc_result_t *
-xmmsc_playlist_sort (xmmsc_connection_t *c, const char *playlist, xmms_value_t *properties)
+xmmsc_playlist_sort (xmmsc_connection_t *c, const char *playlist, xmmsv_t *properties)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -306,12 +306,12 @@ xmmsc_playlist_insert_encoded (xmmsc_connection_t *c, const char *playlist, int 
  * @param pos A position in the playlist
  * @param coll The collection to find media in the medialib.
  * @param order The list of properties by which to order the matching
- *              media, passed as an #xmms_value_t list of strings.
+ *              media, passed as an #xmmsv_t list of strings.
  */
 xmmsc_result_t *
 xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist,
                                   int pos, xmmsc_coll_t *coll,
-                                  xmms_value_t *order)
+                                  xmmsv_t *order)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -548,11 +548,11 @@ xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist,
  * @param playlist The playlist in which to add the media.
  * @param coll The collection to find media in the medialib.
  * @param order The list of properties by which to order the matching
- *              media, passed as an #xmms_value_t list of strings.
+ *              media, passed as an #xmmsv_t list of strings.
  */
 xmmsc_result_t *
 xmmsc_playlist_add_collection (xmmsc_connection_t *c, const char *playlist,
-                               xmmsc_coll_t *coll, xmms_value_t *order)
+                               xmmsc_coll_t *coll, xmmsv_t *order)
 {
 	xmms_ipc_msg_t *msg;
 

@@ -51,12 +51,12 @@ do_methodcall (xmmsc_connection_t *conn, unsigned int id, const char *arg)
  * @param len Length of target
  * @param fmt A format string to use. You can insert items from the hash by
  * using specialformat "${field}".
- * @param val The #xmms_value_t that contains the dict.
+ * @param val The #xmmsv_t that contains the dict.
  * @returns The number of chars written to target
  */
 
 int
-xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
+xmmsc_entry_format (char *target, int len, const char *fmt, xmmsv_t *val)
 {
 	const char *pos;
 
@@ -74,8 +74,8 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 	while (strlen (target) + 1 < len) {
 		char *next_key, *key, *end;
 		int keylen;
-		xmms_value_dict_iter_t *it;
-		xmms_value_t *v;
+		xmmsv_dict_iter_t *it;
+		xmmsv_t *v;
 
 		next_key = strstr (pos, "${");
 		if (!next_key) {
@@ -95,14 +95,14 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 		memset (key, 0, keylen + 1);
 		strncpy (key, next_key + 2, keylen);
 
-		xmms_value_get_dict_iter (val, &it);
+		xmmsv_get_dict_iter (val, &it);
 
 		if (strcmp (key, "seconds") == 0) {
 			int duration;
 
-			xmms_value_dict_iter_seek (it, "duration");
-			xmms_value_dict_iter_pair (it, NULL, &v);
-			xmms_value_get_int (v, &duration);
+			xmmsv_dict_iter_seek (it, "duration");
+			xmmsv_dict_iter_pair (it, NULL, &v);
+			xmmsv_get_int (v, &duration);
 
 			if (!duration) {
 				strncat (target, "00", len - strlen (target) - 1);
@@ -116,9 +116,9 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 		} else if (strcmp (key, "minutes") == 0) {
 			int duration;
 
-			xmms_value_dict_iter_seek (it, "duration");
-			xmms_value_dict_iter_pair (it, NULL, &v);
-			xmms_value_get_int (v, &duration);
+			xmmsv_dict_iter_seek (it, "duration");
+			xmmsv_dict_iter_pair (it, NULL, &v);
+			xmmsv_get_int (v, &duration);
 
 			if (!duration) {
 				strncat (target, "00", len - strlen (target) - 1);
@@ -133,20 +133,20 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmms_value_t *val)
 			const char *result = NULL;
 			char tmp[12];
 
-			xmms_value_dict_iter_seek (it, key);
-			xmms_value_dict_iter_pair (it, NULL, &v);
+			xmmsv_dict_iter_seek (it, key);
+			xmmsv_dict_iter_pair (it, NULL, &v);
 
-			xmms_value_type_t type = xmms_value_get_type (v);
-			if (type == XMMS_VALUE_TYPE_STRING) {
-				xmms_value_get_string (v, &result);
-			} else if (type == XMMS_VALUE_TYPE_UINT32) {
+			xmmsv_type_t type = xmmsv_get_type (v);
+			if (type == XMMSV_TYPE_STRING) {
+				xmmsv_get_string (v, &result);
+			} else if (type == XMMSV_TYPE_UINT32) {
 				uint32_t ui;
-				xmms_value_get_uint (v, &ui);
+				xmmsv_get_uint (v, &ui);
 				snprintf (tmp, 12, "%u", ui);
 				result = tmp;
-			} else if (type == XMMS_VALUE_TYPE_INT32) {
+			} else if (type == XMMSV_TYPE_INT32) {
 				int32_t i;
-				xmms_value_get_int (v, &i);
+				xmmsv_get_int (v, &i);
 				snprintf (tmp, 12, "%d", i);
 				result = tmp;
 			}

@@ -71,26 +71,26 @@ static void
 coll_list (xmmsc_connection_t *conn, const gchar *namespace)
 {
 	xmmsc_result_t *res;
-	xmms_value_t *val;
-	xmms_value_list_iter_t *it;
+	xmmsv_t *val;
+	xmmsv_list_iter_t *it;
 
 	res = xmmsc_coll_list (conn, namespace);
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmms_value_iserror (val)) {
+	if (xmmsv_iserror (val)) {
 		print_error ("Couldn't list collections in namespace %s: %s",
-		             namespace, xmms_value_get_error_old (val));
+		             namespace, xmmsv_get_error_old (val));
 	} else {
-		xmms_value_get_list_iter (val, &it);
-		while (xmms_value_list_iter_valid (it)) {
-			xmms_value_t *valname;
+		xmmsv_get_list_iter (val, &it);
+		while (xmmsv_list_iter_valid (it)) {
+			xmmsv_t *valname;
 			const gchar *name;
 
-			xmms_value_list_iter_entry (it, &valname);
-			xmms_value_get_string (valname, &name);
+			xmmsv_list_iter_entry (it, &valname);
+			xmmsv_get_string (valname, &name);
 			print_info ("%s", name);
-			xmms_value_list_iter_next (it);
+			xmmsv_list_iter_next (it);
 		}
 	}
 	xmmsc_result_unref (res);
@@ -100,26 +100,26 @@ static void
 coll_find (xmmsc_connection_t *conn, const gchar *namespace, guint mid)
 {
 	xmmsc_result_t *res;
-	xmms_value_t *val;
-	xmms_value_list_iter_t *it;
+	xmmsv_t *val;
+	xmmsv_list_iter_t *it;
 
 	res = xmmsc_coll_find (conn, mid, namespace);
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmms_value_iserror (val)) {
+	if (xmmsv_iserror (val)) {
 		print_error ("Couldn't find collections containing media %d in namespace %s: %s",
-		             mid, namespace, xmms_value_get_error_old (val));
+		             mid, namespace, xmmsv_get_error_old (val));
 	} else {
-		xmms_value_get_list_iter (val, &it);
-		while (xmms_value_list_iter_valid (it)) {
-			xmms_value_t *valname;
+		xmmsv_get_list_iter (val, &it);
+		while (xmmsv_list_iter_valid (it)) {
+			xmmsv_t *valname;
 			const gchar *name;
 
-			xmms_value_list_iter_entry (it, &valname);
-			xmms_value_get_string (valname, &name);
+			xmmsv_list_iter_entry (it, &valname);
+			xmmsv_get_string (valname, &name);
 			print_info ("%s", name);
-			xmms_value_list_iter_next (it);
+			xmmsv_list_iter_next (it);
 		}
 	}
 	xmmsc_result_unref (res);
@@ -397,11 +397,11 @@ cmd_coll_query (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *name, *namespace;
 	gchar **orderv = NULL;
-	xmms_value_t *order;
+	xmmsv_t *order;
 	xmmsc_coll_t *collref;
 	xmmsc_result_t *res;
-	xmms_value_t *val;
-	xmms_value_list_iter_t *it;
+	xmmsv_t *val;
+	xmmsv_list_iter_t *it;
 	GList *n = NULL;
 
 	if (argc < 4) {
@@ -432,22 +432,22 @@ cmd_coll_query (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error_old (val));
+	if (xmmsv_iserror (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	xmms_value_get_list_iter (val, &it);
-	while (xmms_value_list_iter_valid (it)) {
-		xmms_value_t *val_id;
+	xmmsv_get_list_iter (val, &it);
+	while (xmmsv_list_iter_valid (it)) {
+		xmmsv_t *val_id;
 		guint id;
 
-		xmms_value_list_iter_entry (it, &val_id);
-		if (!xmms_value_get_uint (val_id, &id)) {
+		xmmsv_list_iter_entry (it, &val_id);
+		if (!xmmsv_get_uint (val_id, &id)) {
 			print_error ("Broken resultset");
 		}
 
 		n = g_list_prepend (n, XINT_TO_POINTER (id));
-		xmms_value_list_iter_next (it);
+		xmmsv_list_iter_next (it);
 	}
 	n = g_list_reverse (n);
 	format_pretty_list (conn, n);
@@ -465,7 +465,7 @@ cmd_coll_queryadd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *name, *namespace;
 	gchar **orderv = NULL;
-	xmms_value_t *order;
+	xmmsv_t *order;
 	xmmsc_coll_t *collref;
 	xmmsc_result_t *res;
 
@@ -537,7 +537,7 @@ cmd_coll_get (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *name, *namespace;
 	xmmsc_result_t *res;
-	xmms_value_t *val;
+	xmmsv_t *val;
 
 	if (argc < 4) {
 		print_error ("usage: coll get [collname]");
@@ -551,11 +551,11 @@ cmd_coll_get (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error_old (val));
+	if (xmmsv_iserror (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	} else {
 		xmmsc_coll_t *coll;
-		xmms_value_get_collection (val, &coll);
+		xmmsv_get_collection (val, &coll);
 		coll_print (coll);
 	}
 
@@ -595,7 +595,7 @@ cmd_coll_attr (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *name, *namespace;
 	xmmsc_result_t *res;
-	xmms_value_t *val;
+	xmmsv_t *val;
 
 	if (argc < 4) {
 		print_error ("usage: coll attr [collname] [attr] [val]");
@@ -609,11 +609,11 @@ cmd_coll_attr (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
 
-	if (xmms_value_iserror (val)) {
-		print_error ("%s", xmms_value_get_error_old (val));
+	if (xmmsv_iserror (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	} else {
 		xmmsc_coll_t *coll;
-		xmms_value_get_collection (val, &coll);
+		xmmsv_get_collection (val, &coll);
 
 		/* Print all attributes */
 		if (argc == 4) {

@@ -232,7 +232,7 @@ string_get (RbResult *res)
 }
 
 static VALUE
-cast_result_value (xmms_value_type_t type, const void *value)
+cast_result_value (xmmsv_type_t type, const void *value)
 {
 	VALUE val;
 
@@ -255,7 +255,7 @@ cast_result_value (xmms_value_type_t type, const void *value)
 }
 
 static void
-dict_to_hash (const void *key, xmms_value_type_t type,
+dict_to_hash (const void *key, xmmsv_type_t type,
               const void *value, void *udata)
 {
 	VALUE *h = udata;
@@ -314,28 +314,28 @@ value_get (VALUE self, RbResult *res)
 	VALUE ret;
 
 	switch (xmmsc_result_get_type (res->real)) {
-		case XMMS_VALUE_TYPE_UINT32:
+		case XMMSV_TYPE_UINT32:
 			ret = uint_get (res);
 			break;
-		case XMMS_VALUE_TYPE_INT32:
+		case XMMSV_TYPE_INT32:
 			ret = int_get (res);
 			break;
-		case XMMS_VALUE_TYPE_STRING:
+		case XMMSV_TYPE_STRING:
 			ret = string_get (res);
 			break;
-		case XMMS_VALUE_TYPE_DICT:
+		case XMMSV_TYPE_DICT:
 			ret = hashtable_get (res);
 			break;
-		case XMMS_VALUE_TYPE_PROPDICT:
+		case XMMSV_TYPE_PROPDICT:
 			ret = propdict_get (self, res);
 			break;
-		case XMMS_VALUE_TYPE_BIN:
+		case XMMSV_TYPE_BIN:
 			ret = bin_get (self, res);
 			break;
-		case XMMS_VALUE_TYPE_COLL:
+		case XMMSV_TYPE_COLL:
 			ret = coll_get (self, res);
 			break;
-		/* don't check for XMMS_VALUE_TYPE_LIST here */
+		/* don't check for XMMSV_TYPE_LIST here */
 		default:
 			ret = Qnil;
 			break;
@@ -462,7 +462,7 @@ static VALUE
 c_propdict_aref (VALUE self, VALUE key)
 {
 	RbResult *res = NULL;
-	xmms_value_type_t type;
+	xmmsv_type_t type;
 	VALUE tmp;
 	const char *ckey, *vstr;
 	int32_t vint;
@@ -503,7 +503,7 @@ c_propdict_has_key (VALUE self, VALUE key)
 {
 	RbResult *res = NULL;
 	VALUE tmp;
-	xmms_value_type_t type;
+	xmmsv_type_t type;
 	const char *ckey;
 
 	Check_Type (key, T_SYMBOL);
@@ -519,7 +519,7 @@ c_propdict_has_key (VALUE self, VALUE key)
 }
 
 static void
-propdict_each (const void *key, xmms_value_type_t type,
+propdict_each (const void *key, xmmsv_type_t type,
                const void *value, const char *src, void *udata)
 {
 	switch (XPOINTER_TO_INT (udata)) {

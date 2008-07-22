@@ -79,7 +79,7 @@ void perl_xmmsclient_callback_destroy (PerlXMMSClientCallback *cb);
 
 void perl_xmmsclient_callback_invoke (PerlXMMSClientCallback *cb, ...);
 
-SV *perl_xmmsclient_xmms_result_cast_value (xmms_value_type_t type, const void *value);
+SV *perl_xmmsclient_xmms_result_cast_value (xmmsv_type_t type, const void *value);
 
 char **perl_xmmsclient_unpack_char_ptr_ptr (SV *sv);
 
