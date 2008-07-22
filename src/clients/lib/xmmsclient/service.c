@@ -409,7 +409,6 @@ xmmsc_service_method_free (xmmsc_service_method_t *meth)
 xmmsc_result_t *
 xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 {
-	xmmsc_result_t *res;
 	xmms_ipc_msg_t *msg;
 	xmmsv_t *service;
 	xmmsv_t *tmp;
@@ -455,9 +454,7 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 	xmms_ipc_msg_put_value (msg, service);
 	xmmsv_unref (service);
 
-	res = xmmsc_send_msg (conn, msg);
-
-	return res;
+	return xmmsc_send_msg (conn, msg);
 
 err:
 	if (tmp) {
