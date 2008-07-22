@@ -320,6 +320,40 @@ xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
 }
 
 /**
+ * Increases the refcount of the #xmmsc_service_t.
+ *
+ * @param svc The #xmmsc_service_t to be referenced.
+ * @return #xmmsc_service_t on success, NULL otherwise.
+ */
+xmmsc_service_t *
+xmmsc_service_ref (xmmsc_service_t *svc)
+{
+	x_return_val_if_fail (svc, NULL);
+
+	svc->ref++;
+
+	return svc;
+}
+
+/**
+ * Decreases the refcount of the #xmmsc_service_t. If there are no more
+ * references to the #xmmsc_service_t, it will be freed.
+ *
+ * @param svc The #xmmsc_service_t to be unreferenced.
+ */
+void
+xmmsc_service_unref (xmmsc_service_t *svc)
+{
+	x_return_if_fail (svc);
+
+	svc->ref--;
+
+	if (svc->ref == 0) {
+		xmmsc_service_free (svc);
+	}
+}
+
+/**
  * Free a service.
  *
  * @param svc The Service.
