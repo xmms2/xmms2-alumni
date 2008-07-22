@@ -764,10 +764,10 @@ a given C<$namespace>.
 =cut
 
 xmmsc_result_t *
-xmmsc_coll_get (c, collname, namespace)
+xmmsv_coll_get (c, collname, namespace)
 		xmmsc_connection_t *c
 		const char *collname
-		xmmsc_coll_namespace_t namespace
+		xmmsv_coll_namespace_t namespace
 
 =head2 coll_sync
 
@@ -786,7 +786,7 @@ Synchronize collection data to the database.
 =cut
 
 xmmsc_result_t *
-xmmsc_coll_sync (c)
+xmmsv_coll_sync (c)
 		xmmsc_connection_t *c
 
 =head2 coll_list
@@ -806,9 +806,9 @@ List all collections saved on the server in a given C<$namespace>.
 =cut
 
 xmmsc_result_t *
-xmmsc_coll_list (c, namespace)
+xmmsv_coll_list (c, namespace)
 		xmmsc_connection_t *c
-		xmmsc_coll_namespace_t namespace
+		xmmsv_coll_namespace_t namespace
 
 =head2 coll_save
 
@@ -828,11 +828,11 @@ C<$namespace>.
 =cut
 
 xmmsc_result_t *
-xmmsc_coll_save (c, coll, name, namespace)
+xmmsv_coll_save (c, coll, name, namespace)
 		xmmsc_connection_t *c
-		xmmsc_coll_t *coll
+		xmmsv_coll_t *coll
 		const char *name
-		xmmsc_coll_namespace_t namespace
+		xmmsv_coll_namespace_t namespace
 
 =head2 coll_remove
 
@@ -851,10 +851,10 @@ Remove a collection from the server.
 =cut
 
 xmmsc_result_t *
-xmmsc_coll_remove (c, name, namespace)
+xmmsv_coll_remove (c, name, namespace)
 		xmmsc_connection_t *c
 		const char *name
-		xmmsc_coll_namespace_t namespace
+		xmmsv_coll_namespace_t namespace
 
 =head2 coll_find
 
@@ -874,10 +874,10 @@ with the given C<$mediaid>.
 =cut
 
 xmmsc_result_t *
-xmmsc_coll_find (c, mediaid, namespace)
+xmmsv_coll_find (c, mediaid, namespace)
 		xmmsc_connection_t *c
 		unsigned int mediaid
-		xmmsc_coll_namespace_t namespace
+		xmmsv_coll_namespace_t namespace
 
 =head2 coll_rename
 
@@ -896,11 +896,11 @@ Rename a collection within a C<$namespace>.
 =cut
 
 xmmsc_result_t *
-xmmsc_coll_rename (c, from, to, namespace)
+xmmsv_coll_rename (c, from, to, namespace)
 		xmmsc_connection_t *c
 		char *from
 		char *to
-		xmmsc_coll_namespace_t namespace
+		xmmsv_coll_namespace_t namespace
 
 =head2 coll_query_ids
 
@@ -946,9 +946,9 @@ reference.
 =cut
 
 xmmsc_result_t *
-xmmsc_coll_query_ids (c, coll, ...)
+xmmsv_coll_query_ids (c, coll, ...)
 		xmmsc_connection_t *c
-		xmmsc_coll_t *coll
+		xmmsv_coll_t *coll
 	INIT:
 		const char **order = NULL;
 		unsigned int limit_start = 0;
@@ -1036,9 +1036,9 @@ reference.
 =cut
 
 xmmsc_result_t *
-xmmsc_coll_query_infos (c, coll, ...)
+xmmsv_coll_query_infos (c, coll, ...)
 		xmmsc_connection_t *c
-		xmmsc_coll_t *coll
+		xmmsv_coll_t *coll
 	INIT:
 		const char **order = NULL;
 		unsigned int limit_start = 0;
@@ -1938,7 +1938,7 @@ C<$path>.
 =cut
 
 xmmsc_result_t *
-xmmsc_coll_idlist_from_playlist_file (c, path)
+xmmsv_coll_idlist_from_playlist_file (c, path)
 		xmmsc_connection_t *c
 		const char *path
 

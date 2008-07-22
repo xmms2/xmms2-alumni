@@ -47,8 +47,8 @@
  * @param ns  The namespace containing the saved collection.
  */
 xmmsc_result_t*
-xmmsc_coll_get (xmmsc_connection_t *conn, const char *collname,
-                xmmsc_coll_namespace_t ns)
+xmmsv_coll_get (xmmsc_connection_t *conn, const char *collname,
+                xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -68,7 +68,7 @@ xmmsc_coll_get (xmmsc_connection_t *conn, const char *collname,
  * @param conn  The connection to the server.
  */
 xmmsc_result_t*
-xmmsc_coll_sync (xmmsc_connection_t *conn)
+xmmsv_coll_sync (xmmsc_connection_t *conn)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -86,7 +86,7 @@ xmmsc_coll_sync (xmmsc_connection_t *conn)
  * @param ns  The namespace containing the saved collections.
  */
 xmmsc_result_t*
-xmmsc_coll_list (xmmsc_connection_t *conn, xmmsc_coll_namespace_t ns)
+xmmsv_coll_list (xmmsc_connection_t *conn, xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -108,8 +108,8 @@ xmmsc_coll_list (xmmsc_connection_t *conn, xmmsc_coll_namespace_t ns)
  * @param ns  The namespace in which to save the collection.
  */
 xmmsc_result_t*
-xmmsc_coll_save (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
-                 const char* name, xmmsc_coll_namespace_t ns)
+xmmsv_coll_save (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
+                 const char* name, xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -133,8 +133,8 @@ xmmsc_coll_save (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
  * @param ns  The namespace from which to remove the collection.
  */
 xmmsc_result_t*
-xmmsc_coll_remove (xmmsc_connection_t *conn,
-                   const char* name, xmmsc_coll_namespace_t ns)
+xmmsv_coll_remove (xmmsc_connection_t *conn,
+                   const char* name, xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -158,7 +158,7 @@ xmmsc_coll_remove (xmmsc_connection_t *conn,
  * @param ns  The namespace to consider (cannot be ALL).
  */
 xmmsc_result_t*
-xmmsc_coll_find (xmmsc_connection_t *conn, unsigned int mediaid, xmmsc_coll_namespace_t ns)
+xmmsv_coll_find (xmmsc_connection_t *conn, unsigned int mediaid, xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -179,10 +179,10 @@ xmmsc_coll_find (xmmsc_connection_t *conn, unsigned int mediaid, xmmsc_coll_name
  * @param to_name  The new name of the collection.
  * @param ns  The namespace containing the collection.
  */
-xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn,
+xmmsc_result_t* xmmsv_coll_rename (xmmsc_connection_t *conn,
                                    const char* from_name,
                                    const char* to_name,
-                                   xmmsc_coll_namespace_t ns)
+                                   xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -211,7 +211,7 @@ xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn,
  * @param limit_len  The maximum number of entries to retrieve (0 to disable).
  */
 xmmsc_result_t*
-xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
+xmmsv_coll_query_ids (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
                       xmmsv_t *order, unsigned int limit_start,
                       unsigned int limit_len)
 {
@@ -257,7 +257,7 @@ xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
  *               #xmmsv_t list of strings.
  */
 xmmsc_result_t*
-xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
+xmmsv_coll_query_infos (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
                         xmmsv_t *order, unsigned int limit_start,
                         unsigned int limit_len, xmmsv_t *fetch,
                         xmmsv_t *group)
@@ -316,7 +316,7 @@ xmmsc_broadcast_collection_changed (xmmsc_connection_t *c)
  * @param path  Path to the playlist file. Must be unencoded.
  */
 xmmsc_result_t *
-xmmsc_coll_idlist_from_playlist_file (xmmsc_connection_t *conn, const char *path)
+xmmsv_coll_idlist_from_playlist_file (xmmsc_connection_t *conn, const char *path)
 {
 	xmms_ipc_msg_t *msg;
 	char *enc_url;

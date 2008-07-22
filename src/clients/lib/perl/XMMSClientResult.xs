@@ -82,7 +82,7 @@ SV *
 perl_xmmsclient_xmmsc_result_get_coll (xmmsc_result_t *res)
 {
 	int ret;
-	xmmsc_coll_t *coll = NULL;
+	xmmsv_coll_t *coll = NULL;
 
 	ret = xmmsc_result_get_collection (res, &coll);
 

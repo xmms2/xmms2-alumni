@@ -41,7 +41,7 @@ namespace Xmms
 	{
 		xmmsc_result_t* res
 		    = call( connected_,
-		            boost::bind( xmmsc_coll_get, conn_, name.c_str(), nsname ) );
+		            boost::bind( xmmsv_coll_get, conn_, name.c_str(), nsname ) );
 		return CollResult( res, ml_ );
 	}
 
@@ -50,7 +50,7 @@ namespace Xmms
 	{
 		xmmsc_result_t* res
 		    = call( connected_,
-		            boost::bind( xmmsc_coll_list, conn_, nsname ) );
+		            boost::bind( xmmsv_coll_list, conn_, nsname ) );
 		return StringListResult( res, ml_ );
 	}
 
@@ -60,7 +60,7 @@ namespace Xmms
 	{
 		xmmsc_result_t* res =
 		    call( connected_,
-		          boost::bind( xmmsc_coll_save, conn_,
+		          boost::bind( xmmsv_coll_save, conn_,
 		                       coll.coll_, name.c_str(), nsname ) );
 		return VoidResult( res, ml_ );
 	}
@@ -70,7 +70,7 @@ namespace Xmms
 	{
 		xmmsc_result_t* res =
 		    call( connected_,
-		          boost::bind( xmmsc_coll_remove, conn_, name.c_str(), nsname ) );
+		          boost::bind( xmmsv_coll_remove, conn_, name.c_str(), nsname ) );
 		return VoidResult( res, ml_ );
 	}
 
@@ -79,7 +79,7 @@ namespace Xmms
 	{
 		xmmsc_result_t* res
 		    = call( connected_,
-		            boost::bind( xmmsc_coll_find, conn_, id, nsname ) );
+		            boost::bind( xmmsv_coll_find, conn_, id, nsname ) );
 		return StringListResult( res, ml_ );
 	}
 
@@ -90,7 +90,7 @@ namespace Xmms
 	{
 		xmmsc_result_t* res =
 		    call( connected_,
-		          boost::bind( xmmsc_coll_rename, conn_, from_name.c_str(),
+		          boost::bind( xmmsv_coll_rename, conn_, from_name.c_str(),
 		                       to_name.c_str(), nsname ) );
 		return VoidResult( res, ml_ );
 	}
@@ -99,7 +99,7 @@ namespace Xmms
 	Collection::idlistFromPlaylistFile( const std::string& path ) const {
 		xmmsc_result_t* res
 			= call( connected_,
-			        boost::bind( xmmsc_coll_idlist_from_playlist_file, conn_,
+			        boost::bind( xmmsv_coll_idlist_from_playlist_file, conn_,
 			                     path.c_str() ) );
 		return CollResult( res, ml_ );
 	}
@@ -115,7 +115,7 @@ namespace Xmms
 
 		xmmsc_result_t* res
 		    = call( connected_,
-		            boost::bind( xmmsc_coll_query_ids, conn_, coll.coll_,
+		            boost::bind( xmmsv_coll_query_ids, conn_, coll.coll_,
 		                         &corder[0], limit_start, limit_len ) );
 		return UintListResult( res, ml_ );
 	}
@@ -137,7 +137,7 @@ namespace Xmms
 
 		xmmsc_result_t* res
 		    = call( connected_,
-		            boost::bind( xmmsc_coll_query_infos, conn_, coll.coll_,
+		            boost::bind( xmmsv_coll_query_infos, conn_, coll.coll_,
 		                         &corder[0], limit_start, limit_len,
 		                         &cfetch[0], &cgroup[0] ) );
 		return DictListResult( res, ml_ );
@@ -146,9 +146,9 @@ namespace Xmms
 	CollPtr
 	Collection::parse( const std::string& pattern ) const
 	{
-		xmmsc_coll_t* coll;
+		xmmsv_coll_t* coll;
 
-		if( !xmmsc_coll_parse( pattern.c_str(), &coll ) ) {
+		if( !xmmsv_coll_parse( pattern.c_str(), &coll ) ) {
 			throw collection_parsing_error( "invalid collection pattern" );
 		}
 

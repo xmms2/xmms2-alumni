@@ -1,8 +1,8 @@
 TYPEMAP
 xmmsc_connection_t*			XMMSC_CONNECTION_T
-xmmsc_coll_t*				XMMSC_COLL_T
-xmmsc_coll_type_t			XMMSC_COLL_TYPE_T
-xmmsc_coll_namespace_t		T_PV
+xmmsv_coll_t*				XMMSV_COLL_T
+xmmsv_coll_type_t			XMMSV_COLL_TYPE_T
+xmmsv_coll_namespace_t		T_PV
 xmmsc_result_t*				XMMSC_RESULT_T
 xmmsc_result_propdict_t*	XMMSC_RESULT_PROPDICT_T
 xmms_plugin_type_t			XMMS_PLUGIN_TYPE_T
@@ -27,7 +27,7 @@ XMMSC_CONNECTION_T
 		$arg = perl_xmmsclient_new_sv_from_ptr ($var, \"Audio::XMMSClient\");
 	}
 
-XMMSC_COLL_T
+XMMSV_COLL_T
 	$arg = perl_xmmsclient_new_sv_from_ptr ($var, \"Audio::XMMSClient::Collection\");
 
 XMMSC_RESULT_T
@@ -72,7 +72,7 @@ XMMSV_TYPE_TYPE_T
 		}
 	}
 
-XMMSC_COLL_TYPE_T
+XMMSV_COLL_TYPE_T
 	{
 		$arg = newSVpv ("", 0);
 		if ($var == XMMS_COLLECTION_TYPE_REFERENCE) {
@@ -112,7 +112,7 @@ XMMSC_COLL_TYPE_T
 			sv_setpv ($arg, \"partyshuffle\");
 		}
 		else {
-			croak (\"unknown XMMSC_COLL_TYPE_T\");
+			croak (\"unknown XMMSV_COLL_TYPE_T\");
 		}
 	}
 
@@ -124,7 +124,7 @@ INPUT
 XMMSC_CONNECTION_T
 	$var = ($type)perl_xmmsclient_get_ptr_from_sv ($arg, \"Audio::XMMSClient\");
 
-XMMSC_COLL_T
+XMMSV_COLL_T
 	$var = ($type)perl_xmmsclient_get_ptr_from_sv ($arg, \"Audio::XMMSClient::Collection\");
 
 XMMSC_RESULT_T
@@ -159,7 +159,7 @@ PERL_XMMSCLIENT_COLLECTION_ORDER_T
 PERL_XMMSCLIENT_PLAYLIST_T
 	$var = ($type)perl_xmmsclient_get_ptr_from_sv ($arg, \"Audio::XMMSClient::Playlist\");
 
-XMMSC_COLL_TYPE_T
+XMMSV_COLL_TYPE_T
 	{
 		char *coll_type = SvPV_nolen ($arg);
 
@@ -200,6 +200,6 @@ XMMSC_COLL_TYPE_T
 			$var = XMMS_COLLECTION_TYPE_PARTYSHUFFLE;
 		}
 		else {
-			croak (\"unknown XMMSC_COLL_TYPE_T: %s\", coll_type);
+			croak (\"unknown XMMSV_COLL_TYPE_T: %s\", coll_type);
 		}
 	}

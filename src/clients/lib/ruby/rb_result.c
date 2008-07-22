@@ -300,7 +300,7 @@ bin_get (VALUE self, RbResult *res)
 static VALUE
 coll_get (VALUE self, RbResult *res)
 {
-	xmmsc_coll_t *coll = NULL;
+	xmmsv_coll_t *coll = NULL;
 
 	if (!xmmsc_result_get_collection (res->real, &coll))
 		rb_raise (eValueError, "cannot retrieve value");

@@ -19,7 +19,7 @@
 
 void Init_Collection (VALUE mXmms);
 
-VALUE TO_XMMS_CLIENT_COLLECTION (xmmsc_coll_t *coll);
-xmmsc_coll_t *FROM_XMMS_CLIENT_COLLECTION (VALUE rbcoll);
+VALUE TO_XMMS_CLIENT_COLLECTION (xmmsv_coll_t *coll);
+xmmsv_coll_t *FROM_XMMS_CLIENT_COLLECTION (VALUE rbcoll);
 
 #endif /* __RB_COLLECTION_H */

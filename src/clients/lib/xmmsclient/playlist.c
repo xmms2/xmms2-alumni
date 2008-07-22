@@ -72,7 +72,7 @@ xmmsc_playlist_current_active (xmmsc_connection_t *c)
 xmmsc_result_t *
 xmmsc_playlist_list (xmmsc_connection_t *c)
 {
-	return xmmsc_coll_list (c, XMMS_COLLECTION_NS_PLAYLISTS);
+	return xmmsv_coll_list (c, XMMS_COLLECTION_NS_PLAYLISTS);
 }
 
 /**
@@ -82,15 +82,15 @@ xmmsc_result_t *
 xmmsc_playlist_create (xmmsc_connection_t *c, const char *playlist)
 {
 	xmmsc_result_t *res;
-	xmmsc_coll_t *plcoll;
+	xmmsv_coll_t *plcoll;
 
 	x_check_conn (c, NULL);
 	x_api_error_if (!playlist, "playlist name cannot be NULL", NULL);
 
-	plcoll = xmmsc_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
-	res = xmmsc_coll_save (c, plcoll, playlist, XMMS_COLLECTION_NS_PLAYLISTS);
+	plcoll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
+	res = xmmsv_coll_save (c, plcoll, playlist, XMMS_COLLECTION_NS_PLAYLISTS);
 
-	xmmsc_coll_unref (plcoll);
+	xmmsv_coll_unref (plcoll);
 
 	return res;
 }
@@ -167,7 +167,7 @@ xmmsc_playlist_clear (xmmsc_connection_t *c, const char *playlist)
 xmmsc_result_t *
 xmmsc_playlist_remove (xmmsc_connection_t *c, const char *playlist)
 {
-	return xmmsc_coll_remove (c, playlist, XMMS_COLLECTION_NS_PLAYLISTS);
+	return xmmsv_coll_remove (c, playlist, XMMS_COLLECTION_NS_PLAYLISTS);
 }
 
 
@@ -310,7 +310,7 @@ xmmsc_playlist_insert_encoded (xmmsc_connection_t *c, const char *playlist, int 
  */
 xmmsc_result_t *
 xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist,
-                                  int pos, xmmsc_coll_t *coll,
+                                  int pos, xmmsv_coll_t *coll,
                                   xmmsv_t *order)
 {
 	xmms_ipc_msg_t *msg;
@@ -521,7 +521,7 @@ xmmsc_playlist_add_encoded (xmmsc_connection_t *c, const char *playlist, const c
  */
 xmmsc_result_t *
 xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist,
-                           xmmsc_coll_t *coll)
+                           xmmsv_coll_t *coll)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -552,7 +552,7 @@ xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist,
  */
 xmmsc_result_t *
 xmmsc_playlist_add_collection (xmmsc_connection_t *c, const char *playlist,
-                               xmmsc_coll_t *coll, xmmsv_t *order)
+                               xmmsv_coll_t *coll, xmmsv_t *order)
 {
 	xmms_ipc_msg_t *msg;
 

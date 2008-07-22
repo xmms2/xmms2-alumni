@@ -77,7 +77,7 @@ struct xmmsv_St {
 		uint32_t uint32;
 		int32_t int32;
 		char *string;
-		xmmsc_coll_t *coll;
+		xmmsv_coll_t *coll;
 		xmmsv_bin_t bin;
 		xmmsv_list_t *list;
 		xmmsv_dict_t *dict;
@@ -199,7 +199,7 @@ xmmsv_new_string (const char *s)
  * #xmmsv_unref.
  */
 xmmsv_t *
-xmmsv_new_coll (xmmsc_coll_t *c)
+xmmsv_new_coll (xmmsv_coll_t *c)
 {
 	xmmsv_t *val;
 
@@ -208,7 +208,7 @@ xmmsv_new_coll (xmmsc_coll_t *c)
 	val = xmmsv_new (XMMSV_TYPE_COLL);
 	if (val) {
 		val->value.coll = c;
-		xmmsc_coll_ref (c);
+		xmmsv_coll_ref (c);
 	}
 
 	return val;
@@ -362,7 +362,7 @@ value_data_free (xmmsv_t *val)
 			val->value.string = NULL;
 			break;
 		case XMMSV_TYPE_COLL:
-			xmmsc_coll_unref (val->value.coll);
+			xmmsv_coll_unref (val->value.coll);
 			val->value.coll = NULL;
 			break;
 		case XMMSV_TYPE_BIN :
@@ -484,7 +484,7 @@ xmmsv_get_dict_entry_type (xmmsv_t *val, const char *key)
 GEN_COMPAT_DICT_EXTRACTOR_FUNC(string, const char *)
 GEN_COMPAT_DICT_EXTRACTOR_FUNC(int, int32_t)
 GEN_COMPAT_DICT_EXTRACTOR_FUNC(uint, uint32_t)
-GEN_COMPAT_DICT_EXTRACTOR_FUNC(collection, xmmsc_coll_t *)
+GEN_COMPAT_DICT_EXTRACTOR_FUNC(collection, xmmsv_coll_t *)
 
 static int
 source_match_pattern (const char *source, const char *pattern)
@@ -633,7 +633,7 @@ xmmsv_get_string (xmmsv_t *val, const char **r)
  * @return 1 upon success otherwise 0
  */
 int
-xmmsv_get_collection (xmmsv_t *val, xmmsc_coll_t **c)
+xmmsv_get_collection (xmmsv_t *val, xmmsv_coll_t **c)
 {
 	if (!val || val->type != XMMSV_TYPE_COLL) {
 		return 0;

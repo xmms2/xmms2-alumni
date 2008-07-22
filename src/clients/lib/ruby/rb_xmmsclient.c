@@ -1141,10 +1141,10 @@ c_coll_get (int argc, VALUE *argv, VALUE self)
 	rb_scan_args (argc, argv, "11", &name, &ns);
 
 	if (NIL_P (ns))
-		res = xmmsc_coll_get (xmms->real, StringValuePtr (name),
+		res = xmmsv_coll_get (xmms->real, StringValuePtr (name),
 		                      XMMS_COLLECTION_NS_ALL);
 	else
-		res = xmmsc_coll_get (xmms->real, StringValuePtr (name),
+		res = xmmsv_coll_get (xmms->real, StringValuePtr (name),
 		                      StringValuePtr (ns));
 
 	METHOD_HANDLER_FOOTER
@@ -1169,7 +1169,7 @@ c_coll_list (int argc, VALUE *argv, VALUE self)
 	if (NIL_P (ns))
 		ns = rb_str_new2 (XMMS_COLLECTION_NS_ALL);
 
-	res = xmmsc_coll_list (xmms->real, StringValuePtr (ns));
+	res = xmmsv_coll_list (xmms->real, StringValuePtr (ns));
 
 	METHOD_HANDLER_FOOTER
 }
@@ -1188,7 +1188,7 @@ c_coll_save (VALUE self, VALUE coll, VALUE name, VALUE ns)
 
 	/* FIXME: Check that we actually have a Collection object */
 
-	res = xmmsc_coll_save (xmms->real,
+	res = xmmsv_coll_save (xmms->real,
 	                       FROM_XMMS_CLIENT_COLLECTION (coll),
 	                       StringValuePtr (name),
 	                       StringValuePtr (ns));
@@ -1212,10 +1212,10 @@ c_coll_remove (int argc, VALUE *argv, VALUE self)
 	rb_scan_args (argc, argv, "11", &name, &ns);
 
 	if (NIL_P (ns))
-		res = xmmsc_coll_remove (xmms->real, StringValuePtr (name),
+		res = xmmsv_coll_remove (xmms->real, StringValuePtr (name),
 		                         XMMS_COLLECTION_NS_ALL);
 	else
-		res = xmmsc_coll_remove (xmms->real, StringValuePtr (name),
+		res = xmmsv_coll_remove (xmms->real, StringValuePtr (name),
 		                         StringValuePtr (ns));
 
 	METHOD_HANDLER_FOOTER
@@ -1232,7 +1232,7 @@ c_coll_find (VALUE self, VALUE id, VALUE ns)
 {
 	METHOD_HANDLER_HEADER
 
-	res = xmmsc_coll_find (xmms->real, check_uint32 (id),
+	res = xmmsv_coll_find (xmms->real, check_uint32 (id),
 	                       StringValuePtr (ns));
 
 	METHOD_HANDLER_FOOTER
@@ -1254,12 +1254,12 @@ c_coll_rename (int argc, VALUE *argv, VALUE self)
 	rb_scan_args (argc, argv, "21", &old, &new, &ns);
 
 	if (NIL_P (ns))
-		res = xmmsc_coll_rename (xmms->real,
+		res = xmmsv_coll_rename (xmms->real,
 		                         StringValuePtr (old),
 		                         StringValuePtr (new),
 		                         XMMS_COLLECTION_NS_ALL);
 	else
-		res = xmmsc_coll_rename (xmms->real,
+		res = xmmsv_coll_rename (xmms->real,
 		                         StringValuePtr (old),
 		                         StringValuePtr (new),
 		                         StringValuePtr (ns));
@@ -1288,7 +1288,7 @@ c_coll_query_ids (int argc, VALUE *argv, VALUE self)
 	if (!NIL_P (order))
 		corder = parse_string_array (order);
 
-	res = xmmsc_coll_query_ids (xmms->real,
+	res = xmmsv_coll_query_ids (xmms->real,
 	                            FROM_XMMS_CLIENT_COLLECTION (coll),
 	                            corder,
 	                            NIL_P (start) ? 0 : NUM2UINT (start),
@@ -1326,7 +1326,7 @@ c_coll_query_info (int argc, VALUE *argv, VALUE self)
 	if (!NIL_P (group))
 		cgroup = parse_string_array (group);
 
-	res = xmmsc_coll_query_infos (xmms->real,
+	res = xmmsv_coll_query_infos (xmms->real,
 	                            FROM_XMMS_CLIENT_COLLECTION (coll),
 	                            corder,
 	                            NIL_P (start) ? 0 : NUM2UINT (start),

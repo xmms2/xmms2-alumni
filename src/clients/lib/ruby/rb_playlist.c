@@ -358,7 +358,7 @@ c_add_collection (int argc, VALUE *argv, VALUE self)
 
 	VALUE rbcoll, order = Qnil;
 	const char **corder = NULL;
-	xmmsc_coll_t *coll;
+	xmmsv_coll_t *coll;
 
 	rb_scan_args (argc, argv, "11", &rbcoll, &order);
 

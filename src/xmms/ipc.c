@@ -101,7 +101,7 @@ ipc_msg_get_objcmdvalue_alloc (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t **va
 	int32_t type, i;
 	uint32_t len, u;
 	char *s;
-	xmmsc_coll_t *c;
+	xmmsv_coll_t *c;
 	GString *gs;
 
 	if (!xmms_ipc_msg_get_int32 (msg, (int32_t *) &type)) {
@@ -536,7 +536,7 @@ err:
 		if (arg.values[i].type == XMMSV_TYPE_STRING) {
 			g_free (arg.values[i].value.string);
 		} else if (arg.values[i].type == XMMSV_TYPE_COLL) {
-			xmmsc_coll_unref (arg.values[i].value.coll);
+			xmmsv_coll_unref (arg.values[i].value.coll);
 		} else if (arg.values[i].type == XMMSV_TYPE_BIN) {
 			g_string_free (arg.values[i].value.bin, TRUE);
 		} else if (arg.values[i].type == XMMSV_TYPE_LIST) {

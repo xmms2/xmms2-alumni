@@ -210,7 +210,7 @@ typedef enum {
 	XMMS_COLLECTION_TYPE_IDLIST,
 	XMMS_COLLECTION_TYPE_QUEUE,
 	XMMS_COLLECTION_TYPE_PARTYSHUFFLE
-} xmmsc_coll_type_t;
+} xmmsv_coll_type_t;
 
 typedef enum {
 	XMMS_MEDIALIB_ENTRY_STATUS_NEW,
@@ -220,7 +220,7 @@ typedef enum {
 	XMMS_MEDIALIB_ENTRY_STATUS_REHASH
 } xmmsc_medialib_entry_status_t;
 
-typedef const char* xmmsc_coll_namespace_t;
+typedef const char* xmmsv_coll_namespace_t;
 #define	XMMS_COLLECTION_NS_ALL          "*"
 #define XMMS_COLLECTION_NS_COLLECTIONS  "Collections"
 #define XMMS_COLLECTION_NS_PLAYLISTS    "Playlists"

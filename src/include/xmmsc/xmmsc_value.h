@@ -35,7 +35,7 @@ xmmsv_t *xmmsv_new_error (const char *errstr); /* FIXME: err id? */
 xmmsv_t *xmmsv_new_int (int32_t i);
 xmmsv_t *xmmsv_new_uint (uint32_t u);
 xmmsv_t *xmmsv_new_string (const char *s);
-xmmsv_t *xmmsv_new_coll (xmmsc_coll_t *coll);
+xmmsv_t *xmmsv_new_coll (xmmsv_coll_t *coll);
 xmmsv_t *xmmsv_new_bin (unsigned char *data, unsigned int len);
 
 xmmsv_t *xmmsv_new_list ();
@@ -60,7 +60,7 @@ xmmsv_type_t xmmsv_get_dict_entry_type (xmmsv_t *val, const char *key);
 int xmmsv_get_dict_entry_string (xmmsv_t *val, const char *key, const char **r);
 int xmmsv_get_dict_entry_int (xmmsv_t *val, const char *key, int32_t *r);
 int xmmsv_get_dict_entry_uint (xmmsv_t *val, const char *key, uint32_t *r);
-int xmmsv_get_dict_entry_collection (xmmsv_t *val, const char *key, xmmsc_coll_t **coll);
+int xmmsv_get_dict_entry_collection (xmmsv_t *val, const char *key, xmmsv_coll_t **coll);
 int xmmsv_dict_foreach (xmmsv_t *val, xmmsc_dict_foreach_func func, void *user_data);
 xmmsv_t *xmmsv_propdict_to_dict (xmmsv_t *propdict, const char **src_prefs);
 
@@ -68,7 +68,7 @@ int xmmsv_get_error (xmmsv_t *val, const char **r);
 int xmmsv_get_int (xmmsv_t *val, int32_t *r);
 int xmmsv_get_uint (xmmsv_t *val, uint32_t *r);
 int xmmsv_get_string (xmmsv_t *val, const char **r);
-int xmmsv_get_collection (xmmsv_t *val, xmmsc_coll_t **coll);
+int xmmsv_get_collection (xmmsv_t *val, xmmsv_coll_t **coll);
 int xmmsv_get_bin (xmmsv_t *val, unsigned char **r, unsigned int *rlen);
 
 int xmmsv_get_list_iter (xmmsv_t *val, xmmsv_list_iter_t **it);
