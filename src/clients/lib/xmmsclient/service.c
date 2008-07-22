@@ -525,35 +525,23 @@ err:
 	return NULL;
 }
 
-/* Stuff below this line hasn't been updated yet. */
 /**
- * Unregister an existing method.
- *
- * If the service does not have any methods left after removal of this method,
- * the service will be unregistered, too.
+ * Unregister a registered service.
  *
  * @param conn The connection to the server.
- * @param service The name of the service which the method belongs to.
- * @param method The method to be removed.
+ * @param service The service.
  */
 xmmsc_result_t *
-xmmsc_service_unregister (xmmsc_connection_t *conn,
-                          const char *service,
-                          xmmsc_service_method_t *method)
+xmmsc_service_unregister (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
-	x_return_null_if_fail (service);
+	x_return_null_if_fail (svc);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_UNREGISTER);
-	xmms_ipc_msg_put_string (msg, service);
-
-	if (method) {
-		xmms_ipc_msg_put_string (msg, method->name);
-		xmmsc_service_method_unref (method);
-	}
+	xmms_ipc_msg_put_string (msg, svc->name);
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -594,6 +582,7 @@ xmmsc_service_describe (xmmsc_connection_t *conn, const char *service)
 	return xmmsc_send_msg (conn, msg);
 }
 
+/* Stuff below this line hasn't been updated yet. */
 /**
  * Make service method call.
  *
@@ -765,13 +754,13 @@ method_return (xmmsc_connection_t *conn, xmmsc_value_t *val,
 }
 
 static void
-dummy_handler (xmmsc_value_t *val, void *data)
+dummy_handler (xmmsv_t *val, void *data)
 {
 
 }
 
 static void
-dispatch (xmmsc_value_t *val, void *data)
+dispatch (xmmsv_t *val, void *data)
 {
 	xmmsc_service_method_t *method = (xmmsc_service_method_t *)data;
 	xmmsc_result_t *result;
