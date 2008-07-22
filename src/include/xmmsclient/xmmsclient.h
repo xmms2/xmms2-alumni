@@ -336,28 +336,8 @@ xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_
 xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method);
 xmmsc_result_t *xmmsc_service_list (xmmsc_connection_t *conn);
 xmmsc_result_t *xmmsc_service_describe (xmmsc_connection_t *conn, const char *service);
-xmmsc_result_t *xmmsc_service_method_list (xmmsc_connection_t *conn, const char *service);
-xmmsc_result_t *xmmsc_service_method_describe (xmmsc_connection_t *conn, const char *service, const char *method);
-xmmsc_result_t *xmmsc_service_method_describe_args (xmmsc_connection_t *conn, const char *service, const char *method);
 xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method);
 xmmsc_result_t *xmmsc_service_shutdown (xmmsc_connection_t *conn, const char *service);
-*/
-
-/* OOOOOLD - crap from xmmsc_service.h
-void xmmsc_service_method_ref (xmmsc_service_method_t *method);
-void xmmsc_service_method_unref (xmmsc_service_method_t *method);
-int xmmsc_service_method_attribute_get (xmmsc_service_method_t *method, char **name, char **description);
-int xmmsc_service_method_arg_type_add (xmmsc_service_method_t *method, const char *name, xmms_value_type_t type, int32_t optional);
-int xmmsc_service_method_ret_type_add (xmmsc_service_method_t *method, const char *name, xmms_value_type_t type, int32_t optional);
-int xmmsc_service_method_arg_add (xmmsc_service_method_t *method, const char *name, xmms_value_t *value);
-int xmmsc_service_method_arg_attribute_get (xmmsc_service_method_t *method, const char *name, xmms_value_type_t *type, uint32_t *optional, uint32_t *none);
-int xmmsc_service_method_ret_attribute_get (xmmsc_service_method_t *method, const char *name, xmms_value_type_t *type, uint32_t *optional, uint32_t *none);
-int xmmsc_service_method_arg_remove (xmmsc_service_method_t *method, const char *name);
-int xmmsc_service_method_ret_remove (xmmsc_service_method_t *method, const char *name);
-const char *xmmsc_service_method_error_get (xmmsc_service_method_t *method);
-int xmmsc_service_method_error_set (xmmsc_service_method_t *method, const char *err);
-void xmmsc_service_method_error_reset (xmmsc_service_method_t *method);
-int xmmsc_service_method_error_isset (xmmsc_service_method_t *method);
 */
 
 /* broadcasts */
@@ -365,9 +345,6 @@ int xmmsc_service_method_error_isset (xmmsc_service_method_t *method);
 xmmsc_result_t *xmmsc_broadcast_service_changed (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_broadcast_service_method_changed (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c);
-
-xmmsc_service_method_t *xmmsc_service_method_new (const char *name, const char *description, xmmsc_service_notifier_t func, void *user_data);
-xmmsc_service_method_t *xmmsc_service_method_new_full (const char *name, const char *description, xmmsc_service_notifier_t func, void *user_data, xmmsc_user_data_free_func_t free_func);
 */
 
 #ifdef __cplusplus
