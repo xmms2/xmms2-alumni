@@ -265,6 +265,12 @@ xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
 	return 1;
 }
 
+/* FIXME: We should support optional arguments! This will require some
+   refactoring of the arguments dict. Instead of a simple dict of { "arg" =>
+   val, ... } it should be a list of { "name" => "arg", "value" => val,
+   "optional" => opt }
+*/
+
 /**
  * Add an argument to a method. This will add an argument to the last method
  * added to the service.
