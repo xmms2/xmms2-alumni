@@ -547,9 +547,9 @@ xmmsc_service_methods_to_value (x_list_t *meths)
 		                        meth->args)) {
 			goto err;
 		}
-		val = xmmsv_new_int ((int) meth->rettype);
+		val = xmmsv_new_int ((int32_t) meth->rettype);
 		if (!xmmsv_dict_insert (method, XMMSC_SERVICE_METHOD_PROP_RETURN_TYPE,
-		                        meth->args)) {
+		                        val)) {
 			goto err;
 		}
 		xmmsv_unref (val);
