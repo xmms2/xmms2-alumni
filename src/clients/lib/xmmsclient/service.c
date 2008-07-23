@@ -624,19 +624,19 @@ xmmsc_service_request (xmmsc_connection_t *conn, const char *svc,
  * this guarantee, please consult Service Client Manager.
  *
  * @param conn The connection to the server.
- * @param service Any service name the service client provides.
+ * @param service The name of the service to be shutdown.
  */
 xmmsc_result_t *
-xmmsc_service_shutdown (xmmsc_connection_t *conn, const char *service)
+xmmsc_service_shutdown (xmmsc_connection_t *conn, const char *svc)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
-	x_return_val_if_fail (service, NULL);
+	x_return_val_if_fail (svc, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_SHUTDOWN);
-	xmms_ipc_msg_put_string (msg, service);
+	xmms_ipc_msg_put_string (msg, svc);
 
 	return xmmsc_send_msg (conn, msg);
 }
