@@ -464,7 +464,7 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 {
 	xmms_ipc_msg_t *msg;
 	xmmsv_t *service;
-	xmmsv_t *tmp;
+	xmmsv_t *tmp = NULL;
 
 	x_check_conn (conn, NULL);
 	x_return_null_if_fail (svc);
@@ -524,8 +524,8 @@ xmmsc_service_methods_to_value (x_list_t *meths)
 	xmmsc_service_method_t *meth;
 	x_list_t *tmp;
 	xmmsv_t *methods;
-	xmmsv_t *method;
-	xmmsv_t *val;
+	xmmsv_t *method = NULL;
+	xmmsv_t *val = NULL;
 
 	methods = xmmsv_new_dict ();
 	x_return_null_if_fail (methods);
