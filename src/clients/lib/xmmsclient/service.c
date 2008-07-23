@@ -135,7 +135,7 @@ xmmsc_service_new (const char *name, const char *desc,
  * @param rettype Type of the return value, an #xmmsv_type_t.
  * @param func Callback function, an #xmmsc_service_notifier_t.
  * @param udata User data to pass to func.
- * @param ... NULL-terminated list of const char *, xmmsv_type_t.
+ * @param ... NULL-terminated list of const char *, xmmsv_type_t, int32_t.
  * @return 1 on success, 0 otherwise.
  */
 int
@@ -167,7 +167,7 @@ xmmsc_service_method_add (xmmsc_service_t *svc, const char *name,
  * @param udata User data to pass to func.
  * @param ufree Optional function that should be called to free udata, an
  * #xmmsc_user_data_free_func_t.
- * @param ... NULL-terminated list of const char *, xmmsv_type_t.
+ * @param ... NULL-terminated list of const char *, xmmsv_type_t, int32_t.
  * @return 1 on success, 0 otherwise.
  */
 int
@@ -193,6 +193,7 @@ xmmsc_service_method_add_valist (xmmsc_service_t *svc, const char *name,
                                  xmmsc_service_notifier_t func, void *udata,
                                  xmmsc_user_data_free_func_t ufree, va_list ap)
 {
+	int32_t optional;
 	xmmsv_type_t type;
 	const char* arg;
 
@@ -208,7 +209,9 @@ xmmsc_service_method_add_valist (xmmsc_service_t *svc, const char *name,
 		type = va_arg (ap, xmmsv_type_t);
 		x_return_val_if_fail (xmmsv_check_type (type), 0);
 
-		xmmsc_service_method_add_arg (svc, arg, type);
+		optional = va_arg (ap, int32_t);
+
+		xmmsc_service_method_add_arg (svc, arg, type, optional);
 	}
 
 	return 1;
@@ -265,12 +268,6 @@ xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
 	return 1;
 }
 
-/* FIXME: We should support optional arguments! This will require some
-   refactoring of the arguments dict. Instead of a simple dict of { "arg" =>
-   val, ... } it should be a list of { "name" => "arg", "value" => val,
-   "optional" => opt }
-*/
-
 /**
  * Add an argument to a method. This will add an argument to the last method
  * added to the service.
@@ -279,15 +276,18 @@ xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
  * will be added.
  * @param name The name of the argument.
  * @param type The type of the argument, an #xmmsv_type_t.
+ * @param optional The argument is mandatory for 0, optional for all other
+ * values.
  * @return 1 on success, 0 otherwise.
  */
 int
 xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
-                              xmmsv_type_t type)
+                              xmmsv_type_t type, int32_t optional)
 {
 	x_list_t *tmp;
 	xmmsc_service_method_t *meth;
-	xmmsv_t *val;
+	xmmsv_t *arg = NULL;
+	xmmsv_t *val = NULL;
 
 	x_return_val_if_fail (svc, 0);
 	x_return_val_if_fail (name, 0);
@@ -298,21 +298,68 @@ xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
 
 	meth = (xmmsc_service_method_t *) tmp->data;
 
-	val = xmmsv_new_int ((int32_t) type);
-	x_return_val_if_fail (val, 0);
-
 	if (!meth->args) {
-		meth->args = xmmsv_new_dict ();
+		/* Just in case we need ordered arguments, this is a list. */
+		meth->args = xmmsv_new_list ();
+		/* We don't care if meth->args is unreffed or not. A NULL or empty list
+		   are treated the same and unreffed with the service anyway. */
+		x_return_val_if_fail (meth->args, 0);
 	}
 
-	if (!meth->args || !xmmsv_dict_insert (meth->args, name, val)) {
-		xmmsv_unref (val);
-		return 0;
+	arg = xmmsv_new_dict ();
+	if (!arg) {
+		goto err;
 	}
 
+	val = xmmsv_new_string (name);
+	if (!val) {
+		goto err;
+	}
+	/* { "name" => name } */
+	if (!xmmsv_dict_insert (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_NAME,
+	                        val)) {
+		goto err;
+	}
 	xmmsv_unref (val);
 
+	val = xmmsv_new_int ((int32_t) type);
+	if (!val) {
+		goto err;
+	}
+	/* { "name" => name, "type" => type } */
+	if (!xmmsv_dict_insert (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_TYPE,
+	                        val)) {
+		goto err;
+	}
+	xmmsv_unref (val);
+
+	val = xmmsv_new_int (optional);
+	if (!val) {
+		goto err;
+	}
+	/* { "name" => name, "type" => type, "optional" => optional } */
+	if (!xmmsv_dict_insert (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_OPTIONAL,
+	                        val)) {
+		goto err;
+	}
+	xmmsv_unref (val);
+
+	if (!xmmsv_list_append (meth->args, arg)) {
+		goto err;
+	}
+
 	return 1;
+
+err:
+	if (arg) {
+		xmmsv_dict_clear (arg);
+		xmmsv_unref (arg);
+	}
+	if (val) {
+		xmmsv_unref (val);
+	}
+
+	return 0;
 }
 
 /**

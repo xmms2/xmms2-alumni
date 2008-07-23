@@ -329,7 +329,7 @@ int xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
                                     xmmsc_service_notifier_t func, void *udata,
                                     xmmsc_user_data_free_func_t ufree);
 int xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
-                                  xmmsv_type_t type);
+                                  xmmsv_type_t type, int32_t optional);
 xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn,
                                         xmmsc_service_t *svc);
 xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn,
