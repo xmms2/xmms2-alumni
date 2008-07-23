@@ -586,45 +586,35 @@ xmmsc_service_describe (xmmsc_connection_t *conn, const char *service)
  * All argument values will be reset after this call.
  *
  * @param conn The connection to the server.
- * @param service The id of the service.
- * @param method The #xmmsc_service_method_t structure.
+ * @param svc The name of the service containing the method to be called.
+ * @param meth The name of the method to be called.
+ * @param args An #xmmsv_t containing a list of dictionaries each containing
+ * XMMSC_SERVICE_METHOD_ARG_PROP_NAME => string,
+ * XMMSC_SERVICE_METHOD_ARG_PROP_VALUE => xmmsv_t.
+ * describing the arguments to the method.
+ * @return An #xmmsc_result_t containing a #value_t with either a return value
+ * or an error.
  */
 xmmsc_result_t *
-xmmsc_service_request (xmmsc_connection_t *conn, const char *service,
-                       xmmsc_service_method_t *method)
+xmmsc_service_request (xmmsc_connection_t *conn, const char *svc,
+                       const char *meth, xmmsv_t *args)
 {
 	xmms_ipc_msg_t *msg;
-	xmmsc_result_t *res;
-	x_list_t *n;
-	xmmsc_service_argument_t *arg;
 
 	x_check_conn (conn, NULL);
-	x_return_null_if_fail (service);
-	x_return_null_if_fail (method);
+	x_return_null_if_fail (svc);
+	x_return_null_if_fail (meth);
+	x_return_null_if_fail (args);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_REQUEST);
-	xmms_ipc_msg_put_string (msg, service);
-	xmms_ipc_msg_put_string (msg, method->name);
-	if (method->arg_list) {
-		for (n = method->arg_list; n; n = x_list_next (n)) {
-			arg = (xmmsc_service_argument_t *)n->data;
+	x_return_null_if_fail (msg);
 
-			xmms_ipc_msg_put_string (msg, arg->name);
-			if (!argument_write (msg, arg)) {
-				xmms_ipc_msg_destroy (msg);
-				return 0;
-			}
+	xmms_ipc_msg_put_string (msg, svc);
+	xmms_ipc_msg_put_string (msg, meth);
+	xmms_ipc_msg_put_value (msg, args);
 
-			arg_value_free (arg);
-		}
-	}
-
-	arg_reset (method);
-
-	res = xmmsc_send_msg (conn, msg);
-
-	return res;
+	return xmmsc_send_msg (conn, msg);
 }
 
 /**

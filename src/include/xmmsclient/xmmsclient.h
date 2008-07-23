@@ -330,13 +330,18 @@ int xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
                                     xmmsc_user_data_free_func_t ufree);
 int xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
                                   xmmsv_type_t type);
-xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc);
-xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn, xmmsc_service_t *svc);
+xmmsc_result_t *xmmsc_service_register (xmmsc_connection_t *conn,
+                                        xmmsc_service_t *svc);
+xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn,
+                                          xmmsc_service_t *svc);
 xmmsc_result_t *xmmsc_service_list (xmmsc_connection_t *conn);
-xmmsc_result_t *xmmsc_service_describe (xmmsc_connection_t *conn, const char *service);
+xmmsc_result_t *xmmsc_service_describe (xmmsc_connection_t *conn,
+                                        const char *service);
+xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
+	                                   const char *svc, const char *meth,
+                                       xmmsv_t *args);
 
 /* OMG NO!!! - crap from xmmsclient.h
-xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn, const char *service, xmmsc_service_method_t *method);
 xmmsc_result_t *xmmsc_service_shutdown (xmmsc_connection_t *conn, const char *service);
 */
 
