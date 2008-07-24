@@ -868,7 +868,9 @@ _xmmsv_list_remove (xmmsv_list_t *l, int pos)
 	/* Reduce memory usage by two if possible */
 	half_size = l->allocated >> 1;
 	if (l->size <= half_size) {
-		xmmsv_list_resize (l, half_size);
+		int success;
+		success = xmmsv_list_resize (l, half_size);
+		x_return_val_if_fail (success, 0);
 	}
 
 	/* update iterator pos */
@@ -882,12 +884,28 @@ _xmmsv_list_remove (xmmsv_list_t *l, int pos)
 	return 1;
 }
 
-int
+void
 _xmmsv_list_clear (xmmsv_list_t *l)
 {
-	/* FIXME: could be optimized */
-	while (l->size > 0) {
-		_xmmsv_list_remove (l, 0);
+	xmmsv_list_iter_t *it;
+	x_list_t *n;
+	int i;
+
+	/* unref all stored values */
+	for (i = 0; i < l->size; i++) {
+		xmmsv_unref (l->list[i]);
+	}
+
+	/* free list, declare empty */
+	free (l->list);
+
+	l->size = 0;
+	l->allocated = 0;
+
+	/* reset iterator pos */
+	for (n = l->iterators; n; n = n->next) {
+		it = (xmmsv_list_iter_t *) n->data;
+		it->position = 0;
 	}
 
 	return 1;
@@ -951,7 +969,11 @@ xmmsv_list_clear (xmmsv_t *listv)
 	x_return_val_if_fail (listv, 0);
 	x_return_val_if_fail (xmmsv_is_list (listv), 0);
 
-	return _xmmsv_list_clear (listv->value.list);
+	/* FIXME: instead, drop warning if not list, make function void */
+
+	_xmmsv_list_clear (listv->value.list);
+
+	return 1;
 }
 
 int
