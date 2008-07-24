@@ -629,7 +629,6 @@ xmmsc_service_describe (xmmsc_connection_t *conn, const char *service)
 	return xmmsc_send_msg (conn, msg);
 }
 
-/* Stuff below this line hasn't been updated yet. */
 /**
  * Make service method call.
  *
@@ -705,22 +704,6 @@ xmmsc_broadcast_service_changed (xmmsc_connection_t *c)
 	x_check_conn (c, NULL);
 
 	return xmmsc_send_broadcast_msg (c, XMMS_IPC_SIGNAL_SERVICE_CHANGED);
-}
-
-/**
- * Request the service method changed broadcast from the server.
- *
- * Everytime a service method is registered, unregistered or modified, the
- * broadcast will be emitted. The returned #xmmsc_result_t is a dict containing
- * the action type #xmms_service_changed_actions_t as well as the ID of service
- * and the changed method.
- */
-xmmsc_result_t *
-xmmsc_broadcast_service_method_changed (xmmsc_connection_t *c)
-{
-	x_check_conn (c, NULL);
-
-	return xmmsc_send_broadcast_msg (c, XMMS_IPC_SIGNAL_SERVICE_METHOD_CHANGED);
 }
 
 /**

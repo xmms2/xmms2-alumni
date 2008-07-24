@@ -344,11 +344,8 @@ xmmsc_result_t *xmmsc_service_shutdown (xmmsc_connection_t *conn,
                                         const char *service);
 
 /* broadcasts */
-/*
 xmmsc_result_t *xmmsc_broadcast_service_changed (xmmsc_connection_t *c);
-xmmsc_result_t *xmmsc_broadcast_service_method_changed (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c);
-*/
 
 #ifdef __cplusplus
 }
