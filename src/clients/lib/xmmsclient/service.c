@@ -59,11 +59,6 @@ typedef struct xmmsc_service_method_St {
 	xmmsv_t *args;
 } xmmsc_service_method_t;
 
-typedef struct xmmsc_service_method_arg_St {
-	char *name;
-	xmmsv_type_t *type;
-} xmmsc_service_method_arg_t;
-
 /* Macro Magic */
 #define DICT_ADD_INT(dict, key, n)                     \
 	val = xmmsv_new_int ((int32_t) n);                 \
