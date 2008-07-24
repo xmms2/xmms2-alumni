@@ -312,10 +312,11 @@ xmmsv_t *xmmsc_result_get_value (xmmsc_result_t *res);
  */
 typedef struct xmmsc_service_St xmmsc_service_t;
 
-typedef void (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn,
-                                          xmmsv_t *method,
-                                          xmmsv_t *args,
-                                          void *udata);
+typedef xmmsv_t* (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn,
+                                             xmmsc_service_t *svc,
+                                             const char *method,
+                                             xmmsv_t *args,
+                                             void *udata);
 
 int xmmsc_service_method_add (xmmsc_service_t *svc, const char *name,
                               const char *desc, xmmsv_type_t rettype,

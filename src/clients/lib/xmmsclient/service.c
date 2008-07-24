@@ -59,6 +59,12 @@ typedef struct xmmsc_service_method_St {
 	xmmsv_t *args;
 } xmmsc_service_method_t;
 
+typedef struct xmmsc_service_dispatch_St {
+	xmmsc_connection_t *conn;
+	xmmsc_service_t *svc;
+	char *method;
+} xmmsc_service_dispatch_t;
+
 /* Macro Magic */
 #define DICT_ADD_INT(dict, key, n)                     \
 	val = xmmsv_new_int ((int32_t) n);                 \
@@ -94,15 +100,15 @@ static int xmmsc_service_method_add_valist (xmmsc_service_t *svc,
 static void xmmsc_service_free (xmmsc_service_t *svc);
 static void xmmsc_service_method_free (xmmsc_service_method_t *meth);
 static xmmsv_t *xmmsc_service_methods_to_value (x_list_t *methods);
-
-/* Strange, old crap. Will stick these methods above this comment line one-by-
- * one as they are checked/updated. */
-/*
-static xmmsc_result_t *method_return (xmmsc_connection_t *conn,
-                                      xmmsc_value_t *val,
-                                      xmmsc_service_method_t *method);
-static void dispatch (xmmsc_value_t *val, void *data);
-*/
+static xmmsc_service_dispatch_t *
+xmmsc_service_dispatch_new (xmmsc_connection_t *conn, xmmsc_service_t *svc,
+                            const char *method);
+static void xmmsc_service_dispatch_free (void *data);
+static int xmmsc_service_dispatch (xmmsv_t *val, void *data);
+static xmmsc_result_t *
+xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
+                             xmmsc_service_method_t *method, xmmsv_t *args);
+static int xmmsc_service_dummy_handler (xmmsv_t *val, void *data);
 
 /**
  * Create a new service.
@@ -461,6 +467,10 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 	xmms_ipc_msg_t *msg;
 	xmmsv_t *service;
 	xmmsv_t *val = NULL;
+	x_list_t *tmp;
+	xmmsc_result_t *res;
+	xmmsc_service_method_t *meth;
+	xmmsc_service_dispatch_t *sd;
 
 	x_check_conn (conn, NULL);
 	x_return_null_if_fail (svc);
@@ -496,7 +506,20 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 	xmms_ipc_msg_put_value (msg, service);
 	xmmsv_unref (service);
 
-	return xmmsc_send_msg (conn, msg);
+	res = xmmsc_send_msg (conn, msg);
+
+	for (tmp = svc->methods; tmp; tmp = x_list_next (tmp)) {
+		meth = (xmmsc_service_method_t *) tmp->data;
+
+		sd = xmmsc_service_dispatch_new (conn, svc, (const char *) meth->name);
+		if (sd) {
+			xmmsc_result_notifier_set_full (res, xmmsc_service_dispatch,
+			                                (void *) sd,
+			                                xmmsc_service_dispatch_free);
+		}
+	}
+
+	return res;
 
 err:
 	if (val) {
@@ -565,6 +588,54 @@ err:
 	xmmsv_dict_clear (methods);
 	xmmsv_unref (methods);
 	return NULL;
+}
+
+static xmmsc_service_dispatch_t *
+xmmsc_service_dispatch_new (xmmsc_connection_t *conn, xmmsc_service_t *svc,
+                            const char *method)
+{
+	xmmsc_service_dispatch_t *sd;
+
+	x_return_null_if_fail (conn);
+	x_return_null_if_fail (svc);
+	x_return_null_if_fail (method);
+
+	/* Effectively, all members are initialized to NULL. */
+	sd = x_new0 (xmmsc_service_dispatch_t, 1);
+	x_return_null_if_fail (sd);
+
+	sd->conn = xmmsc_ref (conn);
+	sd->svc = xmmsc_service_ref (svc);
+	sd->method = strdup (method);
+	if (!sd->conn || !sd->svc || !sd->method) {
+		goto err;
+	}
+
+	return sd;
+
+err:
+	if (sd->conn) {
+		xmmsc_unref (sd->conn);
+	}
+	if (sd->svc) {
+		xmmsc_service_unref (sd->svc);
+	}
+	if (sd->method) {
+		free (sd->method);
+	}
+
+	return NULL;
+}
+
+static void
+xmmsc_service_dispatch_free (void *data)
+{
+	xmmsc_service_dispatch_t *sd = (xmmsc_service_dispatch_t *) data;
+	x_return_if_fail (sd);
+
+	xmmsc_unref (sd->conn);
+	xmmsc_service_unref (sd->svc);
+	free (sd->method);
 }
 
 /**
@@ -718,77 +789,71 @@ xmmsc_broadcast_service_shutdown (xmmsc_connection_t *c)
 /**
  * @internal
  */
+static int
+xmmsc_service_dispatch (xmmsv_t *val, void *data)
+{
+	xmmsc_service_dispatch_t *sd = (xmmsc_service_dispatch_t *)data;
+	xmmsc_service_method_t *meth = NULL;
+	x_list_t *tmp;
+	xmmsc_result_t *res;
+
+	x_return_val_if_fail (sd, 0);
+
+	for (tmp = sd->svc->methods; tmp; tmp = x_list_next (tmp)) {
+		meth = (xmmsc_service_method_t *) tmp->data;
+
+		if (strcmp (meth->name, (const char *) sd->method) == 0) {
+			break;
+		}
+	}
+	x_return_val_if_fail (meth, 0);
+
+	res = xmmsc_service_method_handle (sd->conn, sd->svc, meth, val);
+	if (res) {
+		xmmsc_result_notifier_set (res, xmmsc_service_dummy_handler, NULL);
+		xmmsc_result_unref (res);
+	}
+
+	return 1;
+}
+
 static xmmsc_result_t *
-method_return (xmmsc_connection_t *conn, xmmsc_value_t *val,
-               xmmsc_service_method_t *method)
+xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
+                             xmmsc_service_method_t *method, xmmsv_t *args)
 {
 	xmms_ipc_msg_t *msg;
+	xmmsv_t *ret;
+	xmmsv_t *val;
 	uint32_t cookie;
-	x_list_t *n;
-	xmmsc_service_argument_t *arg;
 
-	x_check_conn (conn, NULL);
-	x_return_null_if_fail (val);
-	x_return_null_if_fail (method);
-	if (!method->error && !method->ret_list) {
-		return NULL;
-	}
-
-	if (!xmmsc_value_get_service_cookie (val, &cookie)) {
-		return NULL;
-	}
+	x_return_null_if_fail (xmmsv_dict_get (args,
+	                       XMMSC_SERVICE_METHOD_PROP_COOKIE, &val));
+	x_return_null_if_fail (xmmsv_get_uint (val, &cookie));
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_RETURN);
+	x_return_null_if_fail (msg);
+
 	xmms_ipc_msg_put_uint32 (msg, cookie);
-	if (method->error) {
-		xmms_ipc_msg_put_uint32 (msg, XMMS_IPC_CMD_ERROR);
-		xmms_ipc_msg_put_string (msg, method->error_str);
-	} else if (method->ret_list) {
-		xmms_ipc_msg_put_uint32 (msg, XMMS_IPC_CMD_REPLY);
-		for (n = method->ret_list; n; n = x_list_next (n)) {
-			arg = (xmmsc_service_argument_t *)n->data;
 
-			xmms_ipc_msg_put_string (msg, arg->name);
-			xmms_ipc_msg_put_uint32 (msg, arg->none);
-			if (arg->none) {
-				continue;
-			}
-			if (!argument_write (msg, arg)) {
-				xmms_ipc_msg_destroy (msg);
-				return 0;
-			}
-
-			arg_value_free (arg);
-		}
+	/* FIXME: Check argument types and requirements here. */
+	ret = method->func (conn, svc, (const char *) method->name,
+	                    args, method->udata);
+	if (!ret) {
+		ret = xmmsv_new_error ("No return value from service method.");
+		x_return_null_if_fail (ret);
 	}
 
-	ret_reset (method);
+	xmms_ipc_msg_put_value (msg, ret);
 
 	return xmmsc_send_msg (conn, msg);
 }
 
-static void
-dummy_handler (xmmsv_t *val, void *data)
+static int
+xmmsc_service_dummy_handler (xmmsv_t *val, void *data)
 {
-
-}
-
-static void
-dispatch (xmmsv_t *val, void *data)
-{
-	xmmsc_service_method_t *method = (xmmsc_service_method_t *)data;
-	xmmsc_result_t *result;
-
-	x_return_if_fail (method);
-
-	method->func (method->conn, val, method, method->udata);
-
-	result = method_return (method->conn, val, method);
-	if (result) {
-		xmmsc_result_notifier_set (result, dummy_handler, NULL);
-		xmmsc_result_unref (result);
-	}
+	/* Is this /really/ necessary? */
+	return 0;
 }
 
 /* @} */
