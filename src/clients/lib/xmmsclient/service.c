@@ -108,6 +108,7 @@ static int xmmsc_service_dispatch (xmmsv_t *val, void *data);
 static xmmsc_result_t *
 xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
                              xmmsc_service_method_t *method, xmmsv_t *args);
+static int xmmsc_service_method_check_args (xmmsv_t *argtypes, xmmsv_t *args);
 static int xmmsc_service_dummy_handler (xmmsv_t *val, void *data);
 
 /**
@@ -836,17 +837,102 @@ xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
 
 	xmms_ipc_msg_put_uint32 (msg, cookie);
 
-	/* FIXME: Check argument types and requirements here. */
-	ret = method->func (conn, svc, (const char *) method->name,
-	                    args, method->udata);
-	if (!ret) {
-		ret = xmmsv_new_error ("No return value from service method.");
+	if (xmmsc_service_method_check_args (method->args, val)) {
+		ret = method->func (conn, svc, (const char *) method->name,
+		                    args, method->udata);
+		if (!ret) {
+			ret = xmmsv_new_error ("No return value from service method.");
+			x_return_null_if_fail (ret);
+		}
+	} else {
+		ret = xmmsv_new_error ("Invalid arguments.");
 		x_return_null_if_fail (ret);
 	}
 
 	xmms_ipc_msg_put_value (msg, ret);
 
 	return xmmsc_send_msg (conn, msg);
+}
+
+static int
+xmmsc_service_method_check_args (xmmsv_t *argtypes, xmmsv_t *args)
+{
+	xmmsv_list_iter_t *argit;
+	xmmsv_list_iter_t *typeit;
+	xmmsv_t *arg;
+	xmmsv_t *typearg;
+	xmmsv_t *val;
+	xmmsv_t *type;
+	const char *argname;
+	const char *typename;
+	int match;
+	int32_t optional;
+	xmmsv_type_t argtype;
+
+	x_return_val_if_fail (argtypes, 0);
+	x_return_val_if_fail (args, 0);
+
+	x_return_val_if_fail (xmmsv_get_list_iter (args, &argit), 0);
+	x_return_val_if_fail (xmmsv_get_list_iter (argtypes, &typeit), 0);
+
+	for (xmmsv_list_iter_first (typeit); xmmsv_list_iter_valid (typeit);
+	     xmmsv_list_iter_next (typeit))
+	{
+		match = 0;
+
+		for (xmmsv_list_iter_first (argit); xmmsv_list_iter_valid (argit);
+		     xmmsv_list_iter_next (argit))
+		{
+			x_return_val_if_fail (xmmsv_list_iter_entry (argit, &arg), 0);
+			x_return_val_if_fail (xmmsv_list_iter_entry (typeit, &typearg), 0);
+			x_return_val_if_fail (xmmsv_dict_get (arg,
+			                                      XMMSC_SERVICE_METHOD_ARG_PROP_NAME,
+			                                      &val), 0);
+			x_return_val_if_fail (xmmsv_dict_get (typearg,
+			                                      XMMSC_SERVICE_METHOD_ARG_PROP_NAME,
+			                                      &type), 0);
+			x_return_val_if_fail (xmmsv_get_string (val, &argname), 0);
+			x_return_val_if_fail (xmmsv_get_string (type, &typename), 0);
+
+			if (strcmp (argname, typename) != 0) {
+				continue;
+			} else {
+				match++;
+			}
+
+			x_return_val_if_fail (xmmsv_dict_get (arg,
+			                                      XMMSC_SERVICE_METHOD_ARG_PROP_VALUE,
+			                                      &val), 0);
+			x_return_val_if_fail (xmmsv_dict_get (typearg,
+			                                      XMMSC_SERVICE_METHOD_ARG_PROP_TYPE,
+			                                      &type), 0);
+			x_return_val_if_fail (xmmsv_get_int (type, (int32_t *) &argtype),
+			                                     0);
+
+			if (xmmsv_get_type (val) == argtype) {
+				/* Don't search anymore. */
+				break;
+			} else {
+				/* Houston, we have a problem. */
+				return 0;
+			}
+		}
+
+		if (match == 0) {
+			x_return_val_if_fail (xmmsv_list_iter_entry (typeit, &typearg), 0);
+			x_return_val_if_fail (xmmsv_dict_get (typearg,
+			                                      XMMSC_SERVICE_METHOD_ARG_PROP_OPTIONAL,
+			                                      &val), 0);
+			x_return_val_if_fail (xmmsv_get_int (val, &optional), 0);
+			if (optional == 0) {
+				/* There was no method by this name and it's not optional. */
+				return 0;
+			}
+			/* else { We're in the clear, this is an optional method. } */
+		}
+	}
+
+	return 1;
 }
 
 static int
