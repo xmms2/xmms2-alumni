@@ -64,6 +64,31 @@ typedef struct xmmsc_service_method_arg_St {
 	xmmsv_type_t *type;
 } xmmsc_service_method_arg_t;
 
+/* Macro Magic */
+#define DICT_ADD_INT(dict, key, n)                     \
+	val = xmmsv_new_int ((int32_t) n);                 \
+	if (!val || !xmmsv_dict_insert (dict, key, val)) { \
+		goto err;                                      \
+	}                                                  \
+	xmmsv_unref (val);                                 \
+	val = NULL;
+
+#define DICT_ADD_UINT(dict, key, n)                    \
+	val = xmmsv_new_uint ((uint32_t) n);               \
+	if (!val || !xmmsv_dict_insert (dict, key, val)) { \
+		goto err;                                      \
+	}                                                  \
+	xmmsv_unref (val);                                 \
+	val = NULL;
+
+#define DICT_ADD_STRING(dict, key, str)                \
+	val = xmmsv_new_string ((const char *) str);       \
+	if (!val || !xmmsv_dict_insert (dict, key, val)) { \
+		goto err;                                      \
+	}                                                  \
+	xmmsv_unref (val);                                 \
+	val = NULL;
+
 static int xmmsc_service_method_add_valist (xmmsc_service_t *svc,
                                             const char *name, const char *desc,
                                             xmmsv_type_t rettype,
@@ -311,38 +336,14 @@ xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
 		goto err;
 	}
 
-	val = xmmsv_new_string (name);
-	if (!val) {
-		goto err;
-	}
-	/* { "name" => name } */
-	if (!xmmsv_dict_insert (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_NAME,
-	                        val)) {
-		goto err;
-	}
-	xmmsv_unref (val);
+	/* arg = { "name" => name } */
+	DICT_ADD_STRING (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_NAME, name);
 
-	val = xmmsv_new_int ((int32_t) type);
-	if (!val) {
-		goto err;
-	}
-	/* { "name" => name, "type" => type } */
-	if (!xmmsv_dict_insert (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_TYPE,
-	                        val)) {
-		goto err;
-	}
-	xmmsv_unref (val);
+	/* arg = { "name" => name, "type" => type } */
+	DICT_ADD_INT (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_TYPE, type);
 
-	val = xmmsv_new_int (optional);
-	if (!val) {
-		goto err;
-	}
-	/* { "name" => name, "type" => type, "optional" => optional } */
-	if (!xmmsv_dict_insert (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_OPTIONAL,
-	                        val)) {
-		goto err;
-	}
-	xmmsv_unref (val);
+	/* arg = { "name" => name, "type" => type, "optional" => optional } */
+	DICT_ADD_INT (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_OPTIONAL, optional);
 
 	if (!xmmsv_list_append (meth->args, arg)) {
 		goto err;
@@ -464,7 +465,7 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 {
 	xmms_ipc_msg_t *msg;
 	xmmsv_t *service;
-	xmmsv_t *tmp = NULL;
+	xmmsv_t *val = NULL;
 
 	x_check_conn (conn, NULL);
 	x_return_null_if_fail (svc);
@@ -476,33 +477,26 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 	service = xmmsv_new_dict ();
 	x_return_null_if_fail (service);
 
-	tmp = xmmsv_new_string ((const char *) svc->name);
-	if (!tmp || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_NAME, tmp)) {
-		goto err;
-	}
-	xmmsv_unref (tmp);
-	tmp = xmmsv_new_string ((const char *) svc->desc);
-	if (!tmp || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_DESCRIPTION,
-	                                 tmp)) {
-		goto err;
-	}
-	xmmsv_unref (tmp);
-	tmp = xmmsv_new_uint (svc->major);
-	if (!tmp || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_MAJOR, tmp)) {
-		goto err;
-	}
-	xmmsv_unref (tmp);
-	tmp = xmmsv_new_uint (svc->minor);
-	if (!tmp || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_MINOR, tmp)) {
-		goto err;
-	}
-	xmmsv_unref (tmp);
+	/* service = { "name" => name } */
+	DICT_ADD_STRING (service, XMMSC_SERVICE_PROP_NAME, svc->name);
 
-	tmp = xmmsc_service_methods_to_value (svc->methods);
-	if (!tmp || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_METHODS, tmp)) {
+	/* service = { "name" => name , "description" => desc } */
+	DICT_ADD_STRING (service, XMMSC_SERVICE_PROP_DESCRIPTION, svc->desc);
+
+	/* service = { "name" => name , "description" => desc, "major" => major } */
+	DICT_ADD_UINT (service, XMMSC_SERVICE_PROP_MAJOR, svc->major);
+
+	/* service = { "name" => name , "description" => desc, "major" => major,
+	               "minor" => minor } */
+	DICT_ADD_UINT (service, XMMSC_SERVICE_PROP_MINOR, svc->minor);
+
+	/* service = { "name" => name , "description" => desc, "major" => major,
+	               "minor" => minor, "methods" => { ... } } */
+	val = xmmsc_service_methods_to_value (svc->methods);
+	if (!val || !xmmsv_dict_insert (service, XMMSC_SERVICE_PROP_METHODS, val)) {
 		goto err;
 	}
-	xmmsv_unref (tmp);
+	xmmsv_unref (val);
 
 	xmms_ipc_msg_put_value (msg, service);
 	xmmsv_unref (service);
@@ -510,8 +504,8 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 	return xmmsc_send_msg (conn, msg);
 
 err:
-	if (tmp) {
-		xmmsv_unref (tmp);
+	if (val) {
+		xmmsv_unref (val);
 	}
 	xmmsv_unref (service);
 
@@ -536,17 +530,20 @@ xmmsc_service_methods_to_value (x_list_t *meths)
 		if (!method) {
 			goto err;
 		}
-		val = xmmsv_new_string ((const char *) meth->desc);
-		if (!val || !xmmsv_dict_insert (method,
-		                                XMMSC_SERVICE_METHOD_PROP_DESCRIPTION,
-		                                val)) {
-			goto err;
-		}
-		xmmsv_unref (val);
+		/* method = { "description" => desc } */
+		DICT_ADD_STRING (method, XMMSC_SERVICE_METHOD_PROP_DESCRIPTION,
+		                 meth->desc);
+
+		/* method = { "description" => desc, "args" => [ ... ] } */
 		if (!xmmsv_dict_insert (method, XMMSC_SERVICE_METHOD_PROP_ARGUMENTS,
 		                        meth->args)) {
 			goto err;
 		}
+
+		/* method = { "description" => desc, "args" => [ ... ],
+		              "rettype" => rettype } */
+		DICT_ADD_INT (method, XMMSC_SERVICE_METHOD_PROP_RETURN_TYPE,
+		              meth->rettype);
 		val = xmmsv_new_int ((int32_t) meth->rettype);
 		if (!xmmsv_dict_insert (method, XMMSC_SERVICE_METHOD_PROP_RETURN_TYPE,
 		                        val)) {
