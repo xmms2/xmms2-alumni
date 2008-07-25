@@ -453,6 +453,7 @@ xmms_ipc_msg_put_value (xmms_ipc_msg_t *msg, xmmsv_t *v)
 	xmms_ipc_msg_put_int32 (msg, type);
 
 	/* FIXME: what to do if value fetching fails? */
+	/* FIXME: return -1 unsigned int?? */
 
 	switch (type) {
 	case XMMSV_TYPE_ERROR:
@@ -499,6 +500,7 @@ xmms_ipc_msg_put_value (xmms_ipc_msg_t *msg, xmmsv_t *v)
 		break;
 
 	case XMMSV_TYPE_NONE:
+		break;
 	default:
 		/* FIXME: weird, no? dump error? */
 		return -1;
