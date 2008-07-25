@@ -286,8 +286,7 @@ xmms_bindata_list (xmms_bindata_t *bindata, xmms_error_t *err)
 	}
 
 	while ((file = g_dir_read_name (dir))) {
-		entries = g_list_prepend (entries,
-		                          xmms_object_cmd_value_str_new (file));
+		entries = g_list_prepend (entries, xmmsv_new_string (file));
 	}
 
 	g_dir_close (dir);

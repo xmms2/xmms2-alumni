@@ -74,7 +74,7 @@ static void query_string_append_alias_list (coll_query_t *query, GString *qstrin
 static void query_string_append_fetch (coll_query_t *query, GString *qstring);
 static void query_string_append_alias (GString *qstring, coll_query_alias_t *alias);
 
-static gchar *canonical_field_name (gchar *field);
+static const gchar *canonical_field_name (const gchar *field);
 static gboolean operator_is_allmedia (xmmsv_coll_t *op);
 static coll_query_alias_t *query_make_alias (coll_query_t *query, const gchar *field, gboolean optional);
 static coll_query_alias_t *query_get_alias (coll_query_t *query, const gchar *field);
@@ -136,15 +136,15 @@ static void
 add_fetch_group_aliases (coll_query_t *query, coll_query_params_t *params)
 {
 	GList *n;
-	gchar *name;
+	const gchar *name;
 
 	/* Prepare aliases for the group/fetch fields */
 	for (n = query->params->group; n; n = n->next) {
-		name = ((xmms_object_cmd_value_t *) n->data)->value.string;
+		xmmsv_get_string (((xmmsv_t *) n->data), &name);
 		query_make_alias (query, name, TRUE);
 	}
 	for (n = query->params->fetch; n; n = n->next) {
-		name = ((xmms_object_cmd_value_t *) n->data)->value.string;
+		xmmsv_get_string (((xmmsv_t *) n->data), &name);
 		query_make_alias (query, name, TRUE);
 	}
 }
@@ -357,8 +357,8 @@ query_get_alias (coll_query_t *query, const gchar *field)
 }
 
 /* Find the canonical name of a field (strip flags, if any) */
-static gchar *
-canonical_field_name (gchar *field) {
+static const gchar *
+canonical_field_name (const gchar *field) {
 	if (*field == '-') {
 		field++;
 	} else if (*field == '~') {
@@ -561,8 +561,9 @@ query_string_append_alias_list (coll_query_t *query, GString *qstring, GList *fi
 	for (n = fields; n; n = n->next) {
 		coll_query_alias_t *alias;
 		/* extract string from cmdval_t */
-		gchar *field = ((xmms_object_cmd_value_t *) n->data)->value.string;
-		gchar *canon_field = canonical_field_name (field);
+		const gchar *field, *canon_field;
+		xmmsv_get_string (((xmmsv_t *) n->data), &field);
+		canon_field = canonical_field_name (field);
 
 		if (first) first = FALSE;
 		else {
@@ -602,11 +603,11 @@ query_string_append_fetch (coll_query_t *query, GString *qstring)
 	GList *n;
 	coll_query_alias_t *alias;
 	gboolean first = TRUE;
-	gchar *name;
+	const gchar *name;
 
 	for (n = query->params->fetch; n; n = n->next) {
 		/* extract string from cmdval_t */
-		name = ((xmms_object_cmd_value_t *) n->data)->value.string;
+		xmmsv_get_string (((xmmsv_t *) n->data), &name);
 		alias = query_make_alias (query, name, TRUE);
 
 		if (first) first = FALSE;
