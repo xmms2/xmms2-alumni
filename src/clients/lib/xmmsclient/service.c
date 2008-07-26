@@ -690,7 +690,7 @@ xmmsc_service_describe (xmmsc_connection_t *conn, const char *service)
 	x_check_conn (conn, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_INFO_LIST);
+	                        XMMS_IPC_CMD_SERVICE_DESCRIBE);
 	xmms_ipc_msg_put_string (msg, service);
 
 	return xmmsc_send_msg (conn, msg);
