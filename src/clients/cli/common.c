@@ -90,7 +90,7 @@ print_error (const gchar *fmt, ...)
 
 
 void
-print_hash (const void *key, xmmsv_t *value, void *udata)
+print_hash (const gchar *key, xmmsv_t *value, void *udata)
 {
 	if (xmmsv_get_type (value) == XMMSV_TYPE_STRING) {
 		const char *s;
@@ -151,7 +151,7 @@ print_entry_string (xmmsv_t *v, const gchar *key, const gchar *source)
 
 /* dumps a recursive key-source-val dict */
 void
-print_entry (const void *key, xmmsv_t *dict, void *udata)
+print_entry (const gchar *key, xmmsv_t *dict, void *udata)
 {
 	xmmsv_t *v;
 	const gchar *source;

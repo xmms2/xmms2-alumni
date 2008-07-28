@@ -926,8 +926,8 @@ xmmsv_list_clear (xmmsv_t *listv)
 }
 
 int
-xmmsv_list_foreach (xmmsv_t *listv, xmmsc_list_foreach_func func,
-                         void* user_data)
+xmmsv_list_foreach (xmmsv_t *listv, xmmsv_list_foreach_func func,
+                    void* user_data)
 {
 	xmmsv_list_iter_t *it;
 	xmmsv_t *v;
@@ -1188,8 +1188,8 @@ xmmsv_dict_clear (xmmsv_t *dictv)
 }
 
 int
-xmmsv_dict_foreach (xmmsv_t *dictv, xmmsc_dict_foreach_func func,
-                         void *user_data)
+xmmsv_dict_foreach (xmmsv_t *dictv, xmmsv_dict_foreach_func func,
+                    void *user_data)
 {
 	xmmsv_dict_iter_t *it;
 	const char *key;

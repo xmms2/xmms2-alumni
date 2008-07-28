@@ -52,8 +52,8 @@ int xmmsv_is_list (xmmsv_t *val);
 int xmmsv_is_dict (xmmsv_t *val);
 const char * xmmsv_get_error_old (xmmsv_t *val);
 
-typedef void (*xmmsc_list_foreach_func) (xmmsv_t *value, void *user_data);
-typedef void (*xmmsc_dict_foreach_func) (const void *key, xmmsv_t *value, void *user_data);
+typedef void (*xmmsv_list_foreach_func) (xmmsv_t *value, void *user_data);
+typedef void (*xmmsv_dict_foreach_func) (const char *key, xmmsv_t *value, void *user_data);
 
 /* legacy transitional utilities */
 xmmsv_type_t xmmsv_get_dict_entry_type (xmmsv_t *val, const char *key);
@@ -61,7 +61,6 @@ int xmmsv_get_dict_entry_string (xmmsv_t *val, const char *key, const char **r);
 int xmmsv_get_dict_entry_int (xmmsv_t *val, const char *key, int32_t *r);
 int xmmsv_get_dict_entry_uint (xmmsv_t *val, const char *key, uint32_t *r);
 int xmmsv_get_dict_entry_collection (xmmsv_t *val, const char *key, xmmsv_coll_t **coll);
-int xmmsv_dict_foreach (xmmsv_t *val, xmmsc_dict_foreach_func func, void *user_data);
 xmmsv_t *xmmsv_propdict_to_dict (xmmsv_t *propdict, const char **src_prefs);
 
 int xmmsv_get_error (xmmsv_t *val, const char **r);
@@ -80,7 +79,7 @@ int xmmsv_list_append (xmmsv_t *listv, xmmsv_t *val);
 int xmmsv_list_insert (xmmsv_t *listv, int pos, xmmsv_t *val);
 int xmmsv_list_remove (xmmsv_t *listv, int pos);
 int xmmsv_list_clear (xmmsv_t *listv);
-int xmmsv_list_foreach (xmmsv_t *listv, xmmsc_list_foreach_func func, void* user_data);
+int xmmsv_list_foreach (xmmsv_t *listv, xmmsv_list_foreach_func func, void* user_data);
 
 int  xmmsv_list_iter_entry (xmmsv_list_iter_t *it, xmmsv_t **val);
 int  xmmsv_list_iter_valid (xmmsv_list_iter_t *it);
@@ -96,7 +95,7 @@ int xmmsv_dict_get (xmmsv_t *dictv, const char *key, xmmsv_t **val);
 int xmmsv_dict_insert (xmmsv_t *dictv, const char *key, xmmsv_t *val);
 int xmmsv_dict_remove (xmmsv_t *dictv, const char *key);
 int xmmsv_dict_clear (xmmsv_t *dictv);
-int xmmsv_dict_foreach (xmmsv_t *dictv, xmmsc_dict_foreach_func func, void *user_data);
+int xmmsv_dict_foreach (xmmsv_t *dictv, xmmsv_dict_foreach_func func, void *user_data);
 
 int xmmsv_get_dict_iter (xmmsv_t *val, xmmsv_dict_iter_t **it);
 
