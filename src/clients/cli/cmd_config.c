@@ -98,7 +98,7 @@ cmd_config_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 }
 
 void
-get_keys (const void *key, xmmsv_t *value, void *user_data)
+get_keys (const gchar *key, xmmsv_t *value, void *user_data)
 {
 	GList **l = user_data;
 	volume_channel_t *chan;
