@@ -46,18 +46,21 @@ typedef struct xmms_service_client_St {
 /**
  * Functions
  */
-static xmms_service_entry_t *xmms_service_entry_new (xmms_service_t *obj,
-                                                     gchar *name,
-                                                     gchar *description,
-                                                     guint major, guint minor,
-                                                     xmms_socket_t client);
-static void xmms_service_destroy (xmms_object_t *object);
-static void xmms_service_registry_destroy (gpointer value);
-static void xmms_service_request_client_destroy (gpointer value);
-
 static void xmms_service_register (xmms_service_t *xmms_service,
                                    xmms_ipc_msg_t *msg, xmms_socket_t client,
                                    xmms_error_t *err);
+static xmms_service_entry_t *xmms_service_entry_new (xmms_service_t *obj,
+                                                     xmms_socket_t client,
+                                                     xmmsv_t *svc);
+static xmmsv_t *
+xmms_service_changed_msg_new (xmmsv_t *svc,
+                              xmms_service_changed_actions_t type);
+static gint uint_compare (gconstpointer a, gconstpointer b, gpointer data);
+
+/*
+static void xmms_service_destroy (xmms_object_t *object);
+static void xmms_service_registry_destroy (gpointer value);
+static void xmms_service_request_client_destroy (gpointer value);
 static void xmms_service_unregister (xmms_service_t *xmms_service,
                                      xmms_ipc_msg_t *msg,
                                      xmms_socket_t client,
@@ -100,18 +103,7 @@ static GTree *xmms_service_args_parse (xmms_ipc_msg_t *msg,
 static gboolean xmms_service_args_is_error (xmms_ipc_msg_t *msg);
 static gboolean xmms_service_args_error_parse (xmms_ipc_msg_t *msg,
                                                gchar **error, xmms_error_t *err);
-static GTree *
-xmms_service_changed_msg_new (gchar *service, gchar *method,
-                              xmms_service_changed_actions_t type);
-
-static gint
-uint_compare (gconstpointer a, gconstpointer b, gpointer data)
-{
-	guint x = GPOINTER_TO_UINT (a);
-	guint y = GPOINTER_TO_UINT (b);
-
-	return x == y ? 0 : (x > y ? 1 : -1);
-}
+*/
 
 /**
  * Initialize service client handling
@@ -199,28 +191,94 @@ xmms_service_handle (xmms_object_t *obj, xmms_ipc_msg_t *msg,
 	}
 }
 
+/**
+ * Register a new service
+ */
+static void
+xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
+                       xmms_socket_t client, xmms_error_t *err)
+{
+	const gchar *name = NULL;
+	xmms_service_entry_t *entry = NULL;
+	xmmsv_t *val = NULL;
+	xmmsv_t *ret;
+
+	g_return_if_fail (msg);
+
+	if (!xmms_ipc_msg_get_value_alloc (msg, &val)) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NO_SAUSAGE,
+		                    "Failed to parse service description from client.");
+		goto err;
+	}
+
+	if (!xmmsv_get_string (val, &name) || !name) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NO_SAUSAGE,
+		                    "Failed to extract service name.");
+		goto err;
+	}
+
+	entry = xmms_service_entry_new (xmms_service, client, val);
+	xmmsv_unref (val);
+
+	if (!entry) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NO_SAUSAGE,
+		                    "Failed to create new service entry.");
+		goto err;
+	}
+
+	g_mutex_lock (xmms_service->mutex);
+	g_tree_insert (xmms_service->registry, name, entry);
+	g_mutex_unlock (xmms_service->mutex);
+
+	ret = xmms_service_changed_msg_new (entry->description,
+	                                    XMMS_SERVICE_CHANGED_REGISTER);
+	if (!ret) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
+		                    "Failed to set broadcast message.");
+		goto err;
+	}
+
+	xmms_object_emit_f (XMMS_OBJECT (xmms_service),
+	                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
+	                    XMMSV_TYPE_DICT, ret);
+	xmmsv_unref (ret);
+
+	XMMS_DBG ("New service registered");
+
+	return;
+
+err:
+	if (val) {
+		xmmsv_unref (val);
+	}
+	if (entry) {
+		xmmsv_unref (entry->description);
+		g_mutex_free (entry->mutex);
+		g_free (entry);
+	}
+
+	return;
+}
+
 static xmms_service_entry_t *
-xmms_service_entry_new (xmms_service_t *obj, gchar *name, gchar *description,
-                        guint major, guint minor, xmms_socket_t client)
+xmms_service_entry_new (xmms_service_t *obj, xmms_socket_t client, xmmsv_t *svc)
 {
 	xmms_service_entry_t *entry;
 
 	entry = g_new0 (xmms_service_entry_t, 1);
-
 	if (!entry) {
 		xmms_log_error ("Service entry initialization failed!");
 		return NULL;
 	}
 
-	entry->name = name;
-	entry->description = description;
-	entry->major_version = major;
-	entry->minor_version = minor;
+	entry->description = xmmsv_ref (svc);
+	if (!entry->description) {
+		xmms_log_error ("Service entry initialization failed!");
+		return NULL;
+	}
+
 	entry->sc = client;
 	entry->mutex = g_mutex_new ();
-	entry->methods = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, NULL,
-	                                 (GDestroyNotify)
-	                                 xmms_service_method_destroy);
 	entry->service_obj = obj;
 
 	return entry;
@@ -298,89 +356,6 @@ xmms_service_request_client_destroy (gpointer value)
 	                  XMMS_IPC_SIGNAL_SERVICE, &arg);
 
 	g_free (val);
-}
-
-/**
- * Register a new service
- */
-static void
-xmms_service_register (xmms_service_t *xmms_service, xmms_ipc_msg_t *msg,
-                       xmms_socket_t client, xmms_error_t *err)
-{
-	gchar *name = NULL;
-	gchar *desc = NULL;
-	guint len, major, minor, methods;
-	GTree *table = NULL;
-	xmms_service_entry_t *entry;
-
-	g_return_if_fail (msg);
-
-	if (!xmms_ipc_msg_get_string_alloc (msg, &name, &len)) {
-		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No service id given");
-		goto err;
-	}
-
-	if (!xmms_ipc_msg_get_string_alloc (msg, &desc, &len)) {
-		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
-		                    "No service description given");
-		goto err;
-	}
-
-	if (!xmms_ipc_msg_get_uint32 (msg, &major)) {
-		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No major version given");
-		goto err;
-	}
-
-	if (!xmms_ipc_msg_get_uint32 (msg, &minor)) {
-		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "No minor version given");
-		goto err;
-	}
-
-	if (xmms_service_is_registered (xmms_service, name)) {
-		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
-		                    "Service already registered");
-		goto err;
-	}
-
-	if (!xmms_ipc_msg_get_uint32 (msg, &methods)) {
-		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
-		                    "Number of methods not specified");
-		goto err;
-	}
-
-	if (methods > 0) {
-		for (; methods > 0; methods--) {
-			if (!xmms_service_method_register (xmms_service, msg, err)) {
-				goto err;
-			}
-		}
-	}
-
-	entry = xmms_service_entry_new (xmms_service, name, desc, major, minor,
-	                                client);
-	g_mutex_lock (xmms_service->mutex);
-	g_tree_insert (xmms_service->registry, name, entry);
-	g_mutex_unlock (xmms_service->mutex);
-
-	table = xmms_service_changed_msg_new (entry->name, NULL,
-	                                      XMMS_SERVICE_CHANGED_REGISTER);
-	xmms_object_emit_f (XMMS_OBJECT (xmms_service),
-	                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
-	                    XMMS_OBJECT_CMD_ARG_DICT,
-	                    table);
-	g_hash_table_destroy (table);
-	XMMS_DBG ("New service registered");
-
-	return;
-
-err:
-	if (name) {
-		free (name);
-	}
-	if (desc) {
-		free (desc);
-	}
-	return;
 }
 
 /**
@@ -958,27 +933,34 @@ xmms_service_args_is_error (xmms_ipc_msg_t *msg)
 /**
  * Create a new return message for XMMS_IPC_SIGNAL_SERVICE_#_CHANGED broadcasts.
  */
-static GTree *
-xmms_service_changed_msg_new (gchar *service, gchar *method,
-                              xmms_service_changed_actions_t type)
+static xmmsv_t *
+xmms_service_changed_msg_new (xmmsv_t *svc, xmms_service_changed_actions_t type)
 {
-	GTree *table = NULL;
-	xmms_object_cmd_value_t *val = NULL;
+	xmmsv_t *ret;
+	xmmsv_t *val;
 
-	g_return_val_if_fail (service, NULL);
+	ret = xmmsv_new_dict ();
+	x_return_null_if_fail (ret);
 
-	table = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                               NULL, object_cmd_value_unref);
-	val = xmms_object_cmd_value_uint_new (type);
-	g_hash_table_insert (table, "type", val);
-	val = xmms_object_cmd_value_str_new (service);
-	g_hash_table_insert (table, "service", val);
-	if (method) {
-		val = xmms_object_cmd_value_str_new (method);
-		g_hash_table_insert (table, "method", val);
-	}
+	x_return_null_if_fail (xmmsv_dict_get (svc, XMMSC_SERVICE_PROP_NAME, &val));
+	x_return_null_if_fail (xmmsv_dict_insert (ret, XMMSC_SERVICE_PROP_NAME,
+	                                          val));
 
-	return table;
+	val = xmmsv_new_int ((int32_t) type);
+	x_return_null_if_fail (val);
+	x_return_null_if_fail (xmmsv_dict_insert (ret, XMMSC_SERVICE_CHANGE_TYPE,
+	                                          val));
+
+	return ret;
+}
+
+static gint
+uint_compare (gconstpointer a, gconstpointer b, gpointer data)
+{
+	guint x = GPOINTER_TO_UINT (a);
+	guint y = GPOINTER_TO_UINT (b);
+
+	return x == y ? 0 : (x > y ? 1 : -1);
 }
 
 /** @} */

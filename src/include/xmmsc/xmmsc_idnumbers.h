@@ -246,6 +246,7 @@ typedef const char* xmmsv_coll_namespace_t;
 #define XMMS_ACTIVE_PLAYLIST "_active"
 
 /* Service Clients */
+#define XMMSC_SERVICE_CHANGE_TYPE              "type"
 #define XMMSC_SERVICE_PROP_NAME                "name"
 #define XMMSC_SERVICE_PROP_DESCRIPTION         "description"
 #define XMMSC_SERVICE_PROP_MAJOR               "major"

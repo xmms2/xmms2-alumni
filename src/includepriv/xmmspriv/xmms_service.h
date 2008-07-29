@@ -39,17 +39,13 @@ struct xmms_service_St {
  * A single service representation
  */
 typedef struct xmms_service_entry_St {
-	gchar *name;
-	gchar *description;
-
-	guint major_version;
-	guint minor_version;
-
-	xmmsv_t *methods;
+	/* The description of the service and all its methods. */
+	xmmsv_t *description;
 
 	/* Service client fd */
 	xmms_socket_t sc;
 
+	/* A client should have exclusive access when querying a service client. */
 	GMutex *mutex;
 	xmms_service_t *service_obj;
 } xmms_service_entry_t;
