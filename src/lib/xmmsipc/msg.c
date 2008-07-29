@@ -889,15 +889,24 @@ err:
 bool
 xmms_ipc_msg_get_value_alloc (xmms_ipc_msg_t *msg, xmmsv_t **val)
 {
-	int32_t type, i;
-	uint32_t len, u;
-	char *s;
-	xmmsv_coll_t *c;
-	unsigned char *d;
+	int32_t type;
 
 	if (!xmms_ipc_msg_get_int32 (msg, (int32_t *) &type)) {
 		return false;
 	}
+
+	return xmms_ipc_msg_get_value_of_type_alloc (msg, type, val);
+}
+
+bool
+xmms_ipc_msg_get_value_of_type_alloc (xmms_ipc_msg_t *msg, xmmsv_type_t type,
+                                      xmmsv_t **val)
+{
+	int32_t i;
+	uint32_t len, u;
+	char *s;
+	xmmsv_coll_t *c;
+	unsigned char *d;
 
 	switch (type) {
 		case XMMSV_TYPE_ERROR:
