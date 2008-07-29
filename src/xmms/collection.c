@@ -47,9 +47,9 @@ typedef struct {
 } coll_rebind_infos_t;
 
 typedef struct {
-	gchar* oldname;
-	gchar* newname;
-	gchar* namespace;
+	const gchar* oldname;
+	const gchar* newname;
+	const gchar* namespace;
 } coll_rename_infos_t;
 
 typedef struct {
@@ -59,8 +59,8 @@ typedef struct {
 } coll_call_infos_t;
 
 typedef struct {
-	gchar *target_name;
-	gchar *target_namespace;
+	const gchar *target_name;
+	const gchar *target_namespace;
 	gboolean found;
 } coll_refcheck_t;
 
@@ -297,25 +297,6 @@ add_metadata_from_tree (const gchar *key, xmmsv_t *value, gpointer user_data)
 		                                             sv,
 		                                             ud->src);
 	}
-}
-
-/**
- * Checks that the list only contains string values.
- */
-static gboolean
-check_string_list (GList *list)
-{
-	GList *n;
-	xmmsv_t *valstr;
-
-	for (n = list; n; n = n->next) {
-		valstr = (xmmsv_t *) n->data;
-		if (xmmsv_get_type (valstr) != XMMSV_TYPE_STRING) {
-			return FALSE;
-		}
-	}
-
-	return TRUE;
 }
 
 
@@ -752,19 +733,25 @@ gboolean xmms_collection_rename (xmms_coll_dag_t *dag, const gchar *from_name,
  * @param coll  The collection used to match media.
  * @param lim_start  The beginning index of the LIMIT statement (0 to disable).
  * @param lim_len  The number of entries of the LIMIT statement (0 to disable).
- * @param order  The list of properties to order by (NULL to disable).
+ * @param order  The list of properties to order by (empty to disable).
  * @param err  If an error occurs, a message is stored in it.
  * @return A list of media ids.
  */
 GList *
 xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
-                           guint lim_start, guint lim_len, GList *order,
+                           guint lim_start, guint lim_len, xmmsv_t *order,
                            xmms_error_t *err)
 {
 	GList *res, *n;
-	GList *fetch = g_list_prepend (NULL, xmmsv_new_string ("id"));
+	xmmsv_t *fetch, *group, *idval;
 
-	res = xmms_collection_query_infos (dag, coll, lim_start, lim_len, order, fetch, NULL, err);
+	/* no grouping, fetch only id */
+	group = xmmsv_new_list ();
+	fetch = xmmsv_new_list ();
+	idval = xmmsv_new_string ("id");
+	xmmsv_list_append (fetch, idval);
+
+	res = xmms_collection_query_infos (dag, coll, lim_start, lim_len, order, fetch, group, err);
 
 	/* FIXME: get an int list directly ! */
 	for (n = res; n; n = n->next) {
@@ -778,6 +765,10 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 		xmmsv_unref (cmdval);
 	}
 
+	xmmsv_unref (group);
+	xmmsv_unref (fetch);
+	xmmsv_unref (idval);
+
 	return res;
 }
 
@@ -788,36 +779,36 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
  * @param coll  The collection used to match media.
  * @param lim_start  The beginning index of the LIMIT statement (0 to disable).
  * @param lim_len  The number of entries of the LIMIT statement (0 to disable).
- * @param order  The list of properties to order by, prefix by '-' to invert (NULL to disable).
- * @param fetch  The list of properties to be retrieved (NULL to only retrieve id).
- * @param group  The list of properties to group by (NULL to disable).
+ * @param order  The list of properties to order by, prefix by '-' to invert (empty to disable).
+ * @param fetch  The list of properties to be retrieved.
+ * @param group  The list of properties to group by (empty to disable).
  * @param err  If an error occurs, a message is stored in it.
  * @return A list of property dicts for each entry.
  */
 GList *
 xmms_collection_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
-                             guint lim_start, guint lim_len, GList *order,
-                             GList *fetch, GList *group, xmms_error_t *err)
+                             guint lim_start, guint lim_len, xmmsv_t *order,
+                             xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err)
 {
 	GList *res = NULL;
 	GString *query;
 
 	/* check that fetch is not empty */
-	if (!fetch) {
+	if (!xmmsv_list_get (fetch, 0, NULL)) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "fetch list must not be empty!");
 		return NULL;
 	}
 
 	/* check for invalid property strings */
-	if (check_string_list (order)) {
+	if (!check_string_list (order)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid order list!");
 		return NULL;
 	}
-	if (check_string_list (fetch)) {
+	if (!check_string_list (fetch)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid fetch list!");
 		return NULL;
 	}
-	if (check_string_list (group)) {
+	if (!check_string_list (group)) {
 		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid group list!");
 		return NULL;
 	}
@@ -990,15 +981,14 @@ xmms_medialib_entry_t
 xmms_collection_get_random_media (xmms_coll_dag_t *dag, xmmsv_coll_t *source)
 {
 	GList *res;
-	GList *rorder = NULL;
 	xmms_medialib_entry_t mid = 0;
+	xmmsv_t *rorder = xmmsv_new_list ();
+	xmmsv_t *randval = xmmsv_new_string ("~RANDOM()");
 
 	/* FIXME: Temporary hack to allow custom ordering functions */
-	rorder = g_list_prepend (rorder, (gpointer) "~RANDOM()");
+	xmmsv_list_append (rorder, randval);
 
 	res = xmms_collection_query_ids (dag, source, 0, 1, rorder, NULL);
-
-	g_list_free (rorder);
 
 	if (res != NULL) {
 		xmmsv_t *val = (xmmsv_t *) res->data;
@@ -1006,6 +996,9 @@ xmms_collection_get_random_media (xmms_coll_dag_t *dag, xmmsv_coll_t *source)
 		xmmsv_unref (val);
 		g_list_free (res);
 	}
+
+	xmmsv_unref (rorder);
+	xmmsv_unref (randval);
 
 	return mid;
 }
@@ -1926,7 +1919,8 @@ xmms_collection_media_info (guint mid, xmms_error_t *err)
 	GList *res;
 	GList *n;
 	GHashTable *infos;
-	gchar *name, *buf;
+	gchar *name;
+	const gchar *buf;
 	xmmsv_t *cmdval;
 	xmmsv_t *value;
 	guint state;
@@ -2149,29 +2143,27 @@ xmms_collection_media_filter_match (xmms_coll_dag_t *dag, GHashTable *mediainfo,
                                        GHashTable *match_table)
 {
 	gboolean match = FALSE;
-	gchar *buf;
-	gchar *mediaval;
-	gchar *opval;
+	gchar *buf, *opval, *mediaval;
+	const gchar *s;
 	gboolean case_sens;
 
 	if (filter_get_mediainfo_field_string (coll, mediainfo, &buf) &&
-	    filter_get_operator_value_string (coll, &opval) &&
+	    filter_get_operator_value_string (coll, &s) &&
 	    filter_get_operator_case (coll, &case_sens)) {
 
 		/* Prepare values */
 		if (case_sens) {
-			mediaval = buf;
+			opval = g_strdup (s);
+			mediaval = g_strdup (buf);
 		} else {
-			opval = g_utf8_strdown (opval, -1);
+			opval = g_utf8_strdown (s, -1);
 			mediaval = g_utf8_strdown (buf, -1);
-			g_free (buf);
 		}
 
 		match = g_pattern_match_simple (opval, mediaval);
 
-		if (!case_sens) {
-			g_free (opval);
-		}
+		g_free (buf);
+		g_free (opval);
 		g_free (mediaval);
 
 		/* If operator matches, recurse upwards in the operand */

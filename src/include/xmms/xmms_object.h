@@ -58,6 +58,7 @@ xmmsv_t *xmms_create_xmmsv_bin (GString *gs);
 
 int xmms_bin_to_gstring (xmmsv_t *value, GString **gs);
 int dummy_identity (xmmsv_t *value, xmmsv_t **arg);
+gboolean check_string_list (xmmsv_t *list);
 
 
 /** @} */
@@ -116,9 +117,6 @@ void xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_a
 #define __XMMS_CMD_INIT_ARG(argn, argtype, argtypecode) \
 	__XMMS_CMD_INIT_ARG_FULL(argn, argtypecode, xmmsv_get_##argtype)
 
-
-/* FIXME: not const char * ? */
-/* FIXME: broken for bin/Gstring, and list + dicts */
 #define __XMMS_CMD_INIT_ARG_NONE(a)
 #define __XMMS_CMD_INIT_ARG_STRING(a) __XMMS_CMD_INIT_ARG(a, string, const gchar *)
 #define __XMMS_CMD_INIT_ARG_UINT32(a) __XMMS_CMD_INIT_ARG(a, uint, guint)
@@ -159,7 +157,6 @@ __XMMS_CMD_INIT_ARG_##argtype6 (5) \
 __XMMS_CMD_DO_RETVAL_##_rettype() (realfunc ((argtype0)object __XMMS_CMD_PRINT_ARG_##argtype1(0) __XMMS_CMD_PRINT_ARG_##argtype2(1) __XMMS_CMD_PRINT_ARG_##argtype3(2) __XMMS_CMD_PRINT_ARG_##argtype4(3) __XMMS_CMD_PRINT_ARG_##argtype5(4) __XMMS_CMD_PRINT_ARG_##argtype6(5), &arg->error)); \
 } \
 xmms_object_cmd_desc_t __int_xmms_cmd_desc_##cmdid = { __int_xmms_cmd_##cmdid, XMMSV_TYPE_##_rettype, {XMMSV_TYPE_##argtype1, XMMSV_TYPE_##argtype2, XMMSV_TYPE_##argtype3, XMMSV_TYPE_##argtype4, XMMSV_TYPE_##argtype5, XMMSV_TYPE_##argtype6} }
-
 
 
 /* #define __XMMS_CMD_DO_ARG_NONE(a) */
