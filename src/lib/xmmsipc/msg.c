@@ -448,7 +448,7 @@ xmms_ipc_msg_put_value (xmms_ipc_msg_t *msg, xmmsv_t *v)
 	int32_t i;
 	const char *s;
 	xmmsv_coll_t *c;
-	unsigned char *bc;
+	const unsigned char *bc;
 	unsigned int bl;
 	xmmsv_type_t type;
 

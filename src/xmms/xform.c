@@ -239,8 +239,8 @@ xmms_browse_list_sortfunc (gconstpointer a, gconstpointer b)
 		return i1 > i2;
 	}
 
-	xmmsv_dict_get (val1, "path", tmp1);
-	xmmsv_dict_get (val2, "path", tmp2);
+	xmmsv_dict_get (val1, "path", &tmp1);
+	xmmsv_dict_get (val2, "path", &tmp2);
 
 	g_return_val_if_fail (!!tmp1, 0);
 	g_return_val_if_fail (!!tmp2, 0);

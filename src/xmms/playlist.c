@@ -44,7 +44,7 @@
 static void xmms_playlist_destroy (xmms_object_t *object);
 static void xmms_playlist_shuffle (xmms_playlist_t *playlist, const gchar *plname, xmms_error_t *err);
 static void xmms_playlist_clear (xmms_playlist_t *playlist, const gchar *plname, xmms_error_t *err);
-static void xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname, GList *property, xmms_error_t *err);
+static void xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname, xmmsv_t *property, xmms_error_t *err);
 static GList * xmms_playlist_list_entries (xmms_playlist_t *playlist, const gchar *plname, xmms_error_t *err);
 static void xmms_playlist_destroy (xmms_object_t *object);
 gboolean xmms_playlist_remove (xmms_playlist_t *playlist, const gchar *plname, guint pos, xmms_error_t *err);
@@ -55,7 +55,7 @@ static guint xmms_playlist_set_current_position_do (xmms_playlist_t *playlist, g
 
 static gboolean xmms_playlist_insert_url (xmms_playlist_t *playlist, const gchar *plname, guint32 pos, const gchar *url, xmms_error_t *error);
 static gboolean xmms_playlist_insert_id (xmms_playlist_t *playlist, const gchar *plname, guint32 pos, xmms_medialib_entry_t file, xmms_error_t *error);
-static gboolean xmms_playlist_insert_collection (xmms_playlist_t *playlist, const gchar *plname, guint32 pos, xmmsv_coll_t *coll, GList *order, xmms_error_t *error);
+static gboolean xmms_playlist_insert_collection (xmms_playlist_t *playlist, const gchar *plname, guint32 pos, xmmsv_coll_t *coll, xmmsv_t *order, xmms_error_t *error);
 static void xmms_playlist_radd (xmms_playlist_t *playlist, const gchar *plname, const gchar *path, xmms_error_t *error);
 
 static void xmms_playlist_load (xmms_playlist_t *, const gchar *, xmms_error_t *);
@@ -941,7 +941,7 @@ xmms_playlist_insert_id (xmms_playlist_t *playlist, const gchar *plname,
 
 gboolean
 xmms_playlist_insert_collection (xmms_playlist_t *playlist, const gchar *plname,
-                                 guint32 pos, xmmsv_coll_t *coll, GList *order,
+                                 guint32 pos, xmmsv_coll_t *coll, xmmsv_t *order,
                                  xmms_error_t *err)
 {
 	GList *res;
@@ -1062,7 +1062,7 @@ xmms_playlist_add_idlist (xmms_playlist_t *playlist, const gchar *plname,
 
 gboolean
 xmms_playlist_add_collection (xmms_playlist_t *playlist, const gchar *plname,
-                              xmmsv_coll_t *coll, GList *order,
+                              xmmsv_coll_t *coll, xmmsv_t *order,
                               xmms_error_t *err)
 {
 	GList *res;
@@ -1281,20 +1281,22 @@ typedef struct {
 static gint
 xmms_playlist_entry_compare (gconstpointer a, gconstpointer b, gpointer user_data)
 {
-	GList *n1, *n2, *properties;
-	xmmsv_t *val1, *val2;
+	GList *n1, *n2;
+	xmmsv_t *val1, *val2, *properties, *propval;
+	xmmsv_list_iter_t *propit;
 	sortdata_t *data1 = (sortdata_t *) a;
 	sortdata_t *data2 = (sortdata_t *) b;
 	int s1, s2, res;
-	gchar *str;
-	const gchar *str1, *str2;
+	const gchar *propstr, *str1, *str2;
 
-	for (n1 = data1->val, n2 = data2->val, properties = (GList *) user_data;
-	     n1 && n2 && properties;
-	     n1 = n1->next, n2 = n2->next, properties = properties->next) {
+	properties = (xmmsv_t *) user_data;
+	for (n1 = data1->val, n2 = data2->val, xmmsv_get_list_iter (properties, &propit);
+	     n1 && n2 && xmmsv_list_iter_valid (propit);
+	     n1 = n1->next, n2 = n2->next, xmmsv_list_iter_next (propit)) {
 
-		str = properties->data;
-		if (str[0] == '-') {
+		xmmsv_list_iter_entry (propit, &propval);
+		xmmsv_get_string (propval, &propstr);
+		if (propstr[0] == '-') {
 			val2 = n1->data;
 			val1 = n2->data;
 		} else {
@@ -1409,7 +1411,7 @@ xmms_playlist_sorted_unwind (gpointer data, gpointer userdata)
 
 static void
 xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname,
-                    GList *properties, xmms_error_t *err)
+                    xmmsv_t *properties, xmms_error_t *err)
 {
 	guint32 i;
 	GList *tmp = NULL, *n;
@@ -1421,9 +1423,10 @@ xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname,
 	xmmsv_coll_t *plcoll;
 	gint currpos, size;
 	xmmsv_t *valstr;
+	xmmsv_list_iter_t *propit;
 
 	g_return_if_fail (playlist);
-	g_return_if_fail (properties);
+	g_return_if_fail (xmmsv_list_get (properties, 0, NULL)); /* not empty! */
 
 	g_mutex_lock (playlist->mutex);
 
@@ -1435,20 +1438,16 @@ xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname,
 	}
 
 	/* check for invalid property strings */
-	for (n = properties; n; n = n->next) {
-		valstr = (xmmsv_t *) n->data;
-		if (xmmsv_get_type (valstr) != XMMSV_TYPE_STRING) {
-			xmms_error_set (err, XMMS_ERROR_NOENT, "invalid list of properties!");
-			g_mutex_unlock (playlist->mutex);
-			return;
-		}
-		/* in debug, show the first ordering property */
-		if (n == properties) {
-			xmmsv_get_string (valstr, &str);
-			XMMS_DBG ("Sorting on %s (and maybe more)", str);
-		}
+	if (!check_string_list (properties)) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid list of properties!");
+		g_mutex_unlock (playlist->mutex);
+		return;
 	}
 
+	/* in debug, show the first ordering property */
+	xmmsv_list_get (properties, 0, &valstr);
+	xmmsv_get_string (valstr, &str);
+	XMMS_DBG ("Sorting on %s (and maybe more)", str);
 
 	currpos = xmms_playlist_coll_get_currpos (plcoll);
 	size = xmms_playlist_coll_get_size (plcoll);
@@ -1469,8 +1468,11 @@ xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname,
 
 		/* save the list of values corresponding to the list of sort props */
 		data->val = NULL;
-		for (n = properties; n; n = n->next) {
-			valstr = (xmmsv_t *) n->data;
+		for (xmmsv_get_list_iter (properties, &propit);
+		     xmmsv_list_iter_valid (propit);
+		     xmmsv_list_iter_next (propit)) {
+
+			xmmsv_list_iter_entry (propit, &valstr);
 			xmmsv_get_string (valstr, &str);
 			if (str[0] == '-')
 				str++;

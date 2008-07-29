@@ -63,8 +63,8 @@ GList * xmms_collection_find (xmms_coll_dag_t *dag, guint mid, const gchar *name
 gboolean xmms_collection_rename (xmms_coll_dag_t *dag, const gchar *from_name, const gchar *to_name, const gchar *namespace, xmms_error_t *error);
 void xmms_collection_sync (xmms_coll_dag_t *dag, xmms_error_t *error);
 
-GList * xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, guint lim_start, guint lim_len, GList *order, xmms_error_t *err);
-GList * xmms_collection_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, guint lim_start, guint lim_len, GList *order, GList *fetch, GList *group, xmms_error_t *err);
+GList * xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, guint lim_start, guint lim_len, xmmsv_t *order, xmms_error_t *err);
+GList * xmms_collection_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, guint lim_start, guint lim_len, xmmsv_t *order, xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err);
 
 void xmms_collection_foreach_in_namespace (xmms_coll_dag_t *dag, guint nsid, GHFunc f, void *udata);
 void xmms_collection_apply_to_all_collections (xmms_coll_dag_t *dag, FuncApplyToColl f, void *udata);

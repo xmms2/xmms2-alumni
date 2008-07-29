@@ -389,7 +389,7 @@ value_data_free (xmmsv_t *val)
  * @returns The data type in the value.
  */
 xmmsv_type_t
-xmmsv_get_type (xmmsv_t *val)
+xmmsv_get_type (const xmmsv_t *val)
 {
 	x_api_error_if (!val, "NULL value",
 	                XMMSV_TYPE_NONE);
@@ -405,7 +405,7 @@ xmmsv_get_type (xmmsv_t *val)
  * @return 1 if error was encountered, else 0
  */
 int
-xmmsv_iserror (xmmsv_t *val)
+xmmsv_iserror (const xmmsv_t *val)
 {
 	return !val || xmmsv_get_type (val) == XMMSV_TYPE_ERROR;
 }
@@ -417,7 +417,7 @@ xmmsv_iserror (xmmsv_t *val)
  * @return 1 if value stores a list, 0 otherwise.
  */
 int
-xmmsv_is_list (xmmsv_t *val)
+xmmsv_is_list (const xmmsv_t *val)
 {
 	return xmmsv_get_type (val) == XMMSV_TYPE_LIST;
 }
@@ -429,13 +429,13 @@ xmmsv_is_list (xmmsv_t *val)
  * @return 1 if value stores a dict, 0 otherwise.
  */
 int
-xmmsv_is_dict (xmmsv_t *val)
+xmmsv_is_dict (const xmmsv_t *val)
 {
 	return xmmsv_get_type (val) == XMMSV_TYPE_DICT;
 }
 
 const char *
-xmmsv_get_error_old (xmmsv_t *val)
+xmmsv_get_error_old (const xmmsv_t *val)
 {
 	if (!val || val->type != XMMSV_TYPE_ERROR) {
 		return NULL;
@@ -560,7 +560,7 @@ xmmsv_propdict_to_dict (xmmsv_t *propdict, const char **src_prefs)
  * @return 1 upon success otherwise 0
  */
 int
-xmmsv_get_error (xmmsv_t *val, const char **r)
+xmmsv_get_error (const xmmsv_t *val, const char **r)
 {
 	if (!val || val->type != XMMSV_TYPE_ERROR) {
 		return 0;
@@ -578,7 +578,7 @@ xmmsv_get_error (xmmsv_t *val, const char **r)
  * @return 1 upon success otherwise 0
  */
 int
-xmmsv_get_int (xmmsv_t *val, int32_t *r)
+xmmsv_get_int (const xmmsv_t *val, int32_t *r)
 {
 	if (!val || val->type != XMMSV_TYPE_INT32) {
 		return 0;
@@ -596,7 +596,7 @@ xmmsv_get_int (xmmsv_t *val, int32_t *r)
  * @return 1 upon success otherwise 0
  */
 int
-xmmsv_get_uint (xmmsv_t *val, uint32_t *r)
+xmmsv_get_uint (const xmmsv_t *val, uint32_t *r)
 {
 	if (!val || val->type != XMMSV_TYPE_UINT32)
 		return 0;
@@ -614,7 +614,7 @@ xmmsv_get_uint (xmmsv_t *val, uint32_t *r)
  * @return 1 upon success otherwise 0
  */
 int
-xmmsv_get_string (xmmsv_t *val, const char **r)
+xmmsv_get_string (const xmmsv_t *val, const char **r)
 {
 	if (!val || val->type != XMMSV_TYPE_STRING) {
 		return 0;
@@ -633,7 +633,7 @@ xmmsv_get_string (xmmsv_t *val, const char **r)
  * @return 1 upon success otherwise 0
  */
 int
-xmmsv_get_collection (xmmsv_t *val, xmmsv_coll_t **c)
+xmmsv_get_collection (const xmmsv_t *val, xmmsv_coll_t **c)
 {
 	if (!val || val->type != XMMSV_TYPE_COLL) {
 		return 0;
@@ -653,7 +653,7 @@ xmmsv_get_collection (xmmsv_t *val, xmmsv_coll_t **c)
  * @return 1 upon success otherwise 0
  */
 int
-xmmsv_get_bin (xmmsv_t *val, unsigned char **r, unsigned int *rlen)
+xmmsv_get_bin (const xmmsv_t *val, const unsigned char **r, unsigned int *rlen)
 {
 	if (!val || val->type != XMMSV_TYPE_BIN) {
 		return 0;
@@ -668,7 +668,7 @@ xmmsv_get_bin (xmmsv_t *val, unsigned char **r, unsigned int *rlen)
 
 
 int
-xmmsv_get_list_iter (xmmsv_t *val, xmmsv_list_iter_t **it)
+xmmsv_get_list_iter (const xmmsv_t *val, xmmsv_list_iter_t **it)
 {
 	xmmsv_list_iter_t *new_it;
 
@@ -687,7 +687,7 @@ xmmsv_get_list_iter (xmmsv_t *val, xmmsv_list_iter_t **it)
 }
 
 int
-xmmsv_get_dict_iter (xmmsv_t *val, xmmsv_dict_iter_t **it)
+xmmsv_get_dict_iter (const xmmsv_t *val, xmmsv_dict_iter_t **it)
 {
 	xmmsv_dict_iter_t *new_it;
 
