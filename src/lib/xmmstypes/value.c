@@ -702,11 +702,13 @@ xmmsv_get_list_iter (const xmmsv_t *val, xmmsv_list_iter_t **it)
 	xmmsv_list_iter_t *new_it;
 
 	if (!val || val->type != XMMSV_TYPE_LIST) {
+		*it = NULL;
 		return 0;
 	}
 
 	new_it = xmmsv_list_iter_new (val->value.list);
 	if (!new_it) {
+		*it = NULL;
 		return 0;
 	}
 
@@ -721,11 +723,13 @@ xmmsv_get_dict_iter (const xmmsv_t *val, xmmsv_dict_iter_t **it)
 	xmmsv_dict_iter_t *new_it;
 
 	if (!val || val->type != XMMSV_TYPE_DICT) {
+		*it = NULL;
 		return 0;
 	}
 
 	new_it = xmmsv_dict_iter_new (val->value.dict);
 	if (!new_it) {
+		*it = NULL;
 		return 0;
 	}
 
