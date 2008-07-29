@@ -50,7 +50,7 @@ static int xmmsv_list_resize (xmmsv_list_t *l, size_t newsize);
 static int _xmmsv_list_insert (xmmsv_list_t *l, int pos, xmmsv_t *val);
 static int _xmmsv_list_append (xmmsv_list_t *l, xmmsv_t *val);
 static int _xmmsv_list_remove (xmmsv_list_t *l, int pos);
-static int _xmmsv_list_clear (xmmsv_list_t *l);
+static void _xmmsv_list_clear (xmmsv_list_t *l);
 
 static xmmsv_dict_t *xmmsv_dict_new ();
 static void xmmsv_dict_free (xmmsv_dict_t *dict);
@@ -445,29 +445,29 @@ xmmsv_get_error_old (const xmmsv_t *val)
 }
 
 /**
- * Helper function to build a list #xmms_value_t containing the
+ * Helper function to build a list #xmmsv_t containing the
  * strings from the input array.
  *
  * @param array An array of C strings. Must be NULL-terminated if num
  *              is -1.
  * @param num The optional number of elements to read from the array. Set to
  *            -1 if the array is NULL-terminated.
- * @return An #xmms_value_t containing the list of strings. Must be
+ * @return An #xmmsv_t containing the list of strings. Must be
  *         unreffed manually when done.
  */
-xmms_value_t *
-xmms_value_make_stringlist (char *array[], int num)
+xmmsv_t *
+xmmsv_make_stringlist (char *array[], int num)
 {
-	xmms_value_t *list, *elem;
+	xmmsv_t *list, *elem;
 	int i;
 
 	x_return_val_if_fail (array, NULL);
 
-	list = xmms_value_new_list ();
+	list = xmmsv_new_list ();
 	for (i = 0; (num >= 0 && i < num) || array[i]; i++) {
-		elem = xmms_value_new_string (array[i]);
-		xmms_value_list_append (list, elem);
-		xmms_value_unref (elem);
+		elem = xmmsv_new_string (array[i]);
+		xmmsv_list_append (list, elem);
+		xmmsv_unref (elem);
 	}
 
 	return list;
@@ -884,7 +884,7 @@ _xmmsv_list_remove (xmmsv_list_t *l, int pos)
 	return 1;
 }
 
-void
+static void
 _xmmsv_list_clear (xmmsv_list_t *l)
 {
 	xmmsv_list_iter_t *it;
@@ -907,8 +907,6 @@ _xmmsv_list_clear (xmmsv_list_t *l)
 		it = (xmmsv_list_iter_t *) n->data;
 		it->position = 0;
 	}
-
-	return 1;
 }
 
 int
@@ -1250,7 +1248,9 @@ xmmsv_dict_clear (xmmsv_t *dictv)
 	x_return_val_if_fail (dictv, 0);
 	x_return_val_if_fail (xmmsv_is_dict (dictv), 0);
 
-	return _xmmsv_list_clear (dictv->value.dict->flatlist);
+	_xmmsv_list_clear (dictv->value.dict->flatlist);
+
+	return 1;
 }
 
 int

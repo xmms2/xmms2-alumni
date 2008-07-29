@@ -418,7 +418,7 @@ cmd_coll_query (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		g_assert (orderv);
 	}
 
-	order = xmms_value_make_stringlist (orderv, -1);
+	order = xmmsv_make_stringlist (orderv, -1);
 	if (orderv) {
 		g_strfreev (orderv);
 	}
@@ -483,7 +483,7 @@ cmd_coll_queryadd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		g_assert (orderv);
 	}
 
-	order = xmms_value_make_stringlist (orderv, -1);
+	order = xmmsv_make_stringlist (orderv, -1);
 	if (orderv) {
 		g_strfreev (orderv);
 	}
