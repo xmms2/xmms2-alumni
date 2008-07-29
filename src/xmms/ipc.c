@@ -174,8 +174,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 		 * Have to register first, otherwise the return message might arrive
 		 * before the broadcast is even registered.
 		 */
-		if (cmdid == XMMS_IPC_CMD_SERVICE_METHOD_REGISTER ||
-		    cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
+		if (cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
 			g_mutex_lock (client->lock);
 			client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
 				g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
@@ -184,8 +183,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 		}
 		if (!xmms_service_handle (object, msg, cmdid, client->transport->fd,
 		                          &arg)) {
-			if (cmdid == XMMS_IPC_CMD_SERVICE_METHOD_REGISTER ||
-			    cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
+			if (cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
 				g_mutex_lock (client->lock);
 				client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
 					g_list_remove (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
@@ -620,8 +618,8 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 
 	if (broadcastid == XMMS_IPC_SIGNAL_SERVICE ||
 	    broadcastid == XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN) {
-		fd = a->values[0].value.uint32;
-		cookie = a->values[1].value.uint32;
+		xmmsv_get_uint (a->values[0], &fd);
+		xmmsv_get_uint (a->values[1], &cookie);
 	}
 
 	g_mutex_lock (ipc_servers_lock);
