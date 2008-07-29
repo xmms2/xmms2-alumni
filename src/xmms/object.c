@@ -374,11 +374,8 @@ xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_arg_t 
 xmmsv_t *
 xmms_create_xmmsv_list (GList *list)
 {
-	xmmsv_t *v = NULL;
-	if (list) {
-		v = xmmsv_new_list ();
-		g_list_foreach (list, create_xmmsv_list_foreach, (gpointer) v);
-	}
+	xmmsv_t *v = xmmsv_new_list ();
+	g_list_foreach (list, create_xmmsv_list_foreach, (gpointer) v);
 	return v;
 }
 
