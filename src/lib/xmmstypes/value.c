@@ -947,6 +947,21 @@ xmmsv_list_foreach (xmmsv_t *listv, xmmsv_list_foreach_func func,
 	return 1;
 }
 
+/**
+ * Return the size of the list.
+ *
+ * @param listv The #xmmsv_t containing the list.
+ * @return The size of the list, or -1 if listv is invalid.
+ */
+int
+xmmsv_list_get_size (xmmsv_t *listv)
+{
+	x_return_val_if_fail (listv, -1);
+	x_return_val_if_fail (xmmsv_is_list (listv), -1);
+
+	return listv->value.list->size;
+}
+
 
 static xmmsv_list_iter_t *
 xmmsv_list_iter_new (xmmsv_list_t *l)

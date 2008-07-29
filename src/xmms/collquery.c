@@ -183,14 +183,14 @@ xmms_collection_gen_query (coll_query_t *query)
 	}
 
 	/* Append grouping */
-	if (xmmsv_list_get (query->params->group, 0, NULL)) {
+	if (xmmsv_list_get_size (query->params->group) > 0) {
 		g_string_append (qstring, " GROUP BY ");
 		query_string_append_alias_list (query, qstring, query->params->group);
 	}
 
 	/* Append ordering */
 	/* FIXME: Ordering is Teh Broken (source?) */
-	if (xmmsv_list_get (query->params->order, 0, NULL)) {
+	if (xmmsv_list_get_size (query->params->order) > 0) {
 		g_string_append (qstring, " ORDER BY ");
 		query_string_append_alias_list (query, qstring, query->params->order);
 	}

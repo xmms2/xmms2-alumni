@@ -1426,7 +1426,7 @@ xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname,
 	xmmsv_list_iter_t *propit;
 
 	g_return_if_fail (playlist);
-	g_return_if_fail (xmmsv_list_get (properties, 0, NULL)); /* not empty! */
+	g_return_if_fail (xmmsv_list_get_size (properties) > 0); /* not empty! */
 
 	g_mutex_lock (playlist->mutex);
 
