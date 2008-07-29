@@ -753,14 +753,14 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 
 	res = xmms_collection_query_infos (dag, coll, lim_start, lim_len, order, fetch, group, err);
 
-	/* FIXME: get an int list directly ! */
+	/* FIXME: get an uint list directly ! (we're getting ints here actually) */
 	for (n = res; n; n = n->next) {
+		xmms_medialib_entry_t id;
 		xmmsv_t *id_val, *cmdval = n->data;
 
-		/* Reuse the value_t directly (so we ref it) */
 		xmmsv_dict_get (cmdval, "id", &id_val);
-		n->data = id_val;
-		xmmsv_ref (id_val);
+		xmmsv_get_int (id_val, &id);
+		n->data = xmmsv_new_uint (id);
 
 		xmmsv_unref (cmdval);
 	}
