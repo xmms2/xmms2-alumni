@@ -794,7 +794,7 @@ xmms_collection_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 	GString *query;
 
 	/* check that fetch is not empty */
-	if (!xmmsv_list_get (fetch, 0, NULL)) {
+	if (xmmsv_list_get_size (fetch) == 0) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "fetch list must not be empty!");
 		return NULL;
 	}
