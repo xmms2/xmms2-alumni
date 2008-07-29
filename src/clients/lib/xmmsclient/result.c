@@ -146,7 +146,9 @@ xmmsc_result_free (xmmsc_result_t *res)
 
 	xmmsc_unref (res->c);
 
-	xmmsv_unref (res->data);
+	if (res->data) {
+		xmmsv_unref (res->data);
+	}
 
 	n = res->notifiers;
 	while (n) {
@@ -463,8 +465,9 @@ xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 	if (cmd == XMMS_IPC_CMD_BROADCAST) {
 		/* We keep the results alive with broadcasts, but we
 		   just renew the value because it went out of scope.
-		   (freeing the payload) */
+		   (freeing the payload, forget about it) */
 		xmmsv_unref (res->data);
+		res->data = NULL;
 	}
 
 	xmmsc_result_unref (res);
