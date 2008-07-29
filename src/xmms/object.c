@@ -418,12 +418,10 @@ create_xmmsv_list_foreach (gpointer data, gpointer userdata)
 static gboolean
 create_xmmsv_dict_foreach (gpointer key, gpointer data, gpointer userdata)
 {
-	const char *keystr;
-	xmmsv_t *k = (xmmsv_t *) key;
+	const char *k = (const char *) key;
 	xmmsv_t *v = (xmmsv_t *) data;
 	xmmsv_t *l = (xmmsv_t *) userdata;
-	xmmsv_get_string (k, &keystr);
-	xmmsv_dict_insert (l, keystr, v);
+	xmmsv_dict_insert (l, k, v);
 	return FALSE;
 }
 
