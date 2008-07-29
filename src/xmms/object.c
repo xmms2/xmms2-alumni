@@ -306,9 +306,11 @@ xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_arg_t 
 xmmsv_t *
 xmms_create_xmmsv_list (GList *list)
 {
-	xmmsv_t *v;
-	v = xmmsv_new_list ();
-	g_list_foreach (list, create_xmmsv_list_foreach, (gpointer) v);
+	xmmsv_t *v = NULL;
+	if (list) {
+		v = xmmsv_new_list ();
+		g_list_foreach (list, create_xmmsv_list_foreach, (gpointer) v);
+	}
 	return v;
 }
 
@@ -320,9 +322,11 @@ xmms_create_xmmsv_list (GList *list)
 xmmsv_t *
 xmms_create_xmmsv_dict (GTree *dict)
 {
-	xmmsv_t *v;
-	v = xmmsv_new_dict ();
-	g_tree_foreach (dict, create_xmmsv_dict_foreach, (gpointer) v);
+	xmmsv_t *v = NULL;
+	if (dict) {
+		v = xmmsv_new_dict ();
+		g_tree_foreach (dict, create_xmmsv_dict_foreach, (gpointer) v);
+	}
 	return v;
 }
 
@@ -334,7 +338,11 @@ xmms_create_xmmsv_dict (GTree *dict)
 xmmsv_t *
 xmms_create_xmmsv_bin (GString *gs)
 {
-	return xmmsv_new_bin (gs->str, gs->len);
+	xmmsv_t *v = NULL;
+	if (gs) {
+		v = xmmsv_new_bin (gs->str, gs->len);
+	}
+	return v;
 }
 
 /** @} */
