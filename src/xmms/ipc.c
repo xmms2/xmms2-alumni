@@ -92,14 +92,8 @@ static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_m
 static gboolean
 type_and_msg_to_arg (xmmsv_type_t type, xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg, gint i)
 {
-	if (!xmms_ipc_msg_get_value_alloc (msg, &arg->values[i])) {
+	if (!xmms_ipc_msg_get_value_of_type_alloc (msg, type, &arg->values[i])) {
 		XMMS_DBG ("Failed fetching the value of the argument from the IPC message!");
-		return FALSE;
-	}
-
-	if (!type == xmmsv_get_type (arg->values[i])) {
-		/* FIXME: can happen ? */
-		XMMS_DBG ("Found value of mismatching type in IPC message!");
 		return FALSE;
 	}
 
