@@ -1468,7 +1468,7 @@ xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname,
 	xmmsv_list_iter_t *propit;
 
 	g_return_if_fail (playlist);
-	g_return_if_fail (xmmsv_list_get_size (properties) > 0); /* not empty! */
+	g_return_if_fail (properties);
 
 	g_mutex_lock (playlist->mutex);
 
@@ -1481,7 +1481,15 @@ xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname,
 
 	/* check for invalid property strings */
 	if (!check_string_list (properties)) {
-		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid list of properties!");
+		xmms_error_set (err, XMMS_ERROR_NOENT,
+		                "invalid list of properties to sort by!");
+		g_mutex_unlock (playlist->mutex);
+		return;
+	}
+
+	if (xmmsv_list_get_size (properties) < 1) {
+		xmms_error_set (err, XMMS_ERROR_NOENT,
+		                "empty list of properties to sort by!");
 		g_mutex_unlock (playlist->mutex);
 		return;
 	}
@@ -1502,6 +1510,7 @@ xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname,
 
 	session = xmms_medialib_begin ();
 
+	xmmsv_get_list_iter (properties, &propit);
 	for (i = 0; i < size; i++) {
 		data = g_new (sortdata_t, 1);
 
@@ -1510,7 +1519,7 @@ xmms_playlist_sort (xmms_playlist_t *playlist, const gchar *plname,
 
 		/* save the list of values corresponding to the list of sort props */
 		data->val = NULL;
-		for (xmmsv_get_list_iter (properties, &propit);
+		for (xmmsv_list_iter_first (propit);
 		     xmmsv_list_iter_valid (propit);
 		     xmmsv_list_iter_next (propit)) {
 
