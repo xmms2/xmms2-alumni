@@ -747,7 +747,6 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		xmmsc_result_unref (saveres);
 	}
 
-	xmmsv_coll_unref (coll);
 	xmmsc_result_unref (res);
 }
 
