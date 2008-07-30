@@ -461,13 +461,13 @@ xmmsv_make_stringlist (char *array[], int num)
 	xmmsv_t *list, *elem;
 	int i;
 
-	x_return_val_if_fail (array, NULL);
-
 	list = xmmsv_new_list ();
-	for (i = 0; (num >= 0 && i < num) || array[i]; i++) {
-		elem = xmmsv_new_string (array[i]);
-		xmmsv_list_append (list, elem);
-		xmmsv_unref (elem);
+	if (array) {
+		for (i = 0; (num >= 0 && i < num) || array[i]; i++) {
+			elem = xmmsv_new_string (array[i]);
+			xmmsv_list_append (list, elem);
+			xmmsv_unref (elem);
+		}
 	}
 
 	return list;
@@ -1057,9 +1057,7 @@ xmmsv_list_iter_entry (xmmsv_list_iter_t *it, xmmsv_t **val)
 int
 xmmsv_list_iter_valid (xmmsv_list_iter_t *it)
 {
-	x_return_val_if_fail (it, 0);
-
-	return (it->position < it->parent->size);
+	return it && (it->position < it->parent->size);
 }
 
 void
@@ -1343,7 +1341,7 @@ xmmsv_dict_iter_pair (xmmsv_dict_iter_t *it, const char **key,
 int
 xmmsv_dict_iter_valid (xmmsv_dict_iter_t *it)
 {
-	return xmmsv_list_iter_valid (it->lit);
+	return it && xmmsv_list_iter_valid (it->lit);
 }
 
 void
