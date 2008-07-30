@@ -950,8 +950,8 @@ xmms_playlist_insert_collection (xmms_playlist_t *playlist, const gchar *plname,
 
 	while (res) {
 		xmmsv_t *val = (xmmsv_t*) res->data;
-		gint id;
-		xmmsv_get_int (val, &id);
+		guint id;
+		xmmsv_get_uint (val, &id);
 		xmms_playlist_insert_id (playlist, plname, pos, id, err);
 		xmmsv_unref (val);
 
@@ -1071,8 +1071,8 @@ xmms_playlist_add_collection (xmms_playlist_t *playlist, const gchar *plname,
 
 	while (res) {
 		xmmsv_t *val = (xmmsv_t*) res->data;
-		gint id;
-		xmmsv_get_int (val, &id);
+		guint id;
+		xmmsv_get_uint (val, &id);
 		xmms_playlist_add_entry (playlist, plname, id, err);
 		xmmsv_unref (val);
 
