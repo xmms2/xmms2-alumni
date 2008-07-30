@@ -103,6 +103,12 @@ cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 	xmmsc_result_unref (res);
 
+	/* no current track, abort */
+	if (id == 0) {
+		print_info ("");
+		return;
+	}
+
 	res = xmmsc_medialib_get_info (conn, id);
 	xmmsc_result_wait (res);
 	propdict = xmmsc_result_get_value (res);
