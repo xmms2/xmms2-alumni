@@ -356,7 +356,7 @@ namespace Xmms
 				xmmsc_result_wait( this->res_ );
 				check( this->res_ );
 
-				xmmsc_coll_t* coll = 0;
+				xmmsv_coll_t* coll = 0;
 				if( !xmmsc_result_get_collection( this->res_, &coll ) ) {
 					throw result_error( "Invalid collection in result" );
 				}
@@ -364,7 +364,7 @@ namespace Xmms
 			}
 
 			static CollPtr
-			createColl( xmmsc_coll_t* coll )
+			createColl( xmmsv_coll_t* coll )
 			{
 
 				CollPtr collptr;

@@ -55,7 +55,7 @@ namespace Xmms
 	Coll::Coll* extract_collection( xmmsc_result_t* res )
 	{
 		Coll::Coll* temp = 0;
-		xmmsc_coll_t* coll = 0;
+		xmmsv_coll_t* coll = 0;
 		xmmsc_result_get_collection( res, &coll );
 		switch( xmmsc_coll_get_type( coll ) ) {
 

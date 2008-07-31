@@ -146,9 +146,9 @@ namespace Xmms
 	CollPtr
 	Collection::parse( const std::string& pattern ) const
 	{
-		xmmsc_coll_t* coll;
+		xmmsv_coll_t* coll;
 
-		if( !xmmsc_coll_parse( pattern.c_str(), &coll ) ) {
+		if( !xmmsv_coll_parse( pattern.c_str(), &coll ) ) {
 			throw collection_parsing_error( "invalid collection pattern" );
 		}
 
