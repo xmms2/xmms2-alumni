@@ -440,6 +440,17 @@ xmms_ipc_msg_put_collection (xmms_ipc_msg_t *msg, xmmsv_coll_t *coll)
 uint32_t
 xmms_ipc_msg_put_value (xmms_ipc_msg_t *msg, xmmsv_t *v)
 {
+	xmmsv_type_t type;
+
+	type = xmmsv_get_type (v);
+	xmms_ipc_msg_put_int32 (msg, type);
+
+	return xmms_ipc_msg_put_value_data (msg, v);
+}
+
+uint32_t
+xmms_ipc_msg_put_value_data (xmms_ipc_msg_t *msg, xmmsv_t *v)
+{
 	uint32_t ret;
 	uint32_t u;
 	int32_t i;
@@ -450,7 +461,6 @@ xmms_ipc_msg_put_value (xmms_ipc_msg_t *msg, xmmsv_t *v)
 	xmmsv_type_t type;
 
 	type = xmmsv_get_type (v);
-	xmms_ipc_msg_put_int32 (msg, type);
 
 	/* FIXME: what to do if value fetching fails? */
 	/* FIXME: return -1 unsigned int?? */
