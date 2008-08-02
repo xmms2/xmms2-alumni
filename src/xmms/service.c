@@ -89,6 +89,10 @@ static void xmms_service_register (xmms_service_registry_t *registry,
                                    xmms_error_t *err);
 static xmms_service_entry_t *xmms_service_entry_new (xmms_socket_t client,
                                                      xmmsv_t *svc);
+static void xmms_service_list (xmms_service_registry_t *registry,
+                               xmms_object_cmd_arg_t *arg);
+static void xmms_service_key_insert (gpointer key, gpointer value,
+                                     gpointer data);
 static xmmsv_t *
 xmms_service_changed_msg_new (xmmsv_t *svc,
                               xmms_service_changed_actions_t type);
@@ -102,8 +106,6 @@ static void xmms_service_unregister (xmms_service_t *xmms_service,
                                      xmms_ipc_msg_t *msg,
                                      xmms_socket_t client,
                                      xmms_error_t *err);
-static void xmms_service_list (xmms_service_t *xmms_service,
-                               xmms_object_cmd_arg_t *arg);
 static gboolean xmms_service_request (xmms_service_t *xmms_service,
                                       xmms_ipc_msg_t *msg,
                                       xmms_socket_t client,
@@ -127,8 +129,6 @@ static gboolean xmms_service_method_request_matchfd (gpointer key,
 static gboolean xmms_service_method_request_matchmethod (gpointer key,
                                                          gpointer value,
                                                          gpointer data);
-static void xmms_service_key_insert (gpointer key, gpointer value,
-                                     gpointer data);
 static inline guint xmms_service_next_id (void);
 static xmms_service_entry_t *xmms_service_get (xmms_service_t *xmms_service,
                                                xmms_ipc_msg_t *msg, gchar **name,
@@ -462,14 +462,17 @@ static void
 xmms_service_list (xmms_service_registry_t *registry,
                    xmms_object_cmd_arg_t *arg)
 {
-	GList *list = NULL;
+	xmmsv_t *list;
+
+	list = xmmsv_new_list ();
+	g_return_if_fail (list);
 
 	g_mutex_lock (registry->mutex);
 	g_hash_table_foreach (registry->services,
-						  xmms_service_key_insert, &list);
+						  xmms_service_key_insert, list);
 	g_mutex_unlock (registry->mutex);
 
-	arg->retval = xmms_object_cmd_value_list_new (list);
+	arg->retval = list;
 }
 
 /**
@@ -713,9 +716,17 @@ xmms_service_method_request_matchmethod (gpointer key, gpointer value,
 static void
 xmms_service_key_insert (gpointer key, gpointer value, gpointer data)
 {
-	GList **l = data;
+	xmmsv_t *name;
+	xmmsv_t *list = (xmmsv_t *) data;
 
-	*l = g_list_prepend (*l, xmms_object_cmd_value_str_new (key));
+	name = xmmsv_new_string ((const char *) key);
+	if (!name || !xmmsv_list_append (list, name)) {
+		xmms_log_error ("Failed to add \"%s\" to service list.",
+		                (const char *) key);
+	}
+	if (name) {
+		xmmsv_unref (name);
+	}
 }
 
 /**
