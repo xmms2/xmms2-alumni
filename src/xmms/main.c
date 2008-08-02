@@ -492,7 +492,10 @@ main (int argc, char **argv)
 	playlist = xmms_playlist_init ();
 	xform_obj = xmms_xform_object_init ();
 	bindata_obj = xmms_bindata_init ();
-	xmms_service_init ();
+	if (!xmms_service_init ()) {
+		xmms_log_fatal ("Service registry failed to initialize!");
+		return 1;
+	}
 
 	mainobj = xmms_object_new (xmms_main_t, xmms_main_destroy);
 

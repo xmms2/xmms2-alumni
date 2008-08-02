@@ -145,18 +145,28 @@ static gboolean xmms_service_args_error_parse (xmms_ipc_msg_t *msg,
 /**
  * Initialize service client handling
  */
-xmms_service_registry_t *
+gboolean
 xmms_service_init (void)
 {
-	xmms_service_registry_t *ret;
+	xmms_service_registry_t *ret = NULL;
 
 	ret = xmms_object_new (xmms_service_registry_t, xmms_service_destroy);
+	if (!ret) {
+		xmms_log_error ("Failed to create service object.");
+		goto err;
+	}
+
 	ret->mutex = g_mutex_new ();
 	ret->services = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, NULL,
 	                                 (GDestroyNotify)
 	                                 xmms_object_cmd_value_unref);
 	ret->clients = g_tree_new_full (uint_compare, NULL, NULL,
 	                                xmms_service_request_client_destroy);
+
+	if (!(ret->mutex && ret->services && ret->clients)) {
+		xmms_log_error ("Failed to populate service object.");
+		goto err;
+	}
 
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_SERVICE, XMMS_OBJECT (ret));
 	xmms_ipc_broadcast_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
@@ -167,7 +177,14 @@ xmms_service_init (void)
 
 	XMMS_DBG ("Service object initialized.");
 
-	return ret;
+	return true;
+
+err:
+	if (ret) {
+		xmms_service_destroy (XMMS_OBJECT (ret));
+	}
+
+	return false;
 }
 
 /**
@@ -330,10 +347,16 @@ xmms_service_destroy (xmms_object_t *object)
 
 	g_return_if_fail (registry);
 
-	g_mutex_free (registry->mutex);
+	if (registry->mutex) {
+		g_mutex_free (registry->mutex);
+	}
 
-	g_tree_destroy (registry->services);
-	g_tree_destroy (registry->clients);
+	if (registry->services) {
+		g_tree_destroy (registry->services);
+	}
+	if (registry->clients) {
+		g_tree_destroy (registry->clients);
+	}
 
 	xmms_ipc_signal_unregister (XMMS_IPC_SIGNAL_SERVICE);
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_SERVICE);

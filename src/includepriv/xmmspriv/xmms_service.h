@@ -26,7 +26,7 @@
 /**
  * Public functions
  */
-xmms_service_registry_t *xmms_service_init (void);
+gboolean xmms_service_init (void);
 gboolean xmms_service_handle (xmms_object_t *xmms_service, xmms_ipc_msg_t *msg,
                               xmms_ipc_cmds_t cmdid, xmms_socket_t client,
                               xmms_object_cmd_arg_t *arg);
