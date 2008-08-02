@@ -87,21 +87,25 @@ typedef struct xmms_service_client_St {
 static void xmms_service_register (xmms_service_registry_t *registry,
                                    xmms_ipc_msg_t *msg, xmms_socket_t client,
                                    xmms_error_t *err);
+static void xmms_service_destroy (xmms_object_t *object);
+
 static xmms_service_entry_t *xmms_service_entry_new (xmms_socket_t client,
                                                      xmmsv_t *svc);
+static void xmms_service_entry_free (gpointer data);
+
 static void xmms_service_list (xmms_service_registry_t *registry,
                                xmms_object_cmd_arg_t *arg);
 static void xmms_service_key_insert (gpointer key, gpointer value,
                                      gpointer data);
+
 static xmmsv_t *
 xmms_service_changed_msg_new (xmmsv_t *svc,
                               xmms_service_changed_actions_t type);
+
+static void xmms_service_querying_client_free (gpointer value);
 static gint uint_compare (gconstpointer a, gconstpointer b, gpointer data);
 
 /*
-static void xmms_service_destroy (xmms_object_t *object);
-static void xmms_service_registry_destroy (gpointer value);
-static void xmms_service_request_client_destroy (gpointer value);
 static void xmms_service_unregister (xmms_service_t *xmms_service,
                                      xmms_ipc_msg_t *msg,
                                      xmms_socket_t client,
@@ -158,10 +162,9 @@ xmms_service_init (void)
 
 	ret->mutex = g_mutex_new ();
 	ret->services = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, NULL,
-	                                 (GDestroyNotify)
-	                                 xmms_object_cmd_value_unref);
+	                                 xmms_service_entry_free);
 	ret->clients = g_tree_new_full (uint_compare, NULL, NULL,
-	                                xmms_service_request_client_destroy);
+	                                xmms_service_querying_client_free);
 
 	if (!(ret->mutex && ret->services && ret->clients)) {
 		xmms_log_error ("Failed to populate service object.");
@@ -253,6 +256,7 @@ xmms_service_register (xmms_service_registry_t *registry, xmms_ipc_msg_t *msg,
                        xmms_socket_t client, xmms_error_t *err)
 {
 	const gchar *name = NULL;
+	gchar *key = NULL;;
 	xmms_service_entry_t *entry = NULL;
 	xmmsv_t *val = NULL;
 	xmmsv_t *ret;
@@ -271,6 +275,13 @@ xmms_service_register (xmms_service_registry_t *registry, xmms_ipc_msg_t *msg,
 		goto err;
 	}
 
+	key = g_strdup (name);
+	if (!key) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NO_SAUSAGE,
+		                    "Failed to copy service name.");
+		goto err;
+	}
+
 	entry = xmms_service_entry_new (client, val);
 	xmmsv_unref (val);
 
@@ -281,7 +292,7 @@ xmms_service_register (xmms_service_registry_t *registry, xmms_ipc_msg_t *msg,
 	}
 
 	g_mutex_lock (registry->mutex);
-	g_tree_insert (registry->services, name, entry);
+	g_tree_insert (registry->services, (gpointer) key, (gpointer) entry);
 	g_mutex_unlock (registry->mutex);
 
 	ret = xmms_service_changed_msg_new (entry->description,
@@ -306,9 +317,7 @@ err:
 		xmmsv_unref (val);
 	}
 	if (entry) {
-		xmmsv_unref (entry->description);
-		g_mutex_free (entry->mutex);
-		g_free (entry);
+		xmms_service_entry_free ((gpointer) entry);
 	}
 
 	return;
@@ -320,21 +329,27 @@ xmms_service_entry_new (xmms_socket_t client, xmmsv_t *svc)
 	xmms_service_entry_t *entry;
 
 	entry = g_new0 (xmms_service_entry_t, 1);
-	if (!entry) {
-		xmms_log_error ("Service entry initialization failed!");
-		return NULL;
-	}
+	g_return_val_if_fail (entry, NULL);
 
 	entry->description = xmmsv_ref (svc);
 	if (!entry->description) {
-		xmms_log_error ("Service entry initialization failed!");
-		return NULL;
+		goto err;
+	}
+	entry->mutex = g_mutex_new ();
+	if (!entry->mutex) {
+		goto err;
 	}
 
 	entry->sc = client;
-	entry->mutex = g_mutex_new ();
 
 	return entry;
+
+err:
+	xmms_service_entry_free ((gpointer) entry);
+
+	xmms_log_error ("Service entry initialization failed!");
+
+	return NULL;
 }
 
 /**
@@ -364,28 +379,47 @@ xmms_service_destroy (xmms_object_t *object)
 	XMMS_DBG ("Service object shutdown.");
 }
 
+static void
+xmms_service_entry_free (gpointer data)
+{
+	xmms_service_entry_t *entry = (xmms_service_entry_t *) data;
+
+	g_return_if_fail (entry);
+
+	if (entry->description) {
+		xmmsv_unref (entry->description);
+	}
+	if (entry->mutex) {
+		g_mutex_free (entry->mutex);
+	}
+
+	g_free (entry);
+}
+
 /**
- * Send all requesting clients an error message indicating that the service
+ * Send all querying clients an error message indicating that the service
  * method has been destroyed.
  */
 static void
-xmms_service_request_client_destroy (gpointer value)
+xmms_service_querying_client_free (gpointer value)
 {
-	xmms_service_client_t *val = value;
+	xmms_service_client_t *client = value;
+
+	/* FIXME: We'll have to remember to unregister explicitly, perhaps? */
+/*
 	xmms_object_cmd_arg_t arg;
 
-	arg.values[0].type = XMMS_OBJECT_CMD_ARG_UINT32;
-	arg.values[0].value.uint32 = val->fd;
-	arg.values[1].type = XMMS_OBJECT_CMD_ARG_UINT32;
-	arg.values[1].value.uint32 = val->cookie;
+	arg->values[0] = xmmsv_new_uint32 ((uint32_t) client->fd);
+	arg->values[1] = xmmsv_new_uint32 ((uint32_t) client->cookie);
 
-	xmms_error_set (&arg.error, XMMS_ERROR_GENERIC,
+	xmms_error_set (&arg->error, XMMS_ERROR_GENERIC,
 	                "Service method unregistered.");
 
-	xmms_object_emit (XMMS_OBJECT (val->method->registry),
+	xmms_object_emit (XMMS_OBJECT (client->registry),
 	                  XMMS_IPC_SIGNAL_SERVICE, &arg);
+*/
 
-	g_free (val);
+	g_free (client);
 }
 
 /**
