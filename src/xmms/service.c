@@ -36,11 +36,49 @@
 
 /**
  * @internal
+ *
+ * Service registry structure
+ *
+ * This is the structure that will emit all the service signals.
+ * It includes the list of registered services and client-service pool.
+ */
+struct xmms_service_registry_St {
+	xmms_object_t object;
+
+	GMutex *mutex;
+
+	/* The service client registry. */
+	GTree *services;
+
+	/* The client-service pool. */
+	GTree *clients;
+};
+
+/**
+ * @internal
+ *
+ * A single service representation
+ */
+struct xmms_service_entry_St {
+	/* The description of the service and all its methods. */
+	xmmsv_t *description;
+
+	/* A client should have exclusive access when querying a service client. */
+	GMutex *mutex;
+
+	/* Service client fd */
+	xmms_socket_t sc;
+};
+
+/**
+ * @internal
+ *
+ * Client representation
  */
 typedef struct xmms_service_client_St {
 	xmms_socket_t fd;
 	guint cookie;
-	xmms_service_method_t *method;
+	gchar *method;
 } xmms_service_client_t;
 
 /**

@@ -18,7 +18,6 @@
 #define __XMMS_SERVICE2_H__
 
 typedef struct xmms_service_registry_St xmms_service_registry_t;
-typedef struct xmms_service_method_St xmms_service_method_t;
-typedef struct xmms_service_argument_St xmms_service_argument_t;
+typedef struct xmms_service_entry_St xmms_service_entry_t;
 
 #endif
