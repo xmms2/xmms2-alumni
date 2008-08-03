@@ -504,7 +504,7 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 	}
 	xmmsv_unref (val);
 
-	xmms_ipc_msg_put_value (msg, service);
+	xmms_ipc_msg_put_value_dict (msg, service);
 	xmmsv_unref (service);
 
 	res = xmmsc_send_msg (conn, msg);
@@ -728,7 +728,7 @@ xmmsc_service_request (xmmsc_connection_t *conn, const char *svc,
 
 	xmms_ipc_msg_put_string (msg, svc);
 	xmms_ipc_msg_put_string (msg, meth);
-	xmms_ipc_msg_put_value (msg, args);
+	xmms_ipc_msg_put_value_dict (msg, args);
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -849,7 +849,7 @@ xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
 		x_return_null_if_fail (ret);
 	}
 
-	xmms_ipc_msg_put_value (msg, ret);
+	xmms_ipc_msg_put_value_data (msg, ret);
 
 	return xmmsc_send_msg (conn, msg);
 }
