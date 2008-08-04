@@ -91,6 +91,9 @@ static void xmms_service_destroy (xmms_object_t *object);
 
 static xmms_service_entry_t *xmms_service_entry_new (xmms_socket_t client,
                                                      xmmsv_t *svc);
+static gboolean xmms_service_querying_client_unregister (gpointer k,
+                                                         gpointer v,
+                                                         gpointer d);
 static void xmms_service_entry_free (gpointer data);
 
 static void xmms_service_list (xmms_service_registry_t *registry,
@@ -370,6 +373,8 @@ xmms_service_destroy (xmms_object_t *object)
 		g_tree_destroy (registry->services);
 	}
 	if (registry->clients) {
+		g_tree_foreach (registry->clients,
+		                xmms_service_querying_client_unregister, registry);
 		g_tree_destroy (registry->clients);
 	}
 
@@ -400,24 +405,32 @@ xmms_service_entry_free (gpointer data)
  * Send all querying clients an error message indicating that the service
  * method has been destroyed.
  */
+static gboolean
+xmms_service_querying_client_unregister (gpointer k, gpointer v, gpointer d)
+{
+	xmms_service_client_t *client = (xmms_service_client_t *) v;
+	xmms_service_registry_t *registry = (xmms_service_registry_t *) d;
+	xmmsv_t *fd;
+	xmmsv_t *cookie;
+
+	fd = xmmsv_new_uint ((uint32_t) client->fd);
+	cookie = xmmsv_new_uint ((uint32_t) client->cookie);
+
+	xmms_object_emit_f (XMMS_OBJECT (registry),
+	                    XMMS_IPC_SIGNAL_SERVICE,
+	                    XMMSV_TYPE_UINT32, fd,
+	                    XMMSV_TYPE_UINT32, cookie);
+
+	return FALSE;
+}
+
+/**
+ * Free all resources in an xmms_service_client_t.
+ */
 static void
 xmms_service_querying_client_free (gpointer value)
 {
-	xmms_service_client_t *client = value;
-
-	/* FIXME: We'll have to remember to unregister explicitly, perhaps? */
-/*
-	xmms_object_cmd_arg_t arg;
-
-	arg->values[0] = xmmsv_new_uint32 ((uint32_t) client->fd);
-	arg->values[1] = xmmsv_new_uint32 ((uint32_t) client->cookie);
-
-	xmms_error_set (&arg->error, XMMS_ERROR_GENERIC,
-	                "Service method unregistered.");
-
-	xmms_object_emit (XMMS_OBJECT (client->registry),
-	                  XMMS_IPC_SIGNAL_SERVICE, &arg);
-*/
+	xmms_service_client_t *client = (xmms_service_client_t *) value;
 
 	g_free (client);
 }
