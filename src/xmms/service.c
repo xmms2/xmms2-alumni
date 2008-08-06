@@ -251,6 +251,13 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 	}
 
 	g_mutex_lock (registry->mutex);
+	if (g_tree_lookup (registry->services, (gconstpointer) key)) {
+		g_mutex_unlock (registry->mutex);
+		xmms_error_set (err, XMMS_ERROR_INVAL, "Service already registered!");
+		XMMS_DBG ("Service (%s) already registered!", key);
+		g_free (key);
+		goto err;
+	}
 	g_tree_insert (registry->services, (gpointer) key, (gpointer) entry);
 	g_mutex_unlock (registry->mutex);
 
@@ -269,7 +276,6 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 	xmmsv_unref (ret);
 
 	XMMS_DBG ("New service registered: %s", key);
-	g_free (key);
 
 	return;
 
