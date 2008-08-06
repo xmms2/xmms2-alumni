@@ -87,6 +87,9 @@ typedef struct xmms_service_client_St {
 static void xmms_service_register (xmms_service_registry_t *registry,
                                    xmmsv_t *description, int32_t fd,
                                    uint32_t cookie, xmms_error_t *err);
+static void xmms_service_unregister (xmms_service_registry_t *registry,
+                                     const gchar *name, int32_t fd,
+                                     uint32_t cookie, xmms_error_t *err);
 static void xmms_service_destroy (xmms_object_t *object);
 
 static xmms_service_entry_t *xmms_service_entry_new (xmms_socket_t client,
@@ -109,10 +112,6 @@ static void xmms_service_querying_client_free (gpointer value);
 static gint uint_compare (gconstpointer a, gconstpointer b, gpointer data);
 
 /*
-static void xmms_service_unregister (xmms_service_t *xmms_service,
-                                     xmms_ipc_msg_t *msg,
-                                     xmms_socket_t client,
-                                     xmms_error_t *err);
 static gboolean xmms_service_request (xmms_service_t *xmms_service,
                                       xmms_ipc_msg_t *msg,
                                       xmms_socket_t client,
@@ -152,6 +151,9 @@ static gboolean xmms_service_args_error_parse (xmms_ipc_msg_t *msg,
 XMMS_SVC_CMD_DEFINE (svc_register, xmms_service_register,
                      xmms_service_registry_t *, NONE,
                      DICT, NONE, NONE, NONE);
+XMMS_SVC_CMD_DEFINE (svc_unregister, xmms_service_unregister,
+                     xmms_service_registry_t *, NONE,
+                     STRING, NONE, NONE, NONE);
 
 /**
  * Initialize service client handling
@@ -185,6 +187,8 @@ xmms_service_init (void)
 	/* Register methods. */
 	xmms_object_cmd_add (XMMS_OBJECT (ret), XMMS_IPC_CMD_SERVICE_REGISTER,
 	                     XMMS_CMD_FUNC (svc_register));
+	xmms_object_cmd_add (XMMS_OBJECT (ret), XMMS_IPC_CMD_SERVICE_UNREGISTER,
+	                     XMMS_CMD_FUNC (svc_unregister));
 
 	/* Register broadcasts. */
 	xmms_ipc_broadcast_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
@@ -446,58 +450,41 @@ xmms_service_querying_client_free (gpointer value)
 /**
  * Unregister an existing service
  */
+/* FIXME: Unregister dead service clients. Probably need to hack ipc.c. :( */
 static void
-xmms_service_unregister (xmms_service_registry_t *registry, xmms_ipc_msg_t *msg,
-                         xmms_socket_t client, xmms_error_t *err)
+xmms_service_unregister (xmms_service_registry_t *registry, const gchar *name,
+                         int32_t fd, uint32_t cookie, xmms_error_t *err)
 {
-	gchar *name = NULL;
 	xmms_service_entry_t *entry;
 
-	if (!msg) {
-		guint ret;
-		g_mutex_lock (registry->mutex);
-		ret = g_hash_table_foreach_remove (registry->services,
-		                                   xmms_service_matchsc,
-		                                   GUINT_TO_POINTER (client));
-		g_mutex_unlock (registry->mutex);
-		if (ret > 0) {
-			XMMS_DBG ("Service client (%d) just vaporized!"
-			          " Removed from registry.", client);
-		}
-
-		g_mutex_lock (registry->mutex);
-		ret = g_hash_table_foreach_remove (registry->clients,
-		                                   xmms_service_method_request_matchfd,
-		                                   GUINT_TO_POINTER (client));
-		g_mutex_unlock (registry->mutex);
-		if (ret > 0) {
-			XMMS_DBG ("Requests from client (%d) removed.", client);
-		}
+	g_mutex_lock (registry->mutex);
+	entry = (xmms_service_entry_t *) g_tree_lookup (registry->services,
+	                                                (gconstpointer) name);
+	g_mutex_unlock (registry->mutex);
+	if (!entry) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "Failed to unregister "
+		                    "service: could not look up service.");
 		return;
 	}
 
-	entry = xmms_service_get (registry, msg, &name, err);
-	g_return_if_fail (entry);
-
-	if (client != entry->sc) {
-		XMMS_SERVICE_ERROR (err, XMMS_ERROR_PERMISSION,
-		                    "Permission to unregister denied.");
-		free (name);
+	g_mutex_lock (entry->mutex);
+	if ((xmms_socket_t) fd != entry->sc) {
+		g_mutex_unlock (entry->mutex);
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_PERMISSION, "Failed to unregister "
+		                    "service: permission denied.");
 		return;
 	}
+	g_mutex_unlock (entry->mutex);
 
-	if (!xmms_service_method_unregister (registry, msg, entry, err)) {
-		g_mutex_lock (registry->mutex);
-		if (!g_hash_table_remove (registry->services, name)) {
-			XMMS_SERVICE_ERROR (err, XMMS_ERROR_GENERIC,
-			                    "Failed to remove service");
-		}
-		g_mutex_unlock (registry->mutex);
+	g_mutex_lock (registry->mutex);
+	if (!g_tree_remove (registry->services, (gconstpointer) name)) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "Failed to unregister "
+		                    "service: could not look up service.");
+		return;
 	}
+	g_mutex_unlock (registry->mutex);
 
 	XMMS_DBG ("Service unregistered.");
-
-	free (name);
 }
 
 static void
