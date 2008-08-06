@@ -137,15 +137,13 @@ xmmsc_service_new (const char *name, const char *desc,
 	svc->desc = strdup (desc);
 	svc->major = major;
 	svc->minor = minor;
-	svc->methods = x_list_alloc ();
+	svc->methods = NULL;
 	svc->ref = 1;
 
-	if (!(svc->name && svc->desc && svc->methods)) {
+	if (!(svc->name && svc->desc)) {
 		xmmsc_service_free (svc);
 		return NULL;
 	}
-
-	svc->methods->data = NULL;
 
 	return svc;
 }
@@ -324,6 +322,7 @@ xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
 	x_return_val_if_fail (tmp, 0);
 
 	meth = (xmmsc_service_method_t *) tmp->data;
+	x_return_val_if_fail (meth, 0);
 
 	if (!meth->args) {
 		/* Just in case we need ordered arguments, this is a list. */
@@ -512,6 +511,10 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 	for (tmp = svc->methods; tmp; tmp = x_list_next (tmp)) {
 		meth = (xmmsc_service_method_t *) tmp->data;
 
+		if (!meth) {
+			continue;
+		}
+
 		sd = xmmsc_service_dispatch_new (conn, svc, (const char *) meth->name);
 		if (sd) {
 			xmmsc_result_notifier_set_full (res, xmmsc_service_dispatch,
@@ -542,6 +545,10 @@ xmmsc_service_methods_to_value (x_list_t *meths)
 
 	methods = xmmsv_new_dict ();
 	x_return_null_if_fail (methods);
+
+	if (!meths || !meths->data) {
+		return methods;
+	}
 
 	for (tmp = meths; tmp; tmp = x_list_next (tmp)) {
 		meth = (xmmsc_service_method_t *) tmp->data;
