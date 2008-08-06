@@ -295,7 +295,6 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 	gchar *key = NULL;;
 	xmms_service_entry_t *entry = NULL;
 	xmmsv_t *ret;
-	xmms_ipc_msg_t *msg;
 
 	entry = xmms_service_entry_new ((xmms_socket_t) fd, cookie, description);
 
@@ -330,9 +329,9 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 		goto err;
 	}
 
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_SIGNAL_SERVICE_CHANGED);
-	xmms_ipc_msg_put_value (msg, ret);
+	xmms_object_emit_f (XMMS_OBJECT (registry),
+	                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
+	                    XMMSV_TYPE_DICT, ret);
 	xmmsv_unref (ret);
 
 	XMMS_DBG ("New service registered");
