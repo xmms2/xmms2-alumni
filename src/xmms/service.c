@@ -453,7 +453,7 @@ xmms_service_list (xmms_service_registry_t *registry, int32_t fd,
 
 	g_mutex_lock (registry->mutex);
 	g_tree_foreach (registry->services, xmms_service_key_insert,
-	                (gpointer) list);
+	                (gpointer) &list);
 	g_mutex_unlock (registry->mutex);
 
 	return list;
@@ -553,18 +553,24 @@ xmms_service_return (xmms_service_registry_t *registry, uint32_t id,
 static gboolean
 xmms_service_key_insert (gpointer key, gpointer value, gpointer data)
 {
-	GList *list = (GList *) data;
+	GList **list = (GList **) data;
 	xmmsv_t *name = NULL;
 
 	name = xmmsv_new_string ((const char *) key);
-	if (!name || !g_list_append (list, (gpointer) name)) {
-		xmms_log_error ("Failed to add \"%s\" to service list.",
+	if (!name) {
+		xmms_log_error ("Failed to copy \"%s\" to service list.",
 		                (const char *) key);
 		/* Keep traversing anyway. Fill the list as much as possible. */
 		return FALSE;
 	}
 
-	xmmsv_unref (name);
+	*list = g_list_append (*list, (gpointer) name);
+	if (!*list) {
+		xmms_log_error ("Failed to add \"%s\" to service list.",
+		                (const char *) key);
+		/* Keep traversing anyway. Fill the list as much as possible. */
+		return FALSE;
+	}
 
 	return FALSE;
 }
