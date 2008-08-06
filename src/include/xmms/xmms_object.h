@@ -144,6 +144,8 @@ void xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_a
 #define __XMMS_CMD_DO_RETVAL_STRING() arg->retval = xmmsv_new_string
 #define __XMMS_CMD_DO_RETVAL_COLL() arg->retval = xmmsv_new_coll
 #define __XMMS_CMD_DO_RETVAL_BIN() arg->retval = xmms_create_xmmsv_bin
+/* FIXME: HACK! Return your own xmmsv_t. Needed for service_describe. */
+#define __XMMS_CMD_DO_RETVAL_END() arg->retval =
 
 #define XMMS_CMD_DEFINE6(cmdid, realfunc, argtype0, _rettype, argtype1, argtype2, argtype3, argtype4, argtype5, argtype6) static void \
 __int_xmms_cmd_##cmdid (xmms_object_t *object, xmms_object_cmd_arg_t *arg) \

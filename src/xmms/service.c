@@ -113,6 +113,10 @@ static GList *xmms_service_list (xmms_service_registry_t *registry, int32_t fd,
 static gboolean xmms_service_key_insert (gpointer key, gpointer value,
                                          gpointer data);
 
+static xmmsv_t *xmms_service_describe (xmms_service_registry_t *registry,
+                                       const gchar *svc, int32_t fd,
+                                       uint32_t cookie, xmms_error_t *err);
+
 static gint xmms_service_query (xmms_service_registry_t *registry,
                                 const gchar *svc, const gchar *meth,
                                 xmmsv_t *args, int32_t fd, uint32_t cookie,
@@ -143,6 +147,9 @@ XMMS_SVC_CMD_DEFINE (svc_unregister, xmms_service_unregister,
 XMMS_SVC_CMD_DEFINE (svc_list, xmms_service_list,
                      xmms_service_registry_t *, LIST,
                      NONE, NONE, NONE, NONE);
+XMMS_SVC_CMD_DEFINE (svc_describe, xmms_service_describe,
+                     xmms_service_registry_t *, END,
+                     STRING, NONE, NONE, NONE);
 XMMS_SVC_CMD_DEFINE (svc_query, xmms_service_query,
                      xmms_service_registry_t *, INT32,
                      STRING, STRING, DICT, NONE);
@@ -186,6 +193,8 @@ xmms_service_init (void)
 	                     XMMS_CMD_FUNC (svc_unregister));
 	xmms_object_cmd_add (XMMS_OBJECT (ret), XMMS_IPC_CMD_SERVICE_LIST,
 	                     XMMS_CMD_FUNC (svc_list));
+	xmms_object_cmd_add (XMMS_OBJECT (ret), XMMS_IPC_CMD_SERVICE_DESCRIBE,
+	                     XMMS_CMD_FUNC (svc_describe));
 	xmms_object_cmd_add (XMMS_OBJECT (ret), XMMS_IPC_CMD_SERVICE_QUERY,
 	                     XMMS_CMD_FUNC (svc_query));
 	xmms_object_cmd_add (XMMS_OBJECT (ret), XMMS_IPC_CMD_SERVICE_RETURN,
@@ -457,6 +466,33 @@ xmms_service_list (xmms_service_registry_t *registry, int32_t fd,
 	g_mutex_unlock (registry->mutex);
 
 	return list;
+}
+
+/**
+ * Return the description and signature of a service method.
+ */
+static xmmsv_t *
+xmms_service_describe (xmms_service_registry_t *registry, const char *svc,
+                       int32_t fd, uint32_t cookie, xmms_error_t *err)
+{
+	xmms_service_entry_t *entry;
+	xmmsv_t *val;
+	g_mutex_lock (registry->mutex);
+
+	entry = (xmms_service_entry_t *) g_tree_lookup (registry->services,
+	                                                (gconstpointer) svc);
+	if (!entry) {
+		g_mutex_unlock (registry->mutex);
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT, "Could not find service.");
+		return xmmsv_new_none ();
+	}
+
+	g_mutex_lock (entry->mutex);
+	val = xmmsv_ref (entry->description);
+	g_mutex_unlock (entry->mutex);
+	g_mutex_unlock (registry->mutex);
+
+	return val;
 }
 
 /**
