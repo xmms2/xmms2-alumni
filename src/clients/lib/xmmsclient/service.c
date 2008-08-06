@@ -570,8 +570,7 @@ xmmsc_service_methods_to_value (x_list_t *meths)
 		}
 		xmmsv_unref (val);
 
-		if (!xmmsv_dict_insert (methods, XMMSC_SERVICE_METHOD_PROP_NAME,
-		                        method)) {
+		if (!xmmsv_dict_insert (methods, (const char *) meth->name, method)) {
 			goto err;
 		}
 	}

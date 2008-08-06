@@ -252,7 +252,6 @@ typedef const char* xmmsv_coll_namespace_t;
 #define XMMSC_SERVICE_PROP_MAJOR               "major"
 #define XMMSC_SERVICE_PROP_MINOR               "minor"
 #define XMMSC_SERVICE_PROP_METHODS             "methods"
-#define XMMSC_SERVICE_METHOD_PROP_NAME         "name"
 #define XMMSC_SERVICE_METHOD_PROP_DESCRIPTION  "description"
 #define XMMSC_SERVICE_METHOD_PROP_ARGUMENTS    "args"
 #define XMMSC_SERVICE_METHOD_PROP_RETURN_TYPE  "rettype"
