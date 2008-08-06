@@ -711,8 +711,8 @@ xmmsc_service_describe (xmmsc_connection_t *conn, const char *service)
  * or an error.
  */
 xmmsc_result_t *
-xmmsc_service_request (xmmsc_connection_t *conn, const char *svc,
-                       const char *meth, xmmsv_t *args)
+xmmsc_service_query (xmmsc_connection_t *conn, const char *svc,
+                     const char *meth, xmmsv_t *args)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -722,7 +722,7 @@ xmmsc_service_request (xmmsc_connection_t *conn, const char *svc,
 	x_return_null_if_fail (args);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_REQUEST);
+	                        XMMS_IPC_CMD_SERVICE_QUERY);
 	x_return_null_if_fail (msg);
 
 	xmms_ipc_msg_put_string (msg, svc);

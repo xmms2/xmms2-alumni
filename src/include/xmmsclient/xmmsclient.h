@@ -338,9 +338,9 @@ xmmsc_result_t *xmmsc_service_unregister (xmmsc_connection_t *conn,
 xmmsc_result_t *xmmsc_service_list (xmmsc_connection_t *conn);
 xmmsc_result_t *xmmsc_service_describe (xmmsc_connection_t *conn,
                                         const char *service);
-xmmsc_result_t *xmmsc_service_request (xmmsc_connection_t *conn,
-	                                   const char *svc, const char *meth,
-                                       xmmsv_t *args);
+xmmsc_result_t *xmmsc_service_query (xmmsc_connection_t *conn,
+	                                 const char *svc, const char *meth,
+                                     xmmsv_t *args);
 xmmsc_result_t *xmmsc_service_shutdown (xmmsc_connection_t *conn,
                                         const char *service);
 
