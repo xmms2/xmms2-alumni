@@ -317,7 +317,9 @@ typedef xmmsv_t* (*xmmsc_service_notifier_t) (xmmsc_connection_t *conn,
                                              const char *method,
                                              xmmsv_t *args,
                                              void *udata);
-
+xmmsc_service_t *xmmsc_service_new (const char *name, const char *desc,
+                                    uint32_t major, uint32_t minor);
+void xmmsc_service_unref (xmmsc_service_t *svc);
 int xmmsc_service_method_add (xmmsc_service_t *svc, const char *name,
                               const char *desc, xmmsv_type_t rettype,
                               xmmsc_service_notifier_t func, void *udata, ...);
