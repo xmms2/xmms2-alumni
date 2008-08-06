@@ -826,9 +826,12 @@ xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
 	xmmsv_t *val;
 	uint32_t cookie;
 
+	/* FIXME: SUPER BROKEN! */
+/*
 	x_return_null_if_fail (xmmsv_dict_get (args,
 	                       XMMSC_SERVICE_METHOD_PROP_COOKIE, &val));
 	x_return_null_if_fail (xmmsv_get_uint (val, &cookie));
+*/
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_RETURN);
