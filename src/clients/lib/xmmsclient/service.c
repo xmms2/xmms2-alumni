@@ -270,7 +270,8 @@ xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
 	x_return_val_if_fail (svc, 0);
 	x_return_val_if_fail (name, 0);
 	x_return_val_if_fail (desc, 0);
-	x_return_val_if_fail (xmmsv_check_type (rettype), 0);
+	x_return_val_if_fail (rettype >= XMMSV_TYPE_NONE &&
+	                      rettype < XMMSV_TYPE_END, 0);
 
 	meth = x_new (xmmsc_service_method_t, 1);
 	meth->name = strdup (name);
