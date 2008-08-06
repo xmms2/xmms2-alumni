@@ -18,8 +18,6 @@
 #include <string.h>
 
 #include "xmms/xmms_log.h"
-#include "xmms/xmms_service.h"
-#include "xmmspriv/xmms_service.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
@@ -166,34 +164,6 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 
 		g_mutex_unlock (client->lock);
 		return;
-	} else if (objid == XMMS_IPC_OBJECT_SERVICE) {
-		xmms_object_cmd_arg_init (&arg);
-		object = ipc_object_pool->objects[objid];
-
-		/**
-		 * Have to register first, otherwise the return message might arrive
-		 * before the broadcast is even registered.
-		 */
-		if (cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
-			g_mutex_lock (client->lock);
-			client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
-				g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
-				               GUINT_TO_POINTER (xmms_ipc_msg_get_cookie (msg)));
-			g_mutex_unlock (client->lock);
-		}
-		if (!xmms_service_handle (object, msg, cmdid, client->transport->fd,
-		                          &arg)) {
-			if (cmdid == XMMS_IPC_CMD_SERVICE_REQUEST) {
-				g_mutex_lock (client->lock);
-				client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
-					g_list_remove (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
-					               GUINT_TO_POINTER (xmms_ipc_msg_get_cookie (msg)));
-				g_mutex_unlock (client->lock);
-			}
-			goto ret;
-		}
-
-		return;
 	}
 
 	if (objid >= XMMS_IPC_OBJECT_END) {
@@ -229,7 +199,12 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 			xmms_ipc_msg_put_string (retmsg, "Corrupt msg");
 			goto err;
 		}
+	}
 
+	/* FIXME: Dirty hack. Promise not to go beyond 4 arguments. */
+	if (objid == XMMS_IPC_OBJECT_SERVICE) {
+		arg.values[4] = xmmsv_new_int ((int32_t) client->transport->fd);
+		arg.values[5] = xmmsv_new_uint (xmms_ipc_msg_get_cookie (msg));
 	}
 
 	xmms_object_cmd_call (object, cmdid, &arg);
@@ -298,9 +273,7 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 		}
 		XMMS_DBG ("disconnect was true!");
 		g_main_loop_quit (client->ml);
-		object = ipc_object_pool->objects[XMMS_IPC_OBJECT_SERVICE];
-		xmms_service_handle (object, NULL, XMMS_IPC_CMD_SERVICE_UNREGISTER,
-		                     client->transport->fd, NULL);
+
 		return FALSE;
 	}
 
@@ -614,13 +587,6 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 	xmms_ipc_t *ipc;
 	xmms_ipc_msg_t *msg = NULL;
 	GList *l;
-	guint fd, cookie;
-
-	if (broadcastid == XMMS_IPC_SIGNAL_SERVICE ||
-	    broadcastid == XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN) {
-		xmmsv_get_uint (a->values[0], &fd);
-		xmmsv_get_uint (a->values[1], &cookie);
-	}
 
 	g_mutex_lock (ipc_servers_lock);
 
@@ -630,17 +596,8 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 		for (c = ipc->clients; c; c = g_list_next (c)) {
 			xmms_ipc_client_t *cli = c->data;
 
-			if ((broadcastid == XMMS_IPC_SIGNAL_SERVICE ||
-			     broadcastid == XMMS_IPC_SIGNAL_SERVICE_SHUTDOWN) &&
-			    fd != cli->transport->fd) {
-					continue;
-			}
 			g_mutex_lock (cli->lock);
 			for (l = cli->broadcasts[broadcastid]; l; l = g_list_next (l)) {
-				if (broadcastid == XMMS_IPC_SIGNAL_SERVICE &&
-					cookie != GPOINTER_TO_UINT (l->data)) {
-					continue;
-				}
 				if (xmms_error_isok (&a->error)) {
 					msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL,
 					                        XMMS_IPC_CMD_BROADCAST);
@@ -653,12 +610,6 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 				}
 				xmms_ipc_msg_set_cookie (msg, GPOINTER_TO_UINT (l->data));
 				xmms_ipc_client_msg_write (cli, msg);
-				if (broadcastid == XMMS_IPC_SIGNAL_SERVICE) {
-					g_mutex_unlock (cli->lock);
-					g_mutex_unlock (ipc->mutex_lock);
-					g_mutex_unlock (ipc_servers_lock);
-					return;
-				}
 			}
 			g_mutex_unlock (cli->lock);
 		}

@@ -85,8 +85,8 @@ typedef struct xmms_service_client_St {
  * Functions
  */
 static void xmms_service_register (xmms_service_registry_t *registry,
-                                   xmms_ipc_msg_t *msg, xmms_socket_t client,
-                                   xmms_error_t *err);
+                                   xmmsv_t *description, int32_t fd,
+                                   uint32_t cookie, xmms_error_t *err);
 static void xmms_service_destroy (xmms_object_t *object);
 
 static xmms_service_entry_t *xmms_service_entry_new (xmms_socket_t client,
@@ -149,6 +149,10 @@ static gboolean xmms_service_args_error_parse (xmms_ipc_msg_t *msg,
                                                gchar **error, xmms_error_t *err);
 */
 
+XMMS_SVC_CMD_DEFINE (svc_register, xmms_service_register,
+                     xmms_service_registry_t *, NONE,
+                     DICT, NONE, NONE, NONE);
+
 /**
  * Initialize service client handling
  */
@@ -174,7 +178,15 @@ xmms_service_init (void)
 		goto err;
 	}
 
+	/* Yay, now the registry is an object that is passed back to us for all
+	   calls. */
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_SERVICE, XMMS_OBJECT (ret));
+
+	/* Register methods. */
+	xmms_object_cmd_add (XMMS_OBJECT (ret), XMMS_IPC_CMD_SERVICE_REGISTER,
+	                     XMMS_CMD_FUNC (svc_register));
+
+	/* Register broadcasts. */
 	xmms_ipc_broadcast_register (XMMS_OBJECT (ret), XMMS_IPC_SIGNAL_SERVICE);
 	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
 	                             XMMS_IPC_SIGNAL_SERVICE_CHANGED);
@@ -205,6 +217,7 @@ err:
  * @param arg Command arguments.
  * @returns True if the cookie needs to be added to broadcast list, false otherwise
  */
+/*
 gboolean
 xmms_service_handle (xmms_object_t *obj, xmms_ipc_msg_t *msg,
                      xmms_ipc_cmds_t cmdid, xmms_socket_t client,
@@ -231,7 +244,6 @@ xmms_service_handle (xmms_object_t *obj, xmms_ipc_msg_t *msg,
 		xmms_service_list (registry, arg);
 		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_DESCRIBE:
-		/* FIXME */
 		return FALSE;
 	case XMMS_IPC_CMD_SERVICE_REQUEST:
 		arg->retval = xmms_object_cmd_value_none_new ();
@@ -250,13 +262,14 @@ xmms_service_handle (xmms_object_t *obj, xmms_ipc_msg_t *msg,
 		return FALSE;
 	}
 }
+*/
 
 /**
  * Register a new service
  */
 static void
-xmms_service_register (xmms_service_registry_t *registry, xmms_ipc_msg_t *msg,
-                       xmms_socket_t client, xmms_error_t *err)
+xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
+                       int32_t fd, uint32_t cookie, xmms_error_t *err)
 {
 	const gchar *name = NULL;
 	gchar *key = NULL;;
@@ -264,15 +277,10 @@ xmms_service_register (xmms_service_registry_t *registry, xmms_ipc_msg_t *msg,
 	xmmsv_t *val = NULL;
 	xmmsv_t *ret;
 
-	g_return_if_fail (msg);
+	entry = xmms_service_entry_new ((xmms_socket_t) fd, description);
+	xmmsv_unref (description);
 
-	if (!xmms_ipc_msg_get_value_alloc (msg, &val)) {
-		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NO_SAUSAGE,
-		                    "Failed to parse service description from client.");
-		goto err;
-	}
-
-	if (!xmmsv_get_string (val, &name) || !name) {
+	if (!xmmsv_get_string (description, &name) || !name) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NO_SAUSAGE,
 		                    "Failed to extract service name.");
 		goto err;
@@ -284,9 +292,6 @@ xmms_service_register (xmms_service_registry_t *registry, xmms_ipc_msg_t *msg,
 		                    "Failed to copy service name.");
 		goto err;
 	}
-
-	entry = xmms_service_entry_new (client, val);
-	xmmsv_unref (val);
 
 	if (!entry) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NO_SAUSAGE,
