@@ -220,7 +220,9 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 	const gchar *name = NULL;
 	gchar *key = NULL;;
 	xmms_service_entry_t *entry = NULL;
+	xmmsv_t *val;
 	xmmsv_t *ret;
+	xmms_object_cmd_arg_t arg;
 
 	entry = xmms_service_entry_new ((xmms_socket_t) fd, cookie, description);
 
@@ -230,7 +232,12 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 		goto err;
 	}
 
-	if (!xmmsv_get_string (description, &name) || !name) {
+	if (!xmmsv_dict_get (description, XMMSC_SERVICE_PROP_NAME, &val)) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NO_SAUSAGE,
+		                    "Failed to extract service name.");
+		goto err;
+	}
+	if (!xmmsv_get_string (val, &name) || !name) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NO_SAUSAGE,
 		                    "Failed to extract service name.");
 		goto err;
@@ -255,12 +262,14 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 		goto err;
 	}
 
-	xmms_object_emit_f (XMMS_OBJECT (registry),
-	                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
-	                    XMMSV_TYPE_DICT, ret);
+	xmms_object_cmd_arg_init (&arg);
+	arg.retval = ret;
+	xmms_object_emit (XMMS_OBJECT (registry), XMMS_IPC_SIGNAL_SERVICE_CHANGED,
+	                  &arg);
 	xmmsv_unref (ret);
 
-	XMMS_DBG ("New service registered");
+	XMMS_DBG ("New service registered: %s", key);
+	g_free (key);
 
 	return;
 
