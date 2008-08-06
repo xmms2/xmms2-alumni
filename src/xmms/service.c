@@ -274,8 +274,8 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 	const gchar *name = NULL;
 	gchar *key = NULL;;
 	xmms_service_entry_t *entry = NULL;
-	xmmsv_t *val = NULL;
 	xmmsv_t *ret;
+	xmms_ipc_msg_t *msg;
 
 	entry = xmms_service_entry_new ((xmms_socket_t) fd, description);
 	xmmsv_unref (description);
@@ -311,9 +311,9 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 		goto err;
 	}
 
-	xmms_object_emit_f (XMMS_OBJECT (registry),
-	                    XMMS_IPC_SIGNAL_SERVICE_CHANGED,
-	                    XMMSV_TYPE_DICT, ret);
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_SIGNAL_SERVICE_CHANGED);
+	xmms_ipc_msg_put_value (msg, ret);
 	xmmsv_unref (ret);
 
 	XMMS_DBG ("New service registered");
@@ -321,9 +321,6 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 	return;
 
 err:
-	if (val) {
-		xmmsv_unref (val);
-	}
 	if (entry) {
 		xmms_service_entry_free ((gpointer) entry);
 	}
@@ -436,6 +433,12 @@ static void
 xmms_service_querying_client_free (gpointer value)
 {
 	xmms_service_client_t *client = (xmms_service_client_t *) value;
+
+	g_return_if_fail (client);
+
+	if (client->method) {
+		g_free (client->method);
+	}
 
 	g_free (client);
 }
@@ -1039,11 +1042,13 @@ xmms_service_changed_msg_new (xmmsv_t *svc, xmms_service_changed_actions_t type)
 	x_return_null_if_fail (xmmsv_dict_get (svc, XMMSC_SERVICE_PROP_NAME, &val));
 	x_return_null_if_fail (xmmsv_dict_insert (ret, XMMSC_SERVICE_PROP_NAME,
 	                                          val));
+	xmmsv_unref (val);
 
 	val = xmmsv_new_int ((int32_t) type);
 	x_return_null_if_fail (val);
 	x_return_null_if_fail (xmmsv_dict_insert (ret, XMMSC_SERVICE_CHANGE_TYPE,
 	                                          val));
+	xmmsv_unref (val);
 
 	return ret;
 }
