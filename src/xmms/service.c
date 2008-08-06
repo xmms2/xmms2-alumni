@@ -142,13 +142,13 @@ XMMS_SVC_CMD_DEFINE (svc_unregister, xmms_service_unregister,
                      STRING, NONE, NONE, NONE);
 XMMS_SVC_CMD_DEFINE (svc_list, xmms_service_list,
                      xmms_service_registry_t *, LIST,
-					 NONE, NONE, NONE, NONE);
+                     NONE, NONE, NONE, NONE);
 XMMS_SVC_CMD_DEFINE (svc_query, xmms_service_query,
                      xmms_service_registry_t *, INT32,
-					 STRING, STRING, DICT, NONE);
+                     STRING, STRING, DICT, NONE);
 XMMS_SVC_CMD_DEFINE (svc_return, xmms_service_return,
                      xmms_service_registry_t *, NONE,
-					 INT32, LIST, NONE, NONE);
+                     INT32, LIST, NONE, NONE);
 
 /**
  * Initialize service client handling
