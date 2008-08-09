@@ -88,6 +88,12 @@ static void xmms_ipc_client_destroy (xmms_ipc_client_t *client);
 
 static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
 
+/* <DEBUGGING> */
+static void xmms_ipc_debug (uint32_t obj, uint32_t cmd,
+                            xmms_object_cmd_arg_t *arg, xmmsv_type_t *args,
+                            xmmsv_type_t ret);
+static char *xmms_ipc_type_to_string (xmmsv_type_t type);
+/* </DEBUGGING> */
 
 static gboolean
 type_and_msg_to_arg (xmmsv_type_t type, xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg, gint i)
@@ -194,12 +200,17 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 
 	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {
 		if (!type_and_msg_to_arg (cmd->args[i], msg, &arg, i)) {
+			/* DEBUGGING: Remove me later! */
+			xmms_ipc_debug (objid, cmdid, &arg, cmd->args, cmd->retval);
 			xmms_log_error ("Error parsing args");
 			retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_ERROR);
 			xmms_ipc_msg_put_string (retmsg, "Corrupt msg");
 			goto err;
 		}
 	}
+
+	/* DEBUGGING: Remove me later! */
+	xmms_ipc_debug (objid, cmdid, &arg, cmd->args, cmd->retval);
 
 	/* FIXME: Dirty hack. Promise not to go beyond 4 arguments. */
 	if (objid == XMMS_IPC_OBJECT_SERVICE) {
@@ -821,6 +832,81 @@ xmms_ipc_setup_server (const gchar *path)
 	XMMS_DBG ("IPC setup done.");
 	return TRUE;
 }
+
+/* <DEBUGGING> */
+static void
+xmms_ipc_debug (uint32_t obj, uint32_t cmd, xmms_object_cmd_arg_t *arg,
+                xmmsv_type_t *args, xmmsv_type_t ret)
+{
+	char *str[XMMS_OBJECT_CMD_MAX_ARGS];
+	const char *buf;
+	int i;
+	uint32_t uint32;
+	int32_t int32;
+
+	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {
+		str[i] = g_strdup_printf ("%s",  xmms_ipc_type_to_string (args[i]));
+		if (!str[i]) {
+			return;
+		}
+	}
+
+	if (args[0] != XMMSV_TYPE_NONE) {
+		XMMS_DBG ("MSG(%d, %d):", obj, cmd);
+	} else {
+		XMMS_DBG ("MSG(%d, %d)", obj, cmd);
+	}
+
+	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {
+		if (args[i] == XMMSV_TYPE_NONE) {
+			g_free (str[i]);
+			continue;
+		}
+		if (args[i] == XMMSV_TYPE_STRING &&
+		    xmmsv_get_string (arg->values[i], &buf)) {
+			XMMS_DBG ("\t%s: \"%s\"", str[i], buf);
+		} else if (args[i] == XMMSV_TYPE_UINT32 &&
+		           xmmsv_get_uint (arg->values[i], &uint32)) {
+			XMMS_DBG ("\t%s: %u", str[i], uint32);
+		} else if (args[i] == XMMSV_TYPE_INT32 &&
+		           xmmsv_get_int (arg->values[i], &int32)) {
+			XMMS_DBG ("\t%s: %d", str[i], int32);
+		} else {
+			XMMS_DBG ("\t%s", str[i]);
+		}
+
+		g_free (str[i]);
+	}
+}
+
+static char *
+xmms_ipc_type_to_string (xmmsv_type_t type)
+{
+	switch (type) {
+	case XMMSV_TYPE_NONE:
+		return "none";
+	case XMMSV_TYPE_ERROR:
+		return "error";
+	case XMMSV_TYPE_UINT32:
+		return "uint";
+	case XMMSV_TYPE_INT32:
+		return "int";
+	case XMMSV_TYPE_STRING:
+		return "string";
+	case XMMSV_TYPE_COLL:
+		return "coll";
+	case XMMSV_TYPE_BIN:
+		return "bin";
+	case XMMSV_TYPE_LIST:
+		return "list";
+	case XMMSV_TYPE_DICT:
+		return "dict";
+	case XMMSV_TYPE_END:
+	default:
+		return NULL;
+	}
+}
+/* </DEBUGGING> */
 
 /** @} */
 
