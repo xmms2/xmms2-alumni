@@ -280,8 +280,8 @@ xmmsc_service_method_add_noarg (xmmsc_service_t *svc, const char *name,
 	meth->func = func;
 	meth->udata = udata;
 	meth->ufree = ufree;
-	meth->args = NULL;
-	if (!(meth->name && meth->desc)) {
+	meth->args = xmmsv_new_list ();
+	if (!(meth->name && meth->desc && meth->args)) {
 		xmmsc_service_method_free (meth);
 		return 0;
 	}
@@ -324,14 +324,6 @@ xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
 
 	meth = (xmmsc_service_method_t *) tmp->data;
 	x_return_val_if_fail (meth, 0);
-
-	if (!meth->args) {
-		/* Just in case we need ordered arguments, this is a list. */
-		meth->args = xmmsv_new_list ();
-		/* We don't care if meth->args is unreffed or not. A NULL or empty list
-		   are treated the same and unreffed with the service anyway. */
-		x_return_val_if_fail (meth->args, 0);
-	}
 
 	arg = xmmsv_new_dict ();
 	if (!arg) {
