@@ -331,13 +331,13 @@ xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
 	}
 
 	/* arg = { "name" => name } */
-	DICT_ADD_STRING (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_NAME, name);
+	DICT_ADD_STRING (arg, XMMSC_SERVICE_METHOD_ARG_PROP_NAME, name);
 
 	/* arg = { "name" => name, "type" => type } */
-	DICT_ADD_INT (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_TYPE, type);
+	DICT_ADD_INT (arg, XMMSC_SERVICE_METHOD_ARG_PROP_TYPE, type);
 
 	/* arg = { "name" => name, "type" => type, "optional" => optional } */
-	DICT_ADD_INT (meth->args, XMMSC_SERVICE_METHOD_ARG_PROP_OPTIONAL, optional);
+	DICT_ADD_INT (arg, XMMSC_SERVICE_METHOD_ARG_PROP_OPTIONAL, optional);
 
 	if (!xmmsv_list_append (meth->args, arg)) {
 		goto err;
