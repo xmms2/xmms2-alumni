@@ -152,7 +152,7 @@ XMMS_SVC_CMD_DEFINE (svc_describe, xmms_service_describe,
                      STRING, NONE, NONE, NONE);
 XMMS_SVC_CMD_DEFINE (svc_query, xmms_service_query,
                      xmms_service_registry_t *, INT32,
-                     STRING, STRING, DICT, NONE);
+                     STRING, STRING, LIST, NONE);
 XMMS_SVC_CMD_DEFINE (svc_return, xmms_service_return,
                      xmms_service_registry_t *, NONE,
                      INT32, LIST, NONE, NONE);

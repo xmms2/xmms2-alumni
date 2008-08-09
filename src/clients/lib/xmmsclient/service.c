@@ -721,7 +721,7 @@ xmmsc_service_query (xmmsc_connection_t *conn, const char *svc,
 	x_return_null_if_fail (meth);
 
 	if (!args) {
-		args = xmmsv_new_dict ();
+		args = xmmsv_new_list ();
 	}
 	x_return_null_if_fail (args);
 
@@ -731,7 +731,7 @@ xmmsc_service_query (xmmsc_connection_t *conn, const char *svc,
 
 	xmms_ipc_msg_put_string (msg, svc);
 	xmms_ipc_msg_put_string (msg, meth);
-	xmms_ipc_msg_put_value_dict (msg, args);
+	xmms_ipc_msg_put_value_list (msg, args);
 
 	return xmmsc_send_msg (conn, msg);
 }
