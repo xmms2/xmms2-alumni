@@ -878,6 +878,10 @@ xmmsc_service_method_check_args (xmmsv_t *argtypes, xmmsv_t *args)
 	x_return_val_if_fail (argtypes, 0);
 	x_return_val_if_fail (args, 0);
 
+	if (xmmsv_list_get_size (args) == 0) {
+		return 1;
+	}
+
 	x_return_val_if_fail (xmmsv_get_list_iter (args, &argit), 0);
 	x_return_val_if_fail (xmmsv_get_list_iter (argtypes, &typeit), 0);
 
