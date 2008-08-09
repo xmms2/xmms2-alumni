@@ -719,6 +719,10 @@ xmmsc_service_query (xmmsc_connection_t *conn, const char *svc,
 	x_check_conn (conn, NULL);
 	x_return_null_if_fail (svc);
 	x_return_null_if_fail (meth);
+
+	if (!args) {
+		args = xmmsv_new_dict ();
+	}
 	x_return_null_if_fail (args);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
