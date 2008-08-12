@@ -83,7 +83,7 @@ typedef struct xmmsc_service_dispatch_St {
 	val = NULL;
 
 #define DICT_ADD_STRING(dict, key, str)                \
-	val = xmmsv_new_string ((const char *) str);       \
+	val = xmmsv_new_string (str);       \
 	if (!val || !xmmsv_dict_insert (dict, key, val)) { \
 		goto err;                                      \
 	}                                                  \
@@ -508,7 +508,7 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 			continue;
 		}
 
-		sd = xmmsc_service_dispatch_new (conn, svc, (const char *) meth->name);
+		sd = xmmsc_service_dispatch_new (conn, svc, meth->name);
 		if (sd) {
 			xmmsc_result_notifier_set_full (res, xmmsc_service_dispatch,
 			                                (void *) sd,
@@ -570,7 +570,7 @@ xmmsc_service_methods_to_value (x_list_t *meths)
 		}
 		xmmsv_unref (val);
 
-		if (!xmmsv_dict_insert (methods, (const char *) meth->name, method)) {
+		if (!xmmsv_dict_insert (methods, meth->name, method)) {
 			goto err;
 		}
 	}
@@ -807,7 +807,7 @@ xmmsc_service_dispatch (xmmsv_t *val, void *data)
 		meth = (xmmsc_service_method_t *) tmp->data;
 		x_return_val_if_fail (meth, 0);
 
-		if (strcmp (meth->name, (const char *) sd->method) == 0) {
+		if (strcmp (meth->name, sd->method) == 0) {
 			break;
 		}
 	}
@@ -848,9 +848,9 @@ xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
 	xmms_ipc_msg_put_uint32 (msg, cookie);
 
 	if (xmmsc_service_method_check_args (method->args, args)) {
-		tmp = method->func (conn, svc, (const char *) method->name,
+		tmp = method->func (conn, svc, method->name,
 		                    args, method->udata);
-		if (!ret) {
+		if (!val) {
 			tmp = xmmsv_new_error ("No return value from service method.");
 			x_return_null_if_fail (tmp);
 		}
