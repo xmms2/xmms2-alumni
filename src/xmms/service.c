@@ -121,9 +121,9 @@ static gint xmms_service_query (xmms_service_registry_t *registry,
                                 const gchar *svc, const gchar *meth,
                                 xmmsv_t *args, int32_t fd, uint32_t cookie,
                                 xmms_error_t *err);
-static void xmms_service_return (xmms_service_registry_t *registry, uint32_t id,
-                                 xmmsv_t *list, int32_t fd, uint32_t cookie,
-                                 xmms_error_t *err);
+static xmmsv_t *xmms_service_return (xmms_service_registry_t *registry,
+                                     uint32_t id, xmmsv_t *list, int32_t fd,
+                                     uint32_t cookie, xmms_error_t *err);
 
 static xmmsv_t *
 xmms_service_changed_msg_new (xmmsv_t *svc,
@@ -154,7 +154,7 @@ XMMS_SVC_CMD_DEFINE (svc_query, xmms_service_query,
                      xmms_service_registry_t *, INT32,
                      STRING, STRING, LIST, NONE);
 XMMS_SVC_CMD_DEFINE (svc_return, xmms_service_return,
-                     xmms_service_registry_t *, NONE,
+                     xmms_service_registry_t *, END,
                      INT32, LIST, NONE, NONE);
 
 /**
@@ -503,12 +503,20 @@ xmms_service_query (xmms_service_registry_t *registry, const gchar *svc,
                     const gchar *meth, xmmsv_t *args, int32_t fd,
                     uint32_t cookie, xmms_error_t *err)
 {
-	xmms_service_entry_t *entry;
 	xmms_service_client_t *cli = NULL;
 	gchar *name;
+	gchar *tmp;
+	GTree *ret;
+	xmmsv_t *val;
+	guint id;
 
 	XMMS_DBG ("Client (%d) requesting method (%s) from service (%s).",
 	          fd, meth, svc);
+
+	ret = g_tree_new_full ((GCompareDataFunc) strcmp, NULL,
+	                       (GDestroyNotify) g_free,
+	                       (GDestroyNotify) xmmsv_unref);
+	x_return_val_if_fail (ret, 0);
 
 	cli = g_new0 (xmms_service_client_t, 1);
 	if (!cli) {
@@ -521,21 +529,51 @@ xmms_service_query (xmms_service_registry_t *registry, const gchar *svc,
 		goto err;
 	}
 
+	id = xmms_service_next_id ();
 	g_mutex_lock (registry->mutex);
-	g_tree_insert (registry->clients,
-	               GUINT_TO_POINTER (xmms_service_next_id ()), (gpointer) cli);
+	g_tree_insert (registry->clients, GUINT_TO_POINTER (id), (gpointer) cli);
 	g_mutex_unlock (registry->mutex);
 
-	name = strdup (meth);
+	tmp = g_strdup ("args");
+	if (!tmp) {
+		goto err;
+	}
+	g_tree_insert (ret, (gpointer) tmp, (gpointer) args);
+
+	name = g_strdup (meth);
 	if (!name) {
 		goto err;
 	}
+
+	val = xmmsv_new_string (name);
+	if (!val) {
+		g_free (name);
+		goto err;
+	}
+	g_free (name);
+
+	tmp = g_strdup ("method");
+	if (!tmp) {
+		goto err;
+	}
+	g_tree_insert (ret, (gpointer) tmp, (gpointer) val);
+
+	val = xmmsv_new_uint (id);
+	if (!val) {
+		goto err;
+	}
+
+	tmp = g_strdup ("cookie");
+	if (!tmp) {
+		goto err;
+	}
+	g_tree_insert (ret, (gpointer) tmp, (gpointer) val);
+
 	xmms_object_emit_f (XMMS_OBJECT (registry),
 	                    XMMS_IPC_SIGNAL_SERVICE,
-	                    XMMSV_TYPE_INT32, (int32_t) entry->sc,
-	                    XMMSV_TYPE_UINT32, entry->cookie,
-	                    XMMSV_TYPE_STRING, name);
-	g_free (name);
+	                    XMMSV_TYPE_DICT, ret);
+
+	g_tree_destroy (ret);
 
 	return 1;
 
@@ -544,13 +582,15 @@ err:
 		xmms_service_querying_client_free ((gpointer) cli);
 	}
 
+	g_tree_destroy (ret);
+
 	return 0;
 }
 
 /**
  * Pass service method return to client.
  */
-static void
+static xmmsv_t *
 xmms_service_return (xmms_service_registry_t *registry, uint32_t id,
                      xmmsv_t *list, int32_t fd, uint32_t cookie,
                      xmms_error_t *err)
@@ -563,24 +603,21 @@ xmms_service_return (xmms_service_registry_t *registry, uint32_t id,
 	if (!cli) {
 		g_mutex_unlock (registry->mutex);
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_INVAL, "Invalid client id");
-		return;
+		return NULL;
 	}
 	g_mutex_unlock (registry->mutex);
-
-	XMMS_DBG ("Returning method (%s) call to client (%d)",
-	          cli->method, cli->fd);
 
 	/* HACK: We use the list as a container for an xmmsv_t of any type. */
 	if (!xmmsv_list_get (list, 0, &ret)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 		                    "Could not get return value");
-		return;
+		return NULL;
 	}
 
-	xmms_object_emit_f (XMMS_OBJECT (registry),
-	                    XMMS_IPC_SIGNAL_SERVICE,
-	                    XMMSV_TYPE_INT32, (int32_t) cli->fd,
-	                    XMMSV_TYPE_UINT32, cli->cookie);
+	XMMS_DBG ("Returning type (%d) from method (%s) call to client (%d)",
+	          xmmsv_get_type (ret), cli->method, cli->fd);
+
+	return xmmsv_ref (ret);
 }
 
 /**

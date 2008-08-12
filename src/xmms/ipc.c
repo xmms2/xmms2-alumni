@@ -218,12 +218,32 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 		arg.values[5] = xmmsv_new_uint (xmms_ipc_msg_get_cookie (msg));
 	}
 
+	/* FIXME: Hack to set up the broadcast for querying a service client. */
+	if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER) {
+		XMMS_DBG ("Adding service signal to broadcast list.");
+		g_mutex_lock (client->lock);
+		client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
+			g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
+			               GUINT_TO_POINTER (xmms_ipc_msg_get_cookie (msg)));
+		g_mutex_unlock (client->lock);
+	}
+
 	xmms_object_cmd_call (object, cmdid, &arg);
 ret:
 	if (xmms_error_isok (&arg.error)) {
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
 		xmms_ipc_handle_cmd_value (retmsg, arg.retval);
 	} else {
+		/* FIXME: Hack to remove the broadcast for querying a service client. */
+		if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER) {
+			XMMS_DBG ("Removing service signal from broadcast list.");
+			g_mutex_lock (client->lock);
+			client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
+				g_list_remove (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
+				               GUINT_TO_POINTER (xmms_ipc_msg_get_cookie (msg)));
+			g_mutex_unlock (client->lock);
+		}
+
 		/* FIXME: or we could change the client code to transform
 		 * CMD_ERROR to an error value_t. If so, remove the handling
 		 * of ERROR in xmms_ipc_handle_cmd_value, okay? */

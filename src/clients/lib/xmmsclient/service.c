@@ -805,12 +805,15 @@ xmmsc_service_dispatch (xmmsv_t *val, void *data)
 
 	for (tmp = sd->svc->methods; tmp; tmp = x_list_next (tmp)) {
 		meth = (xmmsc_service_method_t *) tmp->data;
+		x_return_val_if_fail (meth, 0);
 
 		if (strcmp (meth->name, (const char *) sd->method) == 0) {
 			break;
 		}
 	}
-	x_return_val_if_fail (meth, 0);
+	if (!tmp) {
+		return 0;
+	}
 
 	res = xmmsc_service_method_handle (sd->conn, sd->svc, meth, val);
 	if (res) {
@@ -823,19 +826,20 @@ xmmsc_service_dispatch (xmmsv_t *val, void *data)
 
 static xmmsc_result_t *
 xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
-                             xmmsc_service_method_t *method, xmmsv_t *args)
+                             xmmsc_service_method_t *method, xmmsv_t *val)
 {
 	xmms_ipc_msg_t *msg;
 	xmmsv_t *ret;
-	xmmsv_t *val;
+	xmmsv_t *tmp;
+	xmmsv_t *args;
 	uint32_t cookie;
 
-	/* FIXME: SUPER BROKEN! */
-/*
-	x_return_null_if_fail (xmmsv_dict_get (args,
-	                       XMMSC_SERVICE_METHOD_PROP_COOKIE, &val));
-	x_return_null_if_fail (xmmsv_get_uint (val, &cookie));
-*/
+	if (xmmsv_get_type (val) != XMMSV_TYPE_DICT) {
+		return NULL;
+	}
+	x_return_null_if_fail (xmmsv_dict_get (val, "args", &args));
+	x_return_null_if_fail (xmmsv_dict_get (val, "cookie", &tmp));
+	x_return_null_if_fail (xmmsv_get_uint (tmp, &cookie));
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
 	                        XMMS_IPC_CMD_SERVICE_RETURN);
@@ -843,19 +847,33 @@ xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
 
 	xmms_ipc_msg_put_uint32 (msg, cookie);
 
-	if (xmmsc_service_method_check_args (method->args, val)) {
-		ret = method->func (conn, svc, (const char *) method->name,
+	if (xmmsc_service_method_check_args (method->args, args)) {
+		tmp = method->func (conn, svc, (const char *) method->name,
 		                    args, method->udata);
 		if (!ret) {
-			ret = xmmsv_new_error ("No return value from service method.");
-			x_return_null_if_fail (ret);
+			tmp = xmmsv_new_error ("No return value from service method.");
+			x_return_null_if_fail (tmp);
 		}
 	} else {
-		ret = xmmsv_new_error ("Invalid arguments.");
-		x_return_null_if_fail (ret);
+		tmp = xmmsv_new_error ("Invalid arguments.");
+		x_return_null_if_fail (tmp);
+	}
+
+	/* FIXME: HACK! The service method can return any type, but the server needs
+	   to know what to expect, so we pack the return type into a list. */
+	ret = xmmsv_new_list ();
+	if (!ret) {
+		xmmsv_unref (tmp);
+		return NULL;
+	}
+	if (!xmmsv_list_append (ret, tmp)) {
+		xmmsv_unref (tmp);
+		xmmsv_unref (ret);
+		return NULL;
 	}
 
 	xmms_ipc_msg_put_value_data (msg, ret);
+	xmmsv_unref (ret);
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -878,7 +896,8 @@ xmmsc_service_method_check_args (xmmsv_t *argtypes, xmmsv_t *args)
 	x_return_val_if_fail (argtypes, 0);
 	x_return_val_if_fail (args, 0);
 
-	if (xmmsv_list_get_size (args) == 0) {
+	if (xmmsv_list_get_size (args) == 0 &&
+	    xmmsv_list_get_size (argtypes) == 0) {
 		return 1;
 	}
 
