@@ -504,7 +504,6 @@ xmms_service_query (xmms_service_registry_t *registry, const gchar *svc,
                     uint32_t cookie, xmms_error_t *err)
 {
 	xmms_service_client_t *cli = NULL;
-	gchar *name;
 	gchar *tmp;
 	GTree *ret;
 	xmmsv_t *val;
@@ -540,17 +539,10 @@ xmms_service_query (xmms_service_registry_t *registry, const gchar *svc,
 	}
 	g_tree_insert (ret, (gpointer) tmp, (gpointer) args);
 
-	name = g_strdup (meth);
-	if (!name) {
-		goto err;
-	}
-
-	val = xmmsv_new_string (name);
+	val = xmmsv_new_string (meth);
 	if (!val) {
-		g_free (name);
 		goto err;
 	}
-	g_free (name);
 
 	tmp = g_strdup ("method");
 	if (!tmp) {
@@ -614,7 +606,7 @@ xmms_service_return (xmms_service_registry_t *registry, uint32_t id,
 		return NULL;
 	}
 
-	XMMS_DBG ("Returning type (%d) from method (%s) call to client (%d)",
+	XMMS_DBG ("Returning type (%d) from method (%s) to client (%d)",
 	          xmmsv_get_type (ret), cli->method, cli->fd);
 
 	return xmmsv_ref (ret);

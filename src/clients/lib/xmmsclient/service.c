@@ -62,7 +62,6 @@ typedef struct xmmsc_service_method_St {
 typedef struct xmmsc_service_dispatch_St {
 	xmmsc_connection_t *conn;
 	xmmsc_service_t *svc;
-	char *method;
 } xmmsc_service_dispatch_t;
 
 /* Macro Magic */
@@ -101,8 +100,7 @@ static void xmmsc_service_free (xmmsc_service_t *svc);
 static void xmmsc_service_method_free (xmmsc_service_method_t *meth);
 static xmmsv_t *xmmsc_service_methods_to_value (x_list_t *methods);
 static xmmsc_service_dispatch_t *
-xmmsc_service_dispatch_new (xmmsc_connection_t *conn, xmmsc_service_t *svc,
-                            const char *method);
+xmmsc_service_dispatch_new (xmmsc_connection_t *conn, xmmsc_service_t *svc);
 static void xmmsc_service_dispatch_free (void *data);
 static int xmmsc_service_dispatch (xmmsv_t *val, void *data);
 static xmmsc_result_t *
@@ -460,9 +458,7 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 	xmms_ipc_msg_t *msg;
 	xmmsv_t *service;
 	xmmsv_t *val = NULL;
-	x_list_t *tmp;
 	xmmsc_result_t *res;
-	xmmsc_service_method_t *meth;
 	xmmsc_service_dispatch_t *sd;
 
 	x_check_conn (conn, NULL);
@@ -501,19 +497,11 @@ xmmsc_service_register (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 
 	res = xmmsc_send_msg (conn, msg);
 
-	for (tmp = svc->methods; tmp; tmp = x_list_next (tmp)) {
-		meth = (xmmsc_service_method_t *) tmp->data;
-
-		if (!meth) {
-			continue;
-		}
-
-		sd = xmmsc_service_dispatch_new (conn, svc, meth->name);
-		if (sd) {
-			xmmsc_result_notifier_set_full (res, xmmsc_service_dispatch,
-			                                (void *) sd,
-			                                xmmsc_service_dispatch_free);
-		}
+	sd = xmmsc_service_dispatch_new (conn, svc);
+	if (sd) {
+		xmmsc_result_notifier_set_full (res, xmmsc_service_dispatch,
+		                                (void *) sd,
+		                                xmmsc_service_dispatch_free);
 	}
 
 	return res;
@@ -591,14 +579,12 @@ err:
 }
 
 static xmmsc_service_dispatch_t *
-xmmsc_service_dispatch_new (xmmsc_connection_t *conn, xmmsc_service_t *svc,
-                            const char *method)
+xmmsc_service_dispatch_new (xmmsc_connection_t *conn, xmmsc_service_t *svc)
 {
 	xmmsc_service_dispatch_t *sd;
 
 	x_return_null_if_fail (conn);
 	x_return_null_if_fail (svc);
-	x_return_null_if_fail (method);
 
 	/* Effectively, all members are initialized to NULL. */
 	sd = x_new0 (xmmsc_service_dispatch_t, 1);
@@ -606,8 +592,7 @@ xmmsc_service_dispatch_new (xmmsc_connection_t *conn, xmmsc_service_t *svc,
 
 	sd->conn = xmmsc_ref (conn);
 	sd->svc = xmmsc_service_ref (svc);
-	sd->method = strdup (method);
-	if (!sd->conn || !sd->svc || !sd->method) {
+	if (!sd->conn || !sd->svc) {
 		goto err;
 	}
 
@@ -619,9 +604,6 @@ err:
 	}
 	if (sd->svc) {
 		xmmsc_service_unref (sd->svc);
-	}
-	if (sd->method) {
-		free (sd->method);
 	}
 
 	return NULL;
@@ -635,7 +617,6 @@ xmmsc_service_dispatch_free (void *data)
 
 	xmmsc_unref (sd->conn);
 	xmmsc_service_unref (sd->svc);
-	free (sd->method);
 }
 
 /**
@@ -799,20 +780,28 @@ xmmsc_service_dispatch (xmmsv_t *val, void *data)
 	xmmsc_service_dispatch_t *sd = (xmmsc_service_dispatch_t *)data;
 	xmmsc_service_method_t *meth = NULL;
 	x_list_t *tmp;
+	xmmsv_t *method;
 	xmmsc_result_t *res;
+	const char *name;
 
 	x_return_val_if_fail (sd, 0);
+	if (xmmsv_get_type (val) == XMMSV_TYPE_NONE) {
+		/* This notifier was called after service_register, ignore it. */
+		return 1;
+	}
 
+	x_return_val_if_fail (xmmsv_dict_get (val, "method", &method), 1);
+	x_return_val_if_fail (xmmsv_get_string (method, &name), 1);
 	for (tmp = sd->svc->methods; tmp; tmp = x_list_next (tmp)) {
 		meth = (xmmsc_service_method_t *) tmp->data;
-		x_return_val_if_fail (meth, 0);
+		x_return_val_if_fail (meth, 1);
 
-		if (strcmp (meth->name, sd->method) == 0) {
+		if (strcmp (meth->name, name) == 0) {
 			break;
 		}
 	}
 	if (!tmp) {
-		return 0;
+		return 1;
 	}
 
 	res = xmmsc_service_method_handle (sd->conn, sd->svc, meth, val);
