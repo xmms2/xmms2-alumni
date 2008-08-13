@@ -11,3 +11,9 @@
 16:08 < puzzles> it was largely c&p afaik
 16:08 < anders_> Guess it can be much smaller. And that means that it could be folded into directsound.c.
 16:08 < anders_> To look more like other plugins.
+
+<tilman> auke-, puzzles, nano-_: the directsound plugin doesn't seem to store/reload volume. anyone want to look into that?
+
+<tilman> the plugin crashes if you try to set the volume while xmms2 isn't playing anything yet
+<tilman> kind of like if the mixer is only opened when you start playing
+
