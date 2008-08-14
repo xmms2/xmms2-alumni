@@ -19,6 +19,7 @@
 
 #include "xmms/xmms_log.h"
 #include "xmmspriv/xmms_ipc.h"
+#include "xmmspriv/xmms_service.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
 
@@ -304,6 +305,8 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 		}
 		XMMS_DBG ("disconnect was true!");
 		g_main_loop_quit (client->ml);
+		xmms_service_unregister_all (ipc_object_pool->
+		                             objects[XMMS_IPC_OBJECT_SERVICE]);
 
 		return FALSE;
 	}

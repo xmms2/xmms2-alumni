@@ -172,12 +172,10 @@ xmms_service_init (void)
 	}
 
 	ret->mutex = g_mutex_new ();
-	ret->services = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, NULL,
-	                                 xmms_service_entry_free);
-	ret->clients = g_tree_new_full (uint_compare, NULL, NULL,
-	                                xmms_service_querying_client_free);
+	ret->services = NULL;
+	ret->clients = NULL;
 
-	if (!(ret->mutex && ret->services && ret->clients)) {
+	if (!ret->mutex) {
 		xmms_log_error ("Failed to populate service object.");
 		goto err;
 	}
@@ -232,6 +230,19 @@ xmms_service_register (xmms_service_registry_t *registry, xmmsv_t *description,
 	xmmsv_t *val;
 	xmmsv_t *ret;
 	xmms_object_cmd_arg_t arg;
+
+	if (!registry->services) {
+		registry->services = g_tree_new_full ((GCompareDataFunc) strcmp, NULL,
+		                                      NULL, xmms_service_entry_free);
+	}
+	if (!registry->clients) {
+		registry->clients = g_tree_new_full (uint_compare, NULL, NULL,
+		                                     xmms_service_querying_client_free);
+	}
+	if (!registry->services || !registry->clients) {
+		xmms_log_error ("Failed to populate service object.");
+		goto err;
+	}
 
 	entry = xmms_service_entry_new ((xmms_socket_t) fd, cookie, description);
 
@@ -412,14 +423,38 @@ xmms_service_querying_client_free (gpointer value)
 }
 
 /**
+ * Unregister all services
+ */
+void
+xmms_service_unregister_all (xmms_object_t *obj)
+{
+	xmms_service_registry_t *registry = (xmms_service_registry_t *) obj;
+
+	if (!registry) {
+		return;
+	}
+	if (registry->services) {
+		g_tree_destroy (registry->services);
+		registry->services = NULL;
+	}
+	if (registry->clients) {
+		g_tree_foreach (registry->clients,
+		                xmms_service_querying_client_unregister, registry);
+		g_tree_destroy (registry->clients);
+		registry->clients = NULL;
+	}
+}
+
+/**
  * Unregister an existing service
  */
-/* FIXME: Unregister dead service clients. Probably need to hack ipc.c. :( */
 static void
 xmms_service_unregister (xmms_service_registry_t *registry, const gchar *name,
                          int32_t fd, uint32_t cookie, xmms_error_t *err)
 {
 	xmms_service_entry_t *entry;
+
+	g_return_if_fail (name);
 
 	g_mutex_lock (registry->mutex);
 	entry = (xmms_service_entry_t *) g_tree_lookup (registry->services,
@@ -666,7 +701,6 @@ xmms_service_changed_msg_new (xmmsv_t *svc, xmms_service_changed_actions_t type)
 	x_return_null_if_fail (xmmsv_dict_get (svc, XMMSC_SERVICE_PROP_NAME, &val));
 	x_return_null_if_fail (xmmsv_dict_insert (ret, XMMSC_SERVICE_PROP_NAME,
 	                                          val));
-	xmmsv_unref (val);
 
 	val = xmmsv_new_int ((int32_t) type);
 	x_return_null_if_fail (val);

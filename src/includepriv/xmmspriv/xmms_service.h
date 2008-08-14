@@ -27,5 +27,6 @@
  * Public functions
  */
 gboolean xmms_service_init (void);
+void xmms_service_unregister_all (xmms_object_t *obj);
 
 #endif
