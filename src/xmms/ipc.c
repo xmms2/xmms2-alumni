@@ -124,7 +124,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 	xmms_object_cmd_desc_t *cmd;
 	xmms_object_cmd_arg_t arg;
 	xmms_ipc_msg_t *retmsg;
-	uint32_t objid, cmdid;
+	uint32_t objid, cmdid, cookie;
 	gint i;
 
 	g_return_if_fail (msg);
@@ -231,9 +231,25 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 
 	xmms_object_cmd_call (object, cmdid, &arg);
 ret:
-	if (xmms_error_isok (&arg.error)) {
+	if (xmms_error_isok (&arg.error) && cmdid == XMMS_IPC_CMD_SERVICE_RETURN &&
+	    !xmms_service_get_cookie (object, arg.retval, &cookie)) {
+		xmms_error_set (&arg.error, XMMS_ERROR_NOENT, "Could not get "
+		                "querying client cookie.");
+	}
+
+	/* If we are querying a service, don't send anything back to the querying
+	   client if the query went through ok. We want service_return to return
+	   its value instead. */
+	if (xmms_error_isok (&arg.error) && cmdid == XMMS_IPC_CMD_SERVICE_QUERY) {
+		retmsg = NULL;
+	} else if (xmms_error_isok (&arg.error)) {
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
-		xmms_ipc_handle_cmd_value (retmsg, arg.retval);
+		if (cmdid == XMMS_IPC_CMD_SERVICE_RETURN) {
+			xmms_ipc_handle_cmd_value (retmsg,
+			                           xmms_service_query_return (arg.retval));
+		} else {
+			xmms_ipc_handle_cmd_value (retmsg, arg.retval);
+		}
 	} else {
 		/* FIXME: Hack to remove the broadcast for querying a service client. */
 		if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER) {
@@ -263,7 +279,14 @@ err:
 	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {
 		xmmsv_unref (arg.values[i]);
 	}
-	xmms_ipc_msg_set_cookie (retmsg, xmms_ipc_msg_get_cookie (msg));
+
+	if (!retmsg) {
+		return;
+	} else if (cmdid == XMMS_IPC_CMD_SERVICE_RETURN) {
+		xmms_ipc_msg_set_cookie (retmsg, cookie);
+	} else {
+		xmms_ipc_msg_set_cookie (retmsg, xmms_ipc_msg_get_cookie (msg));
+	}
 	g_mutex_lock (client->lock);
 	xmms_ipc_client_msg_write (client, retmsg);
 	g_mutex_unlock (client->lock);

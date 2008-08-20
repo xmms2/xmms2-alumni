@@ -27,6 +27,9 @@
  * Public functions
  */
 gboolean xmms_service_init (void);
+int xmms_service_get_cookie (xmms_object_t *obj, xmmsv_t *ret,
+                             uint32_t *cookie);
+xmmsv_t *xmms_service_query_return (xmmsv_t *dict);
 void xmms_service_unregister_all (xmms_object_t *obj);
 
 #endif

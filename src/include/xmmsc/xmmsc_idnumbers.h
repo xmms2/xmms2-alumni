@@ -259,5 +259,9 @@ typedef const char* xmmsv_coll_namespace_t;
 #define XMMSC_SERVICE_METHOD_ARG_PROP_TYPE     "type"
 #define XMMSC_SERVICE_METHOD_ARG_PROP_OPTIONAL "optional"
 #define XMMSC_SERVICE_METHOD_ARG_PROP_VALUE    "value"
+#define XMMSC_SERVICE_QUERY_PROP_ARGUMENTS     "args"
+#define XMMSC_SERVICE_QUERY_PROP_METHOD        "method"
+#define XMMSC_SERVICE_QUERY_PROP_ID            "id"
+#define XMMSC_SERVICE_QUERY_PROP_RETURN        "return"
 
 #endif /* __SIGNAL_XMMS_H__ */

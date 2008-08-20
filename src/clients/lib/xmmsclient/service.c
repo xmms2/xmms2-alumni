@@ -790,7 +790,8 @@ xmmsc_service_dispatch (xmmsv_t *val, void *data)
 		return 1;
 	}
 
-	x_return_val_if_fail (xmmsv_dict_get (val, "method", &method), 1);
+	x_return_val_if_fail (xmmsv_dict_get (val, XMMSC_SERVICE_QUERY_PROP_METHOD,
+	                                      &method), 1);
 	x_return_val_if_fail (xmmsv_get_string (method, &name), 1);
 	for (tmp = sd->svc->methods; tmp; tmp = x_list_next (tmp)) {
 		meth = (xmmsc_service_method_t *) tmp->data;
@@ -819,22 +820,18 @@ xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
 {
 	xmms_ipc_msg_t *msg;
 	xmmsv_t *ret;
+	xmmsv_t *id;
 	xmmsv_t *tmp;
 	xmmsv_t *args;
-	uint32_t cookie;
 
 	if (xmmsv_get_type (val) != XMMSV_TYPE_DICT) {
 		return NULL;
 	}
-	x_return_null_if_fail (xmmsv_dict_get (val, "args", &args));
-	x_return_null_if_fail (xmmsv_dict_get (val, "cookie", &tmp));
-	x_return_null_if_fail (xmmsv_get_uint (tmp, &cookie));
-
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
-	                        XMMS_IPC_CMD_SERVICE_RETURN);
-	x_return_null_if_fail (msg);
-
-	xmms_ipc_msg_put_uint32 (msg, cookie);
+	x_return_null_if_fail (xmmsv_dict_get (val,
+	                                       XMMSC_SERVICE_QUERY_PROP_ARGUMENTS,
+	                                       &args));
+	x_return_null_if_fail (xmmsv_dict_get (val, XMMSC_SERVICE_QUERY_PROP_ID,
+	                                       &id));
 
 	if (xmmsc_service_method_check_args (method->args, args)) {
 		tmp = method->func (conn, svc, method->name,
@@ -848,18 +845,21 @@ xmmsc_service_method_handle (xmmsc_connection_t *conn, xmmsc_service_t *svc,
 		x_return_null_if_fail (tmp);
 	}
 
-	/* FIXME: HACK! The service method can return any type, but the server needs
-	   to know what to expect, so we pack the return type into a list. */
-	ret = xmmsv_new_list ();
+	ret = xmmsv_new_dict ();
 	if (!ret) {
 		xmmsv_unref (tmp);
 		return NULL;
 	}
-	if (!xmmsv_list_append (ret, tmp)) {
+	if (!xmmsv_dict_insert (ret, XMMSC_SERVICE_QUERY_PROP_RETURN, tmp) ||
+	    !xmmsv_dict_insert (ret, XMMSC_SERVICE_QUERY_PROP_ID, id)) {
 		xmmsv_unref (tmp);
 		xmmsv_unref (ret);
 		return NULL;
 	}
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SERVICE,
+	                        XMMS_IPC_CMD_SERVICE_RETURN);
+	x_return_null_if_fail (msg);
 
 	xmms_ipc_msg_put_value_data (msg, ret);
 	xmmsv_unref (ret);

@@ -122,8 +122,8 @@ static gint xmms_service_query (xmms_service_registry_t *registry,
                                 xmmsv_t *args, int32_t fd, uint32_t cookie,
                                 xmms_error_t *err);
 static xmmsv_t *xmms_service_return (xmms_service_registry_t *registry,
-                                     uint32_t id, xmmsv_t *list, int32_t fd,
-                                     uint32_t cookie, xmms_error_t *err);
+                                     xmmsv_t *dict, int32_t fd, uint32_t cookie,
+                                     xmms_error_t *err);
 
 static xmmsv_t *
 xmms_service_changed_msg_new (xmmsv_t *svc,
@@ -155,7 +155,7 @@ XMMS_SVC_CMD_DEFINE (svc_query, xmms_service_query,
                      STRING, STRING, LIST, NONE);
 XMMS_SVC_CMD_DEFINE (svc_return, xmms_service_return,
                      xmms_service_registry_t *, END,
-                     INT32, LIST, NONE, NONE);
+                     DICT, NONE, NONE, NONE);
 
 /**
  * Initialize service client handling
@@ -568,7 +568,7 @@ xmms_service_query (xmms_service_registry_t *registry, const gchar *svc,
 	g_tree_insert (registry->clients, GUINT_TO_POINTER (id), (gpointer) cli);
 	g_mutex_unlock (registry->mutex);
 
-	tmp = g_strdup ("args");
+	tmp = g_strdup (XMMSC_SERVICE_QUERY_PROP_ARGUMENTS);
 	if (!tmp) {
 		goto err;
 	}
@@ -579,7 +579,7 @@ xmms_service_query (xmms_service_registry_t *registry, const gchar *svc,
 		goto err;
 	}
 
-	tmp = g_strdup ("method");
+	tmp = g_strdup (XMMSC_SERVICE_QUERY_PROP_METHOD);
 	if (!tmp) {
 		goto err;
 	}
@@ -590,7 +590,7 @@ xmms_service_query (xmms_service_registry_t *registry, const gchar *svc,
 		goto err;
 	}
 
-	tmp = g_strdup ("cookie");
+	tmp = g_strdup (XMMSC_SERVICE_QUERY_PROP_ID);
 	if (!tmp) {
 		goto err;
 	}
@@ -618,12 +618,19 @@ err:
  * Pass service method return to client.
  */
 static xmmsv_t *
-xmms_service_return (xmms_service_registry_t *registry, uint32_t id,
-                     xmmsv_t *list, int32_t fd, uint32_t cookie,
-                     xmms_error_t *err)
+xmms_service_return (xmms_service_registry_t *registry, xmmsv_t *dict,
+                     int32_t fd, uint32_t cookie, xmms_error_t *err)
 {
 	xmms_service_client_t *cli = NULL;
-	xmmsv_t *ret;
+	xmmsv_t *tmp;
+	guint id;
+
+	if (!xmmsv_dict_get (dict, XMMSC_SERVICE_QUERY_PROP_ID, &tmp) ||
+	    !xmmsv_get_uint (tmp, &id)) {
+		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
+		                    "Could not get query id");
+		return NULL;
+	}
 
 	g_mutex_lock (registry->mutex);
 	cli = g_tree_lookup (registry->clients, GUINT_TO_POINTER (id));
@@ -634,17 +641,16 @@ xmms_service_return (xmms_service_registry_t *registry, uint32_t id,
 	}
 	g_mutex_unlock (registry->mutex);
 
-	/* HACK: We use the list as a container for an xmmsv_t of any type. */
-	if (!xmmsv_list_get (list, 0, &ret)) {
+	if (!xmmsv_dict_get (dict, XMMSC_SERVICE_QUERY_PROP_RETURN, &tmp)) {
 		XMMS_SERVICE_ERROR (err, XMMS_ERROR_NOENT,
 		                    "Could not get return value");
 		return NULL;
 	}
 
 	XMMS_DBG ("Returning type (%d) from method (%s) to client (%d)",
-	          xmmsv_get_type (ret), cli->method, cli->fd);
+	          xmmsv_get_type (tmp), cli->method, cli->fd);
 
-	return xmmsv_ref (ret);
+	return xmmsv_ref (dict);
 }
 
 /**
@@ -709,6 +715,46 @@ xmms_service_changed_msg_new (xmmsv_t *svc, xmms_service_changed_actions_t type)
 	xmmsv_unref (val);
 
 	return ret;
+}
+
+int
+xmms_service_get_cookie (xmms_object_t *obj, xmmsv_t *ret, uint32_t *cookie)
+{
+	xmms_service_registry_t *registry = (xmms_service_registry_t *) obj;
+	xmms_service_client_t *client;
+	xmmsv_t *val;
+	guint id;
+	uint32_t chocolate_chip_cookie;
+
+	if (!xmmsv_dict_get (ret, XMMSC_SERVICE_QUERY_PROP_ID, &val)) {
+		return 0;
+	}
+	if (!xmmsv_get_uint (val, &chocolate_chip_cookie)) {
+		return 0;
+	}
+
+	g_mutex_lock (registry->mutex);
+	client = g_tree_lookup (registry->clients, GUINT_TO_POINTER (id));
+	if (!client) {
+		g_mutex_unlock (registry->mutex);
+		return 0;
+	}
+	g_mutex_unlock (registry->mutex);
+
+	*cookie = ntohl (chocolate_chip_cookie);
+	return 1;
+}
+
+xmmsv_t *
+xmms_service_query_return (xmmsv_t *dict)
+{
+	xmmsv_t *ret;
+
+	if (xmmsv_dict_get (dict, XMMSC_SERVICE_QUERY_PROP_RETURN, &ret)) {
+		return ret;
+	} else {
+		return NULL;
+	}
 }
 
 static gint
