@@ -17,10 +17,13 @@
 #ifndef __XMMS_IPC_H__
 #define __XMMS_IPC_H__
 
+#include <glib.h>
+#include "xmmsc/xmmsc_stdint.h"
+
 /* weird place, to circumvent recursive including hell */
 typedef struct xmms_ipc_client_St xmms_ipc_client_t;
+typedef uint32_t xmms_ipc_cookie_t;
 
-#include <glib.h>
 #include "xmms/xmms_object.h"
 
 G_BEGIN_DECLS

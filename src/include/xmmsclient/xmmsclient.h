@@ -22,6 +22,7 @@
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsc_value.h"
 #include "xmmsc/xmmsc_coll.h"
+#include "xmmsc/xmmsc_service.h"
 
 #ifdef __cplusplus
 extern "C" {

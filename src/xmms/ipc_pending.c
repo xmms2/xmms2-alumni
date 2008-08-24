@@ -86,7 +86,7 @@ xmms_ipc_pending_pool_free (xmms_ipc_pending_pool_t *pool)
 {
 	xmms_ipc_pending_entry_t *entry;
 
-	// Free all entries
+	/* Free all entries */
 	while (pool->entries) {
 		entry = (xmms_ipc_pending_entry_t *) pool->entries->data;
 		xmms_ipc_pending_entry_free (entry);
@@ -102,8 +102,6 @@ xmms_ipc_pending_entry_free (xmms_ipc_pending_entry_t *entry)
 	xmmsv_unref (entry->data);
 	g_free (entry);
 }
-
-// OR: free_id unique _per service_ managed by service?
 
 static xmms_ipc_pending_entry_t *
 xmms_ipc_pending_find (xmms_ipc_pending_id_t pid)
@@ -159,7 +157,7 @@ xmms_ipc_pending_save_ipc (xmms_ipc_pending_id_t pid, uint32_t object_id,
 	g_mutex_lock (ipc_pending_pool_lock);
 	entry = xmms_ipc_pending_find (pid);
 	if (!entry) {
-		// FIXME: not found!
+		/* FIXME: not found! */
 		g_mutex_unlock (ipc_pending_pool_lock);
 		XMMS_DBG("Failed to find the pending IPC entry!");
 		return;
@@ -181,19 +179,21 @@ xmms_ipc_pending_send (xmms_ipc_pending_id_t pid, xmmsv_t *retval)
 	g_mutex_lock (ipc_pending_pool_lock);
 	entry = xmms_ipc_pending_find (pid);
 	if (!entry) {
-		// FIXME: not found!
+		/* FIXME: not found! */
 		g_mutex_unlock (ipc_pending_pool_lock);
 		XMMS_DBG("Failed to find the pending IPC entry!");
 		return;
 	}
 
-	// Send retval to pending client
+	/* Send retval to pending client */
 	retmsg = xmms_ipc_msg_new (entry->object, XMMS_IPC_CMD_REPLY);
 	xmms_ipc_msg_put_value (retmsg, retval);
 	xmms_ipc_msg_set_cookie (retmsg, entry->cookie);
 	xmms_ipc_client_msg_write (entry->client, retmsg);
 
-	// Remove entry from the pending pool
+	xmmsv_unref (retval);
+
+	/* Remove entry from the pending pool */
 	xmms_ipc_pending_remove (entry);
 	g_mutex_unlock (ipc_pending_pool_lock);
 }
@@ -205,7 +205,7 @@ xmms_ipc_pending_get_data (xmms_ipc_pending_id_t pid)
 
 	entry = xmms_ipc_pending_find (pid);
 	if (!entry) {
-		// FIXME: not found!
+		/* FIXME: not found! */
 		XMMS_DBG("Failed to find the pending IPC entry!");
 		return NULL;
 	}

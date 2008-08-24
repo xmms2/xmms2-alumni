@@ -1048,7 +1048,9 @@ xmmsv_list_iter_free (xmmsv_list_iter_t *it)
 int
 xmmsv_list_iter_entry (xmmsv_list_iter_t *it, xmmsv_t **val)
 {
-	x_return_val_if_fail (xmmsv_list_iter_valid (it), 0);
+	if (!xmmsv_list_iter_valid (it)) {
+		return 0;
+	}
 
 	*val = it->parent->list[it->position];
 
@@ -1277,6 +1279,21 @@ xmmsv_dict_foreach (xmmsv_t *dictv, xmmsv_dict_foreach_func func,
 	xmmsv_dict_iter_free (it);
 
 	return 1;
+}
+
+/**
+ * Return the size of the dict (number of pairs).
+ *
+ * @param listv The #xmmsv_t containing the dict.
+ * @return The size of the dict, or -1 if dictv is invalid.
+ */
+int
+xmmsv_dict_get_size (xmmsv_t *dictv)
+{
+	x_return_val_if_fail (dictv, -1);
+	x_return_val_if_fail (xmmsv_is_dict (dictv), -1);
+
+	return (dictv->value.dict->flatlist->size / 2);
 }
 
 

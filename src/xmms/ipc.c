@@ -186,8 +186,10 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 		return;
 	}
 
+	/* client and cookie passed to some service commands */
 	xmms_object_cmd_arg_init (&arg);
-	arg.client = client; /* client passed to some service commands */
+	arg.client = client;
+	arg.cookie = xmms_ipc_msg_get_cookie (msg);
 
 	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {
 		if (!type_and_msg_to_arg (cmd->args[i], msg, &arg, i)) {
@@ -203,39 +205,17 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 	/* DEBUGGING: Remove me later! */
 	xmms_ipc_debug (objid, cmdid, &arg, cmd->args, cmd->retval);
 
-	/* FIXME: Hack to set up the broadcast for querying a service client. */
-	if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER) {
-		XMMS_DBG ("Adding service signal to broadcast list.");
-		g_mutex_lock (client->lock);
-		client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
-			g_list_append (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
-			               GUINT_TO_POINTER (xmms_ipc_msg_get_cookie (msg)));
-		g_mutex_unlock (client->lock);
-	}
-
 	xmms_object_cmd_call (object, cmdid, &arg);
 	if (xmms_error_isok (&arg.error)) {
-		if (arg.pid == 0) {
+		if (arg.retval) {
 			/* regular handling, put retval in retmsg */
 			retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
 			xmms_ipc_msg_put_value (retmsg, arg.retval);
 		} else {
-			/* record ipc infos to send reply later */
+			/* it's a NOREPLY, don't prepare a message */
 			retmsg = NULL;
-			xmms_ipc_pending_save_ipc (arg.pid, objid, client,
-			                           xmms_ipc_msg_get_cookie (msg));
 		}
 	} else {
-		/* FIXME: Hack to remove the broadcast for querying a service client. */
-		if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER) {
-			XMMS_DBG ("Removing service signal from broadcast list.");
-			g_mutex_lock (client->lock);
-			client->broadcasts[XMMS_IPC_SIGNAL_SERVICE] =
-				g_list_remove (client->broadcasts[XMMS_IPC_SIGNAL_SERVICE],
-				               GUINT_TO_POINTER (xmms_ipc_msg_get_cookie (msg)));
-			g_mutex_unlock (client->lock);
-		}
-
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_ERROR);
 		xmms_ipc_msg_put_string (retmsg, xmms_error_message_get (&arg.error));
 /* FIXME: Or should we return an error retval?

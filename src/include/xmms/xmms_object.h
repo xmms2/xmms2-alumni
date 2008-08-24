@@ -77,7 +77,7 @@ typedef struct {
 	xmmsv_t *values[XMMS_OBJECT_CMD_MAX_ARGS];
 	xmmsv_t *retval;
 	xmms_ipc_client_t *client;
-	xmms_ipc_pending_id_t pid;
+	xmms_ipc_cookie_t cookie;
 	xmms_error_t error;
 } xmms_object_cmd_arg_t;
 
@@ -133,6 +133,7 @@ void xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_a
 #define __XMMS_CMD_INIT_ARG_LIST(a)   __XMMS_CMD_INIT_ARG_FULL(a, xmmsv_t *, dummy_identity)
 #define __XMMS_CMD_INIT_ARG_DICT(a)   __XMMS_CMD_INIT_ARG_FULL(a, xmmsv_t *, dummy_identity)
 #define __XMMS_CMD_INIT_ARG_CLIENT(a) xmms_ipc_client_t *argval##a = arg->client;
+#define __XMMS_CMD_INIT_ARG_COOKIE(a) xmms_ipc_cookie_t argval##a = arg->cookie;
 
 #define __XMMS_CMD_PRINT_ARG_NONE(a)
 #define __XMMS_CMD_PRINT_ARG_STRING(a) , argval##a
@@ -143,6 +144,7 @@ void xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_a
 #define __XMMS_CMD_PRINT_ARG_LIST(a)   , argval##a
 #define __XMMS_CMD_PRINT_ARG_DICT(a)   , argval##a
 #define __XMMS_CMD_PRINT_ARG_CLIENT(a) , argval##a
+#define __XMMS_CMD_PRINT_ARG_COOKIE(a) , argval##a
 
 #define __XMMS_CMD_DO_RETVAL_NONE() arg->retval = xmmsv_new_none();
 #define __XMMS_CMD_DO_RETVAL_DICT() arg->retval = xmms_create_xmmsv_dict
@@ -152,8 +154,8 @@ void xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_a
 #define __XMMS_CMD_DO_RETVAL_STRING() arg->retval = xmmsv_new_string
 #define __XMMS_CMD_DO_RETVAL_COLL() arg->retval = xmmsv_new_coll
 #define __XMMS_CMD_DO_RETVAL_BIN() arg->retval = xmms_create_xmmsv_bin
-/* PENDING: return a ipc_pending_id and prevent ipc from sending a message back */
-#define __XMMS_CMD_DO_RETVAL_PENDING() arg->retval = xmmsv_new_none(); arg->pid =
+/* Tell IPC not to return any message to the client (will be done manually) */
+#define __XMMS_CMD_DO_RETVAL_NOREPLY() arg->retval = NULL;
 /* Hack to return a dict xmmsv_t directly */
 #define __XMMS_CMD_DO_RETVAL_DICTVALUE() arg->retval =
 
@@ -167,9 +169,10 @@ void xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_a
 #define __XMMS_CMD_TYPE_BIN     XMMSV_TYPE_BIN
 #define __XMMS_CMD_TYPE_LIST    XMMSV_TYPE_LIST
 #define __XMMS_CMD_TYPE_DICT    XMMSV_TYPE_DICT
-#define __XMMS_CMD_TYPE_PENDING XMMSV_TYPE_UINT32
+#define __XMMS_CMD_TYPE_NOREPLY XMMSV_TYPE_UINT32
 #define __XMMS_CMD_TYPE_DICTVALUE XMMSV_TYPE_DICT
 #define __XMMS_CMD_TYPE_CLIENT  XMMSV_TYPE_NONE
+#define __XMMS_CMD_TYPE_COOKIE  XMMSV_TYPE_NONE
 
 
 #define XMMS_CMD_DEFINE6(cmdid, realfunc, argtype0, _rettype, argtype1, argtype2, argtype3, argtype4, argtype5, argtype6) static void \

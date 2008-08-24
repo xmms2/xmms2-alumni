@@ -22,6 +22,7 @@
 #include "xmmsclient/xmmsclient.h"
 #include "xmmsclientpriv/xmmsclient.h"
 #include "xmmsc/xmmsc_idnumbers.h"
+#include "xmmsc/xmmsc_service.h"
 #include "xmmsc/xmmsc_errorcodes.h"
 
 /**
@@ -332,7 +333,7 @@ xmmsc_service_method_add_arg (xmmsc_service_t *svc, const char *name,
 	DICT_ADD_STRING (arg, XMMSC_SERVICE_METHOD_ARG_PROP_NAME, name);
 
 	/* arg = { "name" => name, "type" => type } */
-	DICT_ADD_INT (arg, XMMSC_SERVICE_METHOD_ARG_PROP_TYPE, type);
+	DICT_ADD_UINT (arg, XMMSC_SERVICE_METHOD_ARG_PROP_TYPE, type);
 
 	/* arg = { "name" => name, "type" => type, "optional" => optional } */
 	DICT_ADD_INT (arg, XMMSC_SERVICE_METHOD_ARG_PROP_OPTIONAL, optional);
@@ -537,6 +538,7 @@ xmmsc_service_methods_to_value (x_list_t *meths)
 		if (!method) {
 			goto err;
 		}
+
 		/* method = { "description" => desc } */
 		DICT_ADD_STRING (method, XMMSC_SERVICE_METHOD_PROP_DESCRIPTION,
 		                 meth->desc);
@@ -549,14 +551,8 @@ xmmsc_service_methods_to_value (x_list_t *meths)
 
 		/* method = { "description" => desc, "args" => [ ... ],
 		              "rettype" => rettype } */
-		DICT_ADD_INT (method, XMMSC_SERVICE_METHOD_PROP_RETURN_TYPE,
-		              meth->rettype);
-		val = xmmsv_new_int ((int32_t) meth->rettype);
-		if (!xmmsv_dict_insert (method, XMMSC_SERVICE_METHOD_PROP_RETURN_TYPE,
-		                        val)) {
-			goto err;
-		}
-		xmmsv_unref (val);
+		DICT_ADD_UINT (method, XMMSC_SERVICE_METHOD_PROP_RETURN_TYPE,
+		               meth->rettype);
 
 		if (!xmmsv_dict_insert (methods, meth->name, method)) {
 			goto err;
@@ -924,7 +920,7 @@ xmmsc_service_method_check_args (xmmsv_t *argtypes, xmmsv_t *args)
 			x_return_val_if_fail (xmmsv_dict_get (typearg,
 			                                      XMMSC_SERVICE_METHOD_ARG_PROP_TYPE,
 			                                      &type), 0);
-			x_return_val_if_fail (xmmsv_get_int (type, (int32_t *) &argtype),
+			x_return_val_if_fail (xmmsv_get_uint (type, (uint32_t *) &argtype),
 			                                     0);
 
 			if (xmmsv_get_type (val) == argtype) {
