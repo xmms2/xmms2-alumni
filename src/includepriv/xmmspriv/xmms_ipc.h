@@ -2,6 +2,7 @@
 #define __XMMS_PRIV_IPC_H__
 
 #include "xmms/xmms_ipc.h"
+#include "xmmsc/xmmsc_ipc_msg.h"
 
 typedef enum {
 	XMMS_IPC_CLIENT_STATUS_NEW,
@@ -16,5 +17,7 @@ gboolean xmms_ipc_setup_server (const gchar *path);
 gboolean xmms_ipc_setup_with_gmain (xmms_ipc_t *ipc);
 
 gboolean xmms_ipc_has_pending (guint signalid);
+
+gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
 
 #endif

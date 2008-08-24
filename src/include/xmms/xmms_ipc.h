@@ -17,6 +17,9 @@
 #ifndef __XMMS_IPC_H__
 #define __XMMS_IPC_H__
 
+/* weird place, to circumvent recursive including hell */
+typedef struct xmms_ipc_client_St xmms_ipc_client_t;
+
 #include <glib.h>
 #include "xmms/xmms_object.h"
 

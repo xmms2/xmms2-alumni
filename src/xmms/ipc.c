@@ -19,6 +19,7 @@
 
 #include "xmms/xmms_log.h"
 #include "xmmspriv/xmms_ipc.h"
+#include "xmmspriv/xmms_ipc_pending.h"
 #include "xmmspriv/xmms_service.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
@@ -59,7 +60,7 @@ struct xmms_ipc_St {
 /**
  * An IPC client representation.
  */
-typedef struct xmms_ipc_client_St {
+struct xmms_ipc_client_St {
 	GMainLoop *ml;
 	GIOChannel *iochan;
 
@@ -77,7 +78,7 @@ typedef struct xmms_ipc_client_St {
 
 	guint pendingsignals[XMMS_IPC_SIGNAL_END];
 	GList *broadcasts[XMMS_IPC_SIGNAL_END];
-} xmms_ipc_client_t;
+};
 
 static GMutex *ipc_servers_lock;
 static GList *ipc_servers = NULL;
@@ -86,8 +87,6 @@ static GMutex *ipc_object_pool_lock;
 static struct xmms_ipc_object_pool_t *ipc_object_pool = NULL;
 
 static void xmms_ipc_client_destroy (xmms_ipc_client_t *client);
-
-static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
 
 /* <DEBUGGING> */
 static void xmms_ipc_debug (uint32_t obj, uint32_t cmd,
@@ -108,23 +107,13 @@ type_and_msg_to_arg (xmmsv_type_t type, xmms_ipc_msg_t *msg, xmms_object_cmd_arg
 }
 
 static void
-xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmmsv_t *val)
-{
-	xmms_ipc_msg_put_value (msg, val);
-
-	/* FIXME: error?
-	xmms_log_error ("Unknown returnvalue: %d, couldn't serialize message", val->type);
-	*/
-}
-
-static void
 process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 {
 	xmms_object_t *object;
 	xmms_object_cmd_desc_t *cmd;
 	xmms_object_cmd_arg_t arg;
 	xmms_ipc_msg_t *retmsg;
-	uint32_t objid, cmdid, cookie;
+	uint32_t objid, cmdid;
 	gint i;
 
 	g_return_if_fail (msg);
@@ -198,6 +187,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 	}
 
 	xmms_object_cmd_arg_init (&arg);
+	arg.client = client; /* client passed to some service commands */
 
 	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {
 		if (!type_and_msg_to_arg (cmd->args[i], msg, &arg, i)) {
@@ -213,12 +203,6 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 	/* DEBUGGING: Remove me later! */
 	xmms_ipc_debug (objid, cmdid, &arg, cmd->args, cmd->retval);
 
-	/* FIXME: Dirty hack. Promise not to go beyond 4 arguments. */
-	if (objid == XMMS_IPC_OBJECT_SERVICE) {
-		arg.values[4] = xmmsv_new_int ((int32_t) client->transport->fd);
-		arg.values[5] = xmmsv_new_uint (xmms_ipc_msg_get_cookie (msg));
-	}
-
 	/* FIXME: Hack to set up the broadcast for querying a service client. */
 	if (cmdid == XMMS_IPC_CMD_SERVICE_REGISTER) {
 		XMMS_DBG ("Adding service signal to broadcast list.");
@@ -230,25 +214,16 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 	}
 
 	xmms_object_cmd_call (object, cmdid, &arg);
-ret:
-	if (xmms_error_isok (&arg.error) && cmdid == XMMS_IPC_CMD_SERVICE_RETURN &&
-	    !xmms_service_get_cookie (object, arg.retval, &cookie)) {
-		xmms_error_set (&arg.error, XMMS_ERROR_NOENT, "Could not get "
-		                "querying client cookie.");
-	}
-
-	/* If we are querying a service, don't send anything back to the querying
-	   client if the query went through ok. We want service_return to return
-	   its value instead. */
-	if (xmms_error_isok (&arg.error) && cmdid == XMMS_IPC_CMD_SERVICE_QUERY) {
-		retmsg = NULL;
-	} else if (xmms_error_isok (&arg.error)) {
-		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
-		if (cmdid == XMMS_IPC_CMD_SERVICE_RETURN) {
-			xmms_ipc_handle_cmd_value (retmsg,
-			                           xmms_service_query_return (arg.retval));
+	if (xmms_error_isok (&arg.error)) {
+		if (arg.pid == 0) {
+			/* regular handling, put retval in retmsg */
+			retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
+			xmms_ipc_msg_put_value (retmsg, arg.retval);
 		} else {
-			xmms_ipc_handle_cmd_value (retmsg, arg.retval);
+			/* record ipc infos to send reply later */
+			retmsg = NULL;
+			xmms_ipc_pending_save_ipc (arg.pid, objid, client,
+			                           xmms_ipc_msg_get_cookie (msg));
 		}
 	} else {
 		/* FIXME: Hack to remove the broadcast for querying a service client. */
@@ -261,12 +236,9 @@ ret:
 			g_mutex_unlock (client->lock);
 		}
 
-		/* FIXME: or we could change the client code to transform
-		 * CMD_ERROR to an error value_t. If so, remove the handling
-		 * of ERROR in xmms_ipc_handle_cmd_value, okay? */
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_ERROR);
 		xmms_ipc_msg_put_string (retmsg, xmms_error_message_get (&arg.error));
-/*
+/* FIXME: Or should we return an error retval?
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
 		xmms_ipc_handle_cmd_value (retmsg, arg.retval);
 */
@@ -280,16 +252,13 @@ err:
 		xmmsv_unref (arg.values[i]);
 	}
 
-	if (!retmsg) {
-		return;
-	} else if (cmdid == XMMS_IPC_CMD_SERVICE_RETURN) {
-		xmms_ipc_msg_set_cookie (retmsg, cookie);
-	} else {
+	if (retmsg) {
+		/* return server reply to client, unless no retmsg (PENDING) */
 		xmms_ipc_msg_set_cookie (retmsg, xmms_ipc_msg_get_cookie (msg));
+		g_mutex_lock (client->lock);
+		xmms_ipc_client_msg_write (client, retmsg);
+		g_mutex_unlock (client->lock);
 	}
-	g_mutex_lock (client->lock);
-	xmms_ipc_client_msg_write (client, retmsg);
-	g_mutex_unlock (client->lock);
 }
 
 
@@ -299,7 +268,6 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
                          gpointer data)
 {
 	xmms_ipc_client_t *client = data;
-	xmms_object_t *object;
 	bool disconnect = FALSE;
 
 	g_return_val_if_fail (client, FALSE);
@@ -486,7 +454,7 @@ on_config_ipcsocket_change (xmms_object_t *object, gconstpointer data, gpointer 
  * Put a message in the queue awaiting to be sent to the client.
  * Should hold client->lock.
  */
-static gboolean
+gboolean
 xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 {
 	gboolean queue_empty;
@@ -622,7 +590,7 @@ xmms_ipc_signal_cb (xmms_object_t *object, gconstpointer arg, gpointer userdata)
 			if (cli->pendingsignals[signalid]) {
 				msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_SIGNAL);
 				xmms_ipc_msg_set_cookie (msg, cli->pendingsignals[signalid]);
-				xmms_ipc_handle_cmd_value (msg, ((xmms_object_cmd_arg_t*)arg)->retval);
+				xmms_ipc_msg_put_value (msg, ((xmms_object_cmd_arg_t*)arg)->retval);
 				xmms_ipc_client_msg_write (cli, msg);
 				cli->pendingsignals[signalid] = 0;
 			}
@@ -658,7 +626,7 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 				if (xmms_error_isok (&a->error)) {
 					msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL,
 					                        XMMS_IPC_CMD_BROADCAST);
-					xmms_ipc_handle_cmd_value (msg, a->retval);
+					xmms_ipc_msg_put_value (msg, a->retval);
 				} else {
 					msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL,
 					                        XMMS_IPC_CMD_ERROR);
@@ -770,6 +738,8 @@ xmms_ipc_init (void)
 	ipc_servers_lock = g_mutex_new ();
 	ipc_object_pool_lock = g_mutex_new ();
 	ipc_object_pool = g_new0 (xmms_ipc_object_pool_t, 1);
+	/* FIXME: freed when? */
+	xmms_ipc_pending_pool_init ();
 	return NULL;
 }
 

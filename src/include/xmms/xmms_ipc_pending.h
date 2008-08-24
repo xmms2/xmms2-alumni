@@ -14,13 +14,10 @@
  *  Lesser General Public License for more details.
  */
 
-#ifndef __XMMS_SERVICE2_H__
-#define __XMMS_SERVICE2_H__
+#ifndef __XMMS_IPC_PENDING_H__
+#define __XMMS_IPC_PENDING_H__
 
-#include "xmms/xmms_object.h"
-#include "xmmsc/xmmsc_value.h"
-
-typedef struct xmms_service_registry_St xmms_service_registry_t;
-typedef struct xmms_service_entry_St xmms_service_entry_t;
+typedef guint xmms_ipc_pending_id_t;
 
 #endif
+
