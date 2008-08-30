@@ -931,9 +931,9 @@ xmms_playlist_insert_id (xmms_playlist_t *playlist, const gchar *plname,
 	return TRUE;
 }
 
-gboolean
+static gboolean
 xmms_playlist_insert_collection (xmms_playlist_t *playlist, const gchar *plname,
-                                 guint32 pos, xmmsv_coll_t *coll, GList *order,
+                                 guint32 pos, xmmsv_coll_t *coll, xmmsv_t *order,
                                  xmms_error_t *err)
 {
 	GList *res;
@@ -961,7 +961,7 @@ xmms_playlist_insert_collection (xmms_playlist_t *playlist, const gchar *plname,
  * @internal
  */
 void
-xmms_playlist_insert_entry (xmms_playlist_t *playlist, gchar *plname,
+xmms_playlist_insert_entry (xmms_playlist_t *playlist, const gchar *plname,
                             guint32 pos, xmms_medialib_entry_t file,
                             xmms_error_t *err)
 {
