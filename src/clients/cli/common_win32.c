@@ -40,7 +40,5 @@ find_terminal_width ()
 
 	if (GetConsoleScreenBufferInfo (h_stdout, &info)) {
 		return info.dwMaximumWindowSize.X;
-	} else {
-		return 80;
 	}
 }

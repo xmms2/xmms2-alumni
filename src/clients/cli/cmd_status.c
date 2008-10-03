@@ -196,6 +196,11 @@ static void update_display ()
 
 		columns = find_terminal_width ();
 
+		/* Default to 80 columns */
+		if (columns <= 0) {
+			columns = 80;
+		}
+
 		g_snprintf (buf_status, sizeof (buf_status), "%7s: ",
 		            status_messages[curr_status]);
 		g_snprintf (buf_time, sizeof (buf_time), ": %02d:%02d of %02d:%02d",

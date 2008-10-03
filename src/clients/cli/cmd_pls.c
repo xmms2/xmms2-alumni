@@ -548,6 +548,9 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	gulong total_playtime = 0;
 	guint p = 0;
 	guint pos = 0;
+	gint cols = 0;
+
+	cols = find_terminal_width();
 
 	if (argc > 2) {
 		playlist = argv[2];
@@ -572,7 +575,7 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	while (xmmsc_result_list_valid (res)) {
 		xmmsc_result_t *info_res;
-		gchar line[80];
+		GString* line = NULL;
 		gint playtime = 0;
 		guint ui;
 
@@ -590,40 +593,41 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		if (xmmsc_result_get_dict_entry_int (info_res, "duration", &playtime)) {
 			total_playtime += playtime;
 		}
+		
+		line = g_string_new (NULL);
+		if (p == pos) {
+			g_string_printf (line, "->[%d/%d] ", pos, ui);
+		} else {
+			g_string_printf (line, "  [%d/%d] ", pos, ui);
+		}
 
 		if (res_has_key (info_res, "channel")) {
 			if (res_has_key (info_res, "title")) {
-				xmmsc_entry_format (line, sizeof (line),
-				                    "[stream] ${title}", info_res);
+				entry_format (line, "[stream] ${title}", info_res);
 			} else {
-				xmmsc_entry_format (line, sizeof (line),
-				                    "${channel}", info_res);
+				entry_format (line, "${channel}", info_res);
 			}
 		} else if (!res_has_key (info_res, "title")) {
 			const gchar *url;
-			gchar dur[10];
-
-			xmmsc_entry_format (dur, sizeof (dur),
-			                    "(${minutes}:${seconds})", info_res);
 
 			if (xmmsc_result_get_dict_entry_string (info_res, "url", &url)) {
 				gchar *filename = g_path_get_basename (url);
 				if (filename) {
-					g_snprintf (line, sizeof (line), "%s %s", filename, dur);
+					g_string_append_printf (line, "%s", filename);
 					g_free (filename);
 				} else {
-					g_snprintf (line, sizeof (line), "%s %s", url, dur);
+					g_string_append_printf (line, "%s", url);
 				}
 			}
+
+			entry_format (line, "(${minutes}:${seconds})", info_res);
+
 		} else {
-			xmmsc_entry_format (line, sizeof (line), listformat, info_res);
+			entry_format (line, listformat, info_res);
 		}
 
-		if (p == pos) {
-			print_info ("->[%d/%d] %s", pos, ui, line);
-		} else {
-			print_info ("  [%d/%d] %s", pos, ui, line);
-		}
+		print_utf8_columns (line, cols);
+		g_string_free (line, TRUE);
 
 		pos++;
 
@@ -638,7 +642,6 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	print_info ("\nTotal playtime: %d:%02d:%02d", total_playtime / 3600000,
 	            (total_playtime / 60000) % 60, (total_playtime / 1000) % 60);
 }
-
 
 void
 cmd_move (xmmsc_connection_t *conn, gint argc, gchar **argv)

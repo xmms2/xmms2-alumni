@@ -45,5 +45,7 @@ void format_pretty_list (xmmsc_connection_t *conn, GList *list);
 gint res_has_key (xmmsc_result_t *res, const gchar *key);
 gboolean coll_read_collname (gchar *str, gchar **name, gchar **namespace);
 char *string_escape (const char *s);
+GString* entry_format (GString *str, const gchar *fmt, xmmsc_result_t *res);
+void print_utf8_columns (GString *str, guint columns);
 
 #endif

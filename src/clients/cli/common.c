@@ -178,6 +178,107 @@ make_justified_columns_format (gint columns, const char type_first)
 	return buf;
 }
 
+gboolean
+key_from_res_to_string (xmmsc_result_t *res, const gchar *key, GString *dest)
+{
+	if (!res || !key || !dest) {
+		return FALSE;
+	}
+
+	if (strcmp (key, "seconds") == 0) {
+		int duration = 0;
+		xmmsc_result_get_dict_entry_int (res, "duration", &duration);
+
+		duration += 500; /* round */
+		g_string_append_printf (dest, "%02d", (duration/1000)%60);
+	} else if (strcmp (key, "minutes") == 0) {
+		int duration;
+		xmmsc_result_get_dict_entry_int (res, "duration", &duration);
+
+		duration += 500;
+		g_string_append_printf (dest, "%02d", duration/60000);
+	} else {
+		xmmsc_result_value_type_t type = xmmsc_result_get_dict_entry_type (res, key);
+		if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
+				const gchar* str = NULL;
+				xmmsc_result_get_dict_entry_string (res, key, &str);
+				g_string_append (dest, str);
+		} else if (type == XMMSC_RESULT_VALUE_TYPE_UINT32) {
+				uint32_t ui;
+				xmmsc_result_get_dict_entry_uint (res, key, &ui);
+				g_string_append_printf (dest, "%u", ui);
+		} else if (type == XMMSC_RESULT_VALUE_TYPE_INT32) {
+				int32_t i;
+				xmmsc_result_get_dict_entry_int (res, key, &i);
+				g_string_append_printf (dest, "%d", i);
+		}
+	}
+	
+	return TRUE;
+}
+
+GString*
+entry_format (GString *str, const gchar *fmt, xmmsc_result_t *res)
+{
+	const gchar *pos;
+	const gchar *next_key;
+
+	if (!str || !fmt || !res) {
+		return NULL;
+	}
+
+	pos = fmt;
+
+	while ((next_key = strstr (pos, "${")) != NULL) {
+		gchar *key = NULL;
+
+		g_string_append_len (str, pos, next_key - pos);
+		next_key += 2;
+		pos = next_key;
+		next_key = strstr (pos, "}");
+
+		key = g_strndup (pos, next_key - pos);
+		key_from_res_to_string (res, key, str);
+		g_free (key);
+		pos = next_key + 1;
+	}
+
+	g_string_append (str, pos);
+
+	return str;
+}
+
+void
+print_utf8_columns (GString *str, guint columns)
+{
+	if (!str && !str->str) {
+		return;
+	}
+	if (columns > 0) {
+		gchar *tmp = str->str;
+		glong cols = 0;
+		gchar *tmp2 = NULL;
+
+		do {
+			if (g_unichar_iswide (g_utf8_get_char (tmp))) {
+				if (cols == columns -1) {
+					break;
+				}
+				cols += 2;
+			} else {
+				++cols;
+			}
+		} while ((tmp = g_utf8_next_char (tmp)) && cols < columns);
+
+		tmp2 = g_malloc0 (4 * cols); // max 4 bytes per ucs-4 character
+		g_utf8_strncpy (tmp2, str->str, g_utf8_pointer_to_offset(str->str, tmp));
+		g_print ("%s\n", tmp2);
+		g_free (tmp2);
+	} else {
+		g_print ("%s\n", str->str);
+	}
+}
+
 void
 format_pretty_list (xmmsc_connection_t *conn, GList *list)
 {
