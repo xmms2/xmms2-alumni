@@ -117,17 +117,21 @@ print_entry_string (xmmsv_t *v, const gchar *key, const gchar *source)
 	 */
 	if (strcmp (key, "url") == 0 && strcmp (source, "server") == 0) {
 		/* First decode the URL encoding */
-		char *tmp;
-		tmp = xmmsv_decode_url (value);
+		xmmsv_t *tmp;
+		const gchar *url;
+		gint ret;
+		tmp = xmmsv_decode_url ((const xmmsv_t *) v);
+		ret = xmmsv_get_string (tmp, &url);
 
 		/* Let's see if the result is valid utf-8. This must be done
 		 * since we don't know the charset of the binary string */
-		if (g_utf8_validate (tmp, -1, NULL)) {
+		if (ret && g_utf8_validate (url, -1, NULL)) {
 			/* If it's valid utf-8 we don't have any problem just
 			 * printing it to the screen
 			 */
-			print_info ("[%s] %s = %s", source, key, tmp);
-		} else {
+			print_info ("[%s] %s = %s", source, key, url);
+			xmmsv_unref (tmp);
+		} else if (ret) {
 			/* Not valid utf-8 :-( We make a valid guess here that
 			 * the string when it was encoded with URL it was in the
 			 * same charset as we have on the terminal now.
@@ -136,13 +140,16 @@ print_entry_string (xmmsv_t *v, const gchar *key, const gchar *source)
 			 * different charsets and DIFFERENT computers most likely
 			 * have it.
 			 */
-			gchar *tmp2 = g_locale_to_utf8 (tmp, -1, NULL, NULL, NULL);
+			gchar *tmp2 = g_locale_to_utf8 (url, -1, NULL, NULL, NULL);
 			/* Lets add a disclaimer */
 			print_info ("[%s] %s = %s (charset guessed)", source, key, tmp2);
 			g_free (tmp2);
+			xmmsv_unref (tmp);
+		} else {
+			/* Decoding the URL failed for some reason. That's not good. */
+			print_info ("[%s] %s = (invalid encoding)", source, key);
 		}
 
-		free (tmp); /* free decoded url */
 	} else {
 		/* Normal strings is ALWAYS utf-8 no problem */
 		print_info ("[%s] %s = %s", source, key, value);

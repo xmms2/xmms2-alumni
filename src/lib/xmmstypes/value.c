@@ -1699,15 +1699,15 @@ xmmsv_dict_iter_remove (xmmsv_dict_iter_t *it)
 
 /* FIXME: MOVE THIS TO UTILS OR SOMETHING! */
 /**
- * Decode an URL-encoded string.
+ * Decode a URL-encoded string.
  *
- * Some strings (currently only the url of media) has no known
- * encoding, and must be encoded in an UTF-8 clean way. This is done
+ * Some strings (currently only the url of media) have no known
+ * encoding, and must be encoded in a UTF-8 clean way. This is done
  * similar to the url encoding web browsers do. This functions decodes
  * a string encoded in that way. OBSERVE that the decoded string HAS
  * NO KNOWN ENCODING and you cannot display it on screen in a 100%
  * guaranteed correct way (a good heuristic is to try to validate the
- * decoded string as UTF-8, and if it validates assume that it is an
+ * decoded string as UTF-8, and if it validates assume that it is a
  * UTF-8 encoded string, and otherwise fall back to some other
  * encoding).
  *
@@ -1716,39 +1716,33 @@ xmmsv_dict_iter_remove (xmmsv_dict_iter_t *it)
  * all.
  *
  * Note that the fact that the string has NO KNOWN ENCODING and CAN
- * NOT BE DISPLAYED does not stop you from open the file if it is a
+ * NOT BE DISPLAYED does not stop you from opening the file if it is a
  * local file (if it starts with "file://").
  *
-FIXME: er so how do we manually free this stuff? free()?
- *
- * The string returned string will be owned by the value and
- * freed when the value is freed. Or, if the value passed is NULL,
- * the user is responsible for freeing the returned string. However,
- * the user has no way of knowing what allocation routine was used to
- * create the string and thus no way to know which free routine to
- * use. Passing a NULL value is generall frowned upon and we won't
- * offer you tissues and a blanket if you come crying to us with
- * broken code.
- *
- * @param val the #xmmsv_t that the string comes from
- * @param string the url encoded string
- * @return decoded string, owned by the #xmmsv_t
+ * @param url the #xmmsv_t containing a url-encoded string
+ * @return a new #xmmsv_t containing the decoded string or NULL on failure
  *
  */
-char *
-xmmsv_decode_url (const char *string)
+xmmsv_t *
+xmmsv_decode_url (const xmmsv_t *url)
 {
 	int i = 0, j = 0;
-	char *url;
+	const char *string;
+	char *tmp;
+	xmmsv_t *ret;
 
-	url = strdup (string);
-	if (!url) {
+	if (!xmmsv_get_string (url, &string)) {
+		return NULL;
+	}
+
+	tmp = strdup (string);
+	if (!tmp) {
 		x_oom ();
 		return NULL;
 	}
 
-	while (url[i]) {
-		unsigned char chr = url[i++];
+	while (tmp[i]) {
+		unsigned char chr = tmp[i++];
 
 		if (chr == '+') {
 			chr = ' ';
@@ -1756,10 +1750,10 @@ xmmsv_decode_url (const char *string)
 			char ts[3];
 			char *t;
 
-			ts[0] = url[i++];
+			ts[0] = tmp[i++];
 			if (!ts[0])
 				goto err;
-			ts[1] = url[i++];
+			ts[1] = tmp[i++];
 			if (!ts[1])
 				goto err;
 			ts[2] = '\0';
@@ -1770,15 +1764,18 @@ xmmsv_decode_url (const char *string)
 				goto err;
 		}
 
-		url[j++] = chr;
+		tmp[j++] = chr;
 	}
 
-	url[j] = '\0';
+	tmp[j] = '\0';
 
-	return url;
+	ret = xmmsv_new_string ((const char *) tmp);
+	free (tmp);
+
+	return ret;
 
  err:
-	free (url);
+	free (tmp);
 	return NULL;
 }
 

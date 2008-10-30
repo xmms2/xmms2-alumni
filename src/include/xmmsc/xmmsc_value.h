@@ -123,7 +123,7 @@ make_string_list
 */
 
 /* FIXME: move to utils or something! */
-char *xmmsv_decode_url (const char *string);
+xmmsv_t *xmmsv_decode_url (const xmmsv_t *url);
 
 #ifdef __cplusplus
 }
