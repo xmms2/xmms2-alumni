@@ -49,20 +49,26 @@ static VALUE
 m_decode_url (VALUE self, VALUE str)
 {
 	const char *cstr, *tmp;
+	xmmsv_t *vurl, *durl;
 	VALUE url;
 
 	cstr = StringValuePtr (str);
 
-	tmp = xmmsc_result_decode_url (NULL, cstr);
-	if (!tmp)
+	vurl = xmmsv_new_string (cstr);
+	if (!vurl)
 		return Qnil;
 
-	url = rb_str_new2 (tmp);
+	durl = xmmsv_decode_url (vurl);
+	xmmsv_unref (vurl);
+	if (!durl)
+		return Qnil;
 
-	/* We have to free tmp here ourselves because we didn't pass a
-	 * result to xmmsc_result_decode_url() above.
-	 */
-	free ((void *) tmp);
+	if (!xmmsv_get_string (durl, &tmp)) {
+		xmmsv_unref (durl);
+		return Qnil;
+	}
+	url = rb_str_new2 (tmp);
+	xmmsv_unref (durl);
 
 	return url;
 }
