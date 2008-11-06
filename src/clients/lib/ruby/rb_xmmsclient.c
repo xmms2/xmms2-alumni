@@ -84,7 +84,7 @@ static ID id_lt, id_gt;
 static void
 c_mark (RbXmmsClient *xmms)
 {
-	rb_gc_mark (xmms->results);
+	rb_gc_mark (xmms->result_callbacks);
 
 	if (!NIL_P (xmms->disconnect_cb))
 		rb_gc_mark (xmms->disconnect_cb);
@@ -130,7 +130,7 @@ c_init (VALUE self, VALUE name)
 	}
 
 	xmms->deleted = false;
-	xmms->results = rb_ary_new ();
+	xmms->result_callbacks = rb_ary_new ();
 	xmms->disconnect_cb = Qnil;
 	xmms->io_need_out_cb = Qnil;
 

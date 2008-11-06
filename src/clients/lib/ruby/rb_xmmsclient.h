@@ -24,7 +24,7 @@
 typedef struct {
 	xmmsc_connection_t *real;
 	bool deleted;
-	VALUE results;
+	VALUE result_callbacks;
 	VALUE disconnect_cb;
 	VALUE io_need_out_cb;
 

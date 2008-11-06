@@ -26,9 +26,7 @@
 
 typedef struct {
 	xmmsc_result_t *real;
-	xmmsc_result_t *orig;
 	VALUE xmms;
-	VALUE callback;
 } RbResult;
 
 /* An xmmsv_t of type XMMSV_TYPE_DICT */
@@ -47,9 +45,6 @@ static void
 c_mark (RbResult *res)
 {
 	rb_gc_mark (res->xmms);
-
-	if (!NIL_P (res->callback))
-		rb_gc_mark (res->callback);
 }
 
 static void
@@ -83,9 +78,8 @@ TO_XMMS_CLIENT_RESULT (VALUE xmms, xmmsc_result_t *res)
 
 	self = Data_Make_Struct (klass, RbResult, c_mark, c_free, rbres);
 
-	rbres->real = rbres->orig = res;
+	rbres->real = res;
 	rbres->xmms = xmms;
-	rbres->callback = Qnil;
 
 	rb_obj_call_init (self, 0, NULL);
 
@@ -109,14 +103,11 @@ c_dict_free (RbDict *dict)
 static int
 on_signal (xmmsv_t *val, void *data)
 {
-	VALUE rbval, ret, self = (VALUE) data;
-	RbResult *res = NULL;
+	VALUE rbval, ret, callback = (VALUE) data;
 
-	Data_Get_Struct (self, RbResult, res);
+	rbval = extract_value (Qnil, val);
 
-	rbval = extract_value (self, val);
-
-	ret = rb_funcall (res->callback, rb_intern ("call"), 1, rbval);
+	ret = rb_funcall (callback, rb_intern ("call"), 1, rbval);
 
 	if (ret == Qnil || ret == Qfalse)
 		return 0;
@@ -136,6 +127,7 @@ on_signal (xmmsv_t *val, void *data)
 static VALUE
 c_notifier_set (VALUE self)
 {
+	VALUE callback;
 	RbResult *res = NULL;
 	RbXmmsClient *xmms = NULL;
 
@@ -144,12 +136,12 @@ c_notifier_set (VALUE self)
 	if (!rb_block_given_p ())
 		return Qnil;
 
-	res->callback = rb_block_proc ();
+	callback = rb_block_proc ();
 
 	Data_Get_Struct (res->xmms, RbXmmsClient, xmms);
-	rb_ary_push (xmms->results, self);
+	rb_ary_push (xmms->result_callbacks, callback);
 
-	xmmsc_result_notifier_set (res->real, on_signal, (void *) self);
+	xmmsc_result_notifier_set (res->real, on_signal, (void *) callback);
 
 	return Qnil;
 }
