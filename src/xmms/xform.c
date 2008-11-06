@@ -227,6 +227,7 @@ xmms_browse_list_sortfunc (gconstpointer a, gconstpointer b)
 	g_return_val_if_fail (xmmsv_get_type (val1) == XMMSV_TYPE_DICT, 0);
 	g_return_val_if_fail (xmmsv_get_type (val2) == XMMSV_TYPE_DICT, 0);
 
+	tmp1 = tmp2 = NULL;
 	xmmsv_dict_get (val1, "intsort", &tmp1);
 	xmmsv_dict_get (val2, "intsort", &tmp2);
 
@@ -239,6 +240,7 @@ xmms_browse_list_sortfunc (gconstpointer a, gconstpointer b)
 		return i1 > i2;
 	}
 
+	tmp1 = tmp2 = NULL;
 	xmmsv_dict_get (val1, "path", &tmp1);
 	xmmsv_dict_get (val2, "path", &tmp2);
 
