@@ -301,8 +301,8 @@ typedef xmmsv_coll_t* (*xmmsv_coll_parse_build_f) (xmmsv_coll_token_t *tokens);
 int xmmsv_coll_parse (const char *pattern, xmmsv_coll_t** coll);
 int xmmsv_coll_parse_custom (const char *pattern, xmmsv_coll_parse_tokens_f parse_f, xmmsv_coll_parse_build_f build_f, xmmsv_coll_t** coll);
 
-xmmsv_coll_t *xmmsv_coll_default_parse_build (xmmsv_coll_token_t *tokens);
-xmmsv_coll_token_t *xmmsv_coll_default_parse_tokens (const char *str, const char **newpos);
+xmmsv_coll_t *xmmsc_coll_default_parse_build (xmmsv_coll_token_t *tokens);
+xmmsv_coll_token_t *xmmsc_coll_default_parse_tokens (const char *str, const char **newpos);
 
 
 /* broadcasts */

@@ -135,8 +135,8 @@ int
 xmmsv_coll_parse (const char *pattern, xmmsv_coll_t** coll)
 {
 	return xmmsv_coll_parse_custom (pattern,
-	                                xmmsv_coll_default_parse_tokens,
-	                                xmmsv_coll_default_parse_build,
+	                                xmmsc_coll_default_parse_tokens,
+	                                xmmsc_coll_default_parse_build,
 	                                coll);
 }
 
@@ -212,7 +212,7 @@ xmmsv_coll_parse_custom (const char *pattern,
  * @return The token found in the string.
  */
 xmmsv_coll_token_t*
-xmmsv_coll_default_parse_tokens (const char *str, const char **newpos)
+xmmsc_coll_default_parse_tokens (const char *str, const char **newpos)
 {
 	int i;
 	int escape = 0;
@@ -351,7 +351,7 @@ xmmsv_coll_default_parse_tokens (const char *str, const char **newpos)
  * @return The corresponding collection structure.
  */
 xmmsv_coll_t *
-xmmsv_coll_default_parse_build (xmmsv_coll_token_t *tokens)
+xmmsc_coll_default_parse_build (xmmsv_coll_token_t *tokens)
 {
 	xmmsv_coll_token_t *tk;
 	xmmsv_coll_t *coll;

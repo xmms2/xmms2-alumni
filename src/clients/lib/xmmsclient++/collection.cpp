@@ -148,7 +148,7 @@ namespace Xmms
 	{
 		xmmsv_coll_t* coll;
 
-		if( !xmmsv_coll_parse( pattern.c_str(), &coll ) ) {
+		if( !xmmsc_coll_parse( pattern.c_str(), &coll ) ) {
 			throw collection_parsing_error( "invalid collection pattern" );
 		}
 
