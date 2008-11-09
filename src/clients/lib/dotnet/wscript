@@ -1,0 +1,39 @@
+import os
+from Params import pprint
+import Params
+import Common
+
+def build(bld):
+    env = bld.env()
+
+    obj = bld.create_obj('cs', 'library')
+    obj.target = 'Xmms.Client.dll'
+    obj.source = """
+                 Bindata.cs
+                 Client.cs
+                 Coll.cs
+                 Collection.cs
+                 Config.cs
+                 Mainloop.cs
+                 Medialib.cs
+                 Playback.cs
+                 Playlist.cs
+                 Result.cs
+                 Stats.cs
+                 Xform.cs
+                 Xmms.cs
+                 Value/Value.cs
+                 Value/Int32.cs
+                 Value/UInt32.cs
+                 Value/String.cs
+                 Value/Dictionary.cs
+                 Value/Dictionary.Test.cs
+                 Value/List.cs
+                 Value/List.Test.cs
+                 """.split()
+
+def configure(conf):
+    return True
+
+def set_options(opt):
+    opt.add_option('--with-csc-binary', type='string', dest='cscbinary')
