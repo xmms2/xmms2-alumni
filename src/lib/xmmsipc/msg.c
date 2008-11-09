@@ -836,6 +836,8 @@ xmmsc_deserialize_dict (xmms_ipc_msg_t *msg, xmmsv_t **val)
 		}
 
 		xmmsv_dict_iter_insert (dit, key, v);
+		free (key);
+		xmmsv_unref (v);
 	}
 
 	*val = tmpval;
@@ -869,6 +871,7 @@ xmmsc_deserialize_list (xmms_ipc_msg_t *msg, xmmsv_t **val)
 		} else {
 			goto err;
 		}
+		xmmsv_unref (v);
 	}
 
 	*val = tmpval;
@@ -901,6 +904,7 @@ xmms_ipc_msg_get_value_alloc (xmms_ipc_msg_t *msg, xmmsv_t **val)
 				return false;
 			}
 			*val = xmmsv_new_error (s);
+			free (s);
 			break;
 		case XMMSV_TYPE_UINT32:
 			if (!xmms_ipc_msg_get_uint32 (msg, &u)) {
@@ -919,6 +923,7 @@ xmms_ipc_msg_get_value_alloc (xmms_ipc_msg_t *msg, xmmsv_t **val)
 				return false;
 			}
 			*val = xmmsv_new_string (s);
+			free (s);
 			break;
 		case XMMSV_TYPE_DICT:
 			if (!xmmsc_deserialize_dict (msg, val)) {
@@ -938,6 +943,7 @@ xmms_ipc_msg_get_value_alloc (xmms_ipc_msg_t *msg, xmmsv_t **val)
 				return false;
 			}
 			*val = xmmsv_new_coll (c);
+			xmmsv_coll_unref (c);
 			break;
 
 		case XMMSV_TYPE_BIN:
@@ -945,6 +951,7 @@ xmms_ipc_msg_get_value_alloc (xmms_ipc_msg_t *msg, xmmsv_t **val)
 				return false;
 			}
 			*val = xmmsv_new_bin (d, len);
+			free (d);
 			break;
 
 		case XMMSV_TYPE_NONE:
