@@ -371,6 +371,9 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
 	xmms_ipc_msg_put_int32 (msg, val->type);
 
 	switch (val->type) {
+		case XMMSV_TYPE_ERROR:
+			xmms_ipc_msg_put_error (msg, val->value.error);
+			break;
 		case XMMSV_TYPE_BIN:
 			xmms_ipc_msg_put_bin (msg, (guchar *)val->value.bin->str, val->value.bin->len);
 			break;
@@ -516,8 +519,15 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
 		xmms_ipc_handle_cmd_value (retmsg, arg.retval);
 	} else {
+		/* FIXME: or we could change the client code to transform
+		 * CMD_ERROR to an error value_t. If so, remove the handling
+		 * of ERROR in xmms_ipc_handle_cmd_value, okay? */
+/*
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_ERROR);
 		xmms_ipc_msg_put_string (retmsg, xmms_error_message_get (&arg.error));
+*/
+		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
+		xmms_ipc_handle_cmd_value (retmsg, arg.retval);
 	}
 
 	if (arg.retval)
