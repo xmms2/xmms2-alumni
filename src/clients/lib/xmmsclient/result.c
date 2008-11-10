@@ -57,11 +57,6 @@ struct xmmsc_result_St {
 
 	xmmsc_ipc_t *ipc;
 
-	char *error_str;
-	bool error;
-
-	bool islist;
-
 	bool parsed;
 
 	uint32_t cookie;
