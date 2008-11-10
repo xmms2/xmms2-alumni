@@ -236,10 +236,4 @@ typedef const char* xmmsv_coll_namespace_t;
 
 #define XMMS_ACTIVE_PLAYLIST "_active"
 
-
-/* compability */
-typedef xmmsv_coll_type_t xmmsc_coll_type_t;
-typedef xmmsv_coll_namespace_t xmmsc_coll_namespace_t;
-
-
 #endif /* __SIGNAL_XMMS_H__ */
