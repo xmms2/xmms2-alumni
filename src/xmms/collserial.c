@@ -240,7 +240,7 @@ xmms_collection_dbwrite_operator (xmms_medialib_session_t *session,
 	/* Write operator */
 	g_snprintf (query, sizeof (query),
 	            "INSERT INTO CollectionOperators VALUES(%d, %d)",
-	            collid, xmmsc_coll_get_type (coll));
+	            collid, xmmsv_coll_get_type (coll));
 
 	xmms_medialib_select (session, query, NULL);
 
@@ -248,7 +248,7 @@ xmms_collection_dbwrite_operator (xmms_medialib_session_t *session,
 	xmmsv_coll_attribute_foreach (coll, dbwrite_coll_attributes, &dbwrite_infos);
 
 	/* Write idlist */
-	idlist = xmmsc_coll_get_idlist (coll);
+	idlist = xmmsv_coll_get_idlist (coll);
 	for (i = 0; idlist[i] != 0; i++) {
 		g_snprintf (query, sizeof (query),
 		            "INSERT INTO CollectionIdlists VALUES(%d, %d, %d)",
@@ -259,7 +259,7 @@ xmms_collection_dbwrite_operator (xmms_medialib_session_t *session,
 
 	/* Save operands and connections (don't recurse in ref operand) */
 	newid = collid + 1;
-	if (xmmsc_coll_get_type (coll) != XMMS_COLLECTION_TYPE_REFERENCE) {
+	if (xmmsv_coll_get_type (coll) != XMMS_COLLECTION_TYPE_REFERENCE) {
 		xmmsv_coll_operand_list_save (coll);
 		xmmsv_coll_operand_list_first (coll);
 		while (xmmsv_coll_operand_list_entry (coll, &op)) {

@@ -369,7 +369,7 @@ namespace Xmms
 
 				CollPtr collptr;
 
-				switch( xmmsc_coll_get_type( coll ) ) {
+				switch( xmmsv_coll_get_type( coll ) ) {
 
 					case XMMS_COLLECTION_TYPE_REFERENCE: {
 						collptr.reset( new Coll::Reference( coll ) );

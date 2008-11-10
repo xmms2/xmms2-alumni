@@ -393,7 +393,7 @@ xmms_ipc_msg_put_collection (xmms_ipc_msg_t *msg, xmmsv_coll_t *coll)
 	xmmsv_coll_operand_list_save (coll);
 
 	/* push type */
-	xmms_ipc_msg_put_uint32 (msg, xmmsc_coll_get_type (coll));
+	xmms_ipc_msg_put_uint32 (msg, xmmsv_coll_get_type (coll));
 
 	/* attribute counter and values */
 	n = 0;
@@ -403,7 +403,7 @@ xmms_ipc_msg_put_collection (xmms_ipc_msg_t *msg, xmmsv_coll_t *coll)
 	xmmsv_coll_attribute_foreach (coll, xmms_ipc_append_coll_attr, msg);
 
 	/* idlist counter and content */
-	idlist = xmmsc_coll_get_idlist (coll);
+	idlist = xmmsv_coll_get_idlist (coll);
 	for (n = 0; idlist[n] != 0; n++) { }
 
 	xmms_ipc_msg_put_uint32 (msg, n);
@@ -413,7 +413,7 @@ xmms_ipc_msg_put_collection (xmms_ipc_msg_t *msg, xmmsv_coll_t *coll)
 
 	/* operands counter and objects */
 	n = 0;
-	if (xmmsc_coll_get_type (coll) != XMMS_COLLECTION_TYPE_REFERENCE) {
+	if (xmmsv_coll_get_type (coll) != XMMS_COLLECTION_TYPE_REFERENCE) {
 		xmmsv_coll_operand_list_first (coll);
 		while (xmmsv_coll_operand_list_entry (coll, &op)) {
 			n++;

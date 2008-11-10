@@ -228,7 +228,7 @@ xmmsv_coll_add_operand (xmmsv_coll_t *coll, xmmsv_coll_t *op)
  * @param op    The operand to remove.
  */
 void
-xmmsc_coll_remove_operand (xmmsv_coll_t *coll, xmmsv_coll_t *op)
+xmmsv_coll_remove_operand (xmmsv_coll_t *coll, xmmsv_coll_t *op)
 {
 	x_list_t *entry;
 
@@ -443,7 +443,7 @@ xmmsv_coll_idlist_get_size (xmmsv_coll_t *coll)
  * @return The #xmmsv_coll_type_t of the collection, or -1 if invalid.
  */
 xmmsv_coll_type_t
-xmmsc_coll_get_type (xmmsv_coll_t *coll)
+xmmsv_coll_get_type (xmmsv_coll_t *coll)
 {
 	x_return_val_if_fail (coll, -1);
 
@@ -454,13 +454,13 @@ xmmsc_coll_get_type (xmmsv_coll_t *coll)
  * Return the list of ids stored in the collection.
  * The list is owned by the collection.
  * Note that this must not be confused with the content of the
- * collection, which must be queried using xmmsc_coll_query_ids!
+ * collection, which must be queried using xmmsv_coll_query_ids!
  *
  * @param coll  The collection to consider.
  * @return The 0-terminated list of ids.
  */
 uint32_t*
-xmmsc_coll_get_idlist (xmmsv_coll_t *coll)
+xmmsv_coll_get_idlist (xmmsv_coll_t *coll)
 {
 	x_return_null_if_fail (coll);
 

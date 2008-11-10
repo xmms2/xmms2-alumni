@@ -57,7 +57,7 @@ namespace Xmms
 		Coll::Coll* temp = 0;
 		xmmsv_coll_t* coll = 0;
 		xmmsc_result_get_collection( res, &coll );
-		switch( xmmsc_coll_get_type( coll ) ) {
+		switch( xmmsv_coll_get_type( coll ) ) {
 
 			case XMMS_COLLECTION_TYPE_REFERENCE: {
 				temp = new Coll::Reference( coll );

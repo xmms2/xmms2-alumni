@@ -166,7 +166,7 @@ on_playlist_updated (xmms_object_t *object, const gchar *plname)
 		return;
 	} else {
 		/* Run the update function if appropriate */
-		switch (xmmsc_coll_get_type (plcoll)) {
+		switch (xmmsv_coll_get_type (plcoll)) {
 		case XMMS_COLLECTION_TYPE_QUEUE:
 			xmms_playlist_update_queue (playlist, plname, plcoll);
 			break;
@@ -498,7 +498,7 @@ xmms_playlist_current_entry (xmms_playlist_t *playlist)
 
 	if (currpos < size) {
 		guint *idlist;
-		idlist = xmmsc_coll_get_idlist (plcoll);
+		idlist = xmmsv_coll_get_idlist (plcoll);
 		ent = idlist[currpos];
 	} else {
 		ent = 0;
@@ -1087,7 +1087,7 @@ xmms_playlist_add_idlist (xmms_playlist_t *playlist, const gchar *plname,
 {
 	uint32_t *idlist;
 
-	for (idlist = xmmsc_coll_get_idlist (coll); *idlist; idlist++) {
+	for (idlist = xmmsv_coll_get_idlist (coll); *idlist; idlist++) {
 		if (!xmms_medialib_check_id (*idlist)) {
 			xmms_error_set (err, XMMS_ERROR_NOENT,
 			                "Idlist contains invalid medialib id!");
@@ -1095,7 +1095,7 @@ xmms_playlist_add_idlist (xmms_playlist_t *playlist, const gchar *plname,
 		}
 	}
 
-	for (idlist = xmmsc_coll_get_idlist (coll); *idlist; idlist++) {
+	for (idlist = xmmsv_coll_get_idlist (coll); *idlist; idlist++) {
 		xmms_playlist_add_entry (playlist, plname, *idlist, err);
 	}
 
@@ -1246,7 +1246,7 @@ xmms_playlist_set_current_position_do (xmms_playlist_t *playlist, guint32 pos,
 		return 0;
 	}
 
-	idlist = xmmsc_coll_get_idlist (plcoll);
+	idlist = xmmsv_coll_get_idlist (plcoll);
 	mid = idlist[pos];
 
 	return mid;
@@ -1604,7 +1604,7 @@ xmms_playlist_list_entries (xmms_playlist_t *playlist, const gchar *plname,
 		return NULL;
 	}
 
-	idlist = xmmsc_coll_get_idlist (plcoll);
+	idlist = xmmsv_coll_get_idlist (plcoll);
 
 	for (i = 0; idlist[i] != 0; i++) {
 		entries = g_list_prepend (entries, xmmsv_new_uint (idlist[i]));

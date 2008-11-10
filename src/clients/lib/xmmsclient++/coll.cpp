@@ -76,7 +76,7 @@ namespace Xmms
 	}
 
 	Type Coll::getType() const {
-		return xmmsc_coll_get_type( coll_ );
+		return xmmsv_coll_get_type( coll_ );
 	}
 
 	AttributeElement Coll::operator []( const string& attrname )
@@ -213,7 +213,7 @@ namespace Xmms
 
 	void Nary::removeOperand( Coll& operand )
 	{
-		xmmsc_coll_remove_operand( coll_, operand.getColl() );
+		xmmsv_coll_remove_operand( coll_, operand.getColl() );
 	}
 
 	OperandIterator Nary::getOperandIterator()
@@ -256,7 +256,7 @@ namespace Xmms
 	void Unary::removeOperand()
 	{
 		try {
-			xmmsc_coll_remove_operand( coll_, (*getOperand()).getColl() );
+			xmmsv_coll_remove_operand( coll_, (*getOperand()).getColl() );
 		}
 		/* don't throw an error if none */
 		catch (...) {}
@@ -619,7 +619,7 @@ namespace Xmms
 	void PartyShuffle::removeOperand()
 	{
 		try {
-			xmmsc_coll_remove_operand( coll_, (*getOperand()).getColl() );
+			xmmsv_coll_remove_operand( coll_, (*getOperand()).getColl() );
 		}
 		/* don't throw an error if none */
 		catch (...) {}

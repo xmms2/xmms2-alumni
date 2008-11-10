@@ -731,7 +731,7 @@ coll_parse_andop_append (xmmsv_coll_token_t *tokens, xmmsv_coll_t *operator,
 
 		/* actually, only one operand, bypass the 'AND' altogether */
 		if (tmp == NULL) {
-			xmmsc_coll_remove_operand (operator, first);
+			xmmsv_coll_remove_operand (operator, first);
 			xmmsv_coll_unref (operator);
 			*ret = first;
 		}

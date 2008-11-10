@@ -34,7 +34,7 @@ void xmmsv_coll_unref (xmmsv_coll_t *coll);
 
 void xmmsv_coll_set_idlist (xmmsv_coll_t *coll, unsigned int ids[]);
 void xmmsv_coll_add_operand (xmmsv_coll_t *coll, xmmsv_coll_t *op);
-void xmmsc_coll_remove_operand (xmmsv_coll_t *coll, xmmsv_coll_t *op);
+void xmmsv_coll_remove_operand (xmmsv_coll_t *coll, xmmsv_coll_t *op);
 
 int xmmsv_coll_idlist_append (xmmsv_coll_t *coll, unsigned int id);
 int xmmsv_coll_idlist_insert (xmmsv_coll_t *coll, unsigned int index, unsigned int id);
@@ -45,8 +45,8 @@ int xmmsv_coll_idlist_get_index (xmmsv_coll_t *coll, unsigned int index, uint32_
 int xmmsv_coll_idlist_set_index (xmmsv_coll_t *coll, unsigned int index, uint32_t val);
 size_t xmmsv_coll_idlist_get_size (xmmsv_coll_t *coll);
 
-xmmsv_coll_type_t xmmsc_coll_get_type (xmmsv_coll_t *coll);
-uint32_t *xmmsc_coll_get_idlist (xmmsv_coll_t *coll);
+xmmsv_coll_type_t xmmsv_coll_get_type (xmmsv_coll_t *coll);
+uint32_t *xmmsv_coll_get_idlist (xmmsv_coll_t *coll);
 int xmmsv_coll_operand_list_first (xmmsv_coll_t *coll);
 int xmmsv_coll_operand_list_valid (xmmsv_coll_t *coll);
 int xmmsv_coll_operand_list_entry (xmmsv_coll_t *coll, xmmsv_coll_t **operand);

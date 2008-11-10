@@ -82,7 +82,7 @@ handle_file_del (xmonitor_t *mon, gchar *filename)
 	xmmsv_coll_attribute_set (coll, "field", "url");
 	xmmsv_coll_attribute_set (coll, "value", tmp);
 
-	res = xmmsc_coll_query_ids (mon->conn, coll, NULL, 0, 0);
+	res = xmmsv_coll_query_ids (mon->conn, coll, NULL, 0, 0);
 
 	DBG ("remove '%s' from mlib", tmp);
 	xmmsc_result_notifier_set (res, handle_remove_from_mlib, mon);

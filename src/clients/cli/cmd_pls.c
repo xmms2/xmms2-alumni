@@ -734,7 +734,7 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	xmmsv_get_collection (val, &coll);
-	prevtype = xmmsc_coll_get_type (coll);
+	prevtype = xmmsv_coll_get_type (coll);
 
 	/* No type argument, simply display the current type */
 	if (argc < 5) {

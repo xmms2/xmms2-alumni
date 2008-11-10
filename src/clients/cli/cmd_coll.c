@@ -135,7 +135,7 @@ coll_idlist_to_string (xmmsv_coll_t *coll)
 
 	s = g_string_new ("(");
 
-	idlist = xmmsc_coll_get_idlist (coll);
+	idlist = xmmsv_coll_get_idlist (coll);
 	for (i = 0; idlist[i] != 0; ++i) {
 		if (i > 0) {
 			g_string_append (s, ", ");
@@ -166,7 +166,7 @@ coll_dump (xmmsv_coll_t *coll, unsigned int level)
 	indent[i] = '\0';
 
 	/* type */
-	switch (xmmsc_coll_get_type (coll)) {
+	switch (xmmsv_coll_get_type (coll)) {
 	case XMMS_COLLECTION_TYPE_REFERENCE:
 		xmmsv_coll_attribute_get (coll, "reference", &attr1);
 		print_info ("%sReference: '%s'", indent, attr1);

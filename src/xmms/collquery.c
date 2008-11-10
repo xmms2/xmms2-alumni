@@ -221,7 +221,7 @@ xmms_collection_append_to_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 	gchar *attr1, *attr2, *attr3;
 	gboolean case_sens;
 
-	xmmsv_coll_type_t type = xmmsc_coll_get_type (coll);
+	xmmsv_coll_type_t type = xmmsv_coll_get_type (coll);
 	switch (type) {
 	case XMMS_COLLECTION_TYPE_REFERENCE:
 		if (!operator_is_allmedia (coll)) {
@@ -281,7 +281,7 @@ xmms_collection_append_to_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 	case XMMS_COLLECTION_TYPE_IDLIST:
 	case XMMS_COLLECTION_TYPE_QUEUE:
 	case XMMS_COLLECTION_TYPE_PARTYSHUFFLE:
-		idlist = xmmsc_coll_get_idlist (coll);
+		idlist = xmmsv_coll_get_idlist (coll);
 		query_append_string (query, "m0.id IN (");
 		for (i = 0; idlist[i] != 0; ++i) {
 			if (i != 0) {
