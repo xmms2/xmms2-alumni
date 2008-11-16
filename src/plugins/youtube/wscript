@@ -1,0 +1,11 @@
+from waftools.plugin import plugin
+
+def plugin_configure(conf):
+    if conf.check_cfg(package='libcurl', args='--cflags --libs', uselib_store='curl'):
+        return True
+    if conf.check_cfg(path='curl-config', package='', uselib_store='curl', args='--cflags --libs'):
+        return True
+    return False
+
+configure, build = plugin('youtube', configure=plugin_configure,
+                          libs=['curl'])
