@@ -328,6 +328,7 @@ typedef int (*xmmsc_result_notifier_t) (xmmsv_t *val, void *user_data);
 
 xmmsc_result_type_t xmmsc_result_get_class (xmmsc_result_t *res);
 void xmmsc_result_disconnect (xmmsc_result_t *res);
+void xmmsc_result_cancel (xmmsc_result_t *res);
 
 xmmsc_result_t *xmmsc_result_ref (xmmsc_result_t *res);
 void xmmsc_result_unref (xmmsc_result_t *res);

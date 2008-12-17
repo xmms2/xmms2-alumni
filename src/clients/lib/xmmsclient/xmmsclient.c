@@ -362,6 +362,16 @@ xmmsc_send_broadcast_msg (xmmsc_connection_t *c, uint32_t signalid)
 	return res;
 }
 
+void
+xmmsc_send_cancel_msg (xmmsc_connection_t *c, uint32_t cookie)
+{
+	xmms_ipc_msg_t *msg;
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_CANCEL);
+	xmms_ipc_msg_put_uint32 (msg, cookie);
+
+	xmmsc_write_msg_to_ipc (c, msg);
+}
 
 uint32_t
 xmmsc_write_signal_msg (xmmsc_connection_t *c, uint32_t signalid)

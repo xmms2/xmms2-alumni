@@ -192,6 +192,28 @@ xmmsc_result_disconnect (xmmsc_result_t *res)
 	}
 }
 
+/**
+ * Cancel result retrieval.
+ *
+ * @param res The result to cancel, must not be of class signal or broadcast.
+ */
+void
+xmmsc_result_cancel (xmmsc_result_t *res)
+{
+	x_return_if_fail (res);
+	x_return_if_fail (res->c);
+
+	switch (res->type) {
+		case XMMSC_RESULT_CLASS_SIGNAL:
+		case XMMSC_RESULT_CLASS_BROADCAST:
+			x_api_error_if (1, "invalid result type",);
+			break;
+		default:
+			xmmsc_send_cancel_msg (res->c, res->cookie);
+			break;
+	}
+}
+
 static void
 xmmsc_result_restart (xmmsc_result_t *res)
 {

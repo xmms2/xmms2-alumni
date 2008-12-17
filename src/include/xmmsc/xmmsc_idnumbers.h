@@ -18,7 +18,7 @@
 #define __SIGNAL_XMMS_H__
 
 /* Don't forget to up this when protocol changes */
-#define XMMS_IPC_PROTOCOL_VERSION 13
+#define XMMS_IPC_PROTOCOL_VERSION 14
 
 typedef enum {
 	XMMS_IPC_OBJECT_MAIN,
@@ -131,6 +131,7 @@ typedef enum {
 	/* Signal subsystem */
 	XMMS_IPC_CMD_SIGNAL,
 	XMMS_IPC_CMD_BROADCAST,
+	XMMS_IPC_CMD_CANCEL,
 
 	/* xform object */
 	XMMS_IPC_CMD_BROWSE,

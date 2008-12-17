@@ -120,6 +120,48 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmmsv_t *val)
 	}
 }
 
+static gint
+xmms_ipc_find_msg_by_cookie (gconstpointer a, gconstpointer b)
+{
+	const xmms_ipc_msg_t *msg = a;
+	guint cookie = GPOINTER_TO_UINT (b);
+
+	return xmms_ipc_msg_get_cookie (msg) != cookie;
+}
+
+/* Should hold client->in_msg_lock. */
+static void
+xmms_ipc_handle_cancel_message (xmms_ipc_client_t *client,
+                                xmms_ipc_msg_t *msg)
+{
+	GList *result_link;
+	uint32_t cookie;
+
+	/* Cancel messages contain two cookies:
+	 * First, there's the cookie that identifies the message,
+	 * and second there's the cookie of the message that we are
+	 * asked to cancel. We're interested in the latter.
+	 */
+	if (!xmms_ipc_msg_get_uint32 (msg, &cookie)) {
+		xmms_log_error ("No cookie in this msg?!");
+		return;
+	}
+
+	/* Try to find the queued message that we were asked to cancel. */
+	result_link = g_queue_find_custom (client->in_msg,
+	                                   GUINT_TO_POINTER (cookie),
+	                                   xmms_ipc_find_msg_by_cookie);
+
+	/* Hooray, we found it. Remove that message from the queue. */
+	if (result_link) {
+		xmms_ipc_msg_t *cancelled_msg;
+
+		cancelled_msg = result_link->data;
+		g_queue_delete_link (client->in_msg, result_link);
+		xmms_ipc_msg_destroy (cancelled_msg);
+	}
+}
+
 static void
 process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 {
@@ -256,6 +298,9 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 
 	if (cond & G_IO_IN) {
 		while (TRUE) {
+			xmms_ipc_msg_t *msg;
+			uint32_t obj_id, cmd_id;
+
 			if (!client->read_msg) {
 				client->read_msg = xmms_ipc_msg_alloc ();
 			}
@@ -267,18 +312,31 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 			}
 
 			/* At this point, we successfully read the complete
-			 * message, so queue it for processing.
+			 * message. Handle that one now, and nullify client->read_msg
+			 * so we will allocate a new message next time.
+			 */
+			msg = client->read_msg;
+			client->read_msg = NULL;
+
+			/* So what kind of message is this? */
+			obj_id = xmms_ipc_msg_get_object (msg);
+			cmd_id = xmms_ipc_msg_get_cmd (msg);
+
+			/* We'll need to fiddle with the incoming message queue
+			 * next, so take that lock.
 			 */
 			g_mutex_lock (client->in_msg_lock);
 
-			g_queue_push_tail (client->in_msg, client->read_msg);
+			if (obj_id == XMMS_IPC_OBJECT_SIGNAL &&
+			    cmd_id == XMMS_IPC_CMD_CANCEL) {
 
-			/* Nullify the pointer, so we will allocate a new message
-			 * next time.
-			 */
-			client->read_msg = NULL;
+				xmms_ipc_handle_cancel_message (client, msg);
+				xmms_ipc_msg_destroy (msg);
+			} else {
+				g_queue_push_tail (client->in_msg, msg);
+				g_cond_signal (client->in_msg_cond);
+			}
 
-			g_cond_signal (client->in_msg_cond);
 			g_mutex_unlock (client->in_msg_lock);
 		}
 	}

@@ -148,6 +148,24 @@ c_notifier_set (VALUE self)
 
 /*
  * call-seq:
+ *  res.cancel -> nil
+ *
+ * Cancel result retrieval.
+ */
+static VALUE
+c_cancel (VALUE self)
+{
+	RbResult *res = NULL;
+
+	Data_Get_Struct (self, RbResult, res);
+
+	xmmsc_result_cancel (res->real);
+
+	return Qnil;
+}
+
+/*
+ * call-seq:
  *  res.wait -> self
  *
  * Waits for _res_ to be handled.
@@ -540,6 +558,7 @@ Init_Result (VALUE mXmms)
 	rb_undef_method (rb_singleton_class (cResult), "new");
 
 	rb_define_method (cResult, "notifier", c_notifier_set, 0);
+	rb_define_method (cResult, "cancel", c_cancel, 0);
 	rb_define_method (cResult, "wait", c_wait, 0);
 	rb_define_method (cResult, "value", c_value_get, 0);
 	rb_define_method (cResult, "error?", c_is_error, 0);
