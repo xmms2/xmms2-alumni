@@ -59,12 +59,22 @@ struct xmms_ipc_St {
  * A IPC client representation.
  */
 typedef struct xmms_ipc_client_St {
-	GMainLoop *ml;
 	GIOChannel *iochan;
 
 	xmms_ipc_transport_t *transport;
 	xmms_ipc_msg_t *read_msg;
 	xmms_ipc_t *ipc;
+
+	GThread *thread;
+
+	GCond *in_msg_cond;
+
+	/* this lock protects in_msg and shutdown_thread.
+	 */
+	GMutex *in_msg_lock;
+
+	/** Messages waiting to be processed */
+	GQueue *in_msg;
 
 	/* this lock protects out_msg, pendingsignals and broadcasts,
 	   which can be accessed from other threads than the
@@ -76,6 +86,8 @@ typedef struct xmms_ipc_client_St {
 
 	guint pendingsignals[XMMS_IPC_SIGNAL_END];
 	GList *broadcasts[XMMS_IPC_SIGNAL_END];
+
+	gboolean shutdown_thread;
 } xmms_ipc_client_t;
 
 static GMutex *ipc_servers_lock;
@@ -248,14 +260,26 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 				client->read_msg = xmms_ipc_msg_alloc ();
 			}
 
-			if (xmms_ipc_msg_read_transport (client->read_msg, client->transport, &disconnect)) {
-				xmms_ipc_msg_t *msg = client->read_msg;
-				client->read_msg = NULL;
-				process_msg (client, msg);
-				xmms_ipc_msg_destroy (msg);
-			} else {
+			if (!xmms_ipc_msg_read_transport (client->read_msg,
+			                                  client->transport,
+			                                  &disconnect)) {
 				break;
 			}
+
+			/* At this point, we successfully read the complete
+			 * message, so queue it for processing.
+			 */
+			g_mutex_lock (client->in_msg_lock);
+
+			g_queue_push_tail (client->in_msg, client->read_msg);
+
+			/* Nullify the pointer, so we will allocate a new message
+			 * next time.
+			 */
+			client->read_msg = NULL;
+
+			g_cond_signal (client->in_msg_cond);
+			g_mutex_unlock (client->in_msg_lock);
 		}
 	}
 
@@ -265,13 +289,11 @@ xmms_ipc_client_read_cb (GIOChannel *iochan,
 			client->read_msg = NULL;
 		}
 		XMMS_DBG ("disconnect was true!");
-		g_main_loop_quit (client->ml);
 		return FALSE;
 	}
 
 	if (cond & G_IO_ERR) {
 		xmms_log_error ("Client got error, maybe connection died?");
-		g_main_loop_quit (client->ml);
 		return FALSE;
 	}
 
@@ -323,19 +345,39 @@ static gpointer
 xmms_ipc_client_thread (gpointer data)
 {
 	xmms_ipc_client_t *client = data;
-	GSource *source;
 
-	source = g_io_create_watch (client->iochan, G_IO_IN | G_IO_ERR | G_IO_HUP);
-	g_source_set_callback (source,
-	                       (GSourceFunc) xmms_ipc_client_read_cb,
-	                       (gpointer) client,
-	                       NULL);
-	g_source_attach (source, g_main_loop_get_context (client->ml));
-	g_source_unref (source);
+	g_mutex_lock (client->in_msg_lock);
 
-	g_main_loop_run (client->ml);
+	while (!client->shutdown_thread) {
+		xmms_ipc_msg_t *msg;
+		gboolean shutdown;
 
-	xmms_ipc_client_destroy (client);
+		if (g_queue_is_empty (client->in_msg)) {
+			g_cond_wait (client->in_msg_cond, client->in_msg_lock);
+			continue;
+		}
+
+		g_mutex_unlock (client->in_msg_lock);
+
+		do {
+			g_mutex_lock (client->in_msg_lock);
+			msg = g_queue_pop_head (client->in_msg);
+			shutdown = client->shutdown_thread;
+			g_mutex_unlock (client->in_msg_lock);
+
+			if (msg) {
+				if (!shutdown) {
+					process_msg (client, msg);
+				}
+
+				xmms_ipc_msg_destroy (msg);
+			}
+		} while (msg && !shutdown);
+
+		g_mutex_lock (client->in_msg_lock);
+	}
+
+	g_mutex_unlock (client->in_msg_lock);
 
 	return NULL;
 }
@@ -344,16 +386,11 @@ static xmms_ipc_client_t *
 xmms_ipc_client_new (xmms_ipc_t *ipc, xmms_ipc_transport_t *transport)
 {
 	xmms_ipc_client_t *client;
-	GMainContext *context;
 	int fd;
 
 	g_return_val_if_fail (transport, NULL);
 
 	client = g_new0 (xmms_ipc_client_t, 1);
-
-	context = g_main_context_new ();
-	client->ml = g_main_loop_new (context, FALSE);
-	g_main_context_unref (context);
 
 	fd = xmms_ipc_transport_fd_get (transport);
 	client->iochan = g_io_channel_unix_new (fd);
@@ -367,8 +404,11 @@ xmms_ipc_client_new (xmms_ipc_t *ipc, xmms_ipc_transport_t *transport)
 
 	client->transport = transport;
 	client->ipc = ipc;
+	client->in_msg = g_queue_new ();
 	client->out_msg = g_queue_new ();
 	client->lock = g_mutex_new ();
+	client->in_msg_lock = g_mutex_new ();
+	client->in_msg_cond = g_cond_new ();
 
 	return client;
 }
@@ -380,13 +420,28 @@ xmms_ipc_client_destroy (xmms_ipc_client_t *client)
 
 	XMMS_DBG ("Destroying client!");
 
+	g_mutex_lock (client->in_msg_lock);
+	client->shutdown_thread = TRUE;
+	g_cond_signal (client->in_msg_cond);
+	g_mutex_unlock (client->in_msg_lock);
+
+	g_thread_join (client->thread);
+
+	g_mutex_free (client->in_msg_lock);
+
+	while (!g_queue_is_empty (client->in_msg)) {
+		xmms_ipc_msg_t *msg = g_queue_pop_head (client->in_msg);
+		xmms_ipc_msg_destroy (msg);
+	}
+
+	g_queue_free (client->in_msg);
+
 	if (client->ipc) {
 		g_mutex_lock (client->ipc->mutex_lock);
 		client->ipc->clients = g_list_remove (client->ipc->clients, client);
 		g_mutex_unlock (client->ipc->mutex_lock);
 	}
 
-	g_main_loop_unref (client->ml);
 	g_io_channel_unref (client->iochan);
 
 	xmms_ipc_transport_destroy (client->transport);
@@ -436,17 +491,8 @@ xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 
 	/* If there's no write in progress, add a new callback */
 	if (queue_empty) {
-		GMainContext *context = g_main_loop_get_context (client->ml);
-		GSource *source = g_io_create_watch (client->iochan, G_IO_OUT);
-
-		g_source_set_callback (source,
-		                       (GSourceFunc) xmms_ipc_client_write_cb,
-		                       (gpointer) client,
-		                       NULL);
-		g_source_attach (source, context);
-		g_source_unref (source);
-
-		g_main_context_wakeup (context);
+		g_io_add_watch (client->iochan, G_IO_OUT,
+		                xmms_ipc_client_write_cb, client);
 	}
 
 	return TRUE;
@@ -481,10 +527,17 @@ xmms_ipc_source_accept (GIOChannel *chan, GIOCondition cond, gpointer data)
 	ipc->clients = g_list_append (ipc->clients, client);
 	g_mutex_unlock (ipc->mutex_lock);
 
+	g_io_add_watch_full (client->iochan,
+	                     G_PRIORITY_DEFAULT,
+	                     G_IO_IN | G_IO_ERR | G_IO_HUP,
+	                     xmms_ipc_client_read_cb, client,
+	                     (GDestroyNotify) xmms_ipc_client_destroy);
+
 	/* Now that the client has been registered in the ipc->clients list
 	 * we may safely start its thread.
 	 */
-	g_thread_create (xmms_ipc_client_thread, client, FALSE, NULL);
+	client->thread = g_thread_create (xmms_ipc_client_thread, client,
+	                                  TRUE, NULL);
 
 	return TRUE;
 }
