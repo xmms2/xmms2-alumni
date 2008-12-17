@@ -612,20 +612,6 @@ af_fmt2str_short (int format)
 	return "??";
 }
 
-int
-af_str2fmt_short (const char* str)
-{
-	int i;
-
-	for (i = 0; af_fmtstr_table[i].name; i++) {
-		if (!strcasecmp (str, af_fmtstr_table[i].name)) {
-			return af_fmtstr_table[i].format;
-		}
-	}
-
-	return -1;
-}
-
 static char *
 dserr2str (int err)
 {

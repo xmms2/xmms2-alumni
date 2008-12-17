@@ -1,5 +1,4 @@
 16:00 < anders_> Why does xmms_directsound_volume_get take the detour via channel_map?
-16:03 < anders_> af_str2fmt_short seems unused.
 16:04 < Zharf> ew, camel case functioname too
 16:08 < anders_> Is all crap in directsound.h needed?
 16:08 < puzzles> probably not
