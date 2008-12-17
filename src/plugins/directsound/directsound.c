@@ -713,7 +713,7 @@ write_buffer (xmms_directsound_data_t *data, unsigned char *buffer, int len)
 			for (i = 0; i < numsamp; i++) {
 				for (j = 0; j < channels; j++) {
 					memcpy (lpvPtr1 + (i * channels * sampsize) +
-					                  (chantable[j] * sampsize),
+					        (chantable[j] * sampsize),
 					        buffer + (i * channels * sampsize) + (j * sampsize),
 					        sampsize);
 				}
@@ -724,9 +724,9 @@ write_buffer (xmms_directsound_data_t *data, unsigned char *buffer, int len)
 				for (i = 0; i < numsamp; i++) {
 					for (j = 0; j < channels; j++) {
 					memcpy (lpvPtr2 + (i * channels * sampsize) +
-					                  (chantable[j] * sampsize),
+					        (chantable[j] * sampsize),
 					        buffer + dwBytes1 + (i * channels * sampsize) +
-							                    (j * sampsize),
+					        (j * sampsize),
 					        sampsize);
 					}
 				}
