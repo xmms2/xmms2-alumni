@@ -2,6 +2,7 @@
  * Windows DirectSound interface
  *
  * Copyright (c) 2004 Gabor Szecsi <deje@miki.hu>
+ * Copyright (C) 2003-2008 XMMS2 Team
  *
  * MPlayer is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
