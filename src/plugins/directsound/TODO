@@ -17,3 +17,6 @@
 <tilman> the plugin crashes if you try to set the volume while xmms2 isn't playing anything yet
 <tilman> kind of like if the mixer is only opened when you start playing
 
+<tilman> a) if you change the volume before you started playback, a null pointer will be dereferenced
+
+<tilman> b) at the end of a song, it often loops the last 3 seconds or so... (until some buffer has drained?)
