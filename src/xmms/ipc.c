@@ -110,6 +110,17 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmmsv_t *val)
 }
 
 static void
+newstyle_dispatch (xmms_ipc_client_t *client, xmmsv_t *v)
+{
+	const char *obj, *met;
+
+	if (!xmmsv_get_dict_entry_string (v, "object", &obj)) {
+
+	}
+
+}
+
+static void
 process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 {
 	xmms_object_t *object;
@@ -123,6 +134,18 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 
 	objid = xmms_ipc_msg_get_object (msg);
 	cmdid = xmms_ipc_msg_get_cmd (msg);
+
+	if (objid == XMMS_IPC_OBJECT_NEWSTYLE_DISPATCH) {
+		xmmsv_t *v;
+		if (!xmms_ipc_msg_get_value_of_type_alloc (msg, XMMSV_DICT, &v)) {
+			xmms_log_error ("Bad");
+			return;
+		}
+
+		newstyle_dispatch (client, v);
+
+		return;
+	}
 
 	if (objid == XMMS_IPC_OBJECT_SIGNAL &&
 	    cmdid == XMMS_IPC_CMD_SIGNAL) {
