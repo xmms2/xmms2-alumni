@@ -227,6 +227,7 @@ cdef extern from "xmmsclient/xmmsclient.h":
 	int xmmsc_connect(xmmsc_connection_t *c, char *p)
 	void xmmsc_unref(xmmsc_connection_t *c)
 	xmmsc_result_t *xmmsc_quit(xmmsc_connection_t *conn)
+	xmmsc_result_t *xmmsc_newstyle(xmmsc_connection_t *conn, xmmsv_t *val)
 	xmmsc_result_t *xmmsc_plugin_list (xmmsc_connection_t *c, unsigned int type)
 
 	int xmmsv_coll_parse (char *pattern, xmmsv_coll_t **coll)
@@ -839,9 +840,11 @@ cdef xmmsv_t *create_native_value(value):
 			xmmsv_list_append(ret, create_native_value(item))
 	elif isinstance(value, dict):
 		ret = xmmsv_new_dict()
-		for key,item in r.iteritems():
+		for key, item in value.iteritems():
 			tmp = from_unicode(key)
 			xmmsv_dict_insert(ret, tmp, create_native_value(item))
+	else:
+		raise TypeError("Could not convert value to xmmsv")
 	return ret
 
 cdef class XMMSValue:
@@ -1323,6 +1326,12 @@ cdef class XMMS:
 		@return: The result of the operation.
 		"""
 		return self.create_result(cb, xmmsc_quit(self.conn))
+
+	def newstyle(self, v, cb = None):
+		"""
+		Fun stuff
+		"""
+		return self.create_result(cb, xmmsc_newstyle(self.conn, create_native_value (v)))
 
 	def plugin_list(self, typ, cb = None):
 		"""

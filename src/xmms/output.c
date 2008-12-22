@@ -562,6 +562,24 @@ xmms_output_seekms (xmms_output_t *output, guint32 ms, xmms_error_t *error)
 }
 
 static void
+xmms_output_seekms_d (xmmsv_t *args, xmmsv_t **res, gpointer ud)
+{
+	xmms_output_t *output = ud;
+	xmms_error_t err;
+	guint32 ms;
+
+	xmms_error_reset (&err);
+
+	if (!xmmsv_get_dict_entry_int (args, "ms", &ms)) {
+		XMMS_DBG ("deserialize failed");
+		return;
+	}
+
+	xmms_output_seekms (output, ms, &err);
+}
+
+
+static void
 xmms_output_seekms_rel (xmms_output_t *output, gint32 ms, xmms_error_t *error)
 {
 	g_mutex_lock (output->playtime_mutex);
@@ -915,6 +933,9 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 
 	xmms_config_property_register ("output.flush_on_pause", "1", NULL, NULL);
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_OUTPUT, XMMS_OBJECT (output));
+
+	xmms_ipc_obj_new ("output");
+	xmms_ipc_obj_meth_add ("output", "seekms", output, xmms_output_seekms_d);
 
 	/* Broadcasts are always transmitted to the client if he
 	 * listens to them. */

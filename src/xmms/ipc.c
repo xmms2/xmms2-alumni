@@ -89,6 +89,18 @@ static void xmms_ipc_client_destroy (xmms_ipc_client_t *client);
 
 static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
 
+typedef struct {
+	const char *name;
+	GTree *methods;
+} xmms_ipc_obj_t;
+
+typedef struct {
+	const char *name;
+	void (*func) (xmmsv_t *arg, xmmsv_t **res, gpointer ud);
+	gpointer ud;
+} xmms_ipc_meth_t;
+
+static GTree *xmms_ipc_objs;
 
 static gboolean
 type_and_msg_to_arg (xmmsv_type_t type, xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg, gint i)
@@ -109,14 +121,70 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmmsv_t *val)
 	}
 }
 
+void
+xmms_ipc_obj_new (const char *name)
+{
+	xmms_ipc_obj_t *o;
+
+	o = g_new0 (xmms_ipc_obj_t, 1);
+	o->methods = g_tree_new ((GCompareFunc) strcmp);
+	o->name = name;
+
+	g_tree_insert (xmms_ipc_objs, name, o);
+
+}
+
+void
+xmms_ipc_obj_meth_add (const char *objn, const char *methn, gpointer ud, gpointer func)
+{
+	xmms_ipc_obj_t *obj;
+	xmms_ipc_meth_t *m;
+
+	obj = g_tree_lookup (xmms_ipc_objs, objn);
+	g_return_if_fail (obj);
+
+	m = g_new0 (xmms_ipc_meth_t, 1);
+	m->name = methn;
+	m->ud = ud;
+	m->func = func;
+	g_tree_insert (obj->methods, methn, m);
+
+}
+
+
 static void
 newstyle_dispatch (xmms_ipc_client_t *client, xmmsv_t *v)
 {
-	const char *obj, *met;
+	const char *objn, *methn;
+	xmms_ipc_obj_t *obj;
+	xmms_ipc_meth_t *meth;
+	xmmsv_t *res = NULL;
 
-	if (!xmmsv_get_dict_entry_string (v, "object", &obj)) {
-
+	if (!xmmsv_get_dict_entry_string (v, "object", &objn)) {
+		XMMS_DBG ("Bad msg, couldn't get object");
+		return;
 	}
+
+	obj = g_tree_lookup (xmms_ipc_objs, objn);
+	if (!obj) {
+		XMMS_DBG ("Unknown object '%s'\n", objn);
+		return;
+	}
+
+	if (!xmmsv_get_dict_entry_string (v, "method", &methn)) {
+		XMMS_DBG ("Bad msg, couldn't get method");
+		return;
+	}
+
+	meth = g_tree_lookup (obj->methods, methn);
+	if (!meth) {
+		XMMS_DBG ("Unknown method '%s' on object '%s'\n", methn, objn);
+		return;
+	}
+
+	meth->func (v, &res, meth->ud);
+
+	return;
 
 }
 
@@ -137,7 +205,7 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 
 	if (objid == XMMS_IPC_OBJECT_NEWSTYLE_DISPATCH) {
 		xmmsv_t *v;
-		if (!xmms_ipc_msg_get_value_of_type_alloc (msg, XMMSV_DICT, &v)) {
+		if (!xmms_ipc_msg_get_value_alloc (msg, &v)) {
 			xmms_log_error ("Bad");
 			return;
 		}
@@ -726,6 +794,9 @@ xmms_ipc_init (void)
 	ipc_servers_lock = g_mutex_new ();
 	ipc_object_pool_lock = g_mutex_new ();
 	ipc_object_pool = g_new0 (xmms_ipc_object_pool_t, 1);
+
+	xmms_ipc_objs = g_tree_new ((GCompareFunc) strcmp);
+
 	return NULL;
 }
 

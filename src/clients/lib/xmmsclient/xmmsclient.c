@@ -311,6 +311,23 @@ xmmsc_broadcast_quit (xmmsc_connection_t *c)
 }
 
 /**
+ * Fun stuff
+ *
+ */
+xmmsc_result_t *
+xmmsc_newstyle (xmmsc_connection_t *c, xmmsv_t *v)
+{
+	x_check_conn (c, NULL);
+
+	xmms_ipc_msg_t *msg;
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_NEWSTYLE_DISPATCH, -1);
+	xmms_ipc_msg_put_value (msg, v);
+
+	return xmmsc_send_msg (c, msg);
+}
+
+/**
  * Get the absolute path to the user config dir.
  *
  * @param buf A char buffer
