@@ -1,0 +1,699 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+vim:expandtab
+-->
+
+<ipc version="1" xmlns="http://numbers.xmms.se/~tilman/ipc.xsd">
+
+    <!--
+    <enum name="playback_status">
+        <prop name="STOP" />
+        <prop name="START" />
+        <prop name="PAUSE" />
+    </enum>
+
+    <enum name="output_cmd">
+        <prop name="START" />
+        <prop name="STOP" />
+        <prop name="PAUSE" />
+        <prop name="STATUS" />
+    </enum>
+
+    <enum name="playlist_cmd">
+        <prop name="ADD_ID" />
+        <prop name="CURRENT_POS" />
+        <prop name="LIST_ENTRIES" />
+        <prop name="CLEAR" />
+    </enum>
+
+    <enum name="message">
+        <prop name="REPLY" />
+        <prop name="ERROR" />
+    </enum>
+    -->
+
+    <object type="both">
+        <name>main</name>
+
+        <method>
+            <name>hello</name>
+
+            <documentation>Says hello to the daemon.</documentation>
+
+            <argument>
+                <name>protocol_version</name>
+                <documentation>The protocol version implemented by the client.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </argument>
+
+            <argument>
+                <name>client</name>
+                <documentation>The client's name.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>quit</name>
+            <documentation>Shuts down the daemon.</documentation>
+        </method>
+
+        <broadcast>
+            <id>11</id>
+            <name>quit</name>
+            <documentation>This broadcast is triggered when the daemon is shutting down.</documentation>
+
+            <return_value>
+                <documentation>The time in seconds that the daemon was running.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </return_value>
+        </broadcast>
+    </object>
+
+    <object type="both">
+        <name>playlist</name>
+
+        <!--
+        <prop name="pos">
+            <readable />
+            <writeable />
+            <type>
+                <int />
+            </type>
+        </prop>
+        -->
+
+        <method>
+            <name>list_entries</name>
+            <documentation>Lists the contents of the given playlist.</documentation>
+
+            <return_value>
+                <documentation>The IDs of the songs that make up the playlist.</documentation>
+
+                <type>
+                    <list>
+                        <string />
+                    </list>
+                </type>
+            </return_value>
+        </method>
+
+        <method>
+            <name>load</name>
+            <documentation>Loads the playlist with the given name.</documentation>
+
+            <argument>
+                <name>name</name>
+                <documentation>The name of the playlist that will be loaded.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>add_id</name>
+            <documentation>Adds a song to the given playlist.</documentation>
+
+            <argument>
+                <name>playlist</name>
+                <documentation>The playlist to which to add the song.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+
+            <argument>
+                <name>id</name>
+                <documentation>The ID of the song to add to the playlist.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>clear</name>
+            <documentation>Removes all songs from the given playlist.</documentation>
+
+            <argument>
+                <name>playlist</name>
+                <documentation>The playlist to clear.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>set_pos_rel</name>
+            <documentation>Sets the playlist entry that will be played next.</documentation>
+
+            <argument>
+                <name>position_delta</name>
+                <documentation>The position of the playlist entry that will be played next (given relative to the current position).</documentation>
+
+                <type>
+                    <int />
+                </type>
+            </argument>
+
+            <return_value>
+                <documentation>The ID of the song at the new position of the playlist.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </return_value>
+        </method>
+
+        <method>
+            <name>shuffle</name>
+            <documentation>Shuffles the current playlist.</documentation>
+
+            <argument>
+                <name>playlist</name>
+                <documentation>The name of the playlist that will be shuffled.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+        </method>
+
+        <broadcast>
+            <id>0</id>
+            <name>playlist_changed</name>
+            <documentation>This broadcast is triggered when the playlist changes.</documentation>
+
+            <return_value>
+                <documentation>A dictionary that describes the playlist that was changed.</documentation>
+
+                <type>
+                    <dictionary>
+                        <unknown />
+                    </dictionary>
+                </type>
+            </return_value>
+        </broadcast>
+
+        <broadcast>
+            <id>6</id>
+            <name>current_pos</name>
+            <documentation>This broadcast is triggered when the position in the playlist changes.</documentation>
+
+            <return_value>
+                <documentation>The currently played song's media ID.</documentation>
+
+                <type>
+                    <dictionary>
+                        <uint />
+                    </dictionary>
+                </type>
+            </return_value>
+        </broadcast>
+
+        <broadcast>
+            <id>7</id>
+            <name>loaded</name>
+            <documentation>This broadcast is triggered when another playlist is loaded.</documentation>
+
+            <return_value>
+                <documentation>The loaded playlist's name.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </return_value>
+        </broadcast>
+    </object>
+
+    <object type="both">
+        <name>config</name>
+
+        <method>
+            <name>get_value</name>
+            <documentation>Retrieves the value of the config property with the given key.</documentation>
+
+            <argument>
+                <name>key</name>
+                <documentation>The key of the config property to retrieve.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+
+            <return_value>
+                <documentation>The value of the config property.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </return_value>
+        </method>
+
+        <method>
+            <name>set_value</name>
+            <documentation>Sets the value of the config property with the given key.</documentation>
+
+            <argument>
+                <name>key</name>
+                <documentation>The key of the config property to set.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+
+            <argument>
+                <name>value</name>
+                <documentation>The new value of the config property.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>register_value</name>
+            <documentation>Registers a new config property for the connected client.</documentation>
+
+            <argument>
+                <name>key</name>
+                <documentation>The key of the new config property.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+
+            <argument>
+                <name>value</name>
+                <documentation>The value of the new config property.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+
+            <return_value>
+                <documentation>The full path of the config property that was registered.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </return_value>
+        </method>
+
+        <method>
+            <name>list_values</name>
+            <documentation>Retrieves the list of known config properties.</documentation>
+
+            <return_value>
+                <documentation>The list of known config properties.</documentation>
+
+                <type>
+                    <list>
+                        <string />
+                    </list>
+                </type>
+            </return_value>
+        </method>
+
+        <broadcast>
+            <id>1</id>
+            <name>value_changed</name>
+            <documentation>This broadcast is triggered when the value of any config property changes.</documentation>
+
+            <return_value>
+                <documentation>A dictionary that maps the key of the config property to the new value of the config property.</documentation>
+
+                <type>
+                    <dictionary>
+                        <string />
+                    </dictionary>
+                </type>
+            </return_value>
+        </broadcast>
+    </object>
+
+    <!--
+    <object name="playback" type="client">
+        <prop name="status">
+            <readable />
+            <type>
+                <enum name="playback_status" />
+            </type>
+        </prop>
+
+        <method name="stop">
+            <return_value>
+                <type>
+                    <none />
+                </type>
+            </return_value>
+        </method>
+
+        <method name="start">
+            <return_value>
+                <type>
+                    <none />
+                </type>
+            </return_value>
+        </method>
+    </object>
+    -->
+
+    <object type="server">
+        <name>output</name>
+
+        <!--
+        <prop name="playtime">
+            <readable />
+            <type>
+                <uint />
+            </type>
+        </prop>
+        -->
+
+        <method>
+            <name>start</name>
+            <documentation>Starts playback.</documentation>
+        </method>
+
+        <method>
+            <name>stop</name>
+            <documentation>Stops playback.</documentation>
+        </method>
+
+        <method>
+            <name>pause</name>
+            <documentation>Pauses playback.</documentation>
+        </method>
+
+        <method>
+            <name>tickle</name>
+            <documentation>Stops decoding of the current song. This will start decoding of the song set with the playlist_set_next command or the current song again if the playlist_set_next command wasn't executed.</documentation>
+        </method>
+
+        <method>
+            <name>playtime</name>
+            <documentation>Retrieves the current playtime.</documentation>
+
+            <return_value>
+                <documentation>The current playtime.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </return_value>
+        </method>
+
+        <method>
+            <name>seek_ms</name>
+            <documentation>Seeks to a given position in the currently played song (given in milliseconds).</documentation>
+
+            <argument>
+                <name>absolute_milliseconds</name>
+                <documentation>The position in the song in milliseconds.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>seek_ms_relative</name>
+            <documentation>Seeks to a position in the currently played song (given in milliseconds).</documentation>
+
+            <argument>
+                <name>relative_milliseconds</name>
+                <documentation>The position in the song in milliseconds (relative to the current position).</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>seek_samples</name>
+            <documentation>Seeks to a position in the currently played song (given in samples).</documentation>
+
+            <argument>
+                <name>absolute_samples</name>
+                <documentation>The position in the song in samples.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>seek_samples_relative</name>
+            <documentation>Seeks to a position in the currently played song (given in samples).</documentation>
+
+            <argument>
+                <name>relative_samples</name>
+                <documentation>The position in the song in samples (relative to the current position).</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>status</name>
+            <documentation>Retrieves the current playback status.</documentation>
+
+            <return_value>
+                <documentation>The current playback status.</documentation>
+
+                <type>
+                    <!-- FIXME: link to enum playback_status -->
+                    <uint />
+                </type>
+            </return_value>
+        </method>
+
+        <method>
+            <name>current_id</name>
+            <documentation>Retrieves the ID of the song that's currently being played.</documentation>
+
+            <return_value>
+                <documentation>The ID of the song that's currently being played.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </return_value>
+        </method>
+
+        <broadcast>
+            <id>2</id>
+            <name>status</name>
+            <documentation>This broadcast is triggered when the playback status changes.</documentation>
+
+            <return_value>
+                <documentation>The current playback status.</documentation>
+
+                <type>
+                    <!-- FIXME: link to enum playback_status -->
+                    <uint />
+                </type>
+            </return_value>
+        </broadcast>
+
+        <broadcast>
+            <id>3</id>
+            <name>volume_changed</name>
+            <documentation>This broadcast is triggered when the playback volume changes.</documentation>
+
+            <return_value>
+                <documentation>A dictionary that maps the volume channels to the current playback volume.</documentation>
+
+                <type>
+                    <dictionary>
+                        <uint />
+                    </dictionary>
+                </type>
+            </return_value>
+        </broadcast>
+
+        <broadcast>
+            <id>5</id>
+            <name>current_id</name>
+            <documentation>This broadcast is triggered when the played song's media ID changes.</documentation>
+
+            <return_value>
+                <documentation>The currently played song's media ID.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </return_value>
+        </broadcast>
+
+        <signal>
+            <id>4</id>
+            <name>playtime</name>
+            <documentation>Emits the current playtime.</documentation>
+
+            <return_value>
+                <documentation>The current playtime.</documentation>
+
+                <type>
+                    <dictionary>
+                        <uint />
+                    </dictionary>
+                </type>
+            </return_value>
+        </signal>
+    </object>
+
+    <object type="server">
+        <name>medialib</name>
+
+        <method>
+            <name>get_info</name>
+            <documentation>Retrieves information about a medialib entry.</documentation>
+
+            <argument>
+                <name>id</name>
+                <documentation>The ID of the medialib entry.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </argument>
+
+            <return_value>
+                <documentation>The information about the medialib entry.</documentation>
+
+                <type>
+                    <!-- get_info returns a dictionary of dictionaries
+                         of unknown values.
+                      -->
+                    <dictionary>
+                        <dictionary>
+                            <unknown />
+                        </dictionary>
+                    </dictionary>
+                </type>
+            </return_value>
+        </method>
+
+        <method>
+            <name>import_path</name>
+            <documentation>Adds a directory recursively to the medialib.</documentation>
+
+            <argument>
+                <name>directory</name>
+                <documentation>The directory to add to the medialib (given in URL encoding).</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+        </method>
+
+        <broadcast>
+            <id>8</id>
+            <name>entry_added</name>
+            <documentation>This broadcast is triggered when an entry is added to the medialib.</documentation>
+
+            <return_value>
+                <documentation>The added entry's ID.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </return_value>
+        </broadcast>
+
+        <broadcast>
+            <id>9</id>
+            <name>entry_changed</name>
+            <documentation>This broadcast is triggered when the properties of a medialib entry are changed.</documentation>
+
+            <return_value>
+                <documentation>The changed entry's ID.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </return_value>
+        </broadcast>
+    </object>
+
+    <object type="both">
+        <name>collection</name>
+
+        <broadcast>
+            <id>10</id>
+            <name>changed</name>
+            <documentation>This broadcast is triggered when a collection is changed.</documentation>
+
+            <return_value>
+                <documentation>A dictionary that describes the collection that was changed.</documentation>
+
+                <type>
+                    <dictionary>
+                        <unknown />
+                    </dictionary>
+                </type>
+            </return_value>
+        </broadcast>
+    </object>
+
+    <object type="both">
+        <name>mediainfo_reader</name>
+
+        <broadcast>
+            <id>12</id>
+            <name>status</name>
+            <documentation>This broadcast is triggered when the status of the mediainfo reader changes.</documentation>
+
+            <return_value>
+                <documentation>The current status of the mediainfo reader.</documentation>
+
+                <type>
+                    <!-- FIXME: link to enum mediainfo_reader_status -->
+                    <uint />
+                </type>
+            </return_value>
+        </broadcast>
+
+        <signal>
+            <id>13</id>
+            <name>unindexed</name>
+            <documentation>Emits the number of unresolved medialib entries.</documentation>
+
+            <return_value>
+                <documentation>The number of unresolved medialib entries.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </return_value>
+        </signal>
+    </object>
+</ipc>
