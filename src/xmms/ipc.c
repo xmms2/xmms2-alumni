@@ -98,6 +98,7 @@ typedef struct {
 	const char *name;
 	void (*func) (xmmsv_t *arg, xmmsv_t **res, gpointer ud);
 	gpointer ud;
+	xmmsv_t *desc;
 } xmms_ipc_meth_t;
 
 static GTree *xmms_ipc_objs;
@@ -135,7 +136,7 @@ xmms_ipc_obj_new (const char *name)
 }
 
 void
-xmms_ipc_obj_meth_add (const char *objn, const char *methn, gpointer ud, gpointer func)
+xmms_ipc_obj_meth_add (const char *objn, const char *methn, gpointer ud, gpointer func, xmmsv_t *desc)
 {
 	xmms_ipc_obj_t *obj;
 	xmms_ipc_meth_t *m;
@@ -147,6 +148,7 @@ xmms_ipc_obj_meth_add (const char *objn, const char *methn, gpointer ud, gpointe
 	m->name = methn;
 	m->ud = ud;
 	m->func = func;
+	m->desc = desc;
 	g_tree_insert (obj->methods, methn, m);
 
 }

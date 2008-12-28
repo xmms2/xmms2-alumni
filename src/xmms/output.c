@@ -29,6 +29,7 @@
 #include "xmmspriv/xmms_sample.h"
 #include "xmmspriv/xmms_medialib.h"
 #include "xmmspriv/xmms_outputplugin.h"
+#include "xmmspriv/xmms_ipc.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_ipc.h"
 #include "xmms/xmms_object.h"
@@ -78,11 +79,17 @@ static gboolean xmms_output_status_set (xmms_output_t *output, gint status);
 static gboolean set_plugin (xmms_output_t *output, xmms_output_plugin_t *plugin);
 
 XMMS_CMD_DEFINE (start, xmms_output_start, xmms_output_t *, NONE, NONE, NONE);
+XMMS_XI_DECLARE (start, xmms_output_start, xmms_output_t *, NONE, XI_NOARG(), XI_NOARG());
 XMMS_CMD_DEFINE (stop, xmms_output_stop, xmms_output_t *, NONE, NONE, NONE);
+XMMS_XI_DECLARE (stop, xmms_output_stop, xmms_output_t *, NONE, XI_NOARG(), XI_NOARG());
 XMMS_CMD_DEFINE (pause, xmms_output_pause, xmms_output_t *, NONE, NONE, NONE);
+XMMS_XI_DECLARE (pause, xmms_output_pause, xmms_output_t *, NONE, XI_NOARG(), XI_NOARG());
 XMMS_CMD_DEFINE (xform_kill, xmms_output_xform_kill, xmms_output_t *, NONE, NONE, NONE);
+XMMS_XI_DECLARE (xform_kill, xmms_output_xform_kill, xmms_output_t *, NONE, XI_NOARG(), XI_NOARG());
 XMMS_CMD_DEFINE (playtime, xmms_output_playtime, xmms_output_t *, UINT32, NONE, NONE);
+
 XMMS_CMD_DEFINE (seekms, xmms_output_seekms, xmms_output_t *, NONE, UINT32, NONE);
+XMMS_XI_DECLARE (seekms, xmms_output_seekms, xmms_output_t *, NONE, XI_ARG(UINT32, ms), XI_NOARG());
 XMMS_CMD_DEFINE (seekms_rel, xmms_output_seekms_rel, xmms_output_t *, NONE, INT32, NONE);
 XMMS_CMD_DEFINE (seeksamples, xmms_output_seeksamples, xmms_output_t *, NONE, UINT32, NONE);
 XMMS_CMD_DEFINE (seeksamples_rel, xmms_output_seeksamples_rel, xmms_output_t *, NONE, INT32, NONE);
@@ -562,24 +569,6 @@ xmms_output_seekms (xmms_output_t *output, guint32 ms, xmms_error_t *error)
 }
 
 static void
-xmms_output_seekms_d (xmmsv_t *args, xmmsv_t **res, gpointer ud)
-{
-	xmms_output_t *output = ud;
-	xmms_error_t err;
-	guint32 ms;
-
-	xmms_error_reset (&err);
-
-	if (!xmmsv_get_dict_entry_int (args, "ms", &ms)) {
-		XMMS_DBG ("deserialize failed");
-		return;
-	}
-
-	xmms_output_seekms (output, ms, &err);
-}
-
-
-static void
 xmms_output_seekms_rel (xmms_output_t *output, gint32 ms, xmms_error_t *error)
 {
 	g_mutex_lock (output->playtime_mutex);
@@ -935,7 +924,11 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 	xmms_ipc_object_register (XMMS_IPC_OBJECT_OUTPUT, XMMS_OBJECT (output));
 
 	xmms_ipc_obj_new ("output");
-	xmms_ipc_obj_meth_add ("output", "seekms", output, xmms_output_seekms_d);
+	XMMS_XI_OBJ_METH_ADD ("output", start, output);
+	XMMS_XI_OBJ_METH_ADD ("output", stop, output);
+	XMMS_XI_OBJ_METH_ADD ("output", pause, output);
+	XMMS_XI_OBJ_METH_ADD ("output", xform_kill, output);
+	XMMS_XI_OBJ_METH_ADD ("output", seekms, output);
 
 	/* Broadcasts are always transmitted to the client if he
 	 * listens to them. */
