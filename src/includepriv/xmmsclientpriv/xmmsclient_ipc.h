@@ -46,6 +46,7 @@ bool xmmsc_ipc_connect (xmmsc_ipc_t *ipc, char *path);
 void xmmsc_ipc_error_set (xmmsc_ipc_t *ipc, char *error);
 const char *xmmsc_ipc_error_get (xmmsc_ipc_t *ipc);
 xmms_socket_t xmmsc_ipc_fd_get (xmmsc_ipc_t *ipc);
+void xmmsc_ipc_newstyle_callback_set (xmmsc_ipc_t *ipc, void (*newstyle_handler) (xmmsv_t *v, void *data), void *data);
 
 void xmmsc_ipc_result_register (xmmsc_ipc_t *ipc, xmmsc_result_t *res);
 xmmsc_result_t *xmmsc_ipc_result_lookup (xmmsc_ipc_t *ipc, uint32_t cookie);

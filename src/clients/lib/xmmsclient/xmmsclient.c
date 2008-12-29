@@ -213,6 +213,14 @@ xmmsc_disconnect_callback_set_full (xmmsc_connection_t *c,
 	xmmsc_ipc_disconnect_set (c->ipc, callback, userdata, free_func);
 }
 
+
+void
+xmmsc_newstyle_callback_set (xmmsc_connection_t *c, void (*handler) (xmmsv_t *v, void *data), void *data)
+{
+	x_check_conn (c,);
+	xmmsc_ipc_newstyle_callback_set (c->ipc, handler, data);
+}
+
 /**
  * Returns a string that descibes the last error.
  */

@@ -333,6 +333,7 @@ cdef extern from "xmmsclient/xmmsclient.h":
 	int xmmsc_io_in_handle(xmmsc_connection_t *c)
 	int xmmsc_io_fd_get(xmmsc_connection_t *c)
 
+	void xmmsc_newstyle_callback_set (xmmsc_connection_t *c, void (*handler) (xmmsv_t *v, void *data), void *data)
 
 	ctypedef char *xmmsv_coll_namespace_t
 	char *XMMS_COLLECTION_NS_COLLECTIONS
@@ -1136,6 +1137,18 @@ cdef void python_disconnect_fun(void *obj):
 	o = <object> obj
 	o._disconnect_cb()
 
+cdef void python_newstyle_fun(xmmsv_t *v, void *obj):
+	cdef object o
+	cdef XMMSValue val
+	val = XMMSValue()
+	val.set_value(v)
+	f = <object> obj
+	try:
+		f(val.value())
+	except:
+		exc = sys.exc_info()
+		traceback.print_exception (exc[0], exc[1], exc[2])
+
 def userconfdir_get():
 	"""
 	Get the user configuration directory, where XMMS2 stores its
@@ -1316,6 +1329,9 @@ cdef class XMMS:
 		Py_INCREF(self)
 		xmmsc_disconnect_callback_set_full(self.conn, python_disconnect_fun, <void *>self, ObjectFreeer)
 
+	def newstyle_callback_set(self, fun):
+		Py_INCREF(fun)
+		xmmsc_newstyle_callback_set(self.conn, python_newstyle_fun, <void *>fun)
 
 	def quit(self, cb = None):
 		"""
@@ -1331,7 +1347,7 @@ cdef class XMMS:
 		"""
 		Fun stuff
 		"""
-		return self.create_result(cb, xmmsc_newstyle(self.conn, create_native_value (v)))
+		return xmmsc_newstyle(self.conn, create_native_value (v))
 
 	def plugin_list(self, typ, cb = None):
 		"""

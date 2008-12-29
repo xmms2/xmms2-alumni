@@ -51,6 +51,10 @@ struct xmmsc_ipc_St {
 	void (*need_out_callback) (int need_out, void *data);
 	void *need_out_data;
 	void (*need_out_data_free_func) (void *data);
+
+
+	void (*newstyle_handler) (xmmsv_t *v, void *data);
+	void *newstyle_handler_data;
 };
 
 static inline void xmmsc_ipc_lock (xmmsc_ipc_t *ipc);
@@ -200,6 +204,13 @@ xmmsc_ipc_lock_set (xmmsc_ipc_t *ipc, void *lock, void (*lockfunc)(void *), void
 	ipc->lockdata = lock;
 	ipc->lockfunc = lockfunc;
 	ipc->unlockfunc = unlockfunc;
+}
+
+void
+xmmsc_ipc_newstyle_callback_set (xmmsc_ipc_t *ipc, void (*newstyle_handler) (xmmsv_t *v, void *data), void *data)
+{
+	ipc->newstyle_handler_data = data;
+	ipc->newstyle_handler = newstyle_handler;
 }
 
 void
@@ -388,6 +399,21 @@ static void
 xmmsc_ipc_exec_msg (xmmsc_ipc_t *ipc, xmms_ipc_msg_t *msg)
 {
 	xmmsc_result_t *res;
+
+	if (xmms_ipc_msg_get_object (msg) == XMMS_IPC_OBJECT_NEWSTYLE_DISPATCH) {
+		xmmsv_t *val;
+		if (!xmms_ipc_msg_get_value_alloc (msg, &val)) {
+			fprintf (stderr, "bad msg!\n");
+		} else {
+			if (!ipc->newstyle_handler) {
+				fprintf (stderr, "newstyle data without handler!\n");
+			} else {
+				ipc->newstyle_handler (val, ipc->newstyle_handler_data);
+			}
+			xmmsv_unref (val);
+		}
+		return;
+	}
 
 	res = xmmsc_ipc_result_lookup (ipc, xmms_ipc_msg_get_cookie (msg));
 

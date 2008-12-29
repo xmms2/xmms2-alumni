@@ -67,6 +67,8 @@ xmmsc_result_t *xmmsc_broadcast_quit (xmmsc_connection_t *c);
 const char *xmmsc_userconfdir_get (char *buf, int len);
 
 
+void xmmsc_newstyle_callback_set (xmmsc_connection_t *c, void (*handler) (xmmsv_t *v, void *data), void *data);
+
 /*
  * PLAYLIST ************************************************
  */
