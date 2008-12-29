@@ -53,6 +53,10 @@ gboolean xmms_ipc_has_pending (guint signalid);
 		}							\
 	} while (0)
 
+
+#define XI_RETVAL_NONE(r, x) do { x; *r = xmmsv_new_none (); } while (0)
+#define XI_RETVAL_UINT32(r, x) do { *r = xmmsv_new_uint (x); } while (0)
+#define XI_RETVAL_DICT(r, x) do { *r = x; } while (0)
 /*
 
   This is the actual workhorse.
@@ -79,7 +83,7 @@ gboolean xmms_ipc_has_pending (guint signalid);
 									\
 		XI_ARG_GETTER(arg1);					\
 		XI_ARG_GETTER(arg2);					\
-		function (userdata XI_ARG_ARG(arg1) XI_ARG_ARG(arg2), &err); \
+		XI_RETVAL_##rettype (res, function (userdata XI_ARG_ARG(arg1) XI_ARG_ARG(arg2), &err)); \
 	}								\
 									\
 	static xmmsv_t *						\

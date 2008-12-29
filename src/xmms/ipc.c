@@ -186,6 +186,29 @@ newstyle_dispatch (xmms_ipc_client_t *client, xmmsv_t *v)
 
 	meth->func (v, &res, meth->ud);
 
+	if (res) {
+		xmms_ipc_msg_t *rmsg;
+		xmmsv_t *cookie, *r;
+
+		if (!xmmsv_dict_get (v, "cookie", &cookie)) {
+			cookie = xmmsv_new_none ();
+		}
+
+		r = xmmsv_build_dict (XMMSV_DICT_ENTRY_VAL ("retval", res),
+				      XMMSV_DICT_ENTRY_VAL ("cookie", cookie),
+				      XMMSV_DICT_END);
+
+		rmsg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_NEWSTYLE_DISPATCH, 0);
+		xmms_ipc_msg_put_value (rmsg, r);
+		g_mutex_lock (client->lock);
+		xmms_ipc_client_msg_write (client, rmsg);
+		g_mutex_unlock (client->lock);
+		xmmsv_unref (r);
+		xmmsv_unref (cookie);
+	} else {
+		XMMS_DBG ("No res?!");
+	}
+
 	return;
 
 }
@@ -787,6 +810,46 @@ xmms_ipc_object_unregister (xmms_ipc_objects_t objectid)
 	g_mutex_unlock (ipc_object_pool_lock);
 }
 
+static gboolean
+xmms_ipc_introspect_meths_foreach (gpointer k, gpointer v, gpointer ud)
+{
+	xmmsv_t *r = ud;
+	xmms_ipc_meth_t *m = v;
+
+	xmmsv_list_append (r, m->desc);
+	return FALSE;
+}
+
+static gboolean
+xmms_ipc_introspect_objs_foreach (gpointer k, gpointer v, gpointer ud)
+{
+	xmmsv_t *r = ud;
+	xmmsv_t *m;
+	xmms_ipc_obj_t *o = v;
+
+	m = xmmsv_new_list ();
+	g_tree_foreach (o->methods, xmms_ipc_introspect_meths_foreach, m);
+	xmmsv_dict_insert (r, o->name, m);
+
+	return FALSE;
+}
+
+static xmmsv_t *
+xmms_ipc_introspect (GTree *objs, xmms_error_t *err)
+{
+	xmmsv_t *ret;
+
+	ret = xmmsv_new_dict ();
+
+	g_tree_foreach (objs, xmms_ipc_introspect_objs_foreach, ret);
+
+	return ret;
+
+}
+
+XMMS_XI_DECLARE (introspect, xmms_ipc_introspect, GTree *, DICT, XI_NOARG(), XI_NOARG());
+
+
 /**
  * Initialize IPC
  */
@@ -798,6 +861,9 @@ xmms_ipc_init (void)
 	ipc_object_pool = g_new0 (xmms_ipc_object_pool_t, 1);
 
 	xmms_ipc_objs = g_tree_new ((GCompareFunc) strcmp);
+
+	xmms_ipc_obj_new ("ipc");
+	XMMS_XI_OBJ_METH_ADD ("ipc", introspect, xmms_ipc_objs);
 
 	return NULL;
 }
