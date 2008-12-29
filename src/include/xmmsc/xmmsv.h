@@ -141,6 +141,7 @@ static inline xmmsv_t *__xmmsv_identity_xmmsv (xmmsv_t *v) {return v;}
 #define XMMSV_DICT_ENTRY_STR(k, v) XMMSV_DICT_ENTRY (k, xmmsv_new_string (v))
 #define XMMSV_DICT_ENTRY_INT(k, v) XMMSV_DICT_ENTRY (k, xmmsv_new_int (v))
 #define XMMSV_DICT_ENTRY_UINT(k, v) XMMSV_DICT_ENTRY (k, xmmsv_new_uint (v))
+#define XMMSV_DICT_ENTRY_VAL(k, v) XMMSV_DICT_ENTRY (k, v)
 #define XMMSV_DICT_END NULL
 xmmsv_t *xmmsv_build_dict (const char *firstkey, ...);
 
