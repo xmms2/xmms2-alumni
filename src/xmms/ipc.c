@@ -161,6 +161,7 @@ newstyle_dispatch (xmms_ipc_client_t *client, xmmsv_t *v)
 	xmms_ipc_obj_t *obj;
 	xmms_ipc_meth_t *meth;
 	xmmsv_t *res = NULL;
+	xmmsv_t *args;
 
 	if (!xmmsv_get_dict_entry_string (v, "object", &objn)) {
 		XMMS_DBG ("Bad msg, couldn't get object");
@@ -184,7 +185,13 @@ newstyle_dispatch (xmms_ipc_client_t *client, xmmsv_t *v)
 		return;
 	}
 
-	meth->func (v, &res, meth->ud);
+	if (!xmmsv_dict_get (v, "args", &args)) {
+		XMMS_DBG ("Bad msg, couldn't get args");
+		return;
+	}
+
+
+	meth->func (args, &res, meth->ud);
 
 	if (res) {
 		xmms_ipc_msg_t *rmsg;

@@ -14,6 +14,7 @@ class NewStyleIPC:
 
         xc.newstyle({"object": "ipc",
                      "method": "introspect",
+                     "args": {},
                      "cookie": "this is from introspect"})
 
         self.next_cookie = 1
@@ -41,12 +42,13 @@ class NewStyleIPC:
             for m in methods:
                 def X(o, m):
                     # this needs to do fun stuff with args. RSN
-                    def _(*x):
+                    def _(**x):
                         c = self.next_cookie
                         self.next_cookie += 1
 
                         self.xc.newstyle({"object": o,
                                           "method": m,
+                                          "args": x,
                                           "cookie": c})
 
                         # create a result object and
