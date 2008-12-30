@@ -9,3 +9,4 @@ waf-lightc
 *.rej
 \#*\#
 src/clients/lib/ruby2/generated.rb
+src/clients/lib/xmmsclient/generated.c
