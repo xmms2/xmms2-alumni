@@ -447,7 +447,7 @@ vim:expandtab
                 <documentation>The position in the song in milliseconds (relative to the current position).</documentation>
 
                 <type>
-                    <uint />
+                    <int />
                 </type>
             </argument>
         </method>
@@ -475,7 +475,7 @@ vim:expandtab
                 <documentation>The position in the song in samples (relative to the current position).</documentation>
 
                 <type>
-                    <uint />
+                    <int />
                 </type>
             </argument>
         </method>
