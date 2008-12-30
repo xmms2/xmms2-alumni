@@ -507,6 +507,44 @@ vim:expandtab
             </return_value>
         </method>
 
+        <method>
+            <name>set_volume</name>
+            <documentation>Changes the volume for the given channel.</documentation>
+
+            <argument>
+                <name>channel</name>
+                <documentation>The name of the channel whose volume is set.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+
+            <argument>
+                <name>volume</name>
+                <documentation>The new volume.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>get_volume</name>
+            <documentation>Retrieves the volume for all available channel.</documentation>
+
+            <return_value>
+                <documentation>A dictionary that maps the volume channels to the current playback volume.</documentation>
+
+                <type>
+                    <dictionary>
+                        <uint />
+                    </dictionary>
+                </type>
+            </return_value>
+        </method>
+
         <broadcast>
             <id>2</id>
             <name>status</name>
