@@ -92,6 +92,7 @@ static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_m
 typedef struct {
 	const char *name;
 	GTree *methods;
+	GTree *properties;
 } xmms_ipc_obj_t;
 
 typedef struct {
@@ -100,6 +101,13 @@ typedef struct {
 	gpointer ud;
 	xmmsv_t *desc;
 } xmms_ipc_meth_t;
+
+struct xmms_ipc_prop_St {
+	const char *name;
+	xmmsv_t *curval;
+	GList *subscribers;
+	GMutex *subscribers_lock;
+};
 
 static GTree *xmms_ipc_objs;
 
@@ -122,6 +130,16 @@ xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmmsv_t *val)
 	}
 }
 
+static xmmsv_t *
+xmms_ipc_obj_prop_get (xmms_ipc_obj_t *obj, const gchar *propname, xmms_error_t *err)
+{
+	xmms_ipc_prop_t *prop;
+	prop = g_tree_lookup (obj->properties, propname);
+	return xmmsv_ref (prop->curval);
+}
+
+XMMS_XI_DECLARE (get, xmms_ipc_obj_prop_get, xmms_ipc_obj_t *, DICT, XI_ARG(STR, propname), XI_NOARG());
+
 void
 xmms_ipc_obj_new (const char *name)
 {
@@ -129,10 +147,12 @@ xmms_ipc_obj_new (const char *name)
 
 	o = g_new0 (xmms_ipc_obj_t, 1);
 	o->methods = g_tree_new ((GCompareFunc) strcmp);
+	o->properties = g_tree_new ((GCompareFunc) strcmp);
 	o->name = name;
 
 	g_tree_insert (xmms_ipc_objs, name, o);
 
+	XMMS_XI_OBJ_METH_ADD (name, get, o);
 }
 
 void
@@ -153,6 +173,44 @@ xmms_ipc_obj_meth_add (const char *objn, const char *methn, gpointer ud, gpointe
 
 }
 
+xmms_ipc_prop_t *
+_xmms_xi_obj_prop_add (const char *objn, const char *propn)
+{
+	xmms_ipc_obj_t *obj;
+	xmms_ipc_prop_t *res;
+
+	obj = g_tree_lookup (xmms_ipc_objs, objn);
+	g_return_val_if_fail (obj, NULL);
+
+	res = g_new0 (xmms_ipc_prop_t, 1);
+	res->name = propn;
+	res->curval = xmmsv_new_none ();
+	res->subscribers_lock = g_mutex_new ();
+	g_tree_insert (obj->properties, propn, res);
+
+	return res;
+}
+
+void
+_xmms_xi_prop_update (xmms_ipc_prop_t *pobj, xmmsv_t *newval)
+{
+	GList *n;
+	xmmsv_t *oldval = pobj->curval;
+
+	/* this function needs an extra reference, if this is called from different threads at same time */
+	pobj->curval = xmmsv_ref (newval);
+
+	xmmsv_unref (oldval);
+
+	g_mutex_lock (pobj->subscribers_lock);
+	for (n = pobj->subscribers; n; n = g_list_next (n)) {
+		/* send update */
+	}
+	g_mutex_unlock (pobj->subscribers_lock);
+
+	xmmsv_unref (newval);
+
+}
 
 static void
 newstyle_dispatch (xmms_ipc_client_t *client, xmmsv_t *v)

@@ -65,8 +65,9 @@ print "dir(ns):"
 pprint(dir(ns))
 print
 
-ns.output_playtime()
 ns.output_start()
+
+ns.output_get(propname="playtime")
 
 
 xc.loop()

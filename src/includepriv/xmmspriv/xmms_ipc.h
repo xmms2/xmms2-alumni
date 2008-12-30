@@ -22,6 +22,7 @@ gboolean xmms_ipc_has_pending (guint signalid);
  */
 
 #define XI_GLIBTYPE_UINT32 guint32
+#define XI_GLIBTYPE_STR const gchar *
 
 #define XI_TYP_XI_ARG(typ, nam) XI_GLIBTYPE_##typ
 #define XI_NAM_XI_ARG(typ, nam) nam
@@ -43,6 +44,7 @@ gboolean xmms_ipc_has_pending (guint signalid);
 
 /* Argument dict deserialization stuff */
 #define XI_DICT_ENTRY_GETTER_UINT32 xmmsv_get_dict_entry_uint
+#define XI_DICT_ENTRY_GETTER_STR xmmsv_get_dict_entry_string
 #define XI_GETTER_XI_ARG(typ, nam) XI_DICT_ENTRY_GETTER_##typ (args, G_STRINGIFY(nam), &nam)
 #define XI_GETTER_XI_NOARG() TRUE
 #define XI_ARG_GETTER(x)						\
@@ -57,6 +59,7 @@ gboolean xmms_ipc_has_pending (guint signalid);
 #define XI_RETVAL_NONE(r, x) do { x; *r = xmmsv_new_none (); } while (0)
 #define XI_RETVAL_UINT32(r, x) do { *r = xmmsv_new_uint (x); } while (0)
 #define XI_RETVAL_DICT(r, x) do { *r = x; } while (0)
+#define XI_RETVAL_XMMSV(r, x) do { *r = x; } while (0)
 /*
 
   This is the actual workhorse.
@@ -104,5 +107,16 @@ void xmms_ipc_obj_new (const char *name);
 void xmms_ipc_obj_meth_add (const char *objn, const char *methn, gpointer ud, gpointer func, xmmsv_t *desc);
 
 #define XMMS_XI_OBJ_METH_ADD(obj, meth, ud) xmms_ipc_obj_meth_add (obj, G_STRINGIFY (meth), ud, __xi_##meth, __xi_##meth##_desc ());
+
+struct xmms_ipc_prop_St;
+typedef struct xmms_ipc_prop_St xmms_ipc_prop_t;
+
+/* these doesn't really have to be a macro, just for some symmetry */
+#define XMMS_XI_OBJ_PROP_ADD(obj, prop) _xmms_xi_obj_prop_add (obj, prop)
+xmms_ipc_prop_t *_xmms_xi_obj_prop_add (const char *obj, const char *prop);
+
+#define XMMS_XI_PROP_UPDATE(pobj, newval) _xmms_xi_prop_update (pobj, newval)
+void _xmms_xi_prop_update (xmms_ipc_prop_t *pobj, xmmsv_t *newval); /* steals ref */
+
 
 #endif

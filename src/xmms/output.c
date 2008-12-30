@@ -87,7 +87,6 @@ XMMS_XI_DECLARE (pause, xmms_output_pause, xmms_output_t *, NONE, XI_NOARG(), XI
 XMMS_CMD_DEFINE (xform_kill, xmms_output_xform_kill, xmms_output_t *, NONE, NONE, NONE);
 XMMS_XI_DECLARE (xform_kill, xmms_output_xform_kill, xmms_output_t *, NONE, XI_NOARG(), XI_NOARG());
 XMMS_CMD_DEFINE (playtime, xmms_output_playtime, xmms_output_t *, UINT32, NONE, NONE);
-XMMS_XI_DECLARE (playtime, xmms_output_playtime, xmms_output_t *, UINT32, XI_NOARG(), XI_NOARG());
 XMMS_CMD_DEFINE (seekms, xmms_output_seekms, xmms_output_t *, NONE, UINT32, NONE);
 XMMS_XI_DECLARE (seekms, xmms_output_seekms, xmms_output_t *, NONE, XI_ARG(UINT32, ms), XI_NOARG());
 XMMS_CMD_DEFINE (seekms_rel, xmms_output_seekms_rel, xmms_output_t *, NONE, INT32, NONE);
@@ -97,7 +96,10 @@ XMMS_CMD_DEFINE (output_status, xmms_output_status, xmms_output_t *, UINT32, NON
 XMMS_CMD_DEFINE (currentid, xmms_output_current_id, xmms_output_t *, UINT32, NONE, NONE);
 XMMS_CMD_DEFINE (volume_set, xmms_output_volume_set, xmms_output_t *, NONE, STRING, UINT32);
 XMMS_CMD_DEFINE (volume_get, xmms_output_volume_get, xmms_output_t *, DICT, NONE, NONE);
-XMMS_XI_DECLARE (volume_get, xmms_output_volume_get, xmms_output_t *, DICT, XI_NOARG(), XI_NOARG());
+
+/* objects */
+static xmms_ipc_prop_t *xmms_output_playtime_prop;
+static xmms_ipc_prop_t *xmms_output_volume_prop;
 
 /*
  * Type definitions
@@ -232,6 +234,7 @@ update_playtime (xmms_output_t *output, int advance)
 			                    XMMS_IPC_SIGNAL_OUTPUT_PLAYTIME,
 			                    XMMSV_TYPE_UINT32,
 			                    ms);
+			XMMS_XI_PROP_UPDATE (xmms_output_playtime_prop, xmmsv_new_uint (ms));
 		}
 		output->played_time = ms;
 
@@ -930,8 +933,9 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 	XMMS_XI_OBJ_METH_ADD ("output", pause, output);
 	XMMS_XI_OBJ_METH_ADD ("output", xform_kill, output);
 	XMMS_XI_OBJ_METH_ADD ("output", seekms, output);
-	XMMS_XI_OBJ_METH_ADD ("output", playtime, output);
-	XMMS_XI_OBJ_METH_ADD ("output", volume_get, output);
+
+	xmms_output_playtime_prop = XMMS_XI_OBJ_PROP_ADD ("output", "playtime");
+	xmms_output_volume_prop = XMMS_XI_OBJ_PROP_ADD ("output", "volume");
 
 	/* Broadcasts are always transmitted to the client if he
 	 * listens to them. */
@@ -1237,11 +1241,13 @@ xmms_output_monitor_volume_thread (gpointer data)
 		     !xmms_volume_map_equal (&old, &cur))) {
 			/* emit the broadcast */
 			if (cur.status) {
+				xmmsv_t *v;
 				dict = xmms_volume_map_to_dict (&cur);
 				xmms_object_emit_f (XMMS_OBJECT (output),
 				                    XMMS_IPC_SIGNAL_OUTPUT_VOLUME_CHANGED,
 				                    XMMSV_TYPE_DICT, dict);
-				g_tree_destroy (dict);
+				v = xmms_convert_and_kill_dict (dict);
+				XMMS_XI_PROP_UPDATE (xmms_output_volume_prop, v);
 			} else {
 				/** @todo When bug 691 is solved, emit an error here */
 				xmms_object_emit_f (XMMS_OBJECT (output),
