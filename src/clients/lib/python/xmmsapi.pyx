@@ -1347,7 +1347,7 @@ cdef class XMMS:
 		"""
 		Fun stuff
 		"""
-		return xmmsc_newstyle(self.conn, create_native_value (v))
+		xmmsc_newstyle(self.conn, create_native_value (v))
 
 	def plugin_list(self, typ, cb = None):
 		"""
