@@ -96,6 +96,15 @@ vim:expandtab
             <name>list_entries</name>
             <documentation>Lists the contents of the given playlist.</documentation>
 
+            <argument>
+                <name>name</name>
+                <documentation>The name of the playlist whose contents will be listed.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+
             <return_value>
                 <documentation>The IDs of the songs that make up the playlist.</documentation>
 
