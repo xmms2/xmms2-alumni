@@ -276,7 +276,8 @@ def configure(conf):
         conf.check_message("uncommitted changes", "", bool(changed))
         conf.env["VERSION"] = BASEVERSION + " (git commit: %s%s)" % (nam, dirty)
 
-    conf.env["CCFLAGS"] = Utils.to_list(conf.env["CCFLAGS"]) + ['-g', '-O0']
+    conf.env["CCFLAGS"] = Utils.to_list(conf.env["CCFLAGS"]) + ['-g', '-O0', "-Wmissing-prototypes"]
+    #, "-Wpointer-arith", "-Winline", "-Wdeclaration-after-statement", "-Wendif-labels"]
     conf.env["CXXFLAGS"] = Utils.to_list(conf.env["CXXFLAGS"]) + ['-g', '-O0']
     conf.env['XMMS_PKGCONF_FILES'] = []
     conf.env['XMMS_OUTPUT_PLUGINS'] = [(-1, "NONE")]
