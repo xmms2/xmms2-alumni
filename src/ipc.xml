@@ -662,6 +662,60 @@ vim:expandtab
             </argument>
         </method>
 
+        <method>
+            <name>rehash</name>
+            <documentation>Rehashes the medialib. This will make sure that the data in the medialib is the same as the data in the files. </documentation>
+
+            <argument>
+                <name>id</name>
+                <documentation>The ID of the song to rehash. If this is zero the whole medialib will be rehashed.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </argument>
+        </method>
+
+        <method>
+            <name>get_id</name>
+            <documentation>Retrieves the medialib ID that belongs to the given URL.</documentation>
+
+            <argument>
+                <name>url</name>
+                <documentation>The URL to look for in the medialib.</documentation>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+
+            <return_value>
+                <documentation>The medialib ID associated with the URL.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </return_value>
+        </method>
+
+        <method>
+            <name>remove_entry</name>
+            <documentation>Removes an entry from the medialib.</documentation>
+
+            <argument>
+                <name>entry</name>
+                <documentation>The ID of the medialib entry to remove.</documentation>
+
+                <type>
+                    <uint />
+                </type>
+            </argument>
+        </method>
+
+        <!-- FIXME: property_set_str -->
+        <!-- FIXME: property_set_int -->
+        <!-- FIXME: property_remove -->
+
         <broadcast>
             <id>8</id>
             <name>entry_added</name>
