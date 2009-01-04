@@ -28,28 +28,14 @@ module Xmms::Client
 
 			@transferred = 0
 
-			# the data chunks that make up the serialized message.
-			# the first entry will be overwritten with the header later.
-			@chunks = [nil]
-
-			@header = ""
-
-			@payload = ""
-			@payload_offset = 0
+			@payload_offset = HEADER_LENGTH
+			@raw_data = ''
 		end
 
 		# returns false if more data needs to be written
 		def write_cb(socket)
-			if @transferred < HEADER_LENGTH
-				left = HEADER_LENGTH - @transferred
-				written = socket.syswrite @header[@transferred, left]
-				@transferred += written
-
-				return false
-			end
-
 			left = HEADER_LENGTH + @payload_length - @transferred
-			chunk = @payload[@transferred - HEADER_LENGTH, left]
+			chunk = @raw_data[@transferred, left]
 			written = socket.syswrite chunk
 
 			@transferred += written
@@ -61,39 +47,36 @@ module Xmms::Client
 		def read_cb(socket)
 			if @transferred < HEADER_LENGTH
 				chunk = socket.sysread HEADER_LENGTH - @transferred
-				@header << chunk
+				@raw_data << chunk
 				@transferred += chunk.size
 
 				if @transferred == HEADER_LENGTH
-					items = @header.unpack 'NNNN'
+					items = @raw_data.unpack 'NNNN'
 
 					@object_id = items.shift
 					@command_id = items.shift
 					@cookie = items.shift
 					@payload_length = items.shift
 				end
-
-				false
-			else
-				total_length = HEADER_LENGTH + @payload_length
-
-				chunk = socket.sysread total_length - @transferred
-				@payload << chunk
-				@transferred += chunk.size
-
-				@transferred == total_length
 			end
+
+			total_length = HEADER_LENGTH + @payload_length
+
+			chunk = socket.sysread total_length - @transferred
+			@raw_data << chunk
+			@transferred += chunk.size
+
+			@transferred == total_length
 		end
 
 		def assemble(cookie)
 			@cookie = cookie
 
-			@header = [
+			header = [
 				@object_id, @command_id, @cookie, @payload_length
 			].pack 'NNNN'
 
-			@payload = @chunks.join
-			@chunks.clear
+			@raw_data = header << @raw_data
 		end
 
 		def self.check_int(n)
@@ -108,7 +91,7 @@ module Xmms::Client
 
 		def write_int(n)
 			chunk = [n].pack 'N'
-			@chunks << chunk
+			@raw_data << chunk
 
 			@payload_length += 4
 
@@ -138,7 +121,7 @@ module Xmms::Client
 
 			write_uint z_length
 
-			@chunks << s << "\0"
+			@raw_data << s << "\0"
 
 			@payload_length += z_length
 
@@ -146,7 +129,7 @@ module Xmms::Client
 		end
 
 		def read_int
-			value = @payload[@payload_offset, 4].unpack("N").first
+			value = @raw_data[@payload_offset, 4].unpack("N").first
 			@payload_offset += 4
 
 			value
@@ -158,7 +141,7 @@ module Xmms::Client
 			if length.zero?
 				""
 			else
-				s = @payload[@payload_offset, length - 1]
+				s = @raw_data[@payload_offset, length - 1]
 				@payload_offset += length
 
 				s
