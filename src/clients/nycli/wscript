@@ -17,13 +17,15 @@ def build(bld):
                     playlist_positions.c""".split()
     obj.includes = '. ../../include'
     obj.uselib_local = 'xmmsclient'
-    obj.uselib = 'glib2 readline'
+    obj.uselib = 'glib2 ncurses readline'
 
 #    obj = bld.create_obj('man')
 #    obj.files = ['xmms2.1']
 
 def configure(conf):
-    if not conf.check_cc(lib="readline", uselib_store="readline"):
+    conf.check_cc(lib="ncurses", uselib_store="ncurses")
+
+    if not conf.check_cc(lib="readline", uselib="ncurses", uselib_store="readline"):
         return False
     return True
 
