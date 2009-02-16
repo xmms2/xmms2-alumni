@@ -121,6 +121,7 @@ xmmsc_result_t *xmmsc_playback_start (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_playback_pause (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_playback_current_id (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_playback_seek_ms (xmmsc_connection_t *c, int milliseconds);
+xmmsc_result_t *xmmsc_playback_lyrics (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_playback_seek_ms_rel (xmmsc_connection_t *c, int milliseconds);
 xmmsc_result_t *xmmsc_playback_seek_samples (xmmsc_connection_t *c, int samples);
 xmmsc_result_t *xmmsc_playback_seek_samples_rel (xmmsc_connection_t *c, int samples);
@@ -136,6 +137,7 @@ xmmsc_result_t *xmmsc_broadcast_playback_current_id (xmmsc_connection_t *c);
 
 /* signals */
 xmmsc_result_t *xmmsc_signal_playback_playtime (xmmsc_connection_t *c);
+xmmsc_result_t *xmmsc_signal_playback_lyrics (xmmsc_connection_t *c);
 
 
 /*

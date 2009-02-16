@@ -20,6 +20,7 @@ These libraries are '''not needed''' for building xmms2d itself, but will add ex
 ** [http://www.underbit.com/products/mad/ MAD] (Ubuntu and debian users will want libmad0-dev) - For listening to MPEG files (MPEG 1 & 2 layers I, II and III - includes MP3)
 ** [http://www.audiocoding.com/ FAAD] - For listening to AAC.
 ** [http://www.xiph.org Vorbisfile] - For listening to Ogg Vorbis.
+** [http://libkate.googlecode.com/ libkate] - For synced lyrics in Ogg Vorbis streams.
 ** [http://sidplay2.sourceforge.net/ SIDplay2] - For listening to SIDs.
 ** [http://www.geocities.com/SiliconValley/Lakes/5147/resid/ reSID] - For listening to SIDs.
 ** [http://flac.sourceforge.net/ libFLAC] - for FLAC support

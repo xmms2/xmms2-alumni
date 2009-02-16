@@ -196,6 +196,19 @@ namespace Xmms
 			 */
 			IntResult getPlaytime() const;
 
+			/** Make server emit the current lyrics.
+			 *
+			 *  @throw connection_error If the client isn't connected.
+			 *  @throw mainloop_running_error If a mainloop is running -
+			 *  sync functions can't be called when mainloop is running. This
+			 *  is only thrown if the programmer is careless or doesn't know
+			 *  what he/she's doing. (logic_error)
+			 *  @throw result_error If the operation failed.
+			 *
+			 *  @return The current lyrics, empty if there are none.
+			 */
+			StringResult getLyrics() const;
+
 			/** Set the volume of a channel.
 			 *
 			 *  @param channel Name of the channel.
@@ -228,6 +241,7 @@ namespace Xmms
 			StatusSignal broadcastStatus() const;
 			DictSignal broadcastVolumeChanged() const;
 			IntSignal signalPlaytime() const;
+			StringSignal signalLyrics() const;
 
 		/** @cond */
 		private:

@@ -279,5 +279,29 @@ xmmsc_broadcast_playback_volume_changed (xmmsc_connection_t *c)
 	return xmmsc_send_broadcast_msg (c, XMMS_IPC_SIGNAL_PLAYBACK_VOLUME_CHANGED);
 }
 
+/**
+ * Requests the lyrics signal. This will be called when
+ * lyrics change (new ones, or end of the current one).
+ */
+xmmsc_result_t *
+xmmsc_signal_playback_lyrics (xmmsc_connection_t *c)
+{
+	x_check_conn (c, NULL);
+
+	return xmmsc_send_signal_msg (c, XMMS_IPC_SIGNAL_LYRICS);
+}
+
+/**
+ * Make server emit the current lyrics.
+ */
+xmmsc_result_t *
+xmmsc_playback_lyrics (xmmsc_connection_t *c)
+{
+	x_check_conn (c, NULL);
+
+	return xmmsc_send_msg_no_arg (c, XMMS_IPC_OBJECT_PLAYBACK,
+	                              XMMS_IPC_CMD_LYRICS);
+}
+
 /** @} */
 

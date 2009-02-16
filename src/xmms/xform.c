@@ -68,6 +68,8 @@ struct xmms_xform_St {
 	xmmsv_t *browse_dict;
 	gint browse_index;
 
+	gchar *current_lyrics;
+
 	/** used for line reading */
 	struct {
 		gchar buf[XMMS_XFORM_MAX_LINE_SIZE];
@@ -325,6 +327,32 @@ xmms_xform_client_browse (xmms_xform_object_t *obj, const gchar *url,
 XMMS_CMD_DEFINE (browse, xmms_xform_client_browse, xmms_xform_object_t *,
                  LIST, STRING, NONE);
 
+void
+xmms_xform_set_lyrics (xmms_xform_t *xform, const gchar *lyrics)
+{
+	if (xform->current_lyrics)
+		g_free(xform->current_lyrics);
+	xform->current_lyrics = lyrics ? g_strdup(lyrics) : NULL;
+}
+
+gchar *
+xmms_xform_lyrics (xmms_xform_t *xform, xmms_error_t *error)
+{
+	if (xform->plugin && xform->plugin->methods.lyrics) {
+		if (!xform->plugin->methods.lyrics (xform, error)) {
+			if (xform->current_lyrics)
+				g_free (xform->current_lyrics);
+			xform->current_lyrics = NULL;
+		}
+	} else {
+		/* no lyrics available, try previous */
+		if (xform->prev)
+			return xmms_xform_lyrics (xform->prev, error);
+	}
+
+	return xform->current_lyrics;
+}
+
 static void
 xmms_xform_object_destroy (xmms_object_t *obj)
 {
@@ -366,6 +394,8 @@ xmms_xform_destroy (xmms_object_t *object)
 	g_queue_free (xform->hotspots);
 
 	g_free (xform->buffer);
+
+	g_free (xform->current_lyrics);
 
 	xmms_object_unref (xform->out_type);
 	xmms_object_unref (xform->plugin);
@@ -415,6 +445,8 @@ xmms_xform_new (xmms_xform_plugin_t *plugin, xmms_xform_t *prev,
 
 	xform->buffer = g_malloc (READ_CHUNK);
 	xform->buffersize = READ_CHUNK;
+
+	xform->current_lyrics = NULL;
 
 	return xform;
 }
@@ -1252,6 +1284,7 @@ xmms_xform_plugin_supports (xmms_xform_plugin_t *plugin, xmms_stream_type_t *st,
 }
 
 typedef struct match_state_St {
+	const xmms_xform_plugin_t *prev;
 	xmms_xform_plugin_t *match;
 	xmms_stream_type_t *out_type;
 	gint priority;
@@ -1270,6 +1303,11 @@ xmms_xform_match (xmms_plugin_t *_plugin, gpointer user_data)
 		XMMS_DBG ("Skipping plugin '%s'", xmms_plugin_shortname_get (_plugin));
 		return TRUE;
 	}
+
+        if (state->prev == plugin) {
+		XMMS_DBG ("Plugin '%s' was selected last round, ignoring\n", xmms_plugin_shortname_get (_plugin));
+		return TRUE;
+        }
 
 	XMMS_DBG ("Trying plugin '%s'", xmms_plugin_shortname_get (_plugin));
 	if (xmms_xform_plugin_supports (plugin, state->out_type, &priority)) {
@@ -1301,6 +1339,7 @@ xmms_xform_find (xmms_xform_t *prev, xmms_medialib_entry_t entry,
 	state.out_type = prev->out_type;
 	state.match = NULL;
 	state.priority = -1;
+        state.prev = prev->plugin;
 
 	xmms_plugin_foreach (XMMS_PLUGIN_TYPE_XFORM, xmms_xform_match, &state);
 

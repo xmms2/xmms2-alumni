@@ -149,6 +149,13 @@ typedef struct xmms_xform_methods_St {
 	 * This is called without init() beeing called.
 	 */
 	gboolean (*browse)(xmms_xform_t *, const gchar *, xmms_error_t *);
+
+	/**
+	 * lyrics method.
+	 *
+	 * Called to retrieve the current lyrics.
+	 */
+	gboolean (*lyrics)(xmms_xform_t *, xmms_error_t *);
 } xmms_xform_methods_t;
 
 #define XMMS_XFORM_METHODS_INIT(m) memset (&m, 0, sizeof (xmms_xform_methods_t))
@@ -316,6 +323,8 @@ xmms_config_property_t *xmms_xform_config_lookup (xmms_xform_t *xform,
  */
 xmms_medialib_entry_t xmms_xform_entry_get (xmms_xform_t *xform);
 const gchar *xmms_xform_get_url (xmms_xform_t *xform);
+
+void xmms_xform_set_lyrics (xmms_xform_t *xform, const gchar *lyrics);
 
 #define XMMS_XFORM_BROWSE_FLAG_DIR (1 << 0)
 

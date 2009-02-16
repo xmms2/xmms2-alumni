@@ -121,6 +121,13 @@ namespace Xmms
 		return IntResult( res, ml_ );
 	}
 
+	StringResult Playback::getLyrics() const
+	{
+		xmmsc_result_t* res =
+		    call( connected_, boost::bind( xmmsc_playback_lyrics, conn_ ) );
+		return StringResult( res, ml_ );
+	}
+
 	VoidResult Playback::volumeSet(const std::string& channel,
 	                               int volume) const
 	{
@@ -169,6 +176,14 @@ namespace Xmms
 		    call( connected_,
 		          boost::bind( xmmsc_signal_playback_playtime, conn_ ) );
 		return IntSignal( res, ml_ );
+	}
+
+	StringSignal Playback::signalLyrics() const
+	{
+		xmmsc_result_t* res =
+		    call( connected_,
+		          boost::bind( xmmsc_signal_playback_lyrics, conn_ ) );
+		return StringSignal( res, ml_ );
 	}
 
 	Playback::Playback( xmmsc_connection_t*& conn, bool& connected,

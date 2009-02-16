@@ -278,12 +278,14 @@ cdef extern from "xmmsclient/xmmsclient.h":
 	xmmsc_result_t *xmmsc_playback_seek_samples(xmmsc_connection_t *c, unsigned int samples)
 	xmmsc_result_t *xmmsc_playback_seek_samples_rel(xmmsc_connection_t *c, int samples)
 	xmmsc_result_t *xmmsc_playback_playtime(xmmsc_connection_t *c)
+	xmmsc_result_t *xmmsc_playback_lyrics(xmmsc_connection_t *c)
 	xmmsc_result_t *xmmsc_playback_status(xmmsc_connection_t *c)
 
 	xmmsc_result_t *xmmsc_broadcast_playback_status(xmmsc_connection_t *c)
 	xmmsc_result_t *xmmsc_broadcast_playback_current_id(xmmsc_connection_t *c)
 
 	xmmsc_result_t *xmmsc_signal_playback_playtime(xmmsc_connection_t *c)
+	xmmsc_result_t *xmmsc_signal_playback_lyrics(xmmsc_connection_t *c)
 
 	xmmsc_result_t *xmmsc_playback_volume_set (xmmsc_connection_t *c, char *channel, unsigned int volume)
 	xmmsc_result_t *xmmsc_playback_volume_get (xmmsc_connection_t *c)
@@ -1493,6 +1495,27 @@ cdef class XMMS:
 		@rtype: L{XMMSResult}(UInt)
 		"""
 		return self.create_result(cb, xmmsc_signal_playback_playtime(self.conn))
+
+	def playback_lyrics(self, cb = None):
+		"""
+		playback_lyrics(cb=None) -> XMMSResult
+
+		Return current lyrics on current file/stream. This is essentially a
+		more direct version of L{signal_playback_lyrics}
+		@rtype: L{XMMSResult}(String)
+		@return: The result of the operation.(lyrics as a string)
+		"""
+		return self.create_result(cb, xmmsc_playback_lyrics(self.conn))
+
+	def signal_playback_lyrics(self, cb = None):
+		"""
+		signal_playback_lyrics(cb=None) -> XMMSResult
+
+		Set a method to handle the playback lyrics signal from the
+		XMMS2 daemon.
+		@rtype: L{XMMSResult}(UInt)
+		"""
+		return self.create_result(cb, xmmsc_signal_playback_lyrics(self.conn))
 
 	def playback_volume_set(self, channel, volume, cb = None):
 		"""

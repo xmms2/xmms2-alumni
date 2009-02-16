@@ -57,6 +57,7 @@ static void xmms_playback_client_seeksamples_rel (xmms_output_t *output, gint32 
 static gint32 xmms_playback_client_status (xmms_output_t *output, xmms_error_t *error);
 static gint xmms_playback_client_current_id (xmms_output_t *output, xmms_error_t *error);
 static gint32 xmms_playback_client_playtime (xmms_output_t *output, xmms_error_t *err);
+static gchar *xmms_playback_client_lyrics_get (xmms_output_t *output, xmms_error_t *error);
 
 typedef enum xmms_output_filler_state_E {
 	FILLER_STOP,
@@ -92,6 +93,7 @@ XMMS_CMD_DEFINE (output_status, xmms_playback_client_status, xmms_output_t *, IN
 XMMS_CMD_DEFINE (currentid, xmms_playback_client_current_id, xmms_output_t *, INT32, NONE, NONE);
 XMMS_CMD_DEFINE (volume_set, xmms_playback_client_volume_set, xmms_output_t *, NONE, STRING, INT32);
 XMMS_CMD_DEFINE (volume_get, xmms_playback_client_volume_get, xmms_output_t *, DICT, NONE, NONE);
+XMMS_CMD_DEFINE (lyrics_get, xmms_playback_client_lyrics_get, xmms_output_t *, STRING, NONE, NONE);
 
 /*
  * Type definitions
@@ -160,6 +162,11 @@ struct xmms_output_St {
 
 	GThread *monitor_volume_thread;
 	gboolean monitor_volume_running;
+
+	/**
+	 * Current lyrics, might be NULL if no xform supplies lyrics.
+	 */
+	gchar *current_lyrics;
 };
 
 /** @} */
@@ -287,6 +294,12 @@ song_changed (void *data)
 	if (arg->flush)
 		xmms_output_flush (arg->output);
 
+	/* discard any lyrics we might have had */
+	if (arg->output->current_lyrics) {
+		g_free(arg->output->current_lyrics);
+		arg->output->current_lyrics = NULL;
+	}
+
 	xmms_object_emit_f (XMMS_OBJECT (arg->output),
 	                    XMMS_IPC_SIGNAL_PLAYBACK_CURRENTID,
 	                    XMMSV_TYPE_INT32,
@@ -337,6 +350,36 @@ xmms_output_filler_seek_state (xmms_output_t *output, guint32 samples)
 	output->filler_seek = samples;
 	g_cond_signal (output->filler_state_cond);
 	g_mutex_unlock (output->filler_mutex);
+}
+
+static void
+xmms_output_filler_update_lyrics (xmms_output_t *output, xmms_xform_t *chain)
+{
+	gchar *lyrics = NULL;
+	xmms_error_t err;
+
+	g_return_if_fail (output != NULL);
+
+	/* starting chain might be NULL */
+	if (chain) {
+		xmms_error_reset (&err);
+		lyrics = xmms_xform_lyrics (chain, &err);
+		if (lyrics) {
+			/* we've found lyrics, replace if different */
+			int same = (output->current_lyrics!=NULL) && !strcmp(output->current_lyrics, lyrics);
+			if (!same) {
+				if (output->current_lyrics)
+					g_free(output->current_lyrics);
+				output->current_lyrics = g_strdup(lyrics);
+			}
+		}
+		else {
+			if (output->current_lyrics) {
+				g_free(output->current_lyrics);
+				output->current_lyrics = NULL;
+			}
+		}
+	}
 }
 
 static void *
@@ -484,6 +527,8 @@ xmms_output_filler (void *arg)
 			}
 		}
 
+		/* walk the chain of xforms and see if we have lyrics */
+		xmms_output_filler_update_lyrics (output, chain);
 	}
 	g_mutex_unlock (output->filler_mutex);
 	return NULL;
@@ -765,6 +810,33 @@ xmms_output_latency (xmms_output_t *output)
 }
 
 /**
+ * Get the current lyrics (NULL if no lyrics).
+ */
+gchar*
+xmms_playback_client_lyrics_get (xmms_output_t *output, xmms_error_t *error)
+{
+	gchar *lyrics = NULL;
+
+	g_return_val_if_fail (output, NULL);
+
+	g_mutex_lock (output->filler_mutex);
+	if (output->current_lyrics)
+		lyrics = g_strdup(output->current_lyrics);
+	else
+	{
+		/* The C++ api chokes when we return a NULL pointer here
+		 * it throws a std::logic_error with 
+		 * 'what():  basic_string::_S_construct NULL not valid'
+		 */
+		lyrics = g_strdup("");
+	}
+	g_mutex_unlock (output->filler_mutex);
+
+	return lyrics;
+}
+
+
+/**
  * @internal
  */
 
@@ -836,6 +908,9 @@ xmms_output_destroy (xmms_object_t *object)
 	g_mutex_free (output->filler_mutex);
 	g_cond_free (output->filler_state_cond);
 	xmms_ringbuf_destroy (output->filler_buffer);
+
+	if (output->current_lyrics)
+		g_free(output->current_lyrics);
 
 	xmms_ipc_broadcast_unregister ( XMMS_IPC_SIGNAL_PLAYBACK_VOLUME_CHANGED);
 	xmms_ipc_broadcast_unregister ( XMMS_IPC_SIGNAL_PLAYBACK_STATUS);
@@ -972,6 +1047,9 @@ xmms_output_new (xmms_output_plugin_t *plugin, xmms_playlist_t *playlist)
 	xmms_object_cmd_add (XMMS_OBJECT (output),
 	                     XMMS_IPC_CMD_VOLUME_GET,
 	                     XMMS_CMD_FUNC (volume_get));
+	xmms_object_cmd_add (XMMS_OBJECT (output),
+	                     XMMS_IPC_CMD_LYRICS,
+	                     XMMS_CMD_FUNC (lyrics_get));
 
 	output->status = XMMS_PLAYBACK_STATUS_STOP;
 
