@@ -316,10 +316,9 @@ namespace Xmms
 	Dict::const_iterator::copy( const const_iterator& rh )
 	{
 		const char* key = 0;
-		xmmsv_t* rh_parent( xmmsv_dict_iter_get_parent( rh.it_ ) );
-		xmmsv_get_dict_iter( rh_parent, &it_ );
+		xmmsv_get_dict_iter( dict_, &it_ );
 		xmmsv_dict_iter_pair( rh.it_, &key, NULL );
-		xmmsv_dict_iter_seek( it_, key );
+		xmmsv_dict_iter_find( it_, key );
 	}
 
 	bool Dict::const_iterator::equal( const const_iterator& rh ) const

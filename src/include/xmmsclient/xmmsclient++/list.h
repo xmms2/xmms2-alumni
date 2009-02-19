@@ -148,7 +148,7 @@ namespace Xmms
 					xmmsv_get_error( value, &buf );
 					throw value_error( buf );
 				}
-				if( !xmmsv_is_list( value ) ) {
+				if( !xmmsv_is_type( value, XMMSV_TYPE_LIST ) ) {
 					throw not_list_error( "Provided value is not a list" );
 				}
 
@@ -224,7 +224,7 @@ namespace Xmms
 		: list_( list ), it_( 0 )
 	{
 		xmmsv_get_list_iter( list_, &it_ );
-		xmmsv_list_iter_goto( it_, pos );
+		xmmsv_list_iter_seek( it_, pos );
 	}
 
 	template< typename T >
@@ -240,7 +240,7 @@ namespace Xmms
 		if( list_ ) {
 			xmmsv_t* rh_parent( xmmsv_list_iter_get_parent( rh.it_ ) );
 			xmmsv_get_list_iter( rh_parent, &it_ );
-			xmmsv_list_iter_goto( it_, xmmsv_list_iter_tell( rh.it_ ) );
+			xmmsv_list_iter_seek( it_, xmmsv_list_iter_tell( rh.it_ ) );
 		}
 	}
 
@@ -256,7 +256,7 @@ namespace Xmms
 		if( list_ ) {
 			xmmsv_t* rh_parent( xmmsv_list_iter_get_parent( rh.it_ ) );
 			xmmsv_get_list_iter( rh_parent, &it_ );
-			xmmsv_list_iter_goto( it_, xmmsv_list_iter_tell( rh.it_ ) );
+			xmmsv_list_iter_seek( it_, xmmsv_list_iter_tell( rh.it_ ) );
 		}
 		else {
 			it_ = 0;
@@ -312,7 +312,7 @@ namespace Xmms
 	{
 		unsigned int pos( xmmsv_list_iter_tell( it_ ) );
 		if ( pos != 0 ) {
-			xmmsv_list_iter_goto( it_, pos - 1 );
+			xmmsv_list_iter_seek( it_, pos - 1 );
 		}
 		return *this;
 	}
