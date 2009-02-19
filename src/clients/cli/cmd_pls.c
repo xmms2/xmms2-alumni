@@ -20,7 +20,7 @@ cmds plist_commands[] = {
 	{ "list", "List all available playlists", cmd_playlists_list },
 	{ "active", "Displays the name of the active playlist", cmd_playlist_active },
 	{ "create", "[playlistname] - Create a playlist", cmd_playlist_create },
-	{ "type", "[playlistname] [type] - Set the type of the playlist (list, queue, pshuffle)", cmd_playlist_type },
+	{ "type", "[playlistname] [type] [pool] - Set the type of the playlist (list, queue, pshuffle, ...)", cmd_playlist_type },
 	{ "load", "[playlistname] - Load 'playlistname' stored in medialib", cmd_playlist_load },
 	{ "remove", "[playlistname] - Remove a playlist", cmd_playlist_remove },
 	{ NULL, NULL, NULL },
@@ -54,18 +54,6 @@ add_item_to_playlist (xmmsc_connection_t *conn, gchar *playlist, gchar *item)
 
 	if (verbose) {
 		print_info ("Added %s", item);
-	}
-}
-
-
-static const gchar *
-get_playlist_type_string (xmmsv_coll_type_t type)
-{
-	switch (type) {
-	case XMMS_COLLECTION_TYPE_IDLIST:        return "list";
-	case XMMS_COLLECTION_TYPE_QUEUE:         return "queue";
-	case XMMS_COLLECTION_TYPE_PARTYSHUFFLE:  return "pshuffle";
-	default:                                 return "unknown";
 	}
 }
 
@@ -631,10 +619,11 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsv_get_list_iter (val, &it);
 	while (xmmsv_list_iter_valid (it)) {
 		xmmsc_result_t *info_res;
-		xmmsv_t *val_id, *propdict, *info_val;
+		xmmsv_t *val_id, *info_val;
 		const char *errmsg;
 		gchar line[80];
 		gint playtime = 0;
+		const gchar *buffer = NULL;
 		gint ui;
 
 		xmmsv_list_iter_entry (it, &val_id);
@@ -644,14 +633,14 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 		info_res = xmmsc_medialib_get_info (conn, ui);
 		xmmsc_result_wait (info_res);
-		propdict = xmmsc_result_get_value (info_res);
-		info_val = xmmsv_propdict_to_dict (propdict, NULL);
+		info_val = xmmsc_result_get_value (info_res);
 
 		if (xmmsv_get_error (info_val, &errmsg)) {
 			print_error ("%s", errmsg);
 		}
 
-		if (xmmsv_dict_entry_get_int (info_val, "duration", &playtime)) {
+		if (xmmsv_dict_entry_get_string (info_val, "duration", &buffer)) {
+			playtime = strtol (buffer, NULL, 10);
 			total_playtime += playtime;
 		}
 
@@ -692,7 +681,6 @@ cmd_list (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		pos++;
 
 		xmmsc_result_unref (info_res);
-		xmmsv_unref (info_val);
 		xmmsv_list_iter_next (it);
 	}
 	xmmsc_result_unref (res);
@@ -792,7 +780,7 @@ void
 cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *name;
-	xmmsv_coll_type_t prevtype, newtype;
+	gchar *type;
 	xmmsc_result_t *res;
 	xmmsv_t *val;
 	const char *errmsg;
@@ -800,7 +788,7 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	/* Read playlist name */
 	if (argc < 4) {
-		print_error ("usage: type_playlist [playlistname] [type] [options]");
+		print_error ("usage: type_playlist [playlistname] [type] [pool]");
 	}
 	name = argv[3];
 
@@ -814,40 +802,25 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	xmmsv_get_coll (val, &coll);
-	prevtype = xmmsv_coll_get_type (coll);
 
 	/* No type argument, simply display the current type */
 	if (argc < 5) {
-		print_info (get_playlist_type_string (prevtype));
+		if (xmmsv_coll_attribute_get (coll, "type", &type)) {
+			print_info (type);
+		} else {
+			print_info ("list");
+		}
 
 	/* Type argument, set the new type */
 	} else {
-		gint typelen;
 		gint idlistsize;
 		xmmsc_result_t *saveres;
 		xmmsv_t *saveval;
 		xmmsv_coll_t *newcoll;
 		gint i;
 
-		typelen = strlen (argv[4]);
-		if (g_ascii_strncasecmp (argv[4], "list", typelen) == 0) {
-			newtype = XMMS_COLLECTION_TYPE_IDLIST;
-		} else if (g_ascii_strncasecmp (argv[4], "queue", typelen) == 0) {
-			newtype = XMMS_COLLECTION_TYPE_QUEUE;
-		} else if (g_ascii_strncasecmp (argv[4], "pshuffle", typelen) == 0) {
-			newtype = XMMS_COLLECTION_TYPE_PARTYSHUFFLE;
-
-			/* Setup operand for party shuffle (set operand) ! */
-			if (argc < 6) {
-				print_error ("Give the source collection for the party shuffle");
-			}
-
-		} else {
-			print_error ("Invalid playlist type (valid types: list, queue, pshuffle)");
-		}
-
-		/* Copy collection idlist, attributes and operand (if needed) */
-		newcoll = xmmsv_coll_new (newtype);
+		/* Copy collection idlist, attributes and operand */
+		newcoll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
 
 		idlistsize = xmmsv_coll_idlist_get_size (coll);
 		for (i = 0; i < idlistsize; i++) {
@@ -857,13 +830,15 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		}
 
 		xmmsv_coll_attribute_foreach (coll, coll_copy_attributes, newcoll);
+		xmmsv_coll_attribute_set (newcoll, "type", argv[4]);
 
-		if (newtype == XMMS_COLLECTION_TYPE_PARTYSHUFFLE) {
+		if (argc > 5) {
 			playlist_setup_pshuffle (conn, newcoll, argv[5]);
 		}
 
 		/* Overwrite with new collection */
-		saveres = xmmsc_coll_save (conn, newcoll, name, XMMS_COLLECTION_NS_PLAYLISTS);
+		saveres = xmmsc_coll_save (conn, newcoll, name,
+		                           XMMS_COLLECTION_NS_PLAYLISTS);
 		xmmsc_result_wait (saveres);
 
 		saveval = xmmsc_result_get_value (saveres);
