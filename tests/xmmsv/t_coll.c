@@ -35,19 +35,14 @@ CASE (test_coll_simple_types)
 {
 	xmmsv_coll_t *c;
 
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNIVERSE);
+	CU_ASSERT_PTR_NOT_NULL (c);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_UNIVERSE);
+	xmmsv_coll_unref (c);
+
 	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
 	CU_ASSERT_PTR_NOT_NULL (c);
 	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_REFERENCE);
-	xmmsv_coll_unref (c);
-
-	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNION);
-	CU_ASSERT_PTR_NOT_NULL (c);
-	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_UNION);
-	xmmsv_coll_unref (c);
-
-	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_INTERSECTION);
-	CU_ASSERT_PTR_NOT_NULL (c);
-	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_INTERSECTION);
 	xmmsv_coll_unref (c);
 
 	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_COMPLEMENT);
@@ -55,14 +50,39 @@ CASE (test_coll_simple_types)
 	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_COMPLEMENT);
 	xmmsv_coll_unref (c);
 
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_INTERSECTION);
+	CU_ASSERT_PTR_NOT_NULL (c);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_INTERSECTION);
+	xmmsv_coll_unref (c);
+
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNION);
+	CU_ASSERT_PTR_NOT_NULL (c);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_UNION);
+	xmmsv_coll_unref (c);
+
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_CONCATENATION);
+	CU_ASSERT_PTR_NOT_NULL (c);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_CONCATENATION);
+	xmmsv_coll_unref (c);
+
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_INTERSECTION_ORDER);
+	CU_ASSERT_PTR_NOT_NULL (c);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_INTERSECTION_ORDER);
+	xmmsv_coll_unref (c);
+
 	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_HAS);
 	CU_ASSERT_PTR_NOT_NULL (c);
 	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_HAS);
 	xmmsv_coll_unref (c);
 
-	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_EQUALS);
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_ID);
 	CU_ASSERT_PTR_NOT_NULL (c);
-	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_EQUALS);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_ID);
+	xmmsv_coll_unref (c);
+
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_COMPARE);
+	CU_ASSERT_PTR_NOT_NULL (c);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_COMPARE);
 	xmmsv_coll_unref (c);
 
 	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_MATCH);
@@ -70,30 +90,37 @@ CASE (test_coll_simple_types)
 	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_MATCH);
 	xmmsv_coll_unref (c);
 
-	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_SMALLER);
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_TOKEN);
 	CU_ASSERT_PTR_NOT_NULL (c);
-	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_SMALLER);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_TOKEN);
 	xmmsv_coll_unref (c);
 
-	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_GREATER);
-	CU_ASSERT_PTR_NOT_NULL (c);
-	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_GREATER);
-	xmmsv_coll_unref (c);
+	/* date */
 
 	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
 	CU_ASSERT_PTR_NOT_NULL (c);
 	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_IDLIST);
 	xmmsv_coll_unref (c);
 
-	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_QUEUE);
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_ORDER);
 	CU_ASSERT_PTR_NOT_NULL (c);
-	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_QUEUE);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_ORDER);
 	xmmsv_coll_unref (c);
 
-	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_PARTYSHUFFLE);
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_LIMIT);
 	CU_ASSERT_PTR_NOT_NULL (c);
-	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_PARTYSHUFFLE);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_LIMIT);
 	xmmsv_coll_unref (c);
+
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_MEDIASET);
+	CU_ASSERT_PTR_NOT_NULL (c);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_MEDIASET);
+	xmmsv_coll_unref (c);
+
+	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_LAST + 1);
+	CU_ASSERT_PTR_NULL (c);
+	if (c)
+		xmmsv_coll_unref (c);
 
 	c = xmmsv_coll_new (1000);
 	CU_ASSERT_PTR_NULL (c);
@@ -105,22 +132,6 @@ CASE (test_coll_simple_types)
 	if (c)
 		xmmsv_coll_unref (c);
 }
-
-CASE (test_coll_universe)
-{
-	char *am;
-	xmmsv_coll_t *c;
-
-	c = xmmsv_coll_universe ();
-	CU_ASSERT_PTR_NOT_NULL (c);
-
-	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_REFERENCE);
-
-	CU_ASSERT_TRUE (xmmsv_coll_attribute_get (c, "reference", &am));
-	CU_ASSERT_STRING_EQUAL (am, "All Media");
-	xmmsv_coll_unref (c);
-}
-
 
 /* #2109 */
 CASE (test_coll_operands_list_clear)
