@@ -165,7 +165,6 @@ coll_dump_list (xmmsv_t *list, unsigned int level)
 		}
 		xmmsv_list_iter_next (it);
 	}
-
 }
 
 /* Dump the structure of the collection as a string */
@@ -174,9 +173,10 @@ coll_dump (xmmsv_coll_t *coll, unsigned int level)
 {
 	gint i;
 	gchar *indent;
+	gboolean first;
 
-	gchar *attr1;
-	gchar *attr2;
+	const gchar *attr_key, *attr_value;
+	xmmsv_coll_t *operand;
 	GString *idlist_str;
 
 	indent = g_malloc ((level * 2) + 1);
@@ -185,87 +185,81 @@ coll_dump (xmmsv_coll_t *coll, unsigned int level)
 	}
 	indent[i] = '\0';
 
+	printf (indent);
+
 	/* type */
 	switch (xmmsv_coll_get_type (coll)) {
+	case XMMS_COLLECTION_TYPE_UNIVERSE:
+		printf ("Universe"); break;
 	case XMMS_COLLECTION_TYPE_REFERENCE:
-		xmmsv_coll_attribute_get (coll, "reference", &attr1);
-		print_info ("%sReference: '%s'", indent, attr1);
-		break;
-
-	case XMMS_COLLECTION_TYPE_UNION:
-		print_info ("%sUnion:", indent);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
-	case XMMS_COLLECTION_TYPE_INTERSECTION:
-		print_info ("%sIntersection:", indent);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
+		printf ("Reference"); break;
 	case XMMS_COLLECTION_TYPE_COMPLEMENT:
-		print_info ("%sComplement:", indent);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
-	case XMMS_COLLECTION_TYPE_EQUALS:
-		xmmsv_coll_attribute_get (coll, "field",  &attr1);
-		xmmsv_coll_attribute_get (coll, "value", &attr2);
-		print_info ("%sEquals ('%s', '%s') for:", indent, attr1, attr2);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
+		printf ("Complement"); break;
+	case XMMS_COLLECTION_TYPE_INTERSECTION:
+		printf ("Intersection"); break;
+	case XMMS_COLLECTION_TYPE_UNION:
+		printf ("Union"); break;
+	case XMMS_COLLECTION_TYPE_CONCATENATION:
+		printf ("Concatenation"); break;
+	case XMMS_COLLECTION_TYPE_INTERSECTION_ORDER:
+		printf ("Order aware intersection"); break;
 	case XMMS_COLLECTION_TYPE_HAS:
-		xmmsv_coll_attribute_get (coll, "field",  &attr1);
-		print_info ("%sHas ('%s') for:", indent, attr1);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
+		printf ("Has"); break;
+	case XMMS_COLLECTION_TYPE_ID:
+		printf ("ID"); break;
+	case XMMS_COLLECTION_TYPE_COMPARE:
+		printf ("Compare"); break;
 	case XMMS_COLLECTION_TYPE_MATCH:
-		xmmsv_coll_attribute_get (coll, "field",  &attr1);
-		xmmsv_coll_attribute_get (coll, "value", &attr2);
-		print_info ("%sMatch ('%s', '%s') for:", indent, attr1, attr2);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
-	case XMMS_COLLECTION_TYPE_SMALLER:
-		xmmsv_coll_attribute_get (coll, "field",  &attr1);
-		xmmsv_coll_attribute_get (coll, "value", &attr2);
-		print_info ("%sSmaller ('%s', '%s') for:", indent, attr1, attr2);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
-	case XMMS_COLLECTION_TYPE_GREATER:
-		xmmsv_coll_attribute_get (coll, "field",  &attr1);
-		xmmsv_coll_attribute_get (coll, "value", &attr2);
-		print_info ("%sGreater ('%s', '%s') for:", indent, attr1, attr2);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
+		printf ("Match"); break;
+	case XMMS_COLLECTION_TYPE_TOKEN:
+		printf ("Token"); break;
+	case XMMS_COLLECTION_TYPE_DATE:
+		printf ("Date"); break;
 	case XMMS_COLLECTION_TYPE_IDLIST:
-		idlist_str = coll_idlist_to_string (coll);
-		print_info ("%sIdlist: %s", indent, idlist_str->str);
-		g_string_free (idlist_str, TRUE);
-		break;
-
-	case XMMS_COLLECTION_TYPE_QUEUE:
-		idlist_str = coll_idlist_to_string (coll);
-		print_info ("%sQueue: %s", indent, idlist_str->str);
-		g_string_free (idlist_str, TRUE);
-		break;
-
-	case XMMS_COLLECTION_TYPE_PARTYSHUFFLE:
-		idlist_str = coll_idlist_to_string (coll);
-		print_info ("%sParty Shuffle: %s from :", indent, idlist_str->str);
-		g_string_free (idlist_str, TRUE);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
+		printf ("Idlist"); break;
+	case XMMS_COLLECTION_TYPE_ORDER:
+		printf ("Order"); break;
+	case XMMS_COLLECTION_TYPE_LIMIT:
+		printf ("Limit"); break;
+	case XMMS_COLLECTION_TYPE_MEDIASET:
+		printf ("Mediaset"); break;
 
 	default:
-		print_info ("%sUnknown Operator!", indent);
-		break;
+		printf ("Unknown"); break;
 	}
 
-	g_free (indent);
+	/* attributes */
+	xmmsv_coll_attribute_list_first (coll);
+	if (xmmsv_coll_attribute_list_valid (coll)) {
+		printf (" (");
+		for (first = TRUE ;
+		     xmmsv_coll_attribute_list_valid (coll);
+		     xmmsv_coll_attribute_list_next (coll)) {
+
+			if (first) {
+				first = FALSE;
+			} else {
+				printf (", ");
+			}
+
+			xmmsv_coll_attribute_list_entry (coll, &attr_key, &attr_value);
+
+			printf ("%s:'%s'", attr_key, attr_value);
+		}
+		printf (")");
+	}
+
+	printf ("\n");
+
+	/* idlist */
+	idlist_str = coll_idlist_to_string (coll);
+	if (strcmp (idlist_str->str, "()") != 0) {
+		print_info ("%sIDs: %s", indent, idlist_str->str);
+	}
+	g_string_free (idlist_str, TRUE);
+
+	/* operands */
+	coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
 }
 
 static void
