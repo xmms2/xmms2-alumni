@@ -276,6 +276,9 @@ xmmsc_result_t* xmmsc_coll_query_medialist_ids (xmmsc_connection_t *conn, xmmsv_
 xmmsc_result_t* xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsv_coll_t *coll, xmmsv_t *order, int limit_start, int limit_len);
 xmmsc_result_t* xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsv_coll_t *coll, xmmsv_t *order, int limit_start, int limit_len, xmmsv_t *fetch, xmmsv_t *group);
 
+xmmsv_coll_t *xmmsv_coll_add_order_operators (xmmsv_coll_t *coll, xmmsv_t *order);
+xmmsv_coll_t *xmmsv_coll_add_order_operator (xmmsv_coll_t *coll, const char *key);
+
 /* string-to-collection parser */
 typedef enum {
 	XMMS_COLLECTION_TOKEN_INVALID,
