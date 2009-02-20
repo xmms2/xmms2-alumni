@@ -467,28 +467,6 @@ coll_parse_prepare (xmmsv_coll_token_t *tokens)
 			}
 			break;
 
-		case XMMS_COLLECTION_TOKEN_OPFIL_GREATEREQ:
-		case XMMS_COLLECTION_TOKEN_OPFIL_SMALLEREQ:
-			/* Transform '<=', '>=' into '<', '>' */
-			if (curr->type == XMMS_COLLECTION_TOKEN_INTEGER) {
-				char *newstr;
-				if (prev->type == XMMS_COLLECTION_TOKEN_OPFIL_GREATEREQ)
-					newstr = string_intadd (curr->string, -1);
-				else
-					newstr = string_intadd (curr->string, 1);
-
-				if (newstr != NULL) {
-					if (prev->type == XMMS_COLLECTION_TOKEN_OPFIL_GREATEREQ)
-						prev->type = XMMS_COLLECTION_TOKEN_OPFIL_GREATER;
-					else
-						prev->type = XMMS_COLLECTION_TOKEN_OPFIL_SMALLER;
-
-					free (curr->string);
-					curr->string = newstr;
-				}
-			}
-			break;
-
 		default:
 			break;
 		}
@@ -891,7 +869,7 @@ coll_parse_unaryfilter (xmmsv_coll_token_t *tokens, xmmsv_coll_t **ret)
 static xmmsv_coll_token_t *
 coll_parse_binaryfilter (xmmsv_coll_token_t *tokens, xmmsv_coll_t **ret)
 {
-	char *prop, *strval;
+	char *prop, *strval, *operation;
 	xmmsv_coll_t *coll = NULL;
 	xmmsv_coll_token_t *operand;
 	xmmsv_coll_type_t colltype;
@@ -911,10 +889,12 @@ coll_parse_binaryfilter (xmmsv_coll_token_t *tokens, xmmsv_coll_t **ret)
 	operand = coll_next_token (tk);
 	if (tk && operand) {
 		strval = NULL;
+		operation = NULL;
 
 		switch (tk->type) {
 		case XMMS_COLLECTION_TOKEN_OPFIL_EQUALS:
-			colltype = XMMS_COLLECTION_TYPE_EQUALS;
+			colltype = XMMS_COLLECTION_TYPE_COMPARE;
+			operation = "=";
 			if (operand->type == XMMS_COLLECTION_TOKEN_STRING) {
 				strval = operand->string;
 			}
@@ -926,15 +906,37 @@ coll_parse_binaryfilter (xmmsv_coll_token_t *tokens, xmmsv_coll_t **ret)
 			break;
 
 		case XMMS_COLLECTION_TOKEN_OPFIL_SMALLER:
-			colltype = XMMS_COLLECTION_TYPE_SMALLER;
-			if (operand->type == XMMS_COLLECTION_TOKEN_INTEGER) {
+			colltype = XMMS_COLLECTION_TYPE_COMPARE;
+			operation = "<";
+			if (operand->type == XMMS_COLLECTION_TOKEN_INTEGER ||
+			    operand->type == XMMS_COLLECTION_TOKEN_STRING) {
 				strval = operand->string;
 			}
 			break;
 
 		case XMMS_COLLECTION_TOKEN_OPFIL_GREATER:
-			colltype = XMMS_COLLECTION_TYPE_GREATER;
-			if (operand->type == XMMS_COLLECTION_TOKEN_INTEGER) {
+			colltype = XMMS_COLLECTION_TYPE_COMPARE;
+			operation = ">";
+			if (operand->type == XMMS_COLLECTION_TOKEN_INTEGER ||
+			    operand->type == XMMS_COLLECTION_TOKEN_STRING) {
+				strval = operand->string;
+			}
+			break;
+
+		case XMMS_COLLECTION_TOKEN_OPFIL_SMALLEREQ:
+			colltype = XMMS_COLLECTION_TYPE_COMPARE;
+			operation = "<=";
+			if (operand->type == XMMS_COLLECTION_TOKEN_INTEGER ||
+			    operand->type == XMMS_COLLECTION_TOKEN_STRING) {
+				strval = operand->string;
+			}
+			break;
+
+		case XMMS_COLLECTION_TOKEN_OPFIL_GREATEREQ:
+			colltype = XMMS_COLLECTION_TYPE_COMPARE;
+			operation = ">=";
+			if (operand->type == XMMS_COLLECTION_TOKEN_INTEGER ||
+			    operand->type == XMMS_COLLECTION_TOKEN_STRING) {
 				strval = operand->string;
 			}
 			break;
@@ -943,10 +945,22 @@ coll_parse_binaryfilter (xmmsv_coll_token_t *tokens, xmmsv_coll_t **ret)
 			break;
 		}
 
+		if (colltype == XMMS_COLLECTION_TYPE_COMPARE &&
+		    strcmp (prop, "id") == 0) {
+			colltype = XMMS_COLLECTION_TYPE_ID;
+		}
+
 		if (strval) {
 			coll = xmmsv_coll_new (colltype);
-			xmmsv_coll_attribute_set (coll, "field", prop);
+
+			if (operation) {
+				xmmsv_coll_attribute_set (coll, "operation", operation);
+			}
+			if (colltype != XMMS_COLLECTION_TYPE_ID) {
+				xmmsv_coll_attribute_set (coll, "field", prop);
+			}
 			xmmsv_coll_attribute_set (coll, "value", strval);
+
 			coll_append_universe (coll);
 		}
 	}
@@ -962,41 +976,34 @@ coll_parse_autofilter (xmmsv_coll_token_t *token, xmmsv_coll_t **ret)
 {
 	char *strval;
 	xmmsv_coll_type_t colltype;
-	xmmsv_coll_t *coll, *operand;
+	xmmsv_coll_t *coll;
 	int i;
-	/* Properties to match by default. */
-	const char *coll_autofilter[] = { "artist", "album", "title", NULL };
 
 	if (token->type == XMMS_COLLECTION_TOKEN_OPFIL_EQUALS) {
-		colltype = XMMS_COLLECTION_TYPE_EQUALS;
+		colltype = XMMS_COLLECTION_TYPE_COMPARE;
 		token = coll_next_token (token);
 	} else if (token->type == XMMS_COLLECTION_TOKEN_OPFIL_MATCH) {
 		colltype = XMMS_COLLECTION_TYPE_MATCH;
 		token = coll_next_token (token);
 	} else {
-		/* No operator at all, guess from argument type */
-		if (token->type == XMMS_COLLECTION_TOKEN_PATTERN)
-			colltype = XMMS_COLLECTION_TYPE_MATCH;
-		else
-			colltype = XMMS_COLLECTION_TYPE_EQUALS;
+		/* No operator at all, guess token-search */
+		colltype = XMMS_COLLECTION_TYPE_TOKEN;
 	}
 
-	strval = coll_parse_strval (token);
-	if (!strval) {
-		*ret = NULL;
-		return token;
+	/* Use integers as if they were strings */
+	if (token && token->type == XMMS_COLLECTION_TOKEN_INTEGER) {
+		strval = token->string;
+	} else {
+		strval = coll_parse_strval (token);
+		if (!strval) {
+			*ret = NULL;
+			return token;
+		}
 	}
 
-	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNION);
-
-	for (i = 0; coll_autofilter[i] != NULL; i++) {
-		operand = xmmsv_coll_new (colltype);
-		xmmsv_coll_attribute_set (operand, "field", coll_autofilter[i]);
-		xmmsv_coll_attribute_set (operand, "value", strval);
-		xmmsv_coll_add_operand (coll, operand);
-		coll_append_universe (operand);
-		xmmsv_coll_unref (operand);
-	}
+	coll = xmmsv_coll_new (colltype);
+	xmmsv_coll_attribute_set (coll, "value", strval);
+	coll_append_universe (coll);
 
 	*ret = coll;
 	return coll_next_token (token);
