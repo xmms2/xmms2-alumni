@@ -1248,7 +1248,30 @@ xmms_collection_find_alias (xmms_coll_dag_t *dag, guint nsid,
 xmms_medialib_entry_t
 xmms_collection_get_random_media (xmms_coll_dag_t *dag, xmmsv_coll_t *source)
 {
-	return xmms_medialib_query_random_id (dag, source);
+	GList *res;
+	xmms_medialib_entry_t mid = 0;
+	xmmsv_coll_t *coll, *coll2;
+
+	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_ORDER);
+	xmmsv_coll_attribute_set (coll, "type", "random");
+	xmmsv_coll_add_operand (coll, source);
+
+	coll2 = xmmsv_coll_new (XMMS_COLLECTION_TYPE_LIMIT);
+	xmmsv_coll_attribute_set (coll2, "length", "1");
+	xmmsv_coll_add_operand (coll2, coll);
+
+	res = xmms_collection_query_medialist_ids (dag, coll2, NULL);
+
+	xmmsv_coll_unref (coll);
+	xmmsv_coll_unref (coll2);
+	if (res != NULL) {
+		xmmsv_t *val = (xmmsv_t *) res->data;
+		xmmsv_get_int (val, &mid);
+		xmmsv_unref (val);
+		g_list_free (res);
+	}
+
+	return mid;
 }
 
 /** @} */
