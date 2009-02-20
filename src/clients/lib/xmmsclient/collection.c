@@ -184,6 +184,26 @@ xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn,
 	                       XMMSV_LIST_END);
 }
 
+/**
+ * Find out whether a collection is a medialist
+ *
+ * @param conn  The connection to the server.
+ * @param coll  The collection to investigate.
+ */
+xmmsc_result_t* xmmsc_coll_is_medialist (xmmsc_connection_t *conn,
+                                         xmmsv_coll_t *coll)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (conn, NULL);
+	x_api_error_if (!coll, "with a NULL collection", NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_COLLECTION,
+	                        XMMS_IPC_CMD_COLLECTION_IS_MEDIALIST);
+	xmms_ipc_msg_put_collection (msg, coll);
+
+	return xmmsc_send_msg (conn, msg);
+}
 
 /**
  * List metadata of all media in a medialist (in the appropiate order).

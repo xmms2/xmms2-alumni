@@ -127,6 +127,7 @@ static GList *xmms_collection_client_query_clustered (xmms_coll_dag_t *dag, xmms
 static GList *xmms_collection_client_query_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, const gchar *fetch, xmms_error_t *err);
 static xmmsv_coll_t *xmms_collection_client_idlist_from_playlist (xmms_coll_dag_t *dag, const gchar *mediainfo, xmms_error_t *err);
 static void xmms_collection_client_sync (xmms_coll_dag_t *dag, xmms_error_t *err);
+static gboolean xmms_collection_client_is_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmms_error_t *err);
 
 #include "collection_ipc.c"
 
@@ -1065,6 +1066,94 @@ xmms_collection_get_pointer (xmms_coll_dag_t *dag, const gchar *collname,
 	}
 
 	return coll;
+}
+
+static gboolean
+xmms_collection_is_medialist_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
+{
+	xmmsv_coll_t *operand;
+	gchar *attr, *attr2;
+	guint nsid;
+
+	switch (xmmsv_coll_get_type (coll)) {
+		case XMMS_COLLECTION_TYPE_UNIVERSE:
+		case XMMS_COLLECTION_TYPE_COMPLEMENT:
+		case XMMS_COLLECTION_TYPE_INTERSECTION:
+		case XMMS_COLLECTION_TYPE_UNION:
+		case XMMS_COLLECTION_TYPE_MEDIASET:
+			return FALSE;
+
+		case XMMS_COLLECTION_TYPE_IDLIST:
+		case XMMS_COLLECTION_TYPE_ORDER:
+		case XMMS_COLLECTION_TYPE_LIMIT:
+			return TRUE;
+
+		case XMMS_COLLECTION_TYPE_REFERENCE:
+			xmmsv_coll_attribute_get (coll, "reference", &attr);
+			if (strcmp (attr, "All Media") == 0) {
+				return FALSE;
+			} else {
+				xmmsv_coll_attribute_get (coll, "namespace", &attr2);
+				nsid = xmms_collection_get_namespace_id (attr2);
+				operand = xmms_collection_get_pointer (dag, attr, nsid);
+
+				return xmms_collection_is_medialist_recurs (dag, operand);
+			}
+
+		case XMMS_COLLECTION_TYPE_ID:
+			xmmsv_coll_attribute_get (coll, "operation", &attr);
+			if (strcmp (attr, "=") == 0) {
+				return TRUE;
+			}
+			/* fall through */
+
+		default:
+			xmmsv_coll_operand_list_save (coll);
+
+			xmmsv_coll_operand_list_first (coll);
+			if (!xmmsv_coll_operand_list_entry (coll, &operand)) {
+				xmms_log_error ("Operand expected but none found");
+				return FALSE;
+			}
+
+			xmmsv_coll_operand_list_restore (coll);
+
+			return xmms_collection_is_medialist_recurs (dag, operand);
+	}
+}
+
+/** Find whether a collection is a medialist or a mediaset.
+ *
+ * @param coll  The collection to investigate
+ * @param err   To store an error message when something goes wrong.
+ * @return TRUE if the collection is a medialist, FALSE otherwise
+ */
+gboolean
+xmms_collection_is_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
+                              xmms_error_t *err)
+{
+	gboolean ret;
+
+	/* validate the collection to query */
+	if (!xmms_collection_validate (dag, coll, NULL, NULL)) {
+		if (err) {
+			xmms_error_set (err, XMMS_ERROR_INVAL, "invalid collection structure");
+		}
+		return FALSE;
+	}
+
+	g_mutex_lock (dag->mutex);
+	ret = xmms_collection_is_medialist_recurs (dag, coll);
+	g_mutex_unlock (dag->mutex);
+
+	return ret;
+}
+
+gboolean
+xmms_collection_client_is_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
+                              xmms_error_t *err)
+{
+	return xmms_collection_is_medialist (dag, coll, err);
 }
 
 /** Extract an attribute from a collection as an integer.
