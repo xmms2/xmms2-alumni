@@ -230,6 +230,7 @@ xmmsv_coll_default_parse_tokens (const char *str, const char **newpos)
 	TOKEN_MATCH_CHAR ('(', XMMS_COLLECTION_TOKEN_GROUP_OPEN);
 	TOKEN_MATCH_CHAR (')', XMMS_COLLECTION_TOKEN_GROUP_CLOSE);
 	TOKEN_MATCH_CHAR ('#', XMMS_COLLECTION_TOKEN_SYMBOL_ID);
+	TOKEN_MATCH_CHAR ('/', XMMS_COLLECTION_TOKEN_SYMBOL_POSITION);
 	TOKEN_MATCH_CHAR ('+', XMMS_COLLECTION_TOKEN_OPFIL_HAS);
 	TOKEN_MATCH_CHAR (':', XMMS_COLLECTION_TOKEN_OPFIL_EQUALS);
 	TOKEN_MATCH_CHAR ('~', XMMS_COLLECTION_TOKEN_OPFIL_MATCH);
@@ -526,7 +527,7 @@ coll_parse_sequence (xmmsv_coll_token_t *tokens, const char *field,
                      xmmsv_coll_t **ret)
 {
 	char *start, *end, *seq, *num;
-	xmmsv_coll_t *coll, *parent;
+	xmmsv_coll_t *coll, *parent, *source;
 
 	if (!tokens || (tokens->type != XMMS_COLLECTION_TOKEN_INTEGER &&
 	                tokens->type != XMMS_COLLECTION_TOKEN_SEQUENCE)) {
@@ -537,12 +538,20 @@ coll_parse_sequence (xmmsv_coll_token_t *tokens, const char *field,
 	start = tokens->string;
 	end = strchr (start, ',');
 
-	/* Take the union if several element in the sequence */
+	/* Take the concatenation if several element in the sequence */
 	if (end != NULL) {
-		parent = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNION);
+		parent = xmmsv_coll_new (XMMS_COLLECTION_TYPE_CONCATENATION);
 	} else {
 		parent = NULL;
 		end = start + strlen (start);
+	}
+
+	if (strcmp (field, "id") == 0) {
+		source = xmmsv_coll_universe ();
+	} else if (strcmp (field, "position") == 0) {
+		source = xmmsv_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
+		xmmsv_coll_attribute_set (source, "namespace", "Playlists");
+		xmmsv_coll_attribute_set (source, "reference", XMMS_ACTIVE_PLAYLIST);
 	}
 
 	while (1) {
@@ -557,42 +566,65 @@ coll_parse_sequence (xmmsv_coll_token_t *tokens, const char *field,
 			len_from = seq - start;
 			len_to = end - seq - 1;
 
-			if (len_from > 0) {
-				buf = string_substr (start, seq);
-				num = string_intadd (buf, -1);
-				coll_from = xmmsv_coll_new (XMMS_COLLECTION_TYPE_GREATER);
-				xmmsv_coll_attribute_set (coll_from, "field", field);
-				xmmsv_coll_attribute_set (coll_from, "value", num);
-				coll_append_universe (coll_from);
-				free (buf);
-				free (num);
-			} else {
-				coll_from = xmmsv_coll_universe ();
-			}
-
 			if (len_to > 0) {
 				buf = string_substr (seq + 1, end);
 				num = string_intadd (buf, 1);
-				coll_to = xmmsv_coll_new (XMMS_COLLECTION_TYPE_SMALLER);
-				xmmsv_coll_attribute_set (coll_to, "field", field);
-				xmmsv_coll_attribute_set (coll_to, "value", num);
-				xmmsv_coll_add_operand (coll_to, coll_from);
-				xmmsv_coll_unref (coll_from);
+				if (strcmp (field, "id") == 0) {
+					coll_to = xmmsv_coll_new (XMMS_COLLECTION_TYPE_ID);
+					xmmsv_coll_attribute_set (coll_to, "operation", "<");
+					xmmsv_coll_attribute_set (coll_to, "value", num);
+				} else if (strcmp (field, "position") == 0) {
+					coll_to = xmmsv_coll_new (XMMS_COLLECTION_TYPE_LIMIT);
+					xmmsv_coll_attribute_set (coll_to, "length", num);
+				}
+				xmmsv_coll_add_operand (coll_to, source);
 				free (buf);
 				free (num);
 			} else {
-				coll_to = coll_from;
+				xmmsv_coll_ref (source);
+				coll_to = source;
 			}
 
-			coll = coll_to;
+			if (len_from > 0) {
+				num = string_substr (start, seq);
+				if (strcmp (field, "id") == 0) {
+					coll_from = xmmsv_coll_new (XMMS_COLLECTION_TYPE_ID);
+					xmmsv_coll_attribute_set (coll_from, "operation", ">=");
+					xmmsv_coll_attribute_set (coll_from, "value", num);
+				} else if (strcmp (field, "position") == 0) {
+					coll_from = xmmsv_coll_new (XMMS_COLLECTION_TYPE_LIMIT);
+					xmmsv_coll_attribute_set (coll_from, "start", num);
+				}
+				xmmsv_coll_add_operand (coll_from, coll_to);
+				xmmsv_coll_unref (coll_to);
+				free (num);
+			} else {
+				coll_from = coll_to;
+			}
+
+			if (strcmp (field, "id") == 0) {
+				coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_ORDER);
+				xmmsv_coll_attribute_set (coll, "type", "id");
+				xmmsv_coll_add_operand (coll, coll_from);
+				xmmsv_coll_unref (coll_from);
+			} else {
+				coll = coll_from;
+			}
 
 		/* Just an integer, match it */
 		} else {
 			num = string_substr (start, end);
-			coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_EQUALS);
-			xmmsv_coll_attribute_set (coll, "field", field);
-			xmmsv_coll_attribute_set (coll, "value", num);
-			coll_append_universe (coll);
+			if (strcmp (field, "id") == 0) {
+				coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_ID);
+				xmmsv_coll_attribute_set (coll, "operation", "=");
+				xmmsv_coll_attribute_set (coll, "value", num);
+			} else if (strcmp (field, "position") == 0) {
+				coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_LIMIT);
+				xmmsv_coll_attribute_set (coll, "start", num);
+				xmmsv_coll_attribute_set (coll, "length", "1");
+			}
+			xmmsv_coll_ref (source);
+			xmmsv_coll_add_operand (coll, source);
 			free (num);
 		}
 
@@ -611,6 +643,8 @@ coll_parse_sequence (xmmsv_coll_token_t *tokens, const char *field,
 			end = start + strlen (start);
 		}
 	}
+
+	xmmsv_coll_unref (source);
 
 	if (parent) {
 		coll = parent;
@@ -637,8 +671,15 @@ coll_parse_idseq (xmmsv_coll_token_t *tokens, xmmsv_coll_t **ret)
 static xmmsv_coll_token_t *
 coll_parse_posseq (xmmsv_coll_token_t *tokens, xmmsv_coll_t **ret)
 {
-	/* FIXME: link with position in (active) playlist? */
-	return coll_parse_sequence (tokens, "position", ret);
+	xmmsv_coll_token_t *tk;
+
+	tk = tokens;
+	TOKEN_ASSERT (tk, XMMS_COLLECTION_TOKEN_SYMBOL_POSITION);
+
+	tk = coll_next_token (tk);
+	tk = coll_parse_sequence (tk, "position", ret);
+
+	return (ret == NULL ? tokens : tk);
 }
 
 static xmmsv_coll_token_t *
