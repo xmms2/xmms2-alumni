@@ -250,7 +250,7 @@ namespace Xmms
 	{
 		list_ = rh.list_;
 		if ( it_ ) {
-			xmmsv_list_iter_free( it_ );
+			xmmsv_list_iter_explicit_destroy( it_ );
 		}
 
 		if( list_ ) {
@@ -269,7 +269,7 @@ namespace Xmms
 	List_const_iterator_< T >::~List_const_iterator_()
 	{
 		if ( it_ ) {
-			xmmsv_list_iter_free( it_ );
+			xmmsv_list_iter_explicit_destroy( it_ );
 		}
 	}
 

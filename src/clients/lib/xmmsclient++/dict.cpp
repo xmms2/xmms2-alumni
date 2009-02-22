@@ -269,7 +269,7 @@ namespace Xmms
 	{
 		dict_ = rh.dict_;
 		if( it_ ) {
-			xmmsv_dict_iter_free( it_ );
+			xmmsv_dict_iter_explicit_destroy( it_ );
 		}
 
 		if ( dict_ ) {
