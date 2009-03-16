@@ -1,0 +1,55 @@
+import os
+from waftools import tool
+
+def build(bld):
+    obj = bld.new_task_gen('qt4', 'shlib', 'cxx')
+    obj.target = 'xmmsclientqt4'
+    obj.includes = '../../../include ../../../includepriv .'
+    obj.source = """ bindata.cpp
+                  client.cpp
+                  collection.cpp
+                  coll.cpp
+                  config.cpp
+                  medialib.cpp
+                  message.cpp
+                  playback.cpp
+                  playlist.cpp
+                  result.cpp
+                  stats.cpp
+                  xform.cpp""".split()
+    headers = """bindata.h
+                 client.h
+                 coll.h
+                 collection.h
+                 config.h
+                 medialib.h
+                 message.h
+                 object.h
+                 playback.h
+                 playlist.h
+                 propdict.h
+                 result.h
+                 stats.h
+                 typedefs.h
+                 xform.h"""
+    obj.vnum = '1.0.0'
+    obj.uselib = 'QTCORE QTNETWORK'
+    tool.add_install_flag(bld, obj)
+    #This still needs some work...
+    instpath = os.path.join('${PREFIX}', 'include', 'xmms2', 'xmmsclient', 'xmmsclientqt4')
+    bld.install_files(instpath, headers)
+
+def configure(conf):
+    if not conf.env["CXX"]:
+        return False
+
+    try:
+        conf.check_tool("qt4")
+    except:
+        return False
+
+    conf.env.append_value('XMMS_PKGCONF_FILES', ('xmms2-client-qt4', '-lxmmsclientqt4'))
+    return True
+
+def set_options(opt):
+    opt.tool_options('qt4')
