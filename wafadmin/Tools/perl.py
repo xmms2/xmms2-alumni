@@ -83,6 +83,9 @@ def check_perl_module(conf, module):
 	conf.check_message("perl module %s" % module, "", r)
 	return r
 
+def expand_relocatable_path(perl, path):
+	return path.replace('...', os.path.dirname(perl))
+
 @conf
 def check_perl_ext_devel(conf):
 	"""
@@ -99,14 +102,15 @@ def check_perl_ext_devel(conf):
 	perl = conf.env['PERL']
 
 	conf.env["LINKFLAGS_PERLEXT"] = Utils.cmd_output(perl + " -MConfig -e'print $Config{lddlflags}'")
-	conf.env["CPPPATH_PERLEXT"] = Utils.cmd_output(perl + " -MConfig -e'print \"$Config{archlib}/CORE\"'")
+	conf.env["CPPPATH_PERLEXT"] = expand_relocatable_path(perl, Utils.cmd_output(perl + " -MConfig -e'print \"$Config{archlib}/CORE\"'"))
 	conf.env["CCFLAGS_PERLEXT"] = Utils.cmd_output(perl + " -MConfig -e'print \"$Config{ccflags} $Config{cccdlflags}\"'")
 
-	conf.env["XSUBPP"] = Utils.cmd_output(perl + " -MConfig -e'print \"$Config{privlib}/ExtUtils/xsubpp$Config{exe_ext}\"'")
-	conf.env["EXTUTILS_TYPEMAP"] = Utils.cmd_output(perl + " -MConfig -e'print \"$Config{privlib}/ExtUtils/typemap\"'")
+	find_extutils = perl + " -MFile::Spec::Functions=catfile -e'print +(grep -f, map { catfile($_, qw/ExtUtils %s/) } @INC)[0]'"
+	conf.env["XSUBPP"] = Utils.cmd_output(find_extutils % 'xsubpp')
+	conf.env["EXTUTILS_TYPEMAP"] = Utils.cmd_output(find_extutils % 'typemap')
 
 	if not getattr(Options.options, 'perlarchdir', None):
-		conf.env["ARCHDIR_PERL"] = Utils.cmd_output(perl + " -MConfig -e'print $Config{sitearch}'")
+		conf.env["ARCHDIR_PERL"] = expand_relocatable_path(perl, Utils.cmd_output(perl + " -MConfig -e'print $Config{sitearch}'"))
 	else:
 		conf.env["ARCHDIR_PERL"] = getattr(Options.options, 'perlarchdir')
 
