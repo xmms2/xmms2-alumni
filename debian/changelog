@@ -5,10 +5,11 @@ xmms2 (0.6DrMattDestruction-1) unstable; urgency=low
     + Remove xmms2-plugin-lastfm. It didn't work anymore after
       last.fm changed how their streaming works.
     + Add xmms2-client-nycli.
+    + Add xmms2-client-vis.
   * Acknowledge NMU. Thanks Adeodato.
   * Fix typo Replaces (Closes: 489521).
 
- -- Florian Ragwitz <rafl@debian.org>  Fri, 24 Apr 2009 23:59:39 +0200
+ -- Florian Ragwitz <rafl@debian.org>  Sat, 25 Apr 2009 00:13:56 +0200
 
 xmms2 (0.5DrLecter-2.1) unstable; urgency=medium
 

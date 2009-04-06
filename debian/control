@@ -43,6 +43,8 @@ Build-Depends: debhelper (>= 5.0.37.2),
                libxml2-dev,
                libexpat1-dev,
                libofa0-dev,
+               libsdl1.2-dev,
+               libvisual-0.4-dev,
                libpulse-dev
 Vcs-Git: git://git.debian.org/git/pkg-xmms2/xmms2
 Vcs-Browser: http://git.debian.org/?p=pkg-xmms2/xmms2.git
@@ -761,3 +763,11 @@ Description: XMMS2 - perl client library
  .
  This package contains a perl library that allows you do write xmms2 clients.
  It's a language binding of libxmmsclient0.
+
+Package: xmms2-client-vis
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Suggests: xmms2-core (= ${binary:Version})
+Description: XMMS2 - visualization clients
+ This package contains the test clients for xmms2's visualization framework
