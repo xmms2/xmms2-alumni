@@ -12,6 +12,7 @@ Build-Depends: debhelper (>= 5.0.37.2),
                python,
                python-all-dev (>= 2.3.5-11),
                libglib2.0-dev,
+               libreadline5-dev,
                libcurl4-openssl-dev,
                libsmbclient-dev,
                libvorbis-dev,
@@ -340,6 +341,14 @@ Depends: ${misc:Depends},
 Suggests: xmms2-core (= ${binary:Version})
 Description: XMMS2 - cli client
  This package contains a simple text-ui for xmms2.
+
+Package: xmms2-client-nycli
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Suggests: xmms2-core (= ${binary:Version})
+Description: XMMS2 - new cli client
+ This package contains the new readline powered text-ui for xmms2.
 
 Package: xmms2-client-avahi
 Architecture: any
