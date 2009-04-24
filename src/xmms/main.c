@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -23,12 +23,8 @@
  * This file controls the XMMS2 main loop.
  */
 
+#include <locale.h>
 #include <glib.h>
-
-/* WAF checks this too, this is just an extra check */
-#if !GLIB_CHECK_VERSION(2,8,0)
-# error You need atleast glib 2.8.0
-#endif
 
 #include "xmms_configuration.h"
 #include "xmmsc/xmmsc_util.h"
@@ -47,6 +43,7 @@
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_bindata.h"
 #include "xmmspriv/xmms_utils.h"
+#include "xmmspriv/xmms_visualization.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,15 +58,15 @@
  */
 static void quit (xmms_object_t *object, xmms_error_t *error);
 static GTree *stats (xmms_object_t *object, xmms_error_t *error);
-static void hello (xmms_object_t *object, guint protocolver, gchar *client, xmms_error_t *error);
+static void hello (xmms_object_t *object, gint protocolver, const gchar *client, xmms_error_t *error);
 static void install_scripts (const gchar *into_dir);
 static xmms_xform_object_t *xform_obj;
 static xmms_bindata_t *bindata_obj;
 
 XMMS_CMD_DEFINE (quit, quit, xmms_object_t*, NONE, NONE, NONE);
-XMMS_CMD_DEFINE (hello, hello, xmms_object_t *, NONE, UINT32, STRING);
+XMMS_CMD_DEFINE (hello, hello, xmms_object_t *, NONE, INT32, STRING);
 XMMS_CMD_DEFINE (stats, stats, xmms_object_t *, DICT, NONE, NONE);
-XMMS_CMD_DEFINE (plugin_list, xmms_plugin_client_list, xmms_object_t *, LIST, UINT32, NONE);
+XMMS_CMD_DEFINE (plugin_list, xmms_plugin_client_list, xmms_object_t *, LIST, INT32, NONE);
 
 /** @defgroup XMMSServer XMMSServer
   * @brief look at this if you want to code inside the server.
@@ -112,14 +109,14 @@ stats (xmms_object_t *object, xmms_error_t *error)
 	gint starttime;
 
 	ret = g_tree_new_full ((GCompareDataFunc) strcmp, NULL,
-	                       NULL, (GDestroyNotify)xmms_object_cmd_value_unref);
+	                       NULL, (GDestroyNotify) xmmsv_unref);
 
 	starttime = ((xmms_main_t*)object)->starttime;
 
 	g_tree_insert (ret, (gpointer) "version",
-	               xmms_object_cmd_value_str_new (XMMS_VERSION));
+	               xmmsv_new_string (XMMS_VERSION));
 	g_tree_insert (ret, (gpointer) "uptime",
-	               xmms_object_cmd_value_int_new (time (NULL)-starttime));
+	               xmmsv_new_int (time (NULL) - starttime));
 
 	return ret;
 }
@@ -198,14 +195,16 @@ load_config ()
  * @param userdata The #xmms_main_t object
  */
 static void
-change_output (xmms_object_t *object, gconstpointer data, gpointer userdata)
+change_output (xmms_object_t *object, xmmsv_t *_data, gpointer userdata)
 {
 	xmms_output_plugin_t *plugin;
 	xmms_main_t *mainobj = (xmms_main_t*)userdata;
-	gchar *outname = (gchar *) data;
+	const gchar *outname;
 
 	if (!mainobj->output)
 		return;
+
+	outname = xmms_config_property_get_string ((xmms_config_property_t *) object);
 
 	xmms_log_info ("Switching to output %s", outname);
 
@@ -240,6 +239,8 @@ xmms_main_destroy (xmms_object_t *object)
 	                      XMMS_IPC_CMD_STOP, &arg);
 
 	g_usleep (G_USEC_PER_SEC); /* wait for the output thread to end */
+
+	xmms_visualization_destroy ();
 	xmms_object_unref (mainobj->output);
 
 	xmms_object_unref (xform_obj);
@@ -247,6 +248,7 @@ xmms_main_destroy (xmms_object_t *object)
 	xmms_config_save ();
 
 	xmms_config_shutdown ();
+
 	xmms_plugin_shutdown ();
 
 	xmms_ipc_object_unregister (XMMS_IPC_OBJECT_MAIN);
@@ -259,7 +261,7 @@ xmms_main_destroy (xmms_object_t *object)
  * @internal Function to respond to the 'hello' sent from clients on connect
  */
 static void
-hello (xmms_object_t *object, guint protocolver, gchar *client, xmms_error_t *error)
+hello (xmms_object_t *object, gint protocolver, const gchar *client, xmms_error_t *error)
 {
 	if (protocolver != XMMS_IPC_PROTOCOL_VERSION) {
 		xmms_log_info ("Client '%s' with bad protocol version (%d, not %d) connected", client, protocolver, XMMS_IPC_PROTOCOL_VERSION);
@@ -273,7 +275,7 @@ static gboolean
 kill_server (gpointer object) {
 	xmms_object_emit_f (XMMS_OBJECT (object),
 	                    XMMS_IPC_SIGNAL_QUIT,
-	                    XMMS_OBJECT_CMD_ARG_UINT32,
+	                    XMMSV_TYPE_INT32,
 	                    time (NULL)-((xmms_main_t*)object)->starttime);
 
 	xmms_object_unref (object);
@@ -339,7 +341,7 @@ void
 print_version ()
 {
 	printf ("XMMS2 version " XMMS_VERSION "\n");
-	printf ("Copyright (C) 2003-2008 XMMS2 Team\n");
+	printf ("Copyright (C) 2003-2009 XMMS2 Team\n");
 	printf ("This is free software; see the source for copying conditions.\n");
 	printf ("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 	printf ("PARTICULAR PURPOSE.\n");
@@ -379,6 +381,8 @@ main (int argc, char **argv)
 	int status_fd = -1;
 	GOptionContext *context = NULL;
 	GError *error = NULL;
+
+	setlocale (LC_ALL, "");
 
 	/**
 	 * The options that the server accepts.
@@ -464,6 +468,12 @@ main (int argc, char **argv)
 
 	load_config ();
 
+	cv = xmms_config_property_register ("core.logtsfmt",
+	                                    "%H:%M:%S ",
+	                                    NULL, NULL);
+
+	xmms_log_set_format (xmms_config_property_get_string (cv));
+
 	xmms_fallback_ipcpath_get (default_path, sizeof (default_path));
 
 	cv = xmms_config_property_register ("core.ipcsocket",
@@ -515,6 +525,7 @@ main (int argc, char **argv)
 	if (!mainobj->output) {
 		xmms_log_fatal ("Failed to create output object!");
 	}
+	xmms_visualization_init (mainobj->output);
 
 	if (status_fd != -1) {
 		write (status_fd, "+", 1);

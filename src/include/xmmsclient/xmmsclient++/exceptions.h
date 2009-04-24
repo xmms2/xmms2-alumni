@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -57,6 +57,17 @@ namespace Xmms
 	{
 		public:
 			explicit result_error( const std::string& what_arg );
+
+	};
+
+	/** @class value_error exceptions.h "xmmsclient/xmmsclient++/exceptions.h"
+	 *
+	 *  @brief Thrown if the returned value is an error.
+	 */
+	class value_error : public std::runtime_error
+	{
+		public:
+			explicit value_error( const std::string& what_arg );
 
 	};
 
@@ -170,6 +181,17 @@ namespace Xmms
 	{
 		public:
 			explicit collection_parsing_error( const std::string& what_arg );
+
+	};
+
+	/** @class invalid_url exceptions.h "xmmsclient/xmmsclient++/exceptions.h"
+	 *
+	 *  @brief Thrown if an invalid url is used.
+	 */
+	class invalid_url : public std::runtime_error
+	{
+		public:
+			explicit invalid_url( const std::string& what_arg );
 
 	};
 

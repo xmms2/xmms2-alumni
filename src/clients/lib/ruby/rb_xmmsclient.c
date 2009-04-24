@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -84,7 +84,7 @@ static ID id_lt, id_gt;
 static void
 c_mark (RbXmmsClient *xmms)
 {
-	rb_gc_mark (xmms->results);
+	rb_gc_mark (xmms->result_callbacks);
 
 	if (!NIL_P (xmms->disconnect_cb))
 		rb_gc_mark (xmms->disconnect_cb);
@@ -130,7 +130,7 @@ c_init (VALUE self, VALUE name)
 	}
 
 	xmms->deleted = false;
-	xmms->results = rb_ary_new ();
+	xmms->result_callbacks = rb_ary_new ();
 	xmms->disconnect_cb = Qnil;
 	xmms->io_need_out_cb = Qnil;
 
@@ -160,8 +160,14 @@ c_connect (int argc, VALUE *argv, VALUE self)
 	if (!NIL_P (path))
 		p = StringValuePtr (path);
 
-	if (!xmmsc_connect (xmms->real, p))
-		rb_raise (eClientError, "cannot connect to daemon");
+	if (!xmmsc_connect (xmms->real, p)) {
+		char buf[255];
+
+		snprintf (buf, sizeof (buf), "cannot connect to daemon (%s)\n",
+		          xmmsc_get_last_error (xmms->real));
+
+		rb_raise (eClientError, buf);
+	}
 
 	return self;
 }
@@ -1280,20 +1286,22 @@ static VALUE
 c_coll_query_ids (int argc, VALUE *argv, VALUE self)
 {
 	VALUE coll, order = Qnil, start, len = Qnil;
-	const char **corder = NULL;
+	xmmsv_t *corder = NULL;
 	METHOD_HANDLER_HEADER
 
 	rb_scan_args (argc, argv, "13", &coll, &order, &start, &len);
 
 	if (!NIL_P (order))
-		corder = parse_string_array (order);
+		corder = parse_string_array2 (order);
 
 	res = xmmsc_coll_query_ids (xmms->real,
 	                            FROM_XMMS_CLIENT_COLLECTION (coll),
 	                            corder,
 	                            NIL_P (start) ? 0 : NUM2UINT (start),
 	                            NIL_P (start) ? 0 : NUM2UINT (len));
-	free (corder);
+
+	xmmsv_unref (corder);
+
 	METHOD_HANDLER_FOOTER
 }
 
@@ -1312,19 +1320,19 @@ static VALUE
 c_coll_query_info (int argc, VALUE *argv, VALUE self)
 {
 	VALUE coll, order = Qnil, start, len, fetch, group = Qnil;
-	const char **cfetch, **corder = NULL, **cgroup = NULL;
+	xmmsv_t *cfetch = NULL, *corder = NULL, *cgroup = NULL;
 	METHOD_HANDLER_HEADER
 
 	rb_scan_args (argc, argv, "24", &coll, &fetch, &order, &start, &len,
 	              &group);
 
-	cfetch = parse_string_array (fetch);
+	cfetch = parse_string_array2 (fetch);
 
 	if (!NIL_P (order))
-		corder = parse_string_array (order);
+		corder = parse_string_array2 (order);
 
 	if (!NIL_P (group))
-		cgroup = parse_string_array (group);
+		cgroup = parse_string_array2 (group);
 
 	res = xmmsc_coll_query_infos (xmms->real,
 	                            FROM_XMMS_CLIENT_COLLECTION (coll),
@@ -1333,9 +1341,9 @@ c_coll_query_info (int argc, VALUE *argv, VALUE self)
 	                            NIL_P (start) ? 0 : NUM2UINT (len),
 	                            cfetch,
 	                            cgroup);
-	free (cfetch);
-	free (corder);
-	free (cgroup);
+	xmmsv_unref (cfetch);
+	xmmsv_unref (corder);
+	xmmsv_unref (cgroup);
 
 	METHOD_HANDLER_FOOTER
 }
@@ -1429,6 +1437,36 @@ parse_string_array (VALUE value)
 	}
 
 	return ret;
+}
+
+xmmsv_t *
+parse_string_array2 (VALUE value)
+{
+	xmmsv_t *list;
+
+
+	list = xmmsv_new_list ();
+
+	if (!NIL_P (rb_check_array_type (value))) {
+		struct RArray *ary = RARRAY (value);
+		int i;
+
+		for (i = 0; i < ary->len; i++) {
+			xmmsv_t *elem;
+
+			elem = xmmsv_new_string (StringValuePtr (ary->ptr[i]));
+			xmmsv_list_append (list, elem);
+			xmmsv_unref (elem);
+		}
+	} else {
+		xmmsv_t *elem;
+
+		elem = xmmsv_new_string (StringValuePtr (value));
+		xmmsv_list_append (list, elem);
+		xmmsv_unref (elem);
+	}
+
+	return list;
 }
 
 void

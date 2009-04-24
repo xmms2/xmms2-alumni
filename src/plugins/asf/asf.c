@@ -1,6 +1,6 @@
 /** @file asf.c
  *  Demuxer plugin for ASF audio format
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -97,7 +97,7 @@ xmms_asf_destroy (xmms_xform_t *xform)
 	g_return_if_fail (data);
 
 	g_string_free (data->outbuf, TRUE);
-	asf_free_packet (data->packet);
+	asf_packet_destroy (data->packet);
 	g_free (data);
 }
 
@@ -105,7 +105,7 @@ static gboolean
 xmms_asf_init (xmms_xform_t *xform)
 {
 	xmms_asf_data_t *data;
-	asf_stream_t stream;
+	asf_iostream_t stream;
 	gint ret;
 
 	g_return_val_if_fail (xform, FALSE);
@@ -130,7 +130,7 @@ xmms_asf_init (xmms_xform_t *xform)
 	ret = asf_init (data->file);
 	if (ret < 0) {
 		XMMS_DBG ("ASF parser failed to init with error %d", ret);
-		asf_free_packet (data->packet);
+		asf_packet_destroy (data->packet);
 		asf_close (data->file);
 
 		return FALSE;
@@ -139,7 +139,7 @@ xmms_asf_init (xmms_xform_t *xform)
 	data->track = xmms_asf_get_track (xform, data->file);
 	if (data->track < 0) {
 		XMMS_DBG ("No audio track found");
-		asf_free_packet (data->packet);
+		asf_packet_destroy (data->packet);
 		asf_close (data->file);
 
 		return FALSE;
@@ -203,7 +203,7 @@ xmms_asf_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_seek_mode_t whenc
 	g_return_val_if_fail (xform, -1);
 
 	data = xmms_xform_private_data_get (xform);
-	g_return_val_if_fail (data, FALSE);
+	g_return_val_if_fail (data, -1);
 
 	position = asf_seek_to_msec (data->file, samples * 1000 / data->samplerate);
 	XMMS_DBG ("Seeking %" G_GINT64_FORMAT " returned with %" G_GINT64_FORMAT,
@@ -242,7 +242,11 @@ xmms_asf_get_mediainfo (xmms_xform_t *xform)
 		                             tmp);
 	}
 
-	metadata = asf_get_metadata (data->file);
+	metadata = asf_header_get_metadata (data->file);
+	if (!metadata) {
+		XMMS_DBG ("No metadata object found in the file");
+		return;
+	}
 
 	if (metadata->title && metadata->title[0]) {
 		xmms_xform_metadata_set_str (xform,
@@ -313,7 +317,7 @@ xmms_asf_get_mediainfo (xmms_xform_t *xform)
 		}
 	}
 
-	asf_free_metadata (metadata);
+	asf_metadata_destroy (metadata);
 }
 
 int32_t
@@ -374,9 +378,10 @@ xmms_asf_get_track (xmms_xform_t *xform, asf_file_t *file)
 	stream_count = asf_get_stream_count (file);
 
 	for (i=1; i <= stream_count; i++) {
-		asf_stream_properties_t *sprop = asf_get_stream_properties (file, i);
-		if (sprop->type == ASF_STREAM_TYPE_AUDIO) {
-			asf_waveformatex_t *wfx = sprop->properties;
+		asf_stream_t *stream = asf_get_stream (file, i);
+		if (stream->type == ASF_STREAM_TYPE_AUDIO &&
+		    !(stream->flags & ASF_STREAM_FLAG_HIDDEN)) {
+			asf_waveformatex_t *wfx = stream->properties;
 			const gchar *mimetype;
 
 			if (wfx->wFormatTag == 0x160)

@@ -3,15 +3,11 @@
 
 #include "xmms/xmms_ipc.h"
 
-typedef enum {
-	XMMS_IPC_CLIENT_STATUS_NEW,
-} xmms_ipc_client_status_t;
-
 typedef struct xmms_ipc_St xmms_ipc_t;
 
 xmms_ipc_t *xmms_ipc_init (void);
 void xmms_ipc_shutdown (void);
-void on_config_ipcsocket_change (xmms_object_t *object, gconstpointer data, gpointer udata);
+void on_config_ipcsocket_change (xmms_object_t *object, xmmsv_t *data, gpointer udata);
 gboolean xmms_ipc_setup_server (const gchar *path);
 gboolean xmms_ipc_setup_with_gmain (xmms_ipc_t *ipc);
 

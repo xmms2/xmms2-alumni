@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -17,19 +17,15 @@
 #ifndef __XMMS_CLIENT_H__
 #define __XMMS_CLIENT_H__
 
+#include "xmmsc/xmmsc_compiler.h"
 #include "xmmsc/xmmsc_stdint.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 #include "xmmsc/xmmsc_idnumbers.h"
-#include "xmmsc/xmmsc_coll.h"
+#include "xmmsc/xmmsv.h"
+#include "xmmsc/xmmsv_coll.h"
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#if defined (__GNUC__) && __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ > 1)
-#define XMMS_DEPRECATED __attribute__((deprecated))
-#else
-#define XMMS_DEPRECATED
 #endif
 
 typedef struct xmmsc_connection_St xmmsc_connection_t;
@@ -63,7 +59,7 @@ int xmmsc_io_fd_get (xmmsc_connection_t *c);
 
 char *xmmsc_get_last_error (xmmsc_connection_t *c);
 
-xmmsc_result_t *xmmsc_quit(xmmsc_connection_t *);
+xmmsc_result_t *xmmsc_quit(xmmsc_connection_t *c);
 
 xmmsc_result_t *xmmsc_broadcast_quit (xmmsc_connection_t *c);
 
@@ -79,30 +75,34 @@ const char *xmmsc_userconfdir_get (char *buf, int len);
 xmmsc_result_t *xmmsc_playlist_list (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_playlist_create (xmmsc_connection_t *c, const char *playlist);
 xmmsc_result_t *xmmsc_playlist_shuffle (xmmsc_connection_t *c, const char *playlist);
-xmmsc_result_t *xmmsc_playlist_add_args (xmmsc_connection_t *c, const char *playlist, const char *, int, const char **);
+xmmsc_result_t *xmmsc_playlist_add_args (xmmsc_connection_t *c, const char *playlist, const char *, int, const char **) XMMS_DEPRECATED;
+xmmsc_result_t *xmmsc_playlist_add_full (xmmsc_connection_t *c, const char *playlist, const char *, xmmsv_t *);
 xmmsc_result_t *xmmsc_playlist_add_url (xmmsc_connection_t *c, const char *playlist, const char *url);
-xmmsc_result_t *xmmsc_playlist_add_id (xmmsc_connection_t *c, const char *playlist, uint32_t id);
+xmmsc_result_t *xmmsc_playlist_add_id (xmmsc_connection_t *c, const char *playlist, int id);
 xmmsc_result_t *xmmsc_playlist_add_encoded (xmmsc_connection_t *c, const char *playlist, const char *url);
-xmmsc_result_t *xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist, xmmsc_coll_t *coll);
-xmmsc_result_t *xmmsc_playlist_add_collection (xmmsc_connection_t *c, const char *playlist, xmmsc_coll_t *coll, const char **order);
-xmmsc_result_t *xmmsc_playlist_remove_entry (xmmsc_connection_t *c, const char *playlist, uint32_t);
+xmmsc_result_t *xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist, xmmsv_coll_t *coll);
+xmmsc_result_t *xmmsc_playlist_add_collection (xmmsc_connection_t *c, const char *playlist, xmmsv_coll_t *coll, xmmsv_t *order);
+xmmsc_result_t *xmmsc_playlist_remove_entry (xmmsc_connection_t *c, const char *playlist, int);
 xmmsc_result_t *xmmsc_playlist_clear (xmmsc_connection_t *c, const char *playlist);
 xmmsc_result_t *xmmsc_playlist_remove (xmmsc_connection_t *c, const char *playlist);
 xmmsc_result_t *xmmsc_playlist_list_entries (xmmsc_connection_t *c, const char *playlist);
-xmmsc_result_t *xmmsc_playlist_sort (xmmsc_connection_t *c, const char *playlist, const char** properties);
-xmmsc_result_t *xmmsc_playlist_set_next (xmmsc_connection_t *c, uint32_t);
+xmmsc_result_t *xmmsc_playlist_sort (xmmsc_connection_t *c, const char *playlist, xmmsv_t *properties);
+xmmsc_result_t *xmmsc_playlist_set_next (xmmsc_connection_t *c, int32_t);
 xmmsc_result_t *xmmsc_playlist_set_next_rel (xmmsc_connection_t *c, int32_t);
-xmmsc_result_t *xmmsc_playlist_move_entry (xmmsc_connection_t *c, const char *playlist, uint32_t, uint32_t);
+xmmsc_result_t *xmmsc_playlist_move_entry (xmmsc_connection_t *c, const char *playlist, int, int);
 xmmsc_result_t *xmmsc_playlist_current_pos (xmmsc_connection_t *c, const char *playlist);
 xmmsc_result_t *xmmsc_playlist_current_active (xmmsc_connection_t *c);
-xmmsc_result_t *xmmsc_playlist_insert_args (xmmsc_connection_t *c, const char *playlist, int pos, const char *url, int numargs, const char **args);
+xmmsc_result_t *xmmsc_playlist_insert_args (xmmsc_connection_t *c, const char *playlist, int pos, const char *url, int numargs, const char **args) XMMS_DEPRECATED;
+xmmsc_result_t *xmmsc_playlist_insert_full (xmmsc_connection_t *c, const char *playlist, int pos, const char *url, xmmsv_t *args);
 xmmsc_result_t *xmmsc_playlist_insert_url (xmmsc_connection_t *c, const char *playlist, int pos, const char *url);
-xmmsc_result_t *xmmsc_playlist_insert_id (xmmsc_connection_t *c, const char *playlist, int pos, uint32_t id);
+xmmsc_result_t *xmmsc_playlist_insert_id (xmmsc_connection_t *c, const char *playlist, int pos, int32_t id);
 xmmsc_result_t *xmmsc_playlist_insert_encoded (xmmsc_connection_t *c, const char *playlist, int pos, const char *url);
-xmmsc_result_t *xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist, int pos, xmmsc_coll_t *coll, const char **order);
+xmmsc_result_t *xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist, int pos, xmmsv_coll_t *coll, xmmsv_t *order);
 xmmsc_result_t *xmmsc_playlist_load (xmmsc_connection_t *c, const char *playlist);
 xmmsc_result_t *xmmsc_playlist_radd (xmmsc_connection_t *c, const char *playlist, const char *url);
 xmmsc_result_t *xmmsc_playlist_radd_encoded (xmmsc_connection_t *c, const char *playlist, const char *url);
+xmmsc_result_t *xmmsc_playlist_rinsert (xmmsc_connection_t *c, const char *playlist, int pos, const char *url);
+xmmsc_result_t *xmmsc_playlist_rinsert_encoded (xmmsc_connection_t *c, const char *playlist, int pos, const char *url);
 
 /* broadcasts */
 xmmsc_result_t *xmmsc_broadcast_playlist_changed (xmmsc_connection_t *c);
@@ -120,13 +120,13 @@ xmmsc_result_t *xmmsc_playback_tickle (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_playback_start (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_playback_pause (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_playback_current_id (xmmsc_connection_t *c);
-xmmsc_result_t *xmmsc_playback_seek_ms (xmmsc_connection_t *c, uint32_t milliseconds);
+xmmsc_result_t *xmmsc_playback_seek_ms (xmmsc_connection_t *c, int milliseconds);
 xmmsc_result_t *xmmsc_playback_seek_ms_rel (xmmsc_connection_t *c, int milliseconds);
-xmmsc_result_t *xmmsc_playback_seek_samples (xmmsc_connection_t *c, uint32_t samples);
+xmmsc_result_t *xmmsc_playback_seek_samples (xmmsc_connection_t *c, int samples);
 xmmsc_result_t *xmmsc_playback_seek_samples_rel (xmmsc_connection_t *c, int samples);
 xmmsc_result_t *xmmsc_playback_playtime (xmmsc_connection_t *c);
 xmmsc_result_t *xmmsc_playback_status (xmmsc_connection_t *c);
-xmmsc_result_t *xmmsc_playback_volume_set (xmmsc_connection_t *c, const char *channel, uint32_t volume);
+xmmsc_result_t *xmmsc_playback_volume_set (xmmsc_connection_t *c, const char *channel, int volume);
 xmmsc_result_t *xmmsc_playback_volume_get (xmmsc_connection_t *c);
 
 /* broadcasts */
@@ -166,31 +166,65 @@ xmmsc_result_t *xmmsc_broadcast_mediainfo_reader_status (xmmsc_connection_t *c);
 /* signals */
 xmmsc_result_t *xmmsc_signal_mediainfo_reader_unindexed (xmmsc_connection_t *c);
 
+
+/*
+ * VISUALIZATION **************************************************
+ */
+
+/* commands */
+xmmsc_result_t *xmmsc_visualization_version (xmmsc_connection_t *c);
+xmmsc_result_t *xmmsc_visualization_init (xmmsc_connection_t *c);
+/* Returns 1 on success, 0 on failure. In that case, see xmmsc_get_last_error() */
+int xmmsc_visualization_init_handle (xmmsc_result_t *res);
+xmmsc_result_t *xmmsc_visualization_start (xmmsc_connection_t *c, int vv);
+void xmmsc_visualization_start_handle (xmmsc_connection_t *c, xmmsc_result_t *res);
+bool xmmsc_visualization_started (xmmsc_connection_t *c, int vv);
+bool xmmsc_visualization_errored (xmmsc_connection_t *c, int vv);
+
+xmmsc_result_t *xmmsc_visualization_property_set (xmmsc_connection_t *c, int v, const char *key, const char *value);
+xmmsc_result_t *xmmsc_visualization_properties_set (xmmsc_connection_t *c, int v, xmmsv_t *props);
+/*
+ * drawtime: expected time needed to process the data in milliseconds after collecting it
+    if >= 0, the data is returned as soon as currenttime >= (playtime - drawtime);
+	         data is thrown away if playtime < currenttime, but not if playtime < currenttime - drawtime
+    if  < 0, the data is returned as soon as available, and no old data is thrown away
+ * blocking: time limit given in ms to wait for data. The process will sleep until new data is available, or the
+             limit is reached. But if data is found, it could still wait until it is current (see drawtime).
+ * returns size read on success, -1 on failure (server killed!) and 0 if no data is available yet (retry later)
+ * if a signal is received while waiting for data, 0 is returned, even before time ran out
+ * Note: the size read can be less than expected (for example, on song end). Check it!
+ */
+int xmmsc_visualization_chunk_get (xmmsc_connection_t *c, int vv, short *buffer, int drawtime, unsigned int blocking);
+void xmmsc_visualization_shutdown (xmmsc_connection_t *c, int v);
+
+
 /*
  * MEDIALIB ***********************************************
  */
 
 /* commands */
-int xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res);
+int xmmsc_entry_format (char *target, int len, const char *fmt, xmmsv_t *val) XMMS_DEPRECATED;
 xmmsc_result_t *xmmsc_medialib_add_entry (xmmsc_connection_t *conn, const char *url);
-xmmsc_result_t *xmmsc_medialib_add_entry_args (xmmsc_connection_t *conn, const char *url, int numargs, const char **args);
+xmmsc_result_t *xmmsc_medialib_add_entry_args (xmmsc_connection_t *conn, const char *url, int numargs, const char **args) XMMS_DEPRECATED;
+xmmsc_result_t *xmmsc_medialib_add_entry_full (xmmsc_connection_t *conn, const char *url, xmmsv_t *args);
 xmmsc_result_t *xmmsc_medialib_add_entry_encoded (xmmsc_connection_t *conn, const char *url);
-xmmsc_result_t *xmmsc_medialib_get_info (xmmsc_connection_t *, uint32_t);
+xmmsc_result_t *xmmsc_medialib_get_info (xmmsc_connection_t *, int);
 xmmsc_result_t *xmmsc_medialib_path_import (xmmsc_connection_t *conn, const char *path);
 xmmsc_result_t *xmmsc_medialib_path_import_encoded (xmmsc_connection_t *conn, const char *path);
-xmmsc_result_t *xmmsc_medialib_rehash (xmmsc_connection_t *conn, uint32_t id);
+xmmsc_result_t *xmmsc_medialib_rehash (xmmsc_connection_t *conn, int id);
 xmmsc_result_t *xmmsc_medialib_get_id (xmmsc_connection_t *conn, const char *url);
-xmmsc_result_t *xmmsc_medialib_remove_entry (xmmsc_connection_t *conn, uint32_t entry);
-xmmsc_result_t *xmmsc_medialib_move_entry (xmmsc_connection_t *conn, uint32_t entry, const char *url);
+xmmsc_result_t *xmmsc_medialib_get_id_encoded (xmmsc_connection_t *conn, const char *url);
+xmmsc_result_t *xmmsc_medialib_remove_entry (xmmsc_connection_t *conn, int entry);
+xmmsc_result_t *xmmsc_medialib_move_entry (xmmsc_connection_t *conn, int entry, const char *url);
 
-xmmsc_result_t *xmmsc_medialib_entry_property_set_int (xmmsc_connection_t *c, uint32_t id, const char *key, int32_t value);
-xmmsc_result_t *xmmsc_medialib_entry_property_set_int_with_source (xmmsc_connection_t *c, uint32_t id, const char *source, const char *key, int32_t value);
+xmmsc_result_t *xmmsc_medialib_entry_property_set_int (xmmsc_connection_t *c, int id, const char *key, int32_t value);
+xmmsc_result_t *xmmsc_medialib_entry_property_set_int_with_source (xmmsc_connection_t *c, int id, const char *source, const char *key, int32_t value);
 
-xmmsc_result_t *xmmsc_medialib_entry_property_set_str (xmmsc_connection_t *c, uint32_t id, const char *key, const char *value);
-xmmsc_result_t *xmmsc_medialib_entry_property_set_str_with_source (xmmsc_connection_t *c, uint32_t id, const char *source, const char *key, const char *value);
+xmmsc_result_t *xmmsc_medialib_entry_property_set_str (xmmsc_connection_t *c, int id, const char *key, const char *value);
+xmmsc_result_t *xmmsc_medialib_entry_property_set_str_with_source (xmmsc_connection_t *c, int id, const char *source, const char *key, const char *value);
 
-xmmsc_result_t *xmmsc_medialib_entry_property_remove (xmmsc_connection_t *c, uint32_t id, const char *key);
-xmmsc_result_t *xmmsc_medialib_entry_property_remove_with_source (xmmsc_connection_t *c, uint32_t id, const char *source, const char *key);
+xmmsc_result_t *xmmsc_medialib_entry_property_remove (xmmsc_connection_t *c, int id, const char *key);
+xmmsc_result_t *xmmsc_medialib_entry_property_remove_with_source (xmmsc_connection_t *c, int id, const char *source, const char *key);
 
 /* XForm object */
 xmmsc_result_t *xmmsc_xform_media_browse (xmmsc_connection_t *c, const char *url);
@@ -211,17 +245,17 @@ xmmsc_result_t *xmmsc_broadcast_medialib_entry_added (xmmsc_connection_t *c);
  * COLLECTION ***********************************************
  */
 
-xmmsc_result_t* xmmsc_coll_get (xmmsc_connection_t *conn, const char *collname, xmmsc_coll_namespace_t ns);
-xmmsc_result_t* xmmsc_coll_list (xmmsc_connection_t *conn, xmmsc_coll_namespace_t ns);
-xmmsc_result_t* xmmsc_coll_save (xmmsc_connection_t *conn, xmmsc_coll_t *coll, const char* name, xmmsc_coll_namespace_t ns);
-xmmsc_result_t* xmmsc_coll_remove (xmmsc_connection_t *conn, const char* name, xmmsc_coll_namespace_t ns);
-xmmsc_result_t* xmmsc_coll_find (xmmsc_connection_t *conn, unsigned int mediaid, xmmsc_coll_namespace_t ns);
-xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn, const char* from_name, const char* to_name, xmmsc_coll_namespace_t ns);
+xmmsc_result_t* xmmsc_coll_get (xmmsc_connection_t *conn, const char *collname, xmmsv_coll_namespace_t ns);
+xmmsc_result_t* xmmsc_coll_list (xmmsc_connection_t *conn, xmmsv_coll_namespace_t ns);
+xmmsc_result_t* xmmsc_coll_save (xmmsc_connection_t *conn, xmmsv_coll_t *coll, const char* name, xmmsv_coll_namespace_t ns);
+xmmsc_result_t* xmmsc_coll_remove (xmmsc_connection_t *conn, const char* name, xmmsv_coll_namespace_t ns);
+xmmsc_result_t* xmmsc_coll_find (xmmsc_connection_t *conn, int mediaid, xmmsv_coll_namespace_t ns);
+xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn, const char* from_name, const char* to_name, xmmsv_coll_namespace_t ns);
 xmmsc_result_t *xmmsc_coll_idlist_from_playlist_file (xmmsc_connection_t *conn, const char *path);
 xmmsc_result_t* xmmsc_coll_sync (xmmsc_connection_t *conn);
 
-xmmsc_result_t* xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll, const char **order, unsigned int limit_start, unsigned int limit_len);
-xmmsc_result_t* xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsc_coll_t *coll, const char **order, unsigned int limit_start, unsigned int limit_len, const char **fetch, const char **group);
+xmmsc_result_t* xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsv_coll_t *coll, xmmsv_t *order, int limit_start, int limit_len);
+xmmsc_result_t* xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsv_coll_t *coll, xmmsv_t *order, int limit_start, int limit_len, xmmsv_t *fetch, xmmsv_t *group);
 
 /* string-to-collection parser */
 typedef enum {
@@ -246,26 +280,26 @@ typedef enum {
 	XMMS_COLLECTION_TOKEN_OPFIL_GREATER,
 	XMMS_COLLECTION_TOKEN_OPFIL_SMALLEREQ,
 	XMMS_COLLECTION_TOKEN_OPFIL_GREATEREQ
-} xmmsc_coll_token_type_t;
+} xmmsv_coll_token_type_t;
 
 #define XMMS_COLLECTION_TOKEN_CUSTOM 32
 
-typedef struct xmmsc_coll_token_St xmmsc_coll_token_t;
+typedef struct xmmsv_coll_token_St xmmsv_coll_token_t;
 
-struct xmmsc_coll_token_St {
-	xmmsc_coll_token_type_t type;
+struct xmmsv_coll_token_St {
+	xmmsv_coll_token_type_t type;
 	char *string;
-	xmmsc_coll_token_t *next;
+	xmmsv_coll_token_t *next;
 };
 
-typedef xmmsc_coll_token_t* (*xmmsc_coll_parse_tokens_f) (const char *str, const char **newpos);
-typedef xmmsc_coll_t* (*xmmsc_coll_parse_build_f) (xmmsc_coll_token_t *tokens);
+typedef xmmsv_coll_token_t* (*xmmsv_coll_parse_tokens_f) (const char *str, const char **newpos);
+typedef xmmsv_coll_t* (*xmmsv_coll_parse_build_f) (xmmsv_coll_token_t *tokens);
 
-int xmmsc_coll_parse (const char *pattern, xmmsc_coll_t** coll);
-int xmmsc_coll_parse_custom (const char *pattern, xmmsc_coll_parse_tokens_f parse_f, xmmsc_coll_parse_build_f build_f, xmmsc_coll_t** coll);
+int xmmsv_coll_parse (const char *pattern, xmmsv_coll_t** coll);
+int xmmsv_coll_parse_custom (const char *pattern, xmmsv_coll_parse_tokens_f parse_f, xmmsv_coll_parse_build_f build_f, xmmsv_coll_t** coll);
 
-xmmsc_coll_t *xmmsc_coll_default_parse_build (xmmsc_coll_token_t *tokens);
-xmmsc_coll_token_t *xmmsc_coll_default_parse_tokens (const char *str, const char **newpos);
+xmmsv_coll_t *xmmsv_coll_default_parse_build (xmmsv_coll_token_t *tokens);
+xmmsv_coll_token_t *xmmsv_coll_default_parse_tokens (const char *str, const char **newpos);
 
 
 /* broadcasts */
@@ -289,9 +323,8 @@ xmmsc_result_t *xmmsc_broadcast_collection_changed (xmmsc_connection_t *c);
  * RESULTS
  */
 
-typedef void (*xmmsc_result_notifier_t) (xmmsc_result_t *res, void *user_data);
+typedef int (*xmmsc_result_notifier_t) (xmmsv_t *val, void *user_data);
 
-xmmsc_result_t *xmmsc_result_restart (xmmsc_result_t *res);
 xmmsc_result_type_t xmmsc_result_get_class (xmmsc_result_t *res);
 void xmmsc_result_disconnect (xmmsc_result_t *res);
 
@@ -302,47 +335,23 @@ void xmmsc_result_notifier_set (xmmsc_result_t *res, xmmsc_result_notifier_t fun
 void xmmsc_result_notifier_set_full (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data, xmmsc_user_data_free_func_t free_func);
 void xmmsc_result_wait (xmmsc_result_t *res);
 
-int xmmsc_result_iserror (xmmsc_result_t *res);
-const char * xmmsc_result_get_error (xmmsc_result_t *res);
+xmmsv_t *xmmsc_result_get_value (xmmsc_result_t *res);
 
-int xmmsc_result_get_int (xmmsc_result_t *res, int32_t *r);
-int xmmsc_result_get_uint (xmmsc_result_t *res, uint32_t *r);
-int xmmsc_result_get_string (xmmsc_result_t *res, const char **r);
-int xmmsc_result_get_collection (xmmsc_result_t *conn, xmmsc_coll_t **coll);
-int xmmsc_result_get_bin (xmmsc_result_t *res, unsigned char **r, unsigned int *rlen);
+/* Legacy aliases for convenience. */
+#define xmmsc_result_iserror(res) xmmsv_is_error(xmmsc_result_get_value(res))
+#define xmmsc_result_get_error(res) xmmsv_get_error_old(xmmsc_result_get_value(res))
 
-typedef enum {
-	XMMSC_RESULT_VALUE_TYPE_NONE = XMMS_OBJECT_CMD_ARG_NONE,
-	XMMSC_RESULT_VALUE_TYPE_UINT32 = XMMS_OBJECT_CMD_ARG_UINT32,
-	XMMSC_RESULT_VALUE_TYPE_INT32 = XMMS_OBJECT_CMD_ARG_INT32,
-	XMMSC_RESULT_VALUE_TYPE_STRING = XMMS_OBJECT_CMD_ARG_STRING,
-	XMMSC_RESULT_VALUE_TYPE_DICT = XMMS_OBJECT_CMD_ARG_DICT,
-	XMMSC_RESULT_VALUE_TYPE_PROPDICT = XMMS_OBJECT_CMD_ARG_PROPDICT,
-	XMMSC_RESULT_VALUE_TYPE_COLL = XMMS_OBJECT_CMD_ARG_COLL,
-	XMMSC_RESULT_VALUE_TYPE_BIN = XMMS_OBJECT_CMD_ARG_BIN
-} xmmsc_result_value_type_t;
+/* compability */
 
-typedef void (*xmmsc_propdict_foreach_func) (const void *key, xmmsc_result_value_type_t type, const void *value, const char *source, void *user_data);
-typedef void (*xmmsc_dict_foreach_func) (const void *key, xmmsc_result_value_type_t type, const void *value, void *user_data);
+typedef xmmsv_coll_token_type_t xmmsc_coll_token_type_t;
+typedef xmmsv_coll_token_t xmmsc_coll_token_t;
+typedef xmmsv_coll_parse_tokens_f xmmsc_coll_parse_tokens_f;
+typedef xmmsv_coll_parse_build_f xmmsc_coll_parse_build_f;
 
-xmmsc_result_value_type_t xmmsc_result_get_dict_entry_type (xmmsc_result_t *res, const char *key);
-int xmmsc_result_get_dict_entry_string (xmmsc_result_t *res, const char *key, const char **r);
-int xmmsc_result_get_dict_entry_int (xmmsc_result_t *res, const char *key, int32_t *r);
-int xmmsc_result_get_dict_entry_uint (xmmsc_result_t *res, const char *key, uint32_t *r);
-int xmmsc_result_get_dict_entry_collection (xmmsc_result_t *conn, const char *key, xmmsc_coll_t **coll);
-int xmmsc_result_dict_foreach (xmmsc_result_t *res, xmmsc_dict_foreach_func func, void *user_data);
-int xmmsc_result_propdict_foreach (xmmsc_result_t *res, xmmsc_propdict_foreach_func func, void *user_data);
-void xmmsc_result_source_preference_set (xmmsc_result_t *res, const char **preference);
-const char **xmmsc_result_source_preference_get (xmmsc_result_t *res);
-
-int xmmsc_result_is_list (xmmsc_result_t *res);
-int xmmsc_result_list_next (xmmsc_result_t *res);
-int xmmsc_result_list_first (xmmsc_result_t *res);
-int xmmsc_result_list_valid (xmmsc_result_t *res);
-
-xmmsc_result_value_type_t xmmsc_result_get_type (xmmsc_result_t *res);
-
-const char *xmmsc_result_decode_url (xmmsc_result_t *res, const char *string);
+#define xmmsc_coll_parse xmmsv_coll_parse
+#define xmmsc_coll_parse_custom xmmsv_coll_parse_custom
+#define xmmsc_coll_default_parse_build xmmsv_coll_default_parse_build
+#define xmmsc_coll_default_parse_tokens xmmsv_coll_default_parse_tokens
 
 #ifdef __cplusplus
 }

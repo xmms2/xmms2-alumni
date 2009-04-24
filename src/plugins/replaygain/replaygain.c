@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -69,9 +69,7 @@ static gint xmms_replaygain_read (xmms_xform_t *xform, xmms_sample_t *buf,
 static gint64 xmms_replaygain_seek (xmms_xform_t *xform, gint64 samples,
                                     xmms_xform_seek_mode_t whence,
                                     xmms_error_t *error);
-static void xmms_replaygain_config_changed (xmms_object_t *obj,
-                                            gconstpointer value,
-                                            gpointer udata);
+static void xmms_replaygain_config_changed (xmms_object_t *obj, xmmsv_t *_val, gpointer udata);
 
 static void compute_gain (xmms_xform_t *xform, xmms_replaygain_data_t *data);
 static xmms_replaygain_mode_t parse_mode (const char *s);
@@ -278,18 +276,19 @@ xmms_replaygain_seek (xmms_xform_t *xform, gint64 samples,
 }
 
 static void
-xmms_replaygain_config_changed (xmms_object_t *obj, gconstpointer value,
-                                gpointer udata)
+xmms_replaygain_config_changed (xmms_object_t *obj, xmmsv_t *_val, gpointer udata)
 {
 	const gchar *name;
 	xmms_xform_t *xform = udata;
 	xmms_replaygain_data_t *data;
 	gboolean dirty = FALSE;
+	const char *value;
 
 	data = xmms_xform_private_data_get (xform);
 	g_return_if_fail (data);
 
 	name = xmms_config_property_get_name ((xmms_config_property_t *) obj);
+	value = xmms_config_property_get_string ((xmms_config_property_t *) obj);
 
 	if (!g_ascii_strcasecmp (name, "replaygain.mode")) {
 		data->mode = parse_mode (value);

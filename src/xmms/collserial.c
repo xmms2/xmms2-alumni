@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -33,15 +33,15 @@ typedef struct {
 } coll_dbwrite_t;
 
 
-static xmmsc_coll_t *xmms_collection_dbread_operator (xmms_medialib_session_t *session, gint id, xmmsc_coll_type_t type);
-static guint xmms_collection_dbwrite_operator (xmms_medialib_session_t *session, guint collid, xmmsc_coll_t *coll);
+static xmmsv_coll_t *xmms_collection_dbread_operator (xmms_medialib_session_t *session, gint id, xmmsv_coll_type_t type);
+static guint xmms_collection_dbwrite_operator (xmms_medialib_session_t *session, guint collid, xmmsv_coll_t *coll);
 
 static void dbwrite_operator (void *key, void *value, void *udata);
 static void dbwrite_coll_attributes (const char *key, const char *value, void *udata);
 static void dbwrite_strip_tmpprops (void *key, void *value, void *udata);
 
-static gint cmdval_get_hash_int (xmms_object_cmd_value_t *cmdval, const gchar *key);
-static const gchar *cmdval_get_hash_string (xmms_object_cmd_value_t *cmdval, const gchar *key);
+static gint value_get_dict_int (xmmsv_t *val, const gchar *key);
+static const gchar *value_get_dict_string (xmmsv_t *val, const gchar *key);
 
 
 
@@ -84,9 +84,9 @@ xmms_collection_dag_save (xmms_coll_dag_t *dag)
 void
 xmms_collection_dag_restore (xmms_coll_dag_t *dag)
 {
-	xmmsc_coll_t *coll = NULL;
+	xmmsv_coll_t *coll = NULL;
 	xmms_medialib_session_t *session;
-	xmms_object_cmd_value_t *cmdval;
+	xmmsv_t *cmdval;
 	const gchar *query;
 	GList *res;
 	gint previd;
@@ -107,11 +107,11 @@ xmms_collection_dag_restore (xmms_coll_dag_t *dag)
 		gint id, type, nsid;
 		const gchar *label;
 
-		cmdval = (xmms_object_cmd_value_t*)res->data;
-		id = cmdval_get_hash_int (cmdval, "id");
-		type = cmdval_get_hash_int (cmdval, "type");
-		nsid = cmdval_get_hash_int (cmdval, "nsid");
-		label = cmdval_get_hash_string (cmdval, "label");
+		cmdval = (xmmsv_t*) res->data;
+		id = value_get_dict_int (cmdval, "id");
+		type = value_get_dict_int (cmdval, "type");
+		nsid = value_get_dict_int (cmdval, "nsid");
+		label = value_get_dict_string (cmdval, "label");
 
 		/* Do not duplicate operator if same id */
 		if (previd < 0 || id != previd) {
@@ -119,12 +119,12 @@ xmms_collection_dag_restore (xmms_coll_dag_t *dag)
 			previd = id;
 		}
 		else {
-			xmmsc_coll_ref (coll);  /* New label references the coll */
+			xmmsv_coll_ref (coll);  /* New label references the coll */
 		}
 
 		xmms_collection_dag_replace (dag, nsid, g_strdup (label), coll);
 
-		xmms_object_cmd_value_unref (cmdval);
+		xmmsv_unref (cmdval);
 		res = g_list_delete_link (res, res);
 	}
 
@@ -144,18 +144,18 @@ xmms_collection_dag_restore (xmms_coll_dag_t *dag)
  * @param type  The type of the collection operator.
  * @return  The created collection DAG.
  */
-static xmmsc_coll_t *
+static xmmsv_coll_t *
 xmms_collection_dbread_operator (xmms_medialib_session_t *session,
-                                 gint id, xmmsc_coll_type_t type)
+                                 gint id, xmmsv_coll_type_t type)
 {
-	xmmsc_coll_t *coll;
-	xmmsc_coll_t *op;
+	xmmsv_coll_t *coll;
+	xmmsv_coll_t *op;
 	GList *res;
 	GList *n;
-	xmms_object_cmd_value_t *cmdval;
+	xmmsv_t *cmdval;
 	gchar query[256];
 
-	coll = xmmsc_coll_new (type);
+	coll = xmmsv_coll_new (type);
 
 	/* Retrieve the attributes */
 	g_snprintf (query, sizeof (query),
@@ -167,12 +167,12 @@ xmms_collection_dbread_operator (xmms_medialib_session_t *session,
 	for (n = res; n; n = n->next) {
 		const gchar *key, *value;
 
-		cmdval = (xmms_object_cmd_value_t*)n->data;
-		key = cmdval_get_hash_string (cmdval, "key");
-		value = cmdval_get_hash_string (cmdval, "value");
-		xmmsc_coll_attribute_set (coll, key, value);
+		cmdval = (xmmsv_t*) n->data;
+		key = value_get_dict_string (cmdval, "key");
+		value = value_get_dict_string (cmdval, "value");
+		xmmsv_coll_attribute_set (coll, key, value);
 
-		xmms_object_cmd_value_unref (n->data);
+		xmmsv_unref (n->data);
 	}
 	g_list_free (res);
 
@@ -186,10 +186,10 @@ xmms_collection_dbread_operator (xmms_medialib_session_t *session,
 	res = xmms_medialib_select (session, query, NULL);
 	for (n = res; n; n = n->next) {
 
-		cmdval = (xmms_object_cmd_value_t*)n->data;
-		xmmsc_coll_idlist_append (coll, cmdval_get_hash_int (cmdval, "mid"));
+		cmdval = (xmmsv_t *) n->data;
+		xmmsv_coll_idlist_append (coll, value_get_dict_int (cmdval, "mid"));
 
-		xmms_object_cmd_value_unref (n->data);
+		xmmsv_unref (cmdval);
 	}
 	g_list_free (res);
 
@@ -204,15 +204,15 @@ xmms_collection_dbread_operator (xmms_medialib_session_t *session,
 		gint id;
 		gint type;
 
-		cmdval = (xmms_object_cmd_value_t*)n->data;
-		id = cmdval_get_hash_int (cmdval, "id");
-		type = cmdval_get_hash_int (cmdval, "type");
+		cmdval = (xmmsv_t *) n->data;
+		id = value_get_dict_int (cmdval, "id");
+		type = value_get_dict_int (cmdval, "type");
 
 		op = xmms_collection_dbread_operator (session, id, type);
-		xmmsc_coll_add_operand (coll, op);
+		xmmsv_coll_add_operand (coll, op);
 
-		xmmsc_coll_unref (op);
-		xmms_object_cmd_value_unref (n->data);
+		xmmsv_coll_unref (op);
+		xmmsv_unref (cmdval);
 	}
 	g_list_free (res);
 
@@ -228,27 +228,27 @@ xmms_collection_dbread_operator (xmms_medialib_session_t *session,
  */
 static guint
 xmms_collection_dbwrite_operator (xmms_medialib_session_t *session,
-                                  guint collid, xmmsc_coll_t *coll)
+                                  guint collid, xmmsv_coll_t *coll)
 {
 	gchar query[128];
 	guint *idlist;
 	gint i;
-	xmmsc_coll_t *op;
+	xmmsv_coll_t *op;
 	gint newid, nextid;
 	coll_dbwrite_t dbwrite_infos = { session, collid, 0 };
 
 	/* Write operator */
 	g_snprintf (query, sizeof (query),
 	            "INSERT INTO CollectionOperators VALUES(%d, %d)",
-	            collid, xmmsc_coll_get_type (coll));
+	            collid, xmmsv_coll_get_type (coll));
 
 	xmms_medialib_select (session, query, NULL);
 
 	/* Write attributes */
-	xmmsc_coll_attribute_foreach (coll, dbwrite_coll_attributes, &dbwrite_infos);
+	xmmsv_coll_attribute_foreach (coll, dbwrite_coll_attributes, &dbwrite_infos);
 
 	/* Write idlist */
-	idlist = xmmsc_coll_get_idlist (coll);
+	idlist = xmmsv_coll_get_idlist (coll);
 	for (i = 0; idlist[i] != 0; i++) {
 		g_snprintf (query, sizeof (query),
 		            "INSERT INTO CollectionIdlists VALUES(%d, %d, %d)",
@@ -259,19 +259,19 @@ xmms_collection_dbwrite_operator (xmms_medialib_session_t *session,
 
 	/* Save operands and connections (don't recurse in ref operand) */
 	newid = collid + 1;
-	if (xmmsc_coll_get_type (coll) != XMMS_COLLECTION_TYPE_REFERENCE) {
-		xmmsc_coll_operand_list_save (coll);
-		xmmsc_coll_operand_list_first (coll);
-		while (xmmsc_coll_operand_list_entry (coll, &op)) {
+	if (xmmsv_coll_get_type (coll) != XMMS_COLLECTION_TYPE_REFERENCE) {
+		xmmsv_coll_operand_list_save (coll);
+		xmmsv_coll_operand_list_first (coll);
+		while (xmmsv_coll_operand_list_entry (coll, &op)) {
 			nextid = xmms_collection_dbwrite_operator (session, newid, op);
 			g_snprintf (query, sizeof (query),
 			            "INSERT INTO CollectionConnections VALUES(%d, %d)",
 			            newid, collid);
 			xmms_medialib_select (session, query, NULL);
 			newid = nextid;
-			xmmsc_coll_operand_list_next (coll);
+			xmmsv_coll_operand_list_next (coll);
 		}
-		xmmsc_coll_operand_list_restore (coll);
+		xmmsv_coll_operand_list_restore (coll);
 	}
 
 	/* return next available id */
@@ -285,7 +285,7 @@ dbwrite_operator (void *key, void *value, void *udata)
 {
 	gchar *query;
 	gchar *label = key;
-	xmmsc_coll_t *coll = value;
+	xmmsv_coll_t *coll = value;
 	coll_dbwrite_t *dbinfos = udata;
 	gchar *esc_label;
 	gint serial_id;
@@ -331,25 +331,25 @@ dbwrite_coll_attributes (const char *key, const char *value, void *udata)
 static void
 dbwrite_strip_tmpprops (void *key, void *value, void *udata)
 {
-	xmmsc_coll_t *coll = value;
-	xmmsc_coll_attribute_remove (coll, XMMS_COLLSERIAL_ATTR_ID);
+	xmmsv_coll_t *coll = value;
+	xmmsv_coll_attribute_remove (coll, XMMS_COLLSERIAL_ATTR_ID);
 }
 
 
-/* Extract the int value out of a xmms_object_cmd_value_t object. */
+/* Extract the int value out of a xmmsv_t object. */
 static gint
-cmdval_get_hash_int (xmms_object_cmd_value_t *cmdval, const gchar *key)
+value_get_dict_int (xmmsv_t *val, const gchar *key)
 {
-	xmms_object_cmd_value_t *buf;
-	buf = g_hash_table_lookup (cmdval->value.hash, key);
-	return buf->value.int32;
+	gint i;
+	xmmsv_dict_entry_get_int (val, key, &i);
+	return i;
 }
 
-/* Extract the string value out of a xmms_object_cmd_value_t object. */
+/* Extract the string value out of a xmmsv_t object. */
 static const gchar *
-cmdval_get_hash_string (xmms_object_cmd_value_t *cmdval, const gchar *key)
+value_get_dict_string (xmmsv_t *val, const gchar *key)
 {
-	xmms_object_cmd_value_t *buf;
-	buf = g_hash_table_lookup (cmdval->value.hash, key);
-	return buf->value.string;
+	const gchar *s;
+	xmmsv_dict_entry_get_string (val, key, &s);
+	return s;
 }

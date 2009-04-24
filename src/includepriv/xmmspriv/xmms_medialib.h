@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -29,7 +29,8 @@ typedef struct xmms_medialib_St xmms_medialib_t;
 xmms_medialib_t *xmms_medialib_init (xmms_playlist_t *playlist);
 
 GList *xmms_medialib_select (xmms_medialib_session_t *, const gchar *query, xmms_error_t *error);
-GList *xmms_medialib_info (xmms_medialib_t *medialib, guint32 id, xmms_error_t *err);
+GList *xmms_medialib_info_list (xmms_medialib_t *medialib, guint32 id, xmms_error_t *err);
+GTree *xmms_medialib_info (xmms_medialib_t *medialib, guint32 id, xmms_error_t *err);
 
 xmms_medialib_entry_t xmms_medialib_entry_not_resolved_get (xmms_medialib_session_t *session);
 guint xmms_medialib_num_not_resolved (xmms_medialib_session_t *session);
@@ -46,6 +47,7 @@ gboolean xmms_medialib_check_id (xmms_medialib_entry_t entry);
 gboolean xmms_medialib_entry_property_set_str_source (xmms_medialib_session_t *session, xmms_medialib_entry_t entry, const gchar *property, const gchar *value, guint32 source);
 gboolean xmms_medialib_entry_property_set_int_source (xmms_medialib_session_t *session, xmms_medialib_entry_t entry, const gchar *property, gint value, guint32 source);
 guint32 xmms_medialib_source_to_id (xmms_medialib_session_t *session, const gchar *source);
-void xmms_medialib_add_recursive (xmms_medialib_t *medialib, gchar *playlist, gchar *path, xmms_error_t *error);
+void xmms_medialib_add_recursive (xmms_medialib_t *medialib, const gchar *playlist, const gchar *path, xmms_error_t *error);
+void xmms_medialib_insert_recursive (xmms_medialib_t *medialib, const gchar *playlist, gint32 pos, const gchar *path, xmms_error_t *error);
 
 #endif

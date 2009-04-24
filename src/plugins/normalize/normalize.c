@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -53,9 +53,7 @@ static gboolean xmms_normalize_init (xmms_xform_t *xform);
 static void xmms_normalize_destroy (xmms_xform_t *xform);
 static gint xmms_normalize_read (xmms_xform_t *xform, xmms_sample_t *buf,
                                  gint len, xmms_error_t *error);
-static void xmms_normalize_config_changed (xmms_object_t *obj,
-                                           gconstpointer value,
-                                           gpointer udata);
+static void xmms_normalize_config_changed (xmms_object_t *obj, xmmsv_t *value, gpointer udata);
 
 XMMS_XFORM_PLUGIN ("normalize",
                    "Volume normalizer",
@@ -113,7 +111,7 @@ xmms_normalize_init (xmms_xform_t *xform)
 		                                   xmms_normalize_config_changed,
 		                                   data);
 
-		xmms_normalize_config_changed (XMMS_OBJECT (cfgv), xmms_config_property_get_string (cfgv), data);
+		xmms_normalize_config_changed (XMMS_OBJECT (cfgv), NULL, data);
 	}
 
 	xmms_xform_outdata_type_copy (xform);
@@ -188,24 +186,25 @@ xmms_normalize_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 }
 
 static void
-xmms_normalize_config_changed (xmms_object_t *obj, gconstpointer value,
-                               gpointer udata)
+xmms_normalize_config_changed (xmms_object_t *obj, xmmsv_t *_value, gpointer udata)
 {
 	xmms_normalize_data_t *data = udata;
 	const gchar *name;
+	gint value;
 
 	name = xmms_config_property_get_name ((xmms_config_property_t *) obj);
+	value = xmms_config_property_get_int ((xmms_config_property_t *) obj);
 
 	if (!g_ascii_strcasecmp (name, "normalize.use_anticlip")) {
-		data->use_anticlip = !!atoi (value);
+		data->use_anticlip = !!value;
 	} else if (!g_ascii_strcasecmp (name, "normalize.target")) {
-		data->target = atoi (value);
+		data->target = value;
 	} else if (!g_ascii_strcasecmp (name, "normalize.max_gain")) {
-		data->max_gain = atoi (value);
+		data->max_gain = value;
 	} else if (!g_ascii_strcasecmp (name, "normalize.smooth")) {
-		data->smooth = atoi (value);
+		data->smooth = value;
 	} else if (!g_ascii_strcasecmp (name, "normalize.buckets")) {
-		data->buckets = atoi (value);
+		data->buckets = value;
 	}
 
 	/* reconfigure needed */

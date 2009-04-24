@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -30,6 +30,7 @@
 #include "xmmspriv/xmms_playlist.h"
 #include "xmmspriv/xmms_collquery.h"
 #include "xmmspriv/xmms_collserial.h"
+#include "xmmspriv/xmms_collsync.h"
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_streamtype.h"
 #include "xmms/xmms_ipc.h"
@@ -42,14 +43,14 @@
 typedef struct {
 	const gchar *name;
 	const gchar *namespace;
-	xmmsc_coll_t *oldtarget;
-	xmmsc_coll_t *newtarget;
+	xmmsv_coll_t *oldtarget;
+	xmmsv_coll_t *newtarget;
 } coll_rebind_infos_t;
 
 typedef struct {
-	gchar* oldname;
-	gchar* newname;
-	gchar* namespace;
+	const gchar* oldname;
+	const gchar* newname;
+	const gchar* namespace;
 } coll_rename_infos_t;
 
 typedef struct {
@@ -59,14 +60,14 @@ typedef struct {
 } coll_call_infos_t;
 
 typedef struct {
-	gchar *target_name;
-	gchar *target_namespace;
+	const gchar *target_name;
+	const gchar *target_namespace;
 	gboolean found;
 } coll_refcheck_t;
 
 typedef struct {
 	const gchar *key;
-	xmmsc_coll_t *value;
+	xmmsv_coll_t *value;
 } coll_table_pair_t;
 
 typedef enum {
@@ -87,60 +88,60 @@ static GList *global_stream_type;
 
 static void xmms_collection_destroy (xmms_object_t *object);
 
-static gboolean xmms_collection_validate (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, gchar *save_name, gchar *save_namespace);
-static gboolean xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, gchar *save_name, gchar *save_namespace);
-static gboolean xmms_collection_unreference (xmms_coll_dag_t *dag, gchar *name, guint nsid);
+static gboolean xmms_collection_validate (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, const gchar *save_name, const gchar *save_namespace);
+static gboolean xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, const gchar *save_name, const gchar *save_namespace);
+static gboolean xmms_collection_unreference (xmms_coll_dag_t *dag, const gchar *name, guint nsid);
 
-static gboolean xmms_collection_has_reference_to (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, gchar *tg_name, gchar *tg_ns);
+static gboolean xmms_collection_has_reference_to (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, const gchar *tg_name, const gchar *tg_ns);
 
-static void xmms_collection_apply_to_collection_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent, FuncApplyToColl f, void *udata);
+static void xmms_collection_apply_to_collection_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent, FuncApplyToColl f, void *udata);
 
 static void call_apply_to_coll (gpointer name, gpointer coll, gpointer udata);
 static void prepend_key_string (gpointer key, gpointer value, gpointer udata);
 static gboolean value_match_save_key (gpointer key, gpointer val, gpointer udata);
 
-static void rebind_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent, void *udata);
-static void rename_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent, void *udata);
-static void strip_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent, void *udata);
-static void check_for_reference (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent, void *udata);
+static void rebind_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent, void *udata);
+static void rename_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent, void *udata);
+static void strip_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent, void *udata);
+static void check_for_reference (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent, void *udata);
 
 static void coll_unref (void *coll);
 
 static GHashTable *xmms_collection_media_info (guint mid, xmms_error_t *err);
 
-static gboolean filter_get_mediainfo_field_string (xmmsc_coll_t *coll, GHashTable *mediainfo, gchar **val);
-static gboolean filter_get_mediainfo_field_int (xmmsc_coll_t *coll, GHashTable *mediainfo, gint *val);
-static gboolean filter_get_operator_value_string (xmmsc_coll_t *coll, gchar **val);
-static gboolean filter_get_operator_value_int (xmmsc_coll_t *coll, gint *val);
-static gboolean filter_get_operator_case (xmmsc_coll_t *coll, gboolean *val);
+static gboolean filter_get_mediainfo_field_string (xmmsv_coll_t *coll, GHashTable *mediainfo, gchar **val);
+static gboolean filter_get_mediainfo_field_int (xmmsv_coll_t *coll, GHashTable *mediainfo, gint *val);
+static gboolean filter_get_operator_value_string (xmmsv_coll_t *coll, const gchar **val);
+static gboolean filter_get_operator_value_int (xmmsv_coll_t *coll, gint *val);
+static gboolean filter_get_operator_case (xmmsv_coll_t *coll, gboolean *val);
 
 static void build_match_table (gpointer key, gpointer value, gpointer udata);
 static gboolean find_unchecked (gpointer name, gpointer value, gpointer udata);
 static void build_list_matches (gpointer key, gpointer value, gpointer udata);
 
-static gboolean xmms_collection_media_match (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsc_coll_t *coll, guint nsid, GHashTable *match_table);
-static gboolean xmms_collection_media_match_operand (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsc_coll_t *coll, guint nsid, GHashTable *match_table);
-static gboolean xmms_collection_media_match_reference (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsc_coll_t *coll, guint nsid, GHashTable *match_table, gchar *refname, gchar *refns);
-static gboolean xmms_collection_media_filter_has (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsc_coll_t *coll, guint nsid, GHashTable *match_table);
-static gboolean xmms_collection_media_filter_equals (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsc_coll_t *coll, guint nsid, GHashTable *match_table);
-static gboolean xmms_collection_media_filter_match (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsc_coll_t *coll, guint nsid, GHashTable *match_table);
-static gboolean xmms_collection_media_filter_smaller (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsc_coll_t *coll, guint nsid, GHashTable *match_table);
-static gboolean xmms_collection_media_filter_greater (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsc_coll_t *coll, guint nsid, GHashTable *match_table);
-static xmmsc_coll_t *xmms_collection_idlist_from_pls (xmms_coll_dag_t *dag, gchar *mediainfo, xmms_error_t *err);
+static gboolean xmms_collection_media_match (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsv_coll_t *coll, guint nsid, GHashTable *match_table);
+static gboolean xmms_collection_media_match_operand (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsv_coll_t *coll, guint nsid, GHashTable *match_table);
+static gboolean xmms_collection_media_match_reference (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsv_coll_t *coll, guint nsid, GHashTable *match_table, const gchar *refname, const gchar *refns);
+static gboolean xmms_collection_media_filter_has (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsv_coll_t *coll, guint nsid, GHashTable *match_table);
+static gboolean xmms_collection_media_filter_equals (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsv_coll_t *coll, guint nsid, GHashTable *match_table);
+static gboolean xmms_collection_media_filter_match (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsv_coll_t *coll, guint nsid, GHashTable *match_table);
+static gboolean xmms_collection_media_filter_smaller (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsv_coll_t *coll, guint nsid, GHashTable *match_table);
+static gboolean xmms_collection_media_filter_greater (xmms_coll_dag_t *dag, GHashTable *mediainfo, xmmsv_coll_t *coll, guint nsid, GHashTable *match_table);
+static xmmsv_coll_t *xmms_collection_idlist_from_pls (xmms_coll_dag_t *dag, const gchar *mediainfo, xmms_error_t *err);
 
 
 XMMS_CMD_DEFINE  (collection_get, xmms_collection_get, xmms_coll_dag_t *, COLL, STRING, STRING);
 XMMS_CMD_DEFINE  (collection_list, xmms_collection_list, xmms_coll_dag_t *, LIST, STRING, NONE);
 XMMS_CMD_DEFINE3 (collection_save, xmms_collection_save, xmms_coll_dag_t *, NONE, STRING, STRING, COLL);
 XMMS_CMD_DEFINE  (collection_remove, xmms_collection_remove, xmms_coll_dag_t *, NONE, STRING, STRING);
-XMMS_CMD_DEFINE  (collection_find, xmms_collection_find, xmms_coll_dag_t *, LIST, UINT32, STRING);
+XMMS_CMD_DEFINE  (collection_find, xmms_collection_find, xmms_coll_dag_t *, LIST, INT32, STRING);
 XMMS_CMD_DEFINE3 (collection_rename, xmms_collection_rename, xmms_coll_dag_t *, NONE, STRING, STRING, STRING);
 XMMS_CMD_DEFINE  (collection_from_pls, xmms_collection_idlist_from_pls, xmms_coll_dag_t *, COLL, STRING, NONE);
 XMMS_CMD_DEFINE  (collection_sync, xmms_collection_sync, xmms_coll_dag_t *, NONE, NONE, NONE);
 
 
-XMMS_CMD_DEFINE4 (query_ids, xmms_collection_query_ids, xmms_coll_dag_t *, LIST, COLL, UINT32, UINT32, STRINGLIST);
-XMMS_CMD_DEFINE6 (query_infos, xmms_collection_query_infos, xmms_coll_dag_t *, LIST, COLL, UINT32, UINT32, STRINGLIST, STRINGLIST, STRINGLIST);
+XMMS_CMD_DEFINE4 (query_ids, xmms_collection_query_ids, xmms_coll_dag_t *, LIST, COLL, INT32, INT32, LIST);
+XMMS_CMD_DEFINE6 (query_infos, xmms_collection_query_infos, xmms_coll_dag_t *, LIST, COLL, INT32, INT32, LIST, LIST, LIST);
 
 
 GTree *
@@ -148,19 +149,13 @@ xmms_collection_changed_msg_new (xmms_collection_changed_actions_t type,
                                  const gchar *plname, const gchar *namespace)
 {
 	GTree *dict;
-	xmms_object_cmd_value_t *val;
 
 	dict = g_tree_new_full ((GCompareDataFunc) strcmp, NULL,
-	                        NULL, (GDestroyNotify)xmms_object_cmd_value_unref);
+	                        NULL, (GDestroyNotify)xmmsv_unref);
 
-	val = xmms_object_cmd_value_int_new (type);
-	g_tree_insert (dict, (gpointer) "type", val);
-
-	val = xmms_object_cmd_value_str_new (plname);
-	g_tree_insert (dict, (gpointer) "name", val);
-
-	val = xmms_object_cmd_value_str_new (namespace);
-	g_tree_insert (dict, (gpointer) "namespace", val);
+	g_tree_insert (dict, (gpointer) "type", xmmsv_new_int (type));
+	g_tree_insert (dict, (gpointer) "name", xmmsv_new_string (plname));
+	g_tree_insert (dict, (gpointer) "namespace", xmmsv_new_string (namespace));
 
 	return dict;
 }
@@ -173,7 +168,7 @@ xmms_collection_changed_msg_send (xmms_coll_dag_t *colldag, GTree *dict)
 
 	xmms_object_emit_f (XMMS_OBJECT (colldag),
 	                    XMMS_IPC_SIGNAL_COLLECTION_CHANGED,
-	                    XMMS_OBJECT_CMD_ARG_DICT,
+	                    XMMSV_TYPE_DICT,
 	                    dict);
 
 	g_tree_destroy (dict);
@@ -206,6 +201,11 @@ struct xmms_coll_dag_St {
 
 };
 
+static void
+coll_sync_cb (xmms_object_t *object, xmmsv_t *val, gpointer udata)
+{
+	xmms_coll_sync_schedule_sync ();
+}
 
 /** Initializes a new xmms_coll_dag_t.
  *
@@ -222,6 +222,8 @@ xmms_collection_init (xmms_playlist_t *playlist)
 	ret->mutex = g_mutex_new ();
 	ret->playlist = playlist;
 
+	xmms_coll_sync_init (ret);
+
 	for (i = 0; i < XMMS_COLLECTION_NUM_NAMESPACES; ++i) {
 		ret->collrefs[i] = g_hash_table_new_full (g_str_hash, g_str_equal,
 		                                          g_free, coll_unref);
@@ -231,6 +233,25 @@ xmms_collection_init (xmms_playlist_t *playlist)
 
 	xmms_ipc_broadcast_register (XMMS_OBJECT (ret),
 	                             XMMS_IPC_SIGNAL_COLLECTION_CHANGED);
+
+	/* Connection coll_sync_cb to some signals */
+	xmms_object_connect (XMMS_OBJECT (ret),
+	                     XMMS_IPC_SIGNAL_COLLECTION_CHANGED,
+	                     coll_sync_cb, ret);
+
+	/* FIXME: These signals should trigger COLLECTION_CHANGED */
+	xmms_object_connect (XMMS_OBJECT (playlist),
+	                     XMMS_IPC_SIGNAL_PLAYLIST_CHANGED,
+	                     coll_sync_cb, ret);
+
+	xmms_object_connect (XMMS_OBJECT (playlist),
+	                     XMMS_IPC_SIGNAL_PLAYLIST_CURRENT_POS,
+	                     coll_sync_cb, ret);
+
+	xmms_object_connect (XMMS_OBJECT (playlist),
+	                     XMMS_IPC_SIGNAL_PLAYLIST_LOADED,
+	                     coll_sync_cb, ret);
+
 
 	xmms_object_cmd_add (XMMS_OBJECT (ret),
 	                     XMMS_IPC_CMD_COLLECTION_GET,
@@ -283,26 +304,28 @@ xmms_collection_init (xmms_playlist_t *playlist)
 	return ret;
 }
 
-static gboolean
-add_metadata_from_tree (gpointer key, gpointer value, gpointer user_data)
+static void
+add_metadata_from_tree (const gchar *key, xmmsv_t *value, gpointer user_data)
 {
 	add_metadata_from_tree_user_data_t *ud = user_data;
-	xmms_object_cmd_value_t *b = value;
 
-	if (b->type == XMMS_OBJECT_CMD_ARG_INT32) {
+	if (xmmsv_get_type (value) == XMMSV_TYPE_INT32) {
+		gint iv;
+		xmmsv_get_int (value, &iv);
 		xmms_medialib_entry_property_set_int_source (ud->session, ud->entry,
-		                                             (const gchar *)key,
-		                                             b->value.int32,
+		                                             key,
+		                                             iv,
 		                                             ud->src);
-	} else if (b->type == XMMS_OBJECT_CMD_ARG_STRING) {
+	} else if (xmmsv_get_type (value) == XMMSV_TYPE_STRING) {
+		const gchar *sv;
+		xmmsv_get_string (value, &sv);
 		xmms_medialib_entry_property_set_str_source (ud->session, ud->entry,
-		                                             (const gchar *)key,
-		                                             b->value.string,
+		                                             key,
+		                                             sv,
 		                                             ud->src);
 	}
-
-	return FALSE; /* keep going */
 }
+
 
 /** Create a idlist from a playlist file
  * @param dag  The collection DAG.
@@ -310,16 +333,19 @@ add_metadata_from_tree (gpointer key, gpointer value, gpointer user_data)
  * @param err  If error occurs, a message is stored in this variable.
  * @returns  A idlist
  */
-static xmmsc_coll_t *
-xmms_collection_idlist_from_pls (xmms_coll_dag_t *dag, gchar *path, xmms_error_t *err)
+static xmmsv_coll_t *
+xmms_collection_idlist_from_pls (xmms_coll_dag_t *dag, const gchar *path,
+                                 xmms_error_t *err)
 {
 	xmms_xform_t *xform;
 	GList *lst, *n;
-	xmmsc_coll_t *coll;
+	xmmsv_coll_t *coll;
 	xmms_medialib_session_t *session;
 	guint src;
+	const gchar *buf;
 
-	xform = xmms_xform_chain_setup_url_without_effects (0, path, global_stream_type);
+	/* we don't want any effects for playlist, so just report we're rehashing */
+	xform = xmms_xform_chain_setup_url (0, path, global_stream_type, TRUE);
 
 	if (!xform) {
 		xmms_error_set (err, XMMS_ERROR_NO_SAUSAGE, "We can't handle this type of playlist or URL");
@@ -332,7 +358,7 @@ xmms_collection_idlist_from_pls (xmms_coll_dag_t *dag, gchar *path, xmms_error_t
 		return NULL;
 	}
 
-	coll = xmmsc_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
+	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
 	session = xmms_medialib_begin_write ();
 	src = xmms_medialib_source_to_id (session, "plugin/playlist");
 
@@ -340,22 +366,20 @@ xmms_collection_idlist_from_pls (xmms_coll_dag_t *dag, gchar *path, xmms_error_t
 	while (n) {
 		xmms_medialib_entry_t entry;
 
-		xmms_object_cmd_value_t *a = n->data;
-		xmms_object_cmd_value_t *b;
-		b = g_tree_lookup (a->value.dict, "realpath");
+		xmmsv_t *a = n->data;
+		xmmsv_t *b;
 
-		if (!b) {
+		if (!xmmsv_dict_get (a, "realpath", &b)) {
 			xmms_log_error ("Playlist plugin did not set realpath; probably a bug in plugin");
-			xmms_object_cmd_value_unref (a);
+			xmmsv_unref (a);
 			n = g_list_delete_link (n, n);
 			continue;
 		}
 
-		entry = xmms_medialib_entry_new_encoded (session,
-		                                         b->value.string,
-		                                         err);
-		g_tree_remove (a->value.dict, "realpath");
-		g_tree_remove (a->value.dict, "path");
+		xmmsv_get_string (b, &buf);
+		entry = xmms_medialib_entry_new_encoded (session, buf, err);
+		xmmsv_dict_remove (a, "realpath");
+		xmmsv_dict_remove (a, "path");
 
 		if (entry) {
 			add_metadata_from_tree_user_data_t udata;
@@ -363,14 +387,15 @@ xmms_collection_idlist_from_pls (xmms_coll_dag_t *dag, gchar *path, xmms_error_t
 			udata.entry = entry;
 			udata.src = src;
 
-			g_tree_foreach (a->value.dict, add_metadata_from_tree, &udata);
+			xmmsv_dict_foreach(a, add_metadata_from_tree, &udata);
 
-			xmmsc_coll_idlist_append (coll, entry);
+			xmmsv_coll_idlist_append (coll, entry);
 		} else {
-			xmms_log_error ("couldn't add %s to collection!", b->value.string);
+			xmmsv_get_string (b, &buf);
+			xmms_log_error ("couldn't add %s to collection!", buf);
 		}
 
-		xmms_object_cmd_value_unref (a);
+		xmmsv_unref (a);
 		n = g_list_delete_link (n, n);
 	}
 
@@ -391,7 +416,8 @@ xmms_collection_idlist_from_pls (xmms_coll_dag_t *dag, gchar *path, xmms_error_t
 * @returns  True on success, false otherwise.
 */
 gboolean
-xmms_collection_remove (xmms_coll_dag_t *dag, gchar *name, gchar *namespace, xmms_error_t *err)
+xmms_collection_remove (xmms_coll_dag_t *dag, const gchar *name,
+                        const gchar *namespace, xmms_error_t *err)
 {
 	guint nsid;
 	gboolean retval = FALSE;
@@ -433,10 +459,10 @@ xmms_collection_remove (xmms_coll_dag_t *dag, gchar *name, gchar *namespace, xmm
  * @returns  True on success, false otherwise.
  */
 gboolean
-xmms_collection_save (xmms_coll_dag_t *dag, gchar *name, gchar *namespace,
-                      xmmsc_coll_t *coll, xmms_error_t *err)
+xmms_collection_save (xmms_coll_dag_t *dag, const gchar *name, const gchar *namespace,
+                      xmmsv_coll_t *coll, xmms_error_t *err)
 {
-	xmmsc_coll_t *existing;
+	xmmsv_coll_t *existing;
 	guint nsid;
 	const gchar *alias;
 	gchar *newkey = NULL;
@@ -477,7 +503,7 @@ xmms_collection_save (xmms_coll_dag_t *dag, gchar *name, gchar *namespace,
 
 			/* update all pairs pointing to the old coll */
 			xmms_collection_dag_replace (dag, nsid, newkey, coll);
-			xmmsc_coll_ref (coll);
+			xmmsv_coll_ref (coll);
 
 			XMMS_COLLECTION_CHANGED_MSG (XMMS_COLLECTION_CHANGED_UPDATE,
 			                             newkey,
@@ -488,7 +514,7 @@ xmms_collection_save (xmms_coll_dag_t *dag, gchar *name, gchar *namespace,
 	} else {
 		newkey = g_strdup (name);
 		xmms_collection_dag_replace (dag, nsid, newkey, coll);
-		xmmsc_coll_ref (coll);
+		xmmsv_coll_ref (coll);
 
 		XMMS_COLLECTION_CHANGED_MSG (XMMS_COLLECTION_CHANGED_ADD,
 		                             newkey,
@@ -516,10 +542,11 @@ xmms_collection_save (xmms_coll_dag_t *dag, gchar *name, gchar *namespace,
  * @param err  If an error occurs, a message is stored in it.
  * @returns  The collection structure if found, NULL otherwise.
  */
-xmmsc_coll_t *
-xmms_collection_get (xmms_coll_dag_t *dag, gchar *name, gchar *namespace, xmms_error_t *err)
+xmmsv_coll_t *
+xmms_collection_get (xmms_coll_dag_t *dag, const gchar *name,
+                     const gchar *namespace, xmms_error_t *err)
 {
-	xmmsc_coll_t *coll = NULL;
+	xmmsv_coll_t *coll = NULL;
 	guint nsid;
 
 	nsid = xmms_collection_get_namespace_id (namespace);
@@ -538,7 +565,7 @@ xmms_collection_get (xmms_coll_dag_t *dag, gchar *name, gchar *namespace, xmms_e
 
 	/* New reference, will be freed after being put in the return message */
 	} else {
-		xmmsc_coll_ref (coll);
+		xmmsv_coll_ref (coll);
 	}
 
 	g_mutex_unlock (dag->mutex);
@@ -575,7 +602,8 @@ xmms_collection_sync (xmms_coll_dag_t *dag, xmms_error_t *err)
  * The entries are however referenced, and must be unreffed!
  */
 GList *
-xmms_collection_list (xmms_coll_dag_t *dag, gchar *namespace, xmms_error_t *err)
+xmms_collection_list (xmms_coll_dag_t *dag, const gchar *namespace,
+                      xmms_error_t *err)
 {
 	GList *r = NULL;
 	guint nsid;
@@ -606,14 +634,15 @@ xmms_collection_list (xmms_coll_dag_t *dag, gchar *namespace, xmms_error_t *err)
  * @returns A newly allocated GList with the names of the matching collections.
  */
 GList *
-xmms_collection_find (xmms_coll_dag_t *dag, guint mid, gchar *namespace, xmms_error_t *err)
+xmms_collection_find (xmms_coll_dag_t *dag, guint mid, const gchar *namespace,
+                      xmms_error_t *err)
 {
 	GHashTable *mediainfo;
 	GList *ret = NULL;
 	guint nsid;
 	gchar *open_name;
 	GHashTable *match_table;
-	xmmsc_coll_t *coll;
+	xmmsv_coll_t *coll;
 
 	/* Verify namespace */
 	nsid = xmms_collection_get_namespace_id (namespace);
@@ -664,13 +693,13 @@ xmms_collection_find (xmms_coll_dag_t *dag, guint mid, gchar *namespace, xmms_er
  * @param err  If an error occurs, a message is stored in it.
  * @return True if a collection was found and renamed.
  */
-gboolean xmms_collection_rename (xmms_coll_dag_t *dag, gchar *from_name,
-                                 gchar *to_name, gchar *namespace,
+gboolean xmms_collection_rename (xmms_coll_dag_t *dag, const gchar *from_name,
+                                 const gchar *to_name, const gchar *namespace,
                                  xmms_error_t *err)
 {
 	gboolean retval;
 	guint nsid;
-	xmmsc_coll_t *from_coll, *to_coll;
+	xmmsv_coll_t *from_coll, *to_coll;
 
 	nsid = xmms_collection_get_namespace_id (namespace);
 	if (nsid == XMMS_COLLECTION_NSID_INVALID) {
@@ -701,7 +730,7 @@ gboolean xmms_collection_rename (xmms_coll_dag_t *dag, gchar *from_name,
 
 		/* insert new pair in hashtable */
 		xmms_collection_dag_replace (dag, nsid, g_strdup (to_name), from_coll);
-		xmmsc_coll_ref (from_coll);
+		xmmsv_coll_ref (from_coll);
 
 		/* remove old pair from hashtable */
 		g_hash_table_remove (dag->collrefs[nsid], from_name);
@@ -713,8 +742,7 @@ gboolean xmms_collection_rename (xmms_coll_dag_t *dag, gchar *from_name,
 		/* Send _RENAME signal */
 		dict = xmms_collection_changed_msg_new (XMMS_COLLECTION_CHANGED_RENAME,
 		                                        from_name, namespace);
-		g_tree_insert (dict, (gpointer) "newname",
-		               xmms_object_cmd_value_str_new (to_name));
+		g_tree_insert (dict, (gpointer) "newname", xmmsv_new_string (to_name));
 		xmms_collection_changed_msg_send (dag, dict);
 
 		retval = TRUE;
@@ -732,29 +760,41 @@ gboolean xmms_collection_rename (xmms_coll_dag_t *dag, gchar *from_name,
  * @param coll  The collection used to match media.
  * @param lim_start  The beginning index of the LIMIT statement (0 to disable).
  * @param lim_len  The number of entries of the LIMIT statement (0 to disable).
- * @param order  The list of properties to order by (NULL to disable).
+ * @param order  The list of properties to order by (empty to disable).
  * @param err  If an error occurs, a message is stored in it.
  * @return A list of media ids.
  */
 GList *
-xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
-                           guint lim_start, guint lim_len, GList *order,
+xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
+                           guint lim_start, guint lim_len, xmmsv_t *order,
                            xmms_error_t *err)
 {
 	GList *res, *n;
-	GList *fetch = g_list_prepend (NULL, (gpointer) "id");
+	xmmsv_t *fetch, *group, *idval;
 
-	res = xmms_collection_query_infos (dag, coll, lim_start, lim_len, order, fetch, NULL, err);
+	/* no grouping, fetch only id */
+	group = xmmsv_new_list ();
+	fetch = xmmsv_new_list ();
+	idval = xmmsv_new_string ("id");
+	xmmsv_list_append (fetch, idval);
 
-	/* FIXME: get an int list directly ! */
+	res = xmms_collection_query_infos (dag, coll, lim_start, lim_len, order, fetch, group, err);
+
+	/* FIXME: get an uint list directly ! (we're getting ints here actually) */
 	for (n = res; n; n = n->next) {
-		xmms_object_cmd_value_t *id_val, *cmdval = n->data;
+		xmms_medialib_entry_t id;
+		xmmsv_t *id_val, *cmdval = n->data;
 
-		id_val = g_hash_table_lookup (cmdval->value.hash, "id");
-		n->data = xmms_object_cmd_value_uint_new (id_val->value.int32);
+		xmmsv_dict_get (cmdval, "id", &id_val);
+		xmmsv_get_int (id_val, &id);
+		n->data = xmmsv_new_int (id);
 
-		xmms_object_cmd_value_unref (cmdval);
+		xmmsv_unref (cmdval);
 	}
+
+	xmmsv_unref (group);
+	xmmsv_unref (fetch);
+	xmmsv_unref (idval);
 
 	return res;
 }
@@ -766,19 +806,39 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
  * @param coll  The collection used to match media.
  * @param lim_start  The beginning index of the LIMIT statement (0 to disable).
  * @param lim_len  The number of entries of the LIMIT statement (0 to disable).
- * @param order  The list of properties to order by, prefix by '-' to invert (NULL to disable).
- * @param fetch  The list of properties to be retrieved (NULL to only retrieve id).
- * @param group  The list of properties to group by (NULL to disable).
+ * @param order  The list of properties to order by, prefix by '-' to invert (empty to disable).
+ * @param fetch  The list of properties to be retrieved.
+ * @param group  The list of properties to group by (empty to disable).
  * @param err  If an error occurs, a message is stored in it.
  * @return A list of property dicts for each entry.
  */
 GList *
-xmms_collection_query_infos (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
-                             guint lim_start, guint lim_len, GList *order,
-                             GList *fetch, GList *group, xmms_error_t *err)
+xmms_collection_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
+                             guint lim_start, guint lim_len, xmmsv_t *order,
+                             xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err)
 {
 	GList *res = NULL;
 	GString *query;
+
+	/* check that fetch is not empty */
+	if (xmmsv_list_get_size (fetch) == 0) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "fetch list must not be empty!");
+		return NULL;
+	}
+
+	/* check for invalid property strings */
+	if (!check_string_list (order)) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid order list!");
+		return NULL;
+	}
+	if (!check_string_list (fetch)) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid fetch list!");
+		return NULL;
+	}
+	if (!check_string_list (group)) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid group list!");
+		return NULL;
+	}
 
 	/* validate the collection to query */
 	if (!xmms_collection_validate (dag, coll, NULL, NULL)) {
@@ -817,17 +877,17 @@ xmms_collection_query_infos (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
  */
 void
 xmms_collection_update_pointer (xmms_coll_dag_t *dag, const gchar *name,
-                                guint nsid, xmmsc_coll_t *newtarget)
+                                guint nsid, xmmsv_coll_t *newtarget)
 {
 	xmms_collection_dag_replace (dag, nsid, g_strdup (name), newtarget);
-	xmmsc_coll_ref (newtarget);
+	xmmsv_coll_ref (newtarget);
 }
 
 /** Update the DAG to update the value of the pair with the given key. */
 void
 xmms_collection_dag_replace (xmms_coll_dag_t *dag,
                              xmms_collection_namespace_id_t nsid,
-                             gchar *key, xmmsc_coll_t *newcoll)
+                             gchar *key, xmmsv_coll_t *newcoll)
 {
 	g_hash_table_replace (dag->collrefs[nsid], key, newcoll);
 }
@@ -839,12 +899,12 @@ xmms_collection_dag_replace (xmms_coll_dag_t *dag,
  * @param nsid  The namespace id.
  * @returns  The collection structure if found, NULL otherwise.
  */
-xmmsc_coll_t *
+xmmsv_coll_t *
 xmms_collection_get_pointer (xmms_coll_dag_t *dag, const gchar *collname,
                              guint nsid)
 {
 	gint i;
-	xmmsc_coll_t *coll = NULL;
+	xmmsv_coll_t *coll = NULL;
 
 	if (nsid == XMMS_COLLECTION_NSID_ALL) {
 		for (i = 0; i < XMMS_COLLECTION_NUM_NAMESPACES && coll == NULL; ++i) {
@@ -865,14 +925,14 @@ xmms_collection_get_pointer (xmms_coll_dag_t *dag, const gchar *collname,
  * @return TRUE if attribute correctly read, FALSE otherwise
  */
 gboolean
-xmms_collection_get_int_attr (xmmsc_coll_t *coll, const gchar *attrname, gint *val)
+xmms_collection_get_int_attr (xmmsv_coll_t *coll, const gchar *attrname, gint *val)
 {
 	gboolean retval = FALSE;
 	gint buf;
 	gchar *str;
 	gchar *endptr;
 
-	if (xmmsc_coll_attribute_get (coll, attrname, &str)) {
+	if (xmmsv_coll_attribute_get (coll, attrname, &str)) {
 		buf = strtol (str, &endptr, 10);
 
 		/* Valid integer string */
@@ -893,7 +953,7 @@ xmms_collection_get_int_attr (xmmsc_coll_t *coll, const gchar *attrname, gint *v
  * @return TRUE if attribute successfully saved, FALSE otherwise.
  */
 gboolean
-xmms_collection_set_int_attr (xmmsc_coll_t *coll, const gchar *attrname,
+xmms_collection_set_int_attr (xmmsv_coll_t *coll, const gchar *attrname,
                               gint newval)
 {
 	gboolean retval = FALSE;
@@ -902,7 +962,7 @@ xmms_collection_set_int_attr (xmmsc_coll_t *coll, const gchar *attrname,
 
 	written = g_snprintf (str, sizeof (str), "%d", newval);
 	if (written < XMMS_MAX_INT_ATTRIBUTE_LEN) {
-		xmmsc_coll_attribute_set (coll, attrname, str);
+		xmmsv_coll_attribute_set (coll, attrname, str);
 		retval = TRUE;
 	}
 
@@ -923,7 +983,7 @@ xmms_collection_set_int_attr (xmmsc_coll_t *coll, const gchar *attrname,
  */
 const gchar *
 xmms_collection_find_alias (xmms_coll_dag_t *dag, guint nsid,
-                            xmmsc_coll_t *value, const gchar *key)
+                            xmmsv_coll_t *value, const gchar *key)
 {
 	const gchar *otherkey = NULL;
 	coll_table_pair_t search_pair = { key, value };
@@ -945,25 +1005,27 @@ xmms_collection_find_alias (xmms_coll_dag_t *dag, guint nsid,
  * @return  A random media from the source collection, or 0 if none found.
  */
 xmms_medialib_entry_t
-xmms_collection_get_random_media (xmms_coll_dag_t *dag, xmmsc_coll_t *source)
+xmms_collection_get_random_media (xmms_coll_dag_t *dag, xmmsv_coll_t *source)
 {
 	GList *res;
-	GList *rorder = NULL;
 	xmms_medialib_entry_t mid = 0;
+	xmmsv_t *rorder = xmmsv_new_list ();
+	xmmsv_t *randval = xmmsv_new_string ("~RANDOM()");
 
 	/* FIXME: Temporary hack to allow custom ordering functions */
-	rorder = g_list_prepend (rorder, (gpointer) "~RANDOM()");
+	xmmsv_list_append (rorder, randval);
 
 	res = xmms_collection_query_ids (dag, source, 0, 1, rorder, NULL);
 
-	g_list_free (rorder);
-
 	if (res != NULL) {
-		xmms_object_cmd_value_t *cmdval = (xmms_object_cmd_value_t*)res->data;
-		mid = cmdval->value.int32;
-		xmms_object_cmd_value_unref (res->data);
+		xmmsv_t *val = (xmmsv_t *) res->data;
+		xmmsv_get_int (val, &mid);
+		xmmsv_unref (val);
 		g_list_free (res);
 	}
+
+	xmmsv_unref (rorder);
+	xmmsv_unref (randval);
 
 	return mid;
 }
@@ -984,6 +1046,7 @@ xmms_collection_destroy (xmms_object_t *object)
 
 	g_return_if_fail (dag);
 
+	xmms_coll_sync_shutdown ();
 	xmms_collection_dag_save (dag);
 
 	g_mutex_free (dag->mutex);
@@ -1008,16 +1071,16 @@ xmms_collection_destroy (xmms_object_t *object)
  * @returns  True if the collection is valid, false otherwise.
  */
 static gboolean
-xmms_collection_validate (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
-                          gchar *save_name, gchar *save_namespace)
+xmms_collection_validate (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
+                          const gchar *save_name, const gchar *save_namespace)
 {
 	/* Special validation checks for the Playlists namespace */
 	if (save_namespace != NULL &&
 	    strcmp (save_namespace, XMMS_COLLECTION_NS_PLAYLISTS) == 0) {
 		/* only accept idlists */
-		if (xmmsc_coll_get_type (coll) != XMMS_COLLECTION_TYPE_IDLIST &&
-		    xmmsc_coll_get_type (coll) != XMMS_COLLECTION_TYPE_QUEUE &&
-		    xmmsc_coll_get_type (coll) != XMMS_COLLECTION_TYPE_PARTYSHUFFLE) {
+		if (xmmsv_coll_get_type (coll) != XMMS_COLLECTION_TYPE_IDLIST &&
+		    xmmsv_coll_get_type (coll) != XMMS_COLLECTION_TYPE_QUEUE &&
+		    xmmsv_coll_get_type (coll) != XMMS_COLLECTION_TYPE_PARTYSHUFFLE) {
 			return FALSE;
 		}
 	}
@@ -1032,30 +1095,30 @@ xmms_collection_validate (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
  * graph of a collection.
  */
 static gboolean
-xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
-                                 gchar *save_name, gchar *save_namespace)
+xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
+                                 const gchar *save_name, const gchar *save_namespace)
 {
 	guint num_operands = 0;
-	xmmsc_coll_t *op, *ref;
+	xmmsv_coll_t *op, *ref;
 	gchar *attr, *attr2;
 	gboolean valid = TRUE;
-	xmmsc_coll_type_t type;
+	xmmsv_coll_type_t type;
 	xmms_collection_namespace_id_t nsid;
 
 	/* count operands */
-	xmmsc_coll_operand_list_save (coll);
+	xmmsv_coll_operand_list_save (coll);
 
-	xmmsc_coll_operand_list_first (coll);
-	while (xmmsc_coll_operand_list_entry (coll, &op)) {
+	xmmsv_coll_operand_list_first (coll);
+	while (xmmsv_coll_operand_list_entry (coll, &op)) {
 		num_operands++;
-		xmmsc_coll_operand_list_next (coll);
+		xmmsv_coll_operand_list_next (coll);
 	}
 
-	xmmsc_coll_operand_list_restore (coll);
+	xmmsv_coll_operand_list_restore (coll);
 
 
 	/* analyse by type */
-	type = xmmsc_coll_get_type (coll);
+	type = xmmsv_coll_get_type (coll);
 	switch (type) {
 	case XMMS_COLLECTION_TYPE_REFERENCE:
 		/* zero or one (bound in DAG) operand */
@@ -1064,11 +1127,11 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 		}
 
 		/* check if referenced collection exists */
-		xmmsc_coll_attribute_get (coll, "reference", &attr);
+		xmmsv_coll_attribute_get (coll, "reference", &attr);
 		if (attr == NULL) {
 			return FALSE;
 		} else if (strcmp (attr, "All Media") != 0) {
-			xmmsc_coll_attribute_get (coll, "namespace", &attr2);
+			xmmsv_coll_attribute_get (coll, "namespace", &attr2);
 
 			if (attr2 == NULL) {
 				return FALSE;
@@ -1110,10 +1173,10 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 
 		/* ensure that the operand is consistent with the reference infos */
 		if (num_operands == 1) {
-			xmmsc_coll_operand_list_save (coll);
-			xmmsc_coll_operand_list_first (coll);
-			xmmsc_coll_operand_list_entry (coll, &op);
-			xmmsc_coll_operand_list_restore (coll);
+			xmmsv_coll_operand_list_save (coll);
+			xmmsv_coll_operand_list_first (coll);
+			xmmsv_coll_operand_list_entry (coll, &op);
+			xmmsv_coll_operand_list_restore (coll);
 
 			if (op != ref) {
 				return FALSE;
@@ -1144,7 +1207,7 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 
 		/* "field" attribute */
 		/* with valid value */
-		if (!xmmsc_coll_attribute_get (coll, "field", &attr)) {
+		if (!xmmsv_coll_attribute_get (coll, "field", &attr)) {
 			return FALSE;
 		}
 		break;
@@ -1160,7 +1223,7 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 
 		/* "field"/"value" attributes */
 		/* with valid values */
-		if (!xmmsc_coll_attribute_get (coll, "field", &attr)) {
+		if (!xmmsv_coll_attribute_get (coll, "field", &attr)) {
 			return FALSE;
 		}
 		/* FIXME: valid fields?
@@ -1169,7 +1232,7 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 		}
 		*/
 
-		if (!xmmsc_coll_attribute_get (coll, "value", &attr)) {
+		if (!xmmsv_coll_attribute_get (coll, "value", &attr)) {
 			return FALSE;
 		}
 		break;
@@ -1198,18 +1261,18 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
 
 	/* recurse in operands */
 	if (num_operands > 0 && type != XMMS_COLLECTION_TYPE_REFERENCE) {
-		xmmsc_coll_operand_list_save (coll);
+		xmmsv_coll_operand_list_save (coll);
 
-		xmmsc_coll_operand_list_first (coll);
-		while (xmmsc_coll_operand_list_entry (coll, &op) && valid) {
+		xmmsv_coll_operand_list_first (coll);
+		while (xmmsv_coll_operand_list_entry (coll, &op) && valid) {
 			if (!xmms_collection_validate_recurs (dag, op, save_name,
 			                                      save_namespace)) {
 				valid = FALSE;
 			}
-			xmmsc_coll_operand_list_next (coll);
+			xmmsv_coll_operand_list_next (coll);
 		}
 
-		xmmsc_coll_operand_list_restore (coll);
+		xmmsv_coll_operand_list_restore (coll);
 	}
 
 	return valid;
@@ -1223,9 +1286,9 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsc_coll_t *coll,
  * @returns  TRUE if a collection was removed, FALSE otherwise.
  */
 static gboolean
-xmms_collection_unreference (xmms_coll_dag_t *dag, gchar *name, guint nsid)
+xmms_collection_unreference (xmms_coll_dag_t *dag, const gchar *name, guint nsid)
 {
-	xmmsc_coll_t *existing, *active_pl;
+	xmmsv_coll_t *existing, *active_pl;
 	gboolean retval = FALSE;
 
 	existing  = g_hash_table_lookup (dag->collrefs[nsid], name);
@@ -1267,7 +1330,7 @@ xmms_collection_unreference (xmms_coll_dag_t *dag, gchar *name, guint nsid)
  * @returns  The namespace id.
  */
 xmms_collection_namespace_id_t
-xmms_collection_get_namespace_id (gchar *namespace)
+xmms_collection_get_namespace_id (const gchar *namespace)
 {
 	guint nsid;
 
@@ -1325,7 +1388,8 @@ xmms_collection_get_namespace_string (xmms_collection_namespace_id_t nsid)
  *           collection, false otherwise
  */
 static gboolean
-xmms_collection_has_reference_to (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, gchar *tg_name, gchar *tg_ns)
+xmms_collection_has_reference_to (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
+                                  const gchar *tg_name, const gchar *tg_ns)
 {
 	coll_refcheck_t check = { tg_name, tg_ns, FALSE };
 	xmms_collection_apply_to_collection (dag, coll, check_for_reference, &check);
@@ -1382,7 +1446,7 @@ xmms_collection_apply_to_all_collections (xmms_coll_dag_t *dag,
  */
 void
 xmms_collection_apply_to_collection (xmms_coll_dag_t *dag,
-                                     xmmsc_coll_t *coll,
+                                     xmmsv_coll_t *coll,
                                      FuncApplyToColl f, void *udata)
 {
 	xmms_collection_apply_to_collection_recurs (dag, coll, NULL, f, udata);
@@ -1391,26 +1455,26 @@ xmms_collection_apply_to_collection (xmms_coll_dag_t *dag,
 /* Internal function used for recursion (parent param, NULL by default) */
 static void
 xmms_collection_apply_to_collection_recurs (xmms_coll_dag_t *dag,
-                                            xmmsc_coll_t *coll,
-                                            xmmsc_coll_t *parent,
+                                            xmmsv_coll_t *coll,
+                                            xmmsv_coll_t *parent,
                                             FuncApplyToColl f, void *udata)
 {
-	xmmsc_coll_t *op;
+	xmmsv_coll_t *op;
 
 	/* Apply the function to the operator. */
 	f (dag, coll, parent, udata);
 
 	/* Recurse into the parents (if not a reference) */
-	if (xmmsc_coll_get_type (coll) != XMMS_COLLECTION_TYPE_REFERENCE) {
-		xmmsc_coll_operand_list_save (coll);
+	if (xmmsv_coll_get_type (coll) != XMMS_COLLECTION_TYPE_REFERENCE) {
+		xmmsv_coll_operand_list_save (coll);
 
-		xmmsc_coll_operand_list_first (coll);
-		while (xmmsc_coll_operand_list_entry (coll, &op)) {
+		xmmsv_coll_operand_list_first (coll);
+		while (xmmsv_coll_operand_list_entry (coll, &op)) {
 			xmms_collection_apply_to_collection_recurs (dag, op, coll, f, udata);
-			xmmsc_coll_operand_list_next (coll);
+			xmmsv_coll_operand_list_next (coll);
 		}
 
-		xmmsc_coll_operand_list_restore (coll);
+		xmmsv_coll_operand_list_restore (coll);
 	}
 }
 
@@ -1433,10 +1497,8 @@ call_apply_to_coll (gpointer name, gpointer coll, gpointer udata)
 static void
 prepend_key_string (gpointer key, gpointer value, gpointer udata)
 {
-	xmms_object_cmd_value_t *val;
 	GList **list = (GList**)udata;
-	val = xmms_object_cmd_value_str_new (key);
-	*list = g_list_prepend (*list, val);
+	*list = g_list_prepend (*list, xmmsv_new_string (key));
 }
 
 /**
@@ -1449,7 +1511,7 @@ value_match_save_key (gpointer key, gpointer val, gpointer udata)
 {
 	gboolean found = FALSE;
 	coll_table_pair_t *pair = (coll_table_pair_t*)udata;
-	xmmsc_coll_t *coll = (xmmsc_coll_t*)val;
+	xmmsv_coll_t *coll = (xmmsv_coll_t*)val;
 
 	/* value matching and key not ignored, found! */
 	if ((coll == pair->value) &&
@@ -1466,16 +1528,16 @@ value_match_save_key (gpointer key, gpointer val, gpointer udata)
  * operand.
  */
 void
-bind_all_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent, void *udata)
+bind_all_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent, void *udata)
 {
-	if (xmmsc_coll_get_type (coll) == XMMS_COLLECTION_TYPE_REFERENCE) {
-		xmmsc_coll_t *target;
+	if (xmmsv_coll_get_type (coll) == XMMS_COLLECTION_TYPE_REFERENCE) {
+		xmmsv_coll_t *target;
 		gchar *target_name;
 		gchar *target_namespace;
 		gint   target_nsid;
 
-		xmmsc_coll_attribute_get (coll, "reference", &target_name);
-		xmmsc_coll_attribute_get (coll, "namespace", &target_namespace);
+		xmmsv_coll_attribute_get (coll, "reference", &target_name);
+		xmmsv_coll_attribute_get (coll, "namespace", &target_namespace);
 		if (target_name == NULL || target_namespace == NULL ||
 		    strcmp (target_name, "All Media") == 0) {
 			return;
@@ -1491,7 +1553,7 @@ bind_all_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *par
 			return;
 		}
 
-		xmmsc_coll_add_operand (coll, target);
+		xmmsv_coll_add_operand (coll, target);
 	}
 }
 
@@ -1501,9 +1563,9 @@ bind_all_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *par
  * udata structure).
  */
 static void
-rebind_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent, void *udata)
+rebind_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent, void *udata)
 {
-	if (xmmsc_coll_get_type (coll) == XMMS_COLLECTION_TYPE_REFERENCE) {
+	if (xmmsv_coll_get_type (coll) == XMMS_COLLECTION_TYPE_REFERENCE) {
 		coll_rebind_infos_t *infos;
 
 		gchar *target_name = NULL;
@@ -1513,15 +1575,15 @@ rebind_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *paren
 
 		/* FIXME: Or only compare operand vs oldtarget ? */
 
-		xmmsc_coll_attribute_get (coll, "reference", &target_name);
-		xmmsc_coll_attribute_get (coll, "namespace", &target_namespace);
+		xmmsv_coll_attribute_get (coll, "reference", &target_name);
+		xmmsv_coll_attribute_get (coll, "namespace", &target_namespace);
 		if (strcmp (infos->name, target_name) != 0 ||
 		    strcmp (infos->namespace, target_namespace) != 0) {
 			return;
 		}
 
-		xmmsc_coll_remove_operand (coll, infos->oldtarget);
-		xmmsc_coll_add_operand (coll, infos->newtarget);
+		xmmsv_coll_remove_operand (coll, infos->oldtarget);
+		xmmsv_coll_add_operand (coll, infos->newtarget);
 	}
 }
 
@@ -1530,9 +1592,9 @@ rebind_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *paren
  * rename infos in the udata structure.
  */
 static void
-rename_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent, void *udata)
+rename_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent, void *udata)
 {
-	if (xmmsc_coll_get_type (coll) == XMMS_COLLECTION_TYPE_REFERENCE) {
+	if (xmmsv_coll_get_type (coll) == XMMS_COLLECTION_TYPE_REFERENCE) {
 		coll_rename_infos_t *infos;
 
 		gchar *target_name = NULL;
@@ -1540,11 +1602,11 @@ rename_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *paren
 
 		infos = (coll_rename_infos_t*)udata;
 
-		xmmsc_coll_attribute_get (coll, "reference", &target_name);
-		xmmsc_coll_attribute_get (coll, "namespace", &target_namespace);
+		xmmsv_coll_attribute_get (coll, "reference", &target_name);
+		xmmsv_coll_attribute_get (coll, "namespace", &target_namespace);
 		if (strcmp (infos->oldname, target_name) == 0 &&
 		    strcmp (infos->namespace, target_namespace) == 0) {
-			xmmsc_coll_attribute_set (coll, "reference", infos->newname);
+			xmmsv_coll_attribute_set (coll, "reference", infos->newname);
 		}
 	}
 }
@@ -1554,41 +1616,41 @@ rename_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *paren
  * parent directly to the pointed operator.
  */
 static void
-strip_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent, void *udata)
+strip_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent, void *udata)
 {
-	xmmsc_coll_t *op;
+	xmmsv_coll_t *op;
 	coll_rebind_infos_t *infos;
 	gchar *target_name = NULL;
 	gchar *target_namespace = NULL;
 
 	infos = (coll_rebind_infos_t*)udata;
 
-	xmmsc_coll_operand_list_save (coll);
-	xmmsc_coll_operand_list_first (coll);
-	while (xmmsc_coll_operand_list_entry (coll, &op)) {
+	xmmsv_coll_operand_list_save (coll);
+	xmmsv_coll_operand_list_first (coll);
+	while (xmmsv_coll_operand_list_entry (coll, &op)) {
 		/* Skip if not potential reference */
-		if (xmmsc_coll_get_type (op) != XMMS_COLLECTION_TYPE_REFERENCE) {
-			xmmsc_coll_operand_list_next (coll);
+		if (xmmsv_coll_get_type (op) != XMMS_COLLECTION_TYPE_REFERENCE) {
+			xmmsv_coll_operand_list_next (coll);
 			continue;
 		}
 
-		xmmsc_coll_attribute_get (op, "reference", &target_name);
-		xmmsc_coll_attribute_get (op, "namespace", &target_namespace);
+		xmmsv_coll_attribute_get (op, "reference", &target_name);
+		xmmsv_coll_attribute_get (op, "namespace", &target_namespace);
 		if (strcmp (infos->name, target_name) != 0 ||
 		    strcmp (infos->namespace, target_namespace) != 0) {
-			xmmsc_coll_operand_list_next (coll);
+			xmmsv_coll_operand_list_next (coll);
 			continue;
 		}
 
 		/* Rebind coll to ref'd operand directly, effectively strip reference */
-		xmmsc_coll_remove_operand (op, infos->oldtarget);
+		xmmsv_coll_remove_operand (op, infos->oldtarget);
 
-		xmmsc_coll_remove_operand (coll, op);
-		xmmsc_coll_add_operand (coll, infos->oldtarget);
+		xmmsv_coll_remove_operand (coll, op);
+		xmmsv_coll_add_operand (coll, infos->oldtarget);
 
-		xmmsc_coll_operand_list_first (coll); /* Restart if oplist changed */
+		xmmsv_coll_operand_list_first (coll); /* Restart if oplist changed */
 	}
-	xmmsc_coll_operand_list_restore (coll);
+	xmmsv_coll_operand_list_restore (coll);
 }
 
 /**
@@ -1596,27 +1658,27 @@ strip_references (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent
  * and if so, update the structure passed as userdata.
  */
 static void
-check_for_reference (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *parent, void *udata)
+check_for_reference (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent, void *udata)
 {
 	coll_refcheck_t *check = (coll_refcheck_t*)udata;
-	if (xmmsc_coll_get_type (coll) == XMMS_COLLECTION_TYPE_REFERENCE && !check->found) {
+	if (xmmsv_coll_get_type (coll) == XMMS_COLLECTION_TYPE_REFERENCE && !check->found) {
 		gchar *target_name, *target_namespace;
 
-		xmmsc_coll_attribute_get (coll, "reference", &target_name);
-		xmmsc_coll_attribute_get (coll, "namespace", &target_namespace);
+		xmmsv_coll_attribute_get (coll, "reference", &target_name);
+		xmmsv_coll_attribute_get (coll, "namespace", &target_namespace);
 		if (strcmp (check->target_name, target_name) == 0 &&
 		    strcmp (check->target_namespace, target_namespace) == 0) {
 			check->found = TRUE;
 		} else {
-			xmmsc_coll_t *op;
-			xmmsc_coll_operand_list_save (coll);
-			xmmsc_coll_operand_list_first (coll);
-			if (xmmsc_coll_operand_list_entry (coll, &op)) {
+			xmmsv_coll_t *op;
+			xmmsv_coll_operand_list_save (coll);
+			xmmsv_coll_operand_list_first (coll);
+			if (xmmsv_coll_operand_list_entry (coll, &op)) {
 				xmms_collection_apply_to_collection_recurs (dag, op, coll,
 				                                            check_for_reference,
 				                                            udata);
 			}
-			xmmsc_coll_operand_list_restore (coll);
+			xmmsv_coll_operand_list_restore (coll);
 		}
 	}
 }
@@ -1629,7 +1691,7 @@ check_for_reference (xmms_coll_dag_t *dag, xmmsc_coll_t *coll, xmmsc_coll_t *par
 static void
 coll_unref (void *coll)
 {
-	xmmsc_coll_unref (coll);
+	xmmsv_coll_unref (coll);
 }
 
 
@@ -1668,7 +1730,7 @@ build_list_matches (gpointer key, gpointer value, gpointer udata)
 	coll_find_state_t *state = value;
 	GList **list = udata;
 	if (*state == XMMS_COLLECTION_FIND_STATE_MATCH) {
-		*list = g_list_prepend (*list, xmms_object_cmd_value_str_new (coll_name));
+		*list = g_list_prepend (*list, xmmsv_new_string (coll_name));
 	}
 }
 
@@ -1683,23 +1745,23 @@ build_list_matches (gpointer key, gpointer value, gpointer udata)
  */
 static gboolean
 xmms_collection_media_match (xmms_coll_dag_t *dag, GHashTable *mediainfo,
-                             xmmsc_coll_t *coll, guint nsid,
+                             xmmsv_coll_t *coll, guint nsid,
                              GHashTable *match_table)
 {
 	gboolean match = FALSE;
-	xmmsc_coll_t *op;
+	xmmsv_coll_t *op;
 	gchar *attr1 = NULL, *attr2 = NULL;
-	xmms_object_cmd_value_t *cmdval;
+	xmmsv_t *val;
 	guint32 *idlist;
 	gint i;
 	gint id;
 
-	switch (xmmsc_coll_get_type (coll)) {
+	switch (xmmsv_coll_get_type (coll)) {
 	case XMMS_COLLECTION_TYPE_REFERENCE:
-		if (xmmsc_coll_attribute_get (coll, "reference", &attr1)) {
+		if (xmmsv_coll_attribute_get (coll, "reference", &attr1)) {
 			if (strcmp (attr1, "All Media") == 0) {
 				match = TRUE;
-			} else if (xmmsc_coll_attribute_get (coll, "namespace", &attr2)) {
+			} else if (xmmsv_coll_attribute_get (coll, "namespace", &attr2)) {
 				match = xmms_collection_media_match_reference (dag, mediainfo,
 				                                               coll, nsid,
 				                                               match_table,
@@ -1710,27 +1772,27 @@ xmms_collection_media_match (xmms_coll_dag_t *dag, GHashTable *mediainfo,
 
 	case XMMS_COLLECTION_TYPE_UNION:
 		/* if ANY matches */
-		xmmsc_coll_operand_list_save (coll);
-		xmmsc_coll_operand_list_first (coll);
-		while (!match && xmmsc_coll_operand_list_entry (coll, &op)) {
+		xmmsv_coll_operand_list_save (coll);
+		xmmsv_coll_operand_list_first (coll);
+		while (!match && xmmsv_coll_operand_list_entry (coll, &op)) {
 			match = xmms_collection_media_match (dag, mediainfo, op,
 			                                     nsid, match_table);
-			xmmsc_coll_operand_list_next (coll);
+			xmmsv_coll_operand_list_next (coll);
 		}
-		xmmsc_coll_operand_list_restore (coll);
+		xmmsv_coll_operand_list_restore (coll);
 		break;
 
 	case XMMS_COLLECTION_TYPE_INTERSECTION:
 		/* if ALL match */
 		match = TRUE;
-		xmmsc_coll_operand_list_save (coll);
-		xmmsc_coll_operand_list_first (coll);
-		while (match && xmmsc_coll_operand_list_entry (coll, &op)) {
+		xmmsv_coll_operand_list_save (coll);
+		xmmsv_coll_operand_list_first (coll);
+		while (match && xmmsv_coll_operand_list_entry (coll, &op)) {
 			match = xmms_collection_media_match (dag, mediainfo, op,
 			                                     nsid, match_table);
-			xmmsc_coll_operand_list_next (coll);
+			xmmsv_coll_operand_list_next (coll);
 		}
-		xmmsc_coll_operand_list_restore (coll);
+		xmmsv_coll_operand_list_restore (coll);
 		break;
 
 	case XMMS_COLLECTION_TYPE_COMPLEMENT:
@@ -1768,10 +1830,10 @@ xmms_collection_media_match (xmms_coll_dag_t *dag, GHashTable *mediainfo,
 	case XMMS_COLLECTION_TYPE_QUEUE:
 	case XMMS_COLLECTION_TYPE_PARTYSHUFFLE:
 		/* check if id in idlist */
-		cmdval = g_hash_table_lookup (mediainfo, "id");
-		if (cmdval != NULL) {
-			id = cmdval->value.int32;
-			idlist = xmmsc_coll_get_idlist (coll);
+		val = g_hash_table_lookup (mediainfo, "id");
+		if (val != NULL) {
+			xmmsv_get_int (val, &id);
+			idlist = xmmsv_coll_get_idlist (coll);
 			for (i = 0; idlist[i] != 0; i++) {
 				/* stop if mid in the list */
 				if (idlist[i] == id) {
@@ -1805,9 +1867,9 @@ xmms_collection_media_match (xmms_coll_dag_t *dag, GHashTable *mediainfo,
  */
 static gboolean
 xmms_collection_media_match_reference (xmms_coll_dag_t *dag, GHashTable *mediainfo,
-                                       xmmsc_coll_t *coll, guint nsid,
+                                       xmmsv_coll_t *coll, guint nsid,
                                        GHashTable *match_table,
-                                       gchar *refname, gchar *refns)
+                                       const gchar *refname, const gchar *refns)
 {
 	gboolean match;
 	guint refnsid;
@@ -1858,18 +1920,18 @@ xmms_collection_media_match_reference (xmms_coll_dag_t *dag, GHashTable *mediain
  */
 static gboolean
 xmms_collection_media_match_operand (xmms_coll_dag_t *dag, GHashTable *mediainfo,
-                                     xmmsc_coll_t *coll, guint nsid,
+                                     xmmsv_coll_t *coll, guint nsid,
                                      GHashTable *match_table)
 {
-	xmmsc_coll_t *op;
+	xmmsv_coll_t *op;
 	gboolean match = FALSE;
 
-	xmmsc_coll_operand_list_save (coll);
-	xmmsc_coll_operand_list_first (coll);
-	if (xmmsc_coll_operand_list_entry (coll, &op)) {
+	xmmsv_coll_operand_list_save (coll);
+	xmmsv_coll_operand_list_first (coll);
+	if (xmmsv_coll_operand_list_entry (coll, &op)) {
 		match = xmms_collection_media_match (dag, mediainfo, op, nsid, match_table);
 	}
-	xmmsc_coll_operand_list_restore (coll);
+	xmmsv_coll_operand_list_restore (coll);
 
 	return match;
 }
@@ -1886,15 +1948,17 @@ xmms_collection_media_info (guint mid, xmms_error_t *err)
 	GList *n;
 	GHashTable *infos;
 	gchar *name;
-	xmms_object_cmd_value_t *cmdval;
-	xmms_object_cmd_value_t *value;
+	const gchar *buf;
+	xmmsv_t *cmdval;
+	xmmsv_t *value;
 	guint state;
 
-	res = xmms_medialib_info (NULL, mid, err);
+	/* FIXME: could probably reuse tree from medialib_info directly. ignores sources? */
+	res = xmms_medialib_info_list (NULL, mid, err);
 
 	/* Transform the list into a HashMap */
 	infos = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                               g_free, (GDestroyNotify)xmms_object_cmd_value_unref);
+	                               g_free, (GDestroyNotify) xmmsv_unref);
 	for (state = 0, n = res; n; state = (state + 1) % 3, n = n->next) {
 		switch (state) {
 		case 0:  /* source */
@@ -1902,11 +1966,12 @@ xmms_collection_media_info (guint mid, xmms_error_t *err)
 
 		case 1:  /* prop name */
 			cmdval = n->data;
-			name = g_strdup (cmdval->value.string);
+			xmmsv_get_string (cmdval, &buf);
+			name = g_strdup (buf);
 			break;
 
 		case 2:  /* prop value */
-			value = xmms_object_cmd_value_ref (n->data);
+			value = xmmsv_ref (n->data);
 
 			/* Only insert the first source */
 			if (g_hash_table_lookup (infos, name) == NULL) {
@@ -1915,7 +1980,7 @@ xmms_collection_media_info (guint mid, xmms_error_t *err)
 			break;
 		}
 
-		xmms_object_cmd_value_unref (n->data);
+		xmmsv_unref (n->data);
 	}
 
 	g_list_free (res);
@@ -1929,31 +1994,33 @@ xmms_collection_media_info (guint mid, xmms_error_t *err)
  * @return  The property value as a string.
  */
 static gboolean
-filter_get_mediainfo_field_string (xmmsc_coll_t *coll, GHashTable *mediainfo, gchar **val)
+filter_get_mediainfo_field_string (xmmsv_coll_t *coll,
+                                   GHashTable *mediainfo, gchar **val)
 {
 	gboolean retval = FALSE;
 	gchar *attr;
-	xmms_object_cmd_value_t *cmdval;
+	xmmsv_t *cmdval;
 
-	if (xmmsc_coll_attribute_get (coll, "field", &attr)) {
+	if (xmmsv_coll_attribute_get (coll, "field", &attr)) {
 		cmdval = g_hash_table_lookup (mediainfo, attr);
 		if (cmdval != NULL) {
-			switch (cmdval->type) {
-			case XMMS_OBJECT_CMD_ARG_STRING:
-				*val = g_strdup (cmdval->value.string);
+			switch (xmmsv_get_type (cmdval)) {
+			case XMMSV_TYPE_STRING:
+			{
+				const gchar *s;
+				xmmsv_get_string (cmdval, &s);
+				*val = g_strdup (s);
 				retval = TRUE;
 				break;
-
-			case XMMS_OBJECT_CMD_ARG_UINT32:
-				*val = g_strdup_printf ("%u", cmdval->value.uint32);
+			}
+			case XMMSV_TYPE_INT32:
+			{
+				gint i;
+				xmmsv_get_int (cmdval, &i);
+				*val = g_strdup_printf ("%d", i);
 				retval = TRUE;
 				break;
-
-			case XMMS_OBJECT_CMD_ARG_INT32:
-				*val = g_strdup_printf ("%d", cmdval->value.int32);
-				retval = TRUE;
-				break;
-
+			}
 			default:
 				break;
 			}
@@ -1969,16 +2036,16 @@ filter_get_mediainfo_field_string (xmmsc_coll_t *coll, GHashTable *mediainfo, gc
  * @return  The property value as an integer.
  */
 static gboolean
-filter_get_mediainfo_field_int (xmmsc_coll_t *coll, GHashTable *mediainfo, gint *val)
+filter_get_mediainfo_field_int (xmmsv_coll_t *coll, GHashTable *mediainfo, gint *val)
 {
 	gboolean retval = FALSE;
 	gchar *attr;
-	xmms_object_cmd_value_t *cmdval;
+	xmmsv_t *cmdval;
 
-	if (xmmsc_coll_attribute_get (coll, "field", &attr)) {
+	if (xmmsv_coll_attribute_get (coll, "field", &attr)) {
 		cmdval = g_hash_table_lookup (mediainfo, attr);
-		if (cmdval != NULL && cmdval->type == XMMS_OBJECT_CMD_ARG_INT32) {
-			*val = cmdval->value.int32;
+		if (cmdval != NULL && xmmsv_get_type (cmdval) == XMMSV_TYPE_INT32) {
+			xmmsv_get_int (cmdval, val);
 			retval = TRUE;
 		}
 	}
@@ -1988,12 +2055,12 @@ filter_get_mediainfo_field_int (xmmsc_coll_t *coll, GHashTable *mediainfo, gint 
 
 /* Get the string value of the "value" attribute of the collection. */
 static gboolean
-filter_get_operator_value_string (xmmsc_coll_t *coll, gchar **val)
+filter_get_operator_value_string (xmmsv_coll_t *coll, const gchar **val)
 {
 	gchar *attr;
 	gboolean valid;
 
-	valid = xmmsc_coll_attribute_get (coll, "value", &attr);
+	valid = xmmsv_coll_attribute_get (coll, "value", &attr);
 	if (valid) {
 		*val = attr;
 	}
@@ -2003,7 +2070,7 @@ filter_get_operator_value_string (xmmsc_coll_t *coll, gchar **val)
 
 /* Get the integer value of the "value" attribute of the collection. */
 static gboolean
-filter_get_operator_value_int (xmmsc_coll_t *coll, gint *val)
+filter_get_operator_value_int (xmmsv_coll_t *coll, gint *val)
 {
 	gint buf;
 	gboolean valid;
@@ -2019,11 +2086,11 @@ filter_get_operator_value_int (xmmsc_coll_t *coll, gint *val)
 /* Check whether the given operator has the "case-sensitive" attribute
  * or not. */
 static gboolean
-filter_get_operator_case (xmmsc_coll_t *coll, gboolean *val)
+filter_get_operator_case (xmmsv_coll_t *coll, gboolean *val)
 {
 	gchar *attr;
 
-	if (xmmsc_coll_attribute_get (coll, "case-sensitive", &attr)) {
+	if (xmmsv_coll_attribute_get (coll, "case-sensitive", &attr)) {
 		*val = (strcmp (attr, "true") == 0);
 	}
 	else {
@@ -2036,7 +2103,7 @@ filter_get_operator_case (xmmsc_coll_t *coll, gboolean *val)
 /* Check whether the HAS filter operator matches the mediainfo. */
 static gboolean
 xmms_collection_media_filter_has (xmms_coll_dag_t *dag, GHashTable *mediainfo,
-                                  xmmsc_coll_t *coll, guint nsid,
+                                  xmmsv_coll_t *coll, guint nsid,
                                   GHashTable *match_table)
 {
 	gboolean match = FALSE;
@@ -2056,12 +2123,12 @@ xmms_collection_media_filter_has (xmms_coll_dag_t *dag, GHashTable *mediainfo,
 /* Check whether the MATCH filter operator matches the mediainfo. */
 static gboolean
 xmms_collection_media_filter_equals (xmms_coll_dag_t *dag, GHashTable *mediainfo,
-                                    xmmsc_coll_t *coll, guint nsid,
+                                    xmmsv_coll_t *coll, guint nsid,
                                     GHashTable *match_table)
 {
 	gboolean match = FALSE;
 	gchar *mediaval = NULL;
-	gchar *opval;
+	const gchar *opval;
 	gboolean case_sens;
 
 	if (filter_get_mediainfo_field_string (coll, mediainfo, &mediaval) &&
@@ -2091,33 +2158,31 @@ xmms_collection_media_filter_equals (xmms_coll_dag_t *dag, GHashTable *mediainfo
 /* Check whether the MATCH filter operator matches the mediainfo. */
 static gboolean
 xmms_collection_media_filter_match (xmms_coll_dag_t *dag, GHashTable *mediainfo,
-                                       xmmsc_coll_t *coll, guint nsid,
+                                       xmmsv_coll_t *coll, guint nsid,
                                        GHashTable *match_table)
 {
 	gboolean match = FALSE;
-	gchar *buf;
-	gchar *mediaval;
-	gchar *opval;
+	gchar *buf, *opval, *mediaval;
+	const gchar *s;
 	gboolean case_sens;
 
 	if (filter_get_mediainfo_field_string (coll, mediainfo, &buf) &&
-	    filter_get_operator_value_string (coll, &opval) &&
+	    filter_get_operator_value_string (coll, &s) &&
 	    filter_get_operator_case (coll, &case_sens)) {
 
 		/* Prepare values */
 		if (case_sens) {
-			mediaval = buf;
+			opval = g_strdup (s);
+			mediaval = g_strdup (buf);
 		} else {
-			opval = g_utf8_strdown (opval, -1);
+			opval = g_utf8_strdown (s, -1);
 			mediaval = g_utf8_strdown (buf, -1);
-			g_free (buf);
 		}
 
 		match = g_pattern_match_simple (opval, mediaval);
 
-		if (!case_sens) {
-			g_free (opval);
-		}
+		g_free (buf);
+		g_free (opval);
 		g_free (mediaval);
 
 		/* If operator matches, recurse upwards in the operand */
@@ -2133,7 +2198,7 @@ xmms_collection_media_filter_match (xmms_coll_dag_t *dag, GHashTable *mediainfo,
 /* Check whether the SMALLER filter operator matches the mediainfo. */
 static gboolean
 xmms_collection_media_filter_smaller (xmms_coll_dag_t *dag, GHashTable *mediainfo,
-                                      xmmsc_coll_t *coll, guint nsid,
+                                      xmmsv_coll_t *coll, guint nsid,
                                       GHashTable *match_table)
 {
 	gboolean match = FALSE;
@@ -2155,7 +2220,7 @@ xmms_collection_media_filter_smaller (xmms_coll_dag_t *dag, GHashTable *mediainf
 /* Check whether the GREATER filter operator matches the mediainfo. */
 static gboolean
 xmms_collection_media_filter_greater (xmms_coll_dag_t *dag, GHashTable *mediainfo,
-                                      xmmsc_coll_t *coll, guint nsid,
+                                      xmmsv_coll_t *coll, guint nsid,
                                       GHashTable *match_table)
 {
 	gboolean match = FALSE;

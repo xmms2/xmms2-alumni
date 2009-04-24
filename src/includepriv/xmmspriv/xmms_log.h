@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -22,6 +22,7 @@
 
 #include "xmms/xmms_log.h"
 
+void xmms_log_set_format (const gchar *format);
 void xmms_log_init (gint verbosity);
 void xmms_log_shutdown (void);
 void xmms_log_daemonize (void);

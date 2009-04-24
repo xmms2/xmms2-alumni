@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -14,17 +14,18 @@
  *  Lesser General Public License for more details.
  */
 
+#include "cmd_status.h"
 #include "common.h"
 
 
 /**
  * Function prototypes
  */
-static void handle_current_id (xmmsc_result_t *res, void *userdata);
-static void handle_playtime (xmmsc_result_t *res, void *userdata);
-static void handle_mediainfo_update (xmmsc_result_t *res, void *userdata);
-static void handle_status_change (xmmsc_result_t *res, void *userdata);
-static void do_mediainfo (xmmsc_result_t *res, void *userdata);
+static int handle_current_id (xmmsv_t *res, void *userdata);
+static int handle_playtime (xmmsv_t *res, void *userdata);
+static int handle_mediainfo_update (xmmsv_t *res, void *userdata);
+static int handle_status_change (xmmsv_t *res, void *userdata);
+static int do_mediainfo (xmmsv_t *res, void *userdata);
 static void update_display ();
 static void quit (void *data);
 
@@ -36,11 +37,11 @@ extern gchar *statusformat;
 
 static gboolean has_songname = FALSE;
 static gboolean fetching_songname = FALSE;
-static guint current_id = 0;
-static guint last_dur = 0;
+static gint current_id = 0;
+static gint last_dur = 0;
 static gint curr_dur = 0;
 static gchar songname[256];
-static guint curr_status = 0;
+static gint curr_status = 0;
 
 static const gchar *status_messages[] = {
 	"Stopped",
@@ -85,66 +86,81 @@ void
 cmd_current (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsv_t *propdict, *val;
 	gchar print_text[256];
-	guint id;
+	gint id;
 
 	res = xmmsc_playback_current_id (conn);
 	xmmsc_result_wait (res);
+	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsv_is_error (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	if (!xmmsc_result_get_uint (res, &id)) {
+	if (!xmmsv_get_int (val, &id)) {
 		print_error ("Broken resultset");
 	}
 	xmmsc_result_unref (res);
 
+	/* no current track, abort */
+	if (id == 0) {
+		print_info ("");
+		return;
+	}
+
 	res = xmmsc_medialib_get_info (conn, id);
 	xmmsc_result_wait (res);
+	propdict = xmmsc_result_get_value (res);
+	val = xmmsv_propdict_to_dict (propdict, NULL);
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsv_is_error (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
 	if (argc > 2) {
-		xmmsc_entry_format (print_text, sizeof (print_text), argv[2], res);
+		xmmsc_entry_format (print_text, sizeof (print_text), argv[2], val);
 	} else {
 		xmmsc_entry_format (print_text, sizeof (print_text),
-		                    "${artist} - ${title}", res);
+		                    "${artist} - ${title}", val);
 	}
+
+	xmmsv_unref (val);
 
 	print_info ("%s", print_text);
 	xmmsc_result_unref (res);
 }
 
-static void
-handle_status_change (xmmsc_result_t *res, void *userdata)
+static int
+handle_status_change (xmmsv_t *val, void *userdata)
 {
-	guint new_status;
+	gint new_status;
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsv_is_error (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	if (!xmmsc_result_get_uint (res, &new_status)) {
+	if (!xmmsv_get_int (val, &new_status)) {
 		print_error ("Broken resultset");
 	}
 
 	curr_status = new_status;
 	update_display ();
+
+	return TRUE;
 }
 
-static void
-handle_current_id (xmmsc_result_t *res, void *userdata)
+static int
+handle_current_id (xmmsv_t *val, void *userdata)
 {
+	xmmsc_result_t *res;
 	xmmsc_connection_t *conn = userdata;
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsv_is_error (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	if (!xmmsc_result_get_uint (res, &current_id)) {
+	if (!xmmsv_get_int (val, &current_id)) {
 		print_error ("Broken resultset");
 	}
 
@@ -154,20 +170,21 @@ handle_current_id (xmmsc_result_t *res, void *userdata)
 		xmmsc_result_notifier_set (res, do_mediainfo, NULL);
 		xmmsc_result_unref (res);
 	}
+
+	return TRUE;
 }
 
 
-static void
-handle_playtime (xmmsc_result_t *res, void *userdata)
+static int
+handle_playtime (xmmsv_t *val, void *userdata)
 {
-	xmmsc_result_t *newres;
-	guint dur;
+	gint dur;
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsv_is_error (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	if (!xmmsc_result_get_uint (res, &dur)) {
+	if (!xmmsv_get_int (val, &dur)) {
 		print_error ("Broken resultset");
 	}
 
@@ -178,9 +195,9 @@ handle_playtime (xmmsc_result_t *res, void *userdata)
 			update_display ();
 
 	}
-	newres = xmmsc_result_restart (res);
-	xmmsc_result_unref (res);
-	xmmsc_result_unref (newres);
+
+	/* Trigger restart */
+	return TRUE;
 }
 
 static void update_display ()
@@ -220,17 +237,18 @@ static void update_display ()
 	}
 }
 
-static void
-handle_mediainfo_update (xmmsc_result_t *res, void *userdata)
+static int
+handle_mediainfo_update (xmmsv_t *val, void *userdata)
 {
-	guint id;
+	gint id;
+	xmmsc_result_t *res;
 	xmmsc_connection_t *conn = userdata;
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsv_is_error (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	if (!xmmsc_result_get_uint (res, &id)) {
+	if (!xmmsv_get_int (val, &id)) {
 		print_error ("Broken resultset");
 	}
 
@@ -239,28 +257,34 @@ handle_mediainfo_update (xmmsc_result_t *res, void *userdata)
 		xmmsc_result_notifier_set (res, do_mediainfo, NULL);
 		xmmsc_result_unref (res);
 	}
+
+	return TRUE;
 }
 
 
-static void
-do_mediainfo (xmmsc_result_t *res, void *userdata)
+static int
+do_mediainfo (xmmsv_t *propdict, void *userdata)
 {
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	xmmsv_t *val;
+
+	if (xmmsv_is_error (propdict)) {
+		print_error ("%s", xmmsv_get_error_old (propdict));
 	}
 
+	val = xmmsv_propdict_to_dict (propdict, NULL);
+
 	print_info ("");
-	if (res_has_key (res, "channel") && res_has_key (res, "title")) {
+	if (val_has_key (val, "channel") && val_has_key (val, "title")) {
 		xmmsc_entry_format (songname, sizeof (songname),
-		                    "[stream] ${title}", res);
+		                    "[stream] ${title}", val);
 		has_songname = TRUE;
-	} else if (res_has_key (res, "channel")) {
-		xmmsc_entry_format (songname, sizeof (songname), "${channel}", res);
+	} else if (val_has_key (val, "channel")) {
+		xmmsc_entry_format (songname, sizeof (songname), "${channel}", val);
 		has_songname = TRUE;
-	} else if (!res_has_key (res, "title")) {
+	} else if (!val_has_key (val, "title")) {
 		const gchar *url;
 
-		if (xmmsc_result_get_dict_entry_string (res, "url", &url)) {
+		if (xmmsv_dict_entry_get_string (val, "url", &url)) {
 			gchar *filename = g_path_get_basename (url);
 
 			if (filename) {
@@ -271,20 +295,22 @@ do_mediainfo (xmmsc_result_t *res, void *userdata)
 		}
 	} else {
 		xmmsc_entry_format (songname, sizeof (songname),
-		                    statusformat, res);
+		                    statusformat, val);
 		has_songname = TRUE;
 	}
 
-	if (xmmsc_result_get_dict_entry_int (res, "duration", &curr_dur)) {
+	if (xmmsv_dict_entry_get_int (val, "duration", &curr_dur)) {
 		/* rounding */
 		curr_dur += 500;
 	} else {
 		curr_dur = 0;
 	}
 
-	xmmsc_result_unref (res);
+	xmmsv_unref (val);
 
 	fetching_songname = FALSE;
+
+	return FALSE;
 }
 
 

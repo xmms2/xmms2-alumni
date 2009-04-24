@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -23,12 +23,13 @@
 #include <sqlite3.h>
 #include <xmms/xmms_object.h>
 
-typedef gboolean (*xmms_medialib_row_array_method_t) (xmms_object_cmd_value_t **row, gpointer udata);
-typedef gboolean (*xmms_medialib_row_table_method_t) (GHashTable *row, gpointer udata);
+typedef gboolean (*xmms_medialib_row_array_method_t) (xmmsv_t **row, gpointer udata);
+typedef gboolean (*xmms_medialib_row_table_method_t) (xmmsv_t *row, gpointer udata);
 
 sqlite3 *xmms_sqlite_open (void);
 gboolean xmms_sqlite_create (gboolean *create);
 gboolean xmms_sqlite_query_array (sqlite3 *sql, xmms_medialib_row_array_method_t method, gpointer udata, const gchar *query, ...);
+gboolean xmms_sqlite_query_int (sqlite3 *sql, gint32 *r, const gchar *query, ...);
 gboolean xmms_sqlite_query_table (sqlite3 *sql, xmms_medialib_row_table_method_t method, gpointer udata, xmms_error_t *error, const gchar *query, ...);
 gboolean xmms_sqlite_exec (sqlite3 *sql, const char *query, ...);
 void xmms_sqlite_close (sqlite3 *sql);

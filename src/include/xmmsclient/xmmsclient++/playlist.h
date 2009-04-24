@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -192,8 +192,25 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult addId( const unsigned int id,
+			VoidResult addId( const int id,
 			                  const std::string& playlist = DEFAULT_PLAYLIST ) const;
+
+			/** Add an idlist to a playlist.
+			 *
+			 *  @param idlist an ID list
+			 *  @param playlist the playlist to modify (if omitted,
+			 *                  act on the current playlist)
+			 *
+			 *  @throw connection_error If the client isn't connected.
+			 *  @throw mainloop_running_error If a mainloop is running -
+			 *  sync functions can't be called when mainloop is running. This
+			 *  is only thrown if the programmer is careless or doesn't know
+			 *  what he/she's doing. (logic_error)
+			 *  @throw result_error If the operation failed.
+			 *  @throw std::bad_cast If idlist is not a valid const Coll::Idlist&.
+			 */
+			VoidResult addIdlist( const Coll::Coll& idlist,
+			                      const std::string& playlist = DEFAULT_PLAYLIST ) const;
 
 			/**	Add the content of the given collection to a playlist.
 			 *  The list of ordering properties defines how the set of
@@ -243,8 +260,7 @@ namespace Xmms
 			 *  @throw result_error If the operation failed.
 			 *
 			 *  @return Dict containing then name of a playlist in 'name' and
-			 *  the current position in that playlist as unsigned integer in
-			 *  'position'.
+			 *  the current position in that playlist as integer in 'position'.
 			 */
 			DictResult currentPos( const std::string& playlist = DEFAULT_PLAYLIST
 			                     ) const;
@@ -258,7 +274,7 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 *
-			 *  @return current position as unsigned integer.
+			 *  @return current position as integer.
 			 */
 			StringResult currentActive() const;
 
@@ -333,7 +349,7 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult insertId( int pos, unsigned int id,
+			VoidResult insertId( int pos, int id,
 			                     const std::string& playlist = DEFAULT_PLAYLIST
 			                   ) const;
 
@@ -360,6 +376,50 @@ namespace Xmms
 			                             const std::string& playlist = DEFAULT_PLAYLIST
 			                           ) const;
 
+			/**	Insert the directory recursively at a given position in a
+			 *  playlist.
+			 *  The url should be absolute to the server-side.
+			 *  Note that you will have to include the protocol
+			 *  for the url to. ie: file://mp3/my_mp3s/directory
+			 *
+			 *  @param pos A position in the playlist.
+			 *  @param url directory to be added
+			 *  @param playlist the playlist to modify (if omitted,
+			 *                  act on the current playlist)
+			 *
+			 *  @throw connection_error If the client isn't connected.
+			 *  @throw mainloop_running_error If a mainloop is running -
+			 *  sync functions can't be called when mainloop is running. This
+			 *  is only thrown if the programmer is careless or doesn't know
+			 *  what he/she's doing. (logic_error)
+			 *  @throw result_error If the operation failed.
+			 */
+			VoidResult insertRecursive( int pos, const std::string& url,
+			                            const std::string& playlist
+			                                         = DEFAULT_PLAYLIST
+			                          ) const;
+
+			/**	Insert the directory recursivly at a given position in a
+			 *  playlist.
+			 *  Same as #insertRecursive but takes a encoded URL instead.
+			 *
+			 *  @param pos A position in the playlist.
+			 *  @param url directory to be added
+			 *  @param playlist the playlist to modify (if omitted,
+			 *                  act on the current playlist)
+			 *
+			 *  @throw connection_error If the client isn't connected.
+			 *  @throw mainloop_running_error If a mainloop is running -
+			 *  sync functions can't be called when mainloop is running. This
+			 *  is only thrown if the programmer is careless or doesn't know
+			 *  what he/she's doing. (logic_error)
+			 *  @throw result_error If the operation failed.
+			 */
+			VoidResult insertRecursiveEncoded( int pos, const std::string& url,
+			                                   const std::string& playlist
+			                                             = DEFAULT_PLAYLIST
+			                                 ) const;
+
 			/** Retrieve the entries in a playlist.
 			 *
 			 *  @param playlist the playlist to consider (if omitted,
@@ -374,7 +434,7 @@ namespace Xmms
 			 *
 			 *  @return A List of medialib IDs
 			 */
-			UintListResult listEntries( const std::string& playlist
+			IntListResult listEntries( const std::string& playlist
 			                                       = DEFAULT_PLAYLIST ) const;
 
 			/** Move a playlist entry to a new position (absolute move).
@@ -391,7 +451,7 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult moveEntry( unsigned int curpos, unsigned int newpos,
+			VoidResult moveEntry( int curpos, int newpos,
 			                      const std::string& playlist = DEFAULT_PLAYLIST
 			                    ) const;
 
@@ -409,7 +469,7 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult removeEntry( unsigned int pos,
+			VoidResult removeEntry( int pos,
 			                        const std::string& playlist = DEFAULT_PLAYLIST
 			                      ) const;
 
@@ -437,7 +497,7 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			UintResult setNext( unsigned int pos ) const;
+			IntResult setNext( int pos ) const;
 
 			/** Same as setNext but relative to the current position.
 			 *
@@ -452,7 +512,7 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			UintResult setNextRel( signed int pos ) const;
+			IntResult setNextRel( signed int pos ) const;
 
 			/** Shuffles a playlist.
 			 *
@@ -504,7 +564,10 @@ namespace Xmms
 			 *  changed this will be called.
 			 *
 			 *  @param slot Function pointer to a function taking a
-			 *              const unsigned int& and returning a bool.
+			 *              const Dict& and returning a bool.
+			 *              Dict contains then name of a playlist
+			 *              in 'name' and the updated position in
+			 *              that playlist as integer in 'position'.
 			 *  @param error Function pointer to an error callback
 			 *               function. (<b>optional</b>)
 			 *

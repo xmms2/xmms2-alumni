@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -35,6 +35,7 @@ xmms_socket_t xmms_ipc_transport_fd_get (xmms_ipc_transport_t *ipct);
 xmms_ipc_transport_t * xmms_ipc_server_accept (xmms_ipc_transport_t *ipct);
 xmms_ipc_transport_t * xmms_ipc_client_init (const char *path);
 xmms_ipc_transport_t * xmms_ipc_server_init (const char *path);
+char * xmms_ipc_hostname (const char *path);
 
 struct xmms_ipc_transport_St {
 	char *path;

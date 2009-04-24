@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -39,7 +39,7 @@ namespace Xmms
 
 		public:
 
-			typedef xmmsc_coll_namespace_t Namespace;
+			typedef xmmsv_coll_namespace_t Namespace;
 
 			static const Namespace ALL;
 			static const Namespace COLLECTIONS;
@@ -133,7 +133,7 @@ namespace Xmms
 			 *  @return a list of collection names.
 			 */
 			StringListResult
-			find( unsigned int id, Namespace nsname ) const;
+			find( int id, Namespace nsname ) const;
 
 			/** Rename the collection given its name and its namespace.
 			 *  @note A collection cannot be moved to another namespace.
@@ -194,11 +194,11 @@ namespace Xmms
 			 *
 			 *  @return a list of media ids matched by the collection.
 			 */
-			UintListResult
+			IntListResult
 			queryIds( const Coll::Coll& coll,
 			          const std::list<std::string>& order = std::list<std::string>(),
-			          unsigned int limit_len = 0,
-			          unsigned int limit_start = 0) const;
+			          int limit_len = 0,
+			          int limit_start = 0) const;
 
 			/** Retrieve the properties of media matched by a collection.
 			 *  To query the content of a saved collection, use a
@@ -228,8 +228,8 @@ namespace Xmms
 			queryInfos( const Coll::Coll& coll,
 			            const std::list<std::string>& fetch,
 			            const std::list<std::string>& order = std::list<std::string>(),
-			            unsigned int limit_len = 0,
-			            unsigned int limit_start = 0,
+			            int limit_len = 0,
+			            int limit_start = 0,
 			            const std::list<std::string>& group = std::list<std::string>()
 			          ) const;
 

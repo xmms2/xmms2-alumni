@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -116,7 +116,7 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Playlist::addId( unsigned int id,
+	VoidResult Playlist::addId( int id,
 	                            const std::string& playlist ) const
 	{
 		xmmsc_result_t* res =
@@ -126,18 +126,31 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
+	VoidResult Playlist::addIdlist( const Coll::Coll& idlist,
+	                                const std::string& playlist ) const
+	{
+		xmmsc_result_t* res =
+		    call( connected_,
+		          boost::bind( xmmsc_playlist_add_idlist, conn_,
+		                       playlist.c_str(),
+		                       dynamic_cast<const Coll::Idlist&>(idlist).getColl() ) );
+		return VoidResult( res, ml_ );
+	}
+
 	VoidResult Playlist::addCollection( const Coll::Coll& collection,
 	                                    const std::list< std::string >& order,
 	                                    const std::string& playlist ) const
 	{
-		std::vector< const char* > corder;
-		fillCharArray( order, corder );
+		xmmsv_t *xorder = makeStringList( order );
 
 		xmmsc_result_t* res =
 		    call( connected_,
 		          boost::bind( xmmsc_playlist_add_collection, conn_,
 		                       playlist.c_str(), collection.getColl(),
-		                       &corder[0] ) );
+		                       xorder ) );
+
+		xmmsv_unref( xorder );
+
 		return VoidResult( res, ml_ );
 	}
 
@@ -202,7 +215,7 @@ namespace Xmms
 	}
 
 
-	VoidResult Playlist::insertId( int pos, unsigned int id,
+	VoidResult Playlist::insertId( int pos, int id,
 	                               const std::string& playlist ) const
 	{
 		xmmsc_result_t* res =
@@ -212,31 +225,55 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
+	VoidResult Playlist::insertRecursive( int pos, const std::string& url,
+	                                      const std::string& playlist ) const
+	{
+		xmmsc_result_t* res =
+		    call( connected_,
+		          boost::bind( xmmsc_playlist_rinsert, conn_,
+		                       playlist.c_str(), pos, url.c_str() ) );
+		return VoidResult( res, ml_ );
+	}
+
+	VoidResult Playlist::insertRecursiveEncoded( int pos,
+	                                             const std::string& url,
+	                                             const std::string& playlist
+	                                           ) const
+	{
+		xmmsc_result_t* res =
+		    call( connected_,
+		          boost::bind( xmmsc_playlist_rinsert_encoded, conn_,
+		                       playlist.c_str(), pos, url.c_str() ) );
+		return VoidResult( res, ml_ );
+	}
+
 	VoidResult Playlist::insertCollection( int pos, const Coll::Coll& collection,
 	                                       const std::list< std::string >& order,
 	                                       const std::string& playlist ) const
 	{
-		std::vector< const char* > corder;
-		fillCharArray( order, corder );
+		xmmsv_t *xorder = makeStringList( order );
 
 		xmmsc_result_t* res =
 		    call( connected_,
 		          boost::bind( xmmsc_playlist_insert_collection, conn_,
 		                       playlist.c_str(), pos, collection.getColl(),
-		                       &corder[0] ) );
+		                       xorder ) );
+
+		xmmsv_unref( xorder );
+
 		return VoidResult( res, ml_ );
 	}
 
-	UintListResult Playlist::listEntries( const std::string& playlist ) const
+	IntListResult Playlist::listEntries( const std::string& playlist ) const
 	{
 		xmmsc_result_t* res = 
 		    call( connected_,
 		          boost::bind( xmmsc_playlist_list_entries, conn_,
 		                       playlist.c_str() ) );
-		return UintListResult( res, ml_ );
+		return IntListResult( res, ml_ );
 	}
 
-	VoidResult Playlist::moveEntry( unsigned int curpos, unsigned int newpos,
+	VoidResult Playlist::moveEntry( int curpos, int newpos,
 	                                const std::string& playlist ) const
 	{
 		xmmsc_result_t* res =
@@ -246,7 +283,7 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Playlist::removeEntry( unsigned int pos,
+	VoidResult Playlist::removeEntry( int pos,
 	                                  const std::string& playlist ) const
 	{
 		xmmsc_result_t* res =
@@ -264,20 +301,20 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	UintResult Playlist::setNext( unsigned int pos ) const
+	IntResult Playlist::setNext( int pos ) const
 	{
 		xmmsc_result_t* res = 
 		    call( connected_,
 		          boost::bind( xmmsc_playlist_set_next, conn_, pos ) );
-		return UintResult( res, ml_ );
+		return IntResult( res, ml_ );
 	}
 
-	UintResult Playlist::setNextRel( signed int pos ) const
+	IntResult Playlist::setNextRel( signed int pos ) const
 	{
 		xmmsc_result_t* res = 
 		    call( connected_,
 		          boost::bind( xmmsc_playlist_set_next_rel, conn_, pos ) );
-		return UintResult( res, ml_ );
+		return IntResult( res, ml_ );
 	}
 
 	VoidResult Playlist::shuffle( const std::string& playlist ) const
@@ -291,12 +328,15 @@ namespace Xmms
 	VoidResult Playlist::sort( const std::list<std::string>& properties,
 	                           const std::string& playlist ) const
 	{
-		const char** props = c_stringList( properties );
+		xmmsv_t *xprops = makeStringList( properties );
+
 		xmmsc_result_t* res =
 		    call( connected_,
 		          boost::bind( xmmsc_playlist_sort, conn_,
-		                       playlist.c_str(), props ) );
-		delete [] props;
+		                       playlist.c_str(), xprops ) );
+
+		xmmsv_unref( xprops );
+
 		return VoidResult( res, ml_ );
 	}
 

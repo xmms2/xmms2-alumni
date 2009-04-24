@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -49,7 +49,7 @@
 
 
 
-#define XMMS_XFORM_API_VERSION 6
+#define XMMS_XFORM_API_VERSION 7
 
 #include "xmms/xmms_error.h"
 #include "xmms/xmms_plugin.h"
@@ -230,7 +230,7 @@ void xmms_xform_auxdata_set_bin (xmms_xform_t *xform, const gchar *key, gpointer
 gboolean xmms_xform_auxdata_has_val (xmms_xform_t *xform, const gchar *key);
 gboolean xmms_xform_auxdata_get_int (xmms_xform_t *xform, const gchar *key, gint32 *val);
 gboolean xmms_xform_auxdata_get_str (xmms_xform_t *xform, const gchar *key, const gchar **val);
-gboolean xmms_xform_auxdata_get_bin (xmms_xform_t *xform, const gchar *key, gpointer *data, gssize *datalen);
+gboolean xmms_xform_auxdata_get_bin (xmms_xform_t *xform, const gchar *key, const guchar **data, gsize *datalen);
 
 const char *xmms_xform_indata_get_str (xmms_xform_t *xform, xmms_stream_type_key_t key);
 gint xmms_xform_indata_get_int (xmms_xform_t *xform, xmms_stream_type_key_t key);
@@ -320,7 +320,7 @@ const gchar *xmms_xform_get_url (xmms_xform_t *xform);
 #define XMMS_XFORM_BROWSE_FLAG_DIR (1 << 0)
 
 void xmms_xform_browse_add_entry (xmms_xform_t *xform, const gchar *path, guint32 flags);
-void xmms_xform_browse_add_entry_property (xmms_xform_t *xform, const gchar *key, xmms_object_cmd_value_t *val);
+void xmms_xform_browse_add_entry_property (xmms_xform_t *xform, const gchar *key, xmmsv_t *val);
 void xmms_xform_browse_add_entry_property_str (xmms_xform_t *xform,
                                                const gchar *key,
                                                const gchar *value);

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -19,6 +19,7 @@
  */
 
 #include <stdlib.h>
+#include <time.h>
 
 #include "xmmsc/xmmsc_util.h"
 
@@ -62,4 +63,18 @@ xmms_fallback_ipcpath_get (char *buf, int len)
 	snprintf (buf, len, "tcp://127.0.0.1:" XMMS_STRINGIFY (XMMS_DEFAULT_TCP_PORT));
 
 	return buf;
+}
+
+/**
+ * Sleep for n milliseconds.
+ *
+ * @param n The number of milliseconds to sleep.
+ * @return true when we waited the full time, false otherwise.
+ */
+bool
+xmms_sleep_ms (int n)
+{
+	Sleep (n);
+
+	return true;
 }

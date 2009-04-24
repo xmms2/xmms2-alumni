@@ -1,15 +1,15 @@
 # encoding: utf-8
 #
 # WAF build scripts for XMMS2
-# Copyright (C) 2006-2008 XMMS2 Team
+# Copyright (C) 2006-2009 XMMS2 Team
 #
 
 def build(bld):
-    obj = bld.create_obj('cc', 'staticlib')
-    obj.source = "coll.c xlist.c".split()
-    obj.includes='. ../../include ../../includepriv'
-    obj.target='xmmstypes'
-    obj.install_var = 0
+    obj = bld.new_task_gen('cc', 'staticlib')
+    obj.source = "coll.c value.c xlist.c".split()
+    obj.includes = '. ../../.. ../../include ../../includepriv'
+    obj.target = 'xmmstypes'
+    obj.install_path = 0
 
 def configure(conf):
     return True

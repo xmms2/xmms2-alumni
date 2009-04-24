@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -64,7 +64,7 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Medialib::entryPropertyRemove( unsigned int id,
+	VoidResult Medialib::entryPropertyRemove( int id,
 	                                          const std::string& key,
 	                                          const std::string& source ) const
 	{
@@ -84,7 +84,7 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Medialib::entryPropertySet( unsigned int id,
+	VoidResult Medialib::entryPropertySet( int id,
 	                                       const std::string& key,
 	                                       const std::string& value,
 	                                       const std::string& source ) const
@@ -105,9 +105,9 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Medialib::entryPropertySet( unsigned int id,
+	VoidResult Medialib::entryPropertySet( int id,
 	                                       const std::string& key,
-	                                       const int value,
+	                                       int32_t value,
 	                                       const std::string& source ) const
 	{
 		boost::function< xmmsc_result_t*() > f;
@@ -127,16 +127,16 @@ namespace Xmms
 	}
 
 
-	UintResult Medialib::getID( const std::string& url ) const
+	IntResult Medialib::getID( const std::string& url ) const
 	{
 		xmmsc_result_t* res = call( connected_,
 		                            boost::bind( xmmsc_medialib_get_id,
 		                                         conn_, url.c_str() )
 		                          );
-		return UintResult( res, ml_ );
+		return IntResult( res, ml_ );
 	}
 
-	PropDictResult Medialib::getInfo( unsigned int id ) const
+	PropDictResult Medialib::getInfo( int id ) const
 	{
 		xmmsc_result_t* res = call( connected_,
 		                            boost::bind( xmmsc_medialib_get_info,
@@ -163,7 +163,7 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Medialib::rehash( unsigned int id ) const
+	VoidResult Medialib::rehash( int id ) const
 	{
 		xmmsc_result_t* res =
 		    call( connected_,
@@ -171,7 +171,7 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Medialib::removeEntry( unsigned int id ) const
+	VoidResult Medialib::removeEntry( int id ) const
 	{
 		xmmsc_result_t* res =
 		    call( connected_,
@@ -179,7 +179,7 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Medialib::moveEntry( unsigned int id,
+	VoidResult Medialib::moveEntry( int id,
 	                                const std::string& path ) const
 	{
 		xmmsc_result_t* res =
@@ -189,21 +189,21 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	UintSignal Medialib::broadcastEntryAdded() const
+	IntSignal Medialib::broadcastEntryAdded() const
 	{
 		xmmsc_result_t* res =
 		    call( connected_,
 		          boost::bind( xmmsc_broadcast_medialib_entry_added, conn_ ) );
-		return UintSignal( res, ml_ );
+		return IntSignal( res, ml_ );
 	}
 
-	UintSignal Medialib::broadcastEntryChanged() const
+	IntSignal Medialib::broadcastEntryChanged() const
 	{
 		using boost::bind;
 		xmmsc_result_t* res =
 		    call( connected_,
 		          bind( xmmsc_broadcast_medialib_entry_changed, conn_ ) );
-		return UintSignal( res, ml_ );
+		return IntSignal( res, ml_ );
 	}
 
 	Medialib::Medialib( xmmsc_connection_t*& conn, bool& connected,

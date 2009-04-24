@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -59,9 +59,11 @@ static void md5_init (md5_state_t *pms);
 static void md5_append (md5_state_t *pms, const md5_byte_t *data, int nbytes);
 static void md5_finish (md5_state_t *pms, md5_byte_t digest[16]);
 
+static gchar *xmms_bindata_build_path (xmms_bindata_t *bindata, const gchar *hash);
+
 static gchar *xmms_bindata_add (xmms_bindata_t *bindata, GString *data, xmms_error_t *err);
-static GString *xmms_bindata_retrieve (xmms_bindata_t *bindata, gchar *hash, xmms_error_t *err);
-static void xmms_bindata_remove (xmms_bindata_t *bindata, gchar *hash, xmms_error_t *);
+static xmmsv_t *xmms_bindata_retrieve (xmms_bindata_t *bindata, const gchar *hash, xmms_error_t *err);
+static void xmms_bindata_remove (xmms_bindata_t *bindata, const gchar *hash, xmms_error_t *);
 static GList *xmms_bindata_list (xmms_bindata_t *bindata, xmms_error_t *err);
 static gboolean _xmms_bindata_add (xmms_bindata_t *bindata, const guchar *data, gsize len, gchar hash[33], xmms_error_t *err);
 
@@ -143,6 +145,12 @@ xmms_bindata_calculate_md5 (const guchar *data, guint size, gchar ret[33])
 	return ret;
 }
 
+static gchar *
+xmms_bindata_build_path (xmms_bindata_t *bindata, const gchar *hash)
+{
+	return g_build_path (G_DIR_SEPARATOR_S, bindata->bindir, hash, NULL);
+}
+
 /** Add binary data from a plugin */
 gboolean
 xmms_bindata_plugin_add (const guchar *data, gsize size, gchar hash[33])
@@ -161,7 +169,7 @@ _xmms_bindata_add (xmms_bindata_t *bindata, const guchar *data, gsize len, gchar
 
 	xmms_bindata_calculate_md5 (data, len, hash);
 
-	path = XMMS_BUILD_PATH ("bindata", hash);
+	path = xmms_bindata_build_path (bindata, hash);
 
 	if (g_file_test (path, G_FILE_TEST_IS_REGULAR)) {
 		XMMS_DBG ("file %s is already in bindata dir", hash);
@@ -216,14 +224,16 @@ xmms_bindata_add (xmms_bindata_t *bindata, GString *data, xmms_error_t *err)
 	return NULL;
 }
 
-static GString *
-xmms_bindata_retrieve (xmms_bindata_t *bindata, gchar *hash, xmms_error_t *err)
+static xmmsv_t *
+xmms_bindata_retrieve (xmms_bindata_t *bindata, const gchar *hash,
+                       xmms_error_t *err)
 {
+	xmmsv_t *res;
 	gchar *path;
 	GString *str;
 	FILE *fp;
 
-	path = XMMS_BUILD_PATH ("bindata", hash);
+	path = xmms_bindata_build_path (bindata, hash);
 
 	fp = fopen (path, "rb");
 	if (!fp) {
@@ -252,14 +262,19 @@ xmms_bindata_retrieve (xmms_bindata_t *bindata, gchar *hash, xmms_error_t *err)
 
 	fclose (fp);
 
-	return str;
+	res = xmmsv_new_bin ((unsigned char *)str->str, str->len);
+
+	g_string_free (str, TRUE);
+
+	return res;
 }
 
 static void
-xmms_bindata_remove (xmms_bindata_t *bindata, gchar *hash, xmms_error_t *err)
+xmms_bindata_remove (xmms_bindata_t *bindata, const gchar *hash,
+                     xmms_error_t *err)
 {
 	gchar *path;
-	path = XMMS_BUILD_PATH ("bindata", hash);
+	path = xmms_bindata_build_path (bindata, hash);
 	if (unlink (path) == -1) {
 		xmms_error_set (err, XMMS_ERROR_GENERIC, "Couldn't remove file");
 	}
@@ -275,7 +290,7 @@ xmms_bindata_list (xmms_bindata_t *bindata, xmms_error_t *err)
 	const gchar *file;
 	GDir *dir;
 
-	path = XMMS_BUILD_PATH ("bindata");
+	path = xmms_bindata_build_path (bindata, NULL);
 	dir = g_dir_open (path, 0, NULL);
 	g_free (path);
 
@@ -286,8 +301,7 @@ xmms_bindata_list (xmms_bindata_t *bindata, xmms_error_t *err)
 	}
 
 	while ((file = g_dir_read_name (dir))) {
-		entries = g_list_prepend (entries,
-		                          xmms_object_cmd_value_str_new (file));
+		entries = g_list_prepend (entries, xmmsv_new_string (file));
 	}
 
 	g_dir_close (dir);

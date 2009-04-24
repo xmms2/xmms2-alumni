@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -160,7 +160,7 @@ namespace Xmms
 		return std::string( xmmsc_get_last_error( conn_ ) );
 	}
 
-	bool Client::quitHandler( const unsigned int& /*time*/ )
+	bool Client::quitHandler( const int& /*time*/ )
 	{
 		return true;
 	}

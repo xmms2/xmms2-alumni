@@ -33,9 +33,17 @@ N: Magnus Bjernstad
 E: bjernstad@gmail.com
 D: PythonAPI fixes.
 
+N: Raphaël Bois
+E: vdust@free.fr
+D: Bindata bugfix.
+
 N: Alexander Botero-Lowry
 E: alex@foxybanana.com
 D: *BSD support. Manpages. Various fixes.
+
+N: Nicolas Botti
+E: r2d@musepack.net
+D: Updates to the musepack plugin to support new APIs.
 
 N: Sébastien Cevey
 E: seb@cine7.net
@@ -73,7 +81,8 @@ D: Java bindings
 
 N: Thomas Frauendorfer
 E: Thomas.Frauendorfer@googlemail.com
-D: Small change to C++ bindings.
+P: 1024D/50817EB1 A1A5 77A8 54C3 0B8D 8A4C  749A C49E 18C3 5081 7EB1
+D: Various small fixes
 
 N: Manuel Fuhr
 E: zod@knid.net
@@ -82,6 +91,11 @@ D: lastfm
 N: G. Gallino
 E: ggallino@gmail.com
 D: Equaliser fixes
+
+N: Anthony Garcia
+E: anthony@agg.homelinux.net
+P: 1024D/076F9E89 9467 6082 8A35 2E1E 2D6B  76C4 5E9A ED56 076F 9E89
+D: Compatibility fix to avcodec plugin.
 
 N: Paul Giblock
 E: drfaygo@gmail.com
@@ -95,6 +109,10 @@ N: Johannes Heimansberg
 E: wejpilot@gmail.com
 D: Fix remove command in cli.
 
+N: Jonathan Horowitz
+E: jhorowitz@cs.uri.edu
+D: GME plugin improvements.
+
 N: Olle Hällnäs
 E: olle@xmms.org
 D: Better seeking in cli.
@@ -106,6 +124,10 @@ D: Python bindings improvements
 N: Thomas Jollans
 E: thomas@jollans.com
 D: Python bindings improvements
+
+N: Johannes Jordan
+E: ypnos@lanrules.de
+D: Visualization
 
 N: Daniel Kamiński
 E: maniel.rulez@gmail.com
@@ -135,9 +157,17 @@ N: Michael Lindgren
 E: lindgren@debian.as
 D: Curl. HTML pls plugin. Various fixes.
 
+N: David Mason
+E: djmason@gmail.com
+D: Wavpack plugin fixes/tagging
+
 N: Erik Massop
 E: e.massop@hccnet.nl
 D: "jumplist", cli coll queryadd, bugfixes
+
+N: Łukasz Michalik
+E: lmi@ift.uni.wroc.pl
+D: Bugfixes.
 
 N: Mind.In.A.Box / Stefan Poiss and Markus Hadwiger
 W: http://www.mindinabox.com/
@@ -170,6 +200,10 @@ N: Tobias Nygren
 E: tnn@nygren.pp.se
 D: HP-UX portability
 
+N: Thomas Orgis
+E: thomas@orgis.org
+D: mpg123 plugin.
+
 N: Heikki Orsila
 E: heikki.orsila@iki.fi
 D: Cleanups.
@@ -190,6 +224,10 @@ N: Algardas Pelakauskas
 E: algardas@gmail.com
 D: Ruby radd binding
 
+N: Andrew G Potter
+E: agpotter@ucdavis.edu
+D: Medialib handling bugfix
+
 N: Robin Lee Powell
 E: rlpowell@chain.digitalkingdom.org
 D: New medialib/collection helper commands.
@@ -199,6 +237,10 @@ E: rafl@debian.org
 W: http://perldition.org/
 P: 1024D/8E635A5E E8DC 91A1 B7BE E5AB C172  47EE 742F 2A42 8E63 5A5E
 D: Official Debian packages. Bugfixes. Perl bindings.
+
+N: Igor Assis
+E: igor.assis@gmail.com
+D: nycli (Summer of Code 2008)
 
 N: Ugo Riboni
 E: nerochiaro@neuros.us
@@ -259,6 +301,9 @@ D: Pythonbindings fix
 N: Daniel Svensson
 E: dsvensson@gmail.com
 E: daniel@nittionio.nu
+E: daniel.svensson@purplescout.se
+W: http://dsvensson.wordpress.com
+P: 1024D/633F5931 9D2D 8156 23A2 8305 95A2 4D71 7BF0 2E28 633F 5931
 D: Musepack. CoreFoundation. Alsa. Gnomevfs. Samba. Sun. Various fixes.
 
 N: Jens Taprogge
@@ -285,7 +330,7 @@ N: Juho Vähä-Herttua
 E: juhovh@iki.fi
 W: http://juho.vaha-herttua.fi/
 P: 1024D/CB130DCE 1C70 BF1D AEF7 619C C0A6  60E7 563D FCA3 CB13 0DCE
-D: Mp4, faad, asf, avcodec, equalizer, vocoder, ao, karaoke, etc.
+D: Mp4, faad, asf, avcodec, equalizer, vocoder, ao, karaoke, apefile, tta, etc.
 
 N: Georg Wacker
 E: gpsw@gmx.de

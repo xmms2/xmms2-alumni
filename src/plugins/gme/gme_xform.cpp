@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -28,6 +28,11 @@
 #include "xmms/xmms_medialib.h"
 #include "gme/gme.h"
 
+#define GME_DEFAULT_SAMPLE_RATE 44100
+#define GME_DEFAULT_SONG_LENGTH 300
+#define GME_DEFAULT_SONG_LOOPS 2
+#define GME_DEFAULT_STEREO_DEPTH -1.0
+
 extern "C" {
 
 /* 
@@ -36,6 +41,7 @@ extern "C" {
  */
 typedef struct xmms_gme_data_St {
 	Music_Emu *emu; /* An emulation instance for the GME library */
+	int samplerate; /* The sample rate, set by the user */
 } xmms_gme_data_t;
 
 /*
@@ -46,6 +52,7 @@ static gboolean xmms_gme_plugin_setup (xmms_xform_plugin_t *xform_plugin);
 static gint xmms_gme_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len, xmms_error_t *err);
 static gboolean xmms_gme_init (xmms_xform_t *decoder);
 static void xmms_gme_destroy (xmms_xform_t *decoder);
+static gint64 xmms_gme_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_seek_mode_t whence, xmms_error_t *err);
 
 /*
  * Plugin header
@@ -65,11 +72,14 @@ xmms_gme_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	methods.init = xmms_gme_init;
 	methods.destroy = xmms_gme_destroy;
 	methods.read = xmms_gme_read;
+	methods.seek = xmms_gme_seek;
 
 	xmms_xform_plugin_methods_set (xform_plugin, &methods);
 
-	xmms_xform_plugin_config_property_register (xform_plugin, "loops", "2", NULL, NULL);
-	xmms_xform_plugin_config_property_register (xform_plugin, "maxlength", "300", NULL, NULL);
+	xmms_xform_plugin_config_property_register (xform_plugin, "loops", G_STRINGIFY (GME_DEFAULT_SONG_LOOPS), NULL, NULL);
+	xmms_xform_plugin_config_property_register (xform_plugin, "maxlength", G_STRINGIFY (GME_DEFAULT_SONG_LENGTH), NULL, NULL);
+	xmms_xform_plugin_config_property_register (xform_plugin, "samplerate", G_STRINGIFY (GME_DEFAULT_SAMPLE_RATE), NULL, NULL);
+	xmms_xform_plugin_config_property_register (xform_plugin, "stereodepth", G_STRINGIFY (GME_DEFAULT_STEREO_DEPTH), NULL, NULL);
 
 	/* todo: add other mime types */
 	xmms_xform_plugin_indata_add (xform_plugin,
@@ -84,7 +94,32 @@ xmms_gme_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 
 	xmms_xform_plugin_indata_add (xform_plugin,
 	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "application/x-nsfe",
+	                              NULL);
+
+	xmms_xform_plugin_indata_add (xform_plugin,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
 	                              "application/x-gbs",
+	                              NULL);
+
+	xmms_xform_plugin_indata_add (xform_plugin,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "application/x-gym",
+	                              NULL);
+
+	xmms_xform_plugin_indata_add (xform_plugin,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "application/x-vgm",
+	                              NULL);
+
+	xmms_xform_plugin_indata_add (xform_plugin,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "application/x-sap",
+	                              NULL);
+
+	xmms_xform_plugin_indata_add (xform_plugin,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "application/x-ay",
 	                              NULL);
 
 	/* todo: add other magic */
@@ -98,15 +133,45 @@ xmms_gme_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	                "0 string NESM",
 	                NULL);
 
+	xmms_magic_add ("NSFE file",
+	                "application/x-nsfe",
+	                "0 string NSFE",
+	                NULL);
+
 	xmms_magic_add ("GBS file",
 	                "application/x-gbs",
 	                "0 string GBS",
 	                NULL);
 
+	xmms_magic_add ("GYM file",
+	                "application/x-gym",
+	                "0 string GYMX",
+	                NULL);
+
+	xmms_magic_add ("VGM file",
+	                "application/x-vgm",
+	                "0 string Vgm",
+	                NULL);
+
+	xmms_magic_add ("SAP file",
+	                "application/x-sap",
+	                "0 string SAP",
+	                NULL);
+
+	xmms_magic_add ("AY file",
+	                "application/x-ay",
+	                "0 string ZXAYEMU",
+	                NULL);
+
 	/* todo: add other file extensions */
 	xmms_magic_extension_add ("application/x-spc", "*.spc");
 	xmms_magic_extension_add ("application/x-nsf", "*.nsf");
+	xmms_magic_extension_add ("application/x-nsfe", "*.nsfe");
 	xmms_magic_extension_add ("application/x-gbs", "*.gbs");
+	xmms_magic_extension_add ("application/x-gym", "*.gym");
+	xmms_magic_extension_add ("application/x-vgm", "*.vgm");
+	xmms_magic_extension_add ("application/x-sap", "*.sap");
+	xmms_magic_extension_add ("application/x-ay", "*.ay");
 
 	return TRUE;
 }
@@ -124,6 +189,8 @@ xmms_gme_init (xmms_xform_t *xform)
 	const char *subtune_str;
 	int subtune = 0;
 	long fadelen = -1;
+	int samplerate;
+	double stereodepth;
 
 
 	g_return_val_if_fail (xform, FALSE);
@@ -131,6 +198,12 @@ xmms_gme_init (xmms_xform_t *xform)
 	data = g_new0 (xmms_gme_data_t, 1);
 
 	xmms_xform_private_data_set (xform, data);
+
+	val = xmms_xform_config_lookup (xform, "samplerate");
+	samplerate = xmms_config_property_get_int (val);
+	if (samplerate < 1)
+		samplerate = GME_DEFAULT_SAMPLE_RATE;
+	data->samplerate = samplerate;
 
 	xmms_xform_outdata_type_add (xform,
 	                             XMMS_STREAM_TYPE_MIMETYPE,
@@ -140,7 +213,7 @@ xmms_gme_init (xmms_xform_t *xform)
 	                             XMMS_STREAM_TYPE_FMT_CHANNELS,
 	                             2, /* stereo */
 	                             XMMS_STREAM_TYPE_FMT_SAMPLERATE,
-	                             44100, /* 44 kHz */
+	                             samplerate,
 	                             XMMS_STREAM_TYPE_END);
 
 	file_contents = g_string_new ("");
@@ -161,7 +234,9 @@ xmms_gme_init (xmms_xform_t *xform)
 		g_string_append_len (file_contents, buf, ret);
 	}
 
-	init_error = gme_open_data (file_contents->str, file_contents->len, &data->emu, 44100);
+	init_error = gme_open_data (file_contents->str, file_contents->len, &data->emu, samplerate);
+
+	g_string_free (file_contents, TRUE);
 
 	if (init_error) {
 		XMMS_DBG ("gme_open_data returned an error: %s", init_error);
@@ -222,6 +297,15 @@ xmms_gme_init (xmms_xform_t *xform)
 
 	XMMS_DBG ("gme.fadelen = %ld", fadelen);
 
+	val = xmms_xform_config_lookup (xform, "stereodepth");
+	stereodepth = xmms_config_property_get_float (val);
+	if (stereodepth >= 0.0 && stereodepth <= 1.0) {
+		XMMS_DBG ("Setting stereo depth to %f.", stereodepth);
+		gme_set_stereo_depth (data->emu, stereodepth);
+	} else {
+		XMMS_DBG ("gme.stereodepth = %f out of range 0.0 - 1.0; not setting.", stereodepth);
+	}
+
 	init_error = gme_start_track (data->emu, subtune);
 	if (init_error) {
 		XMMS_DBG ("gme_start_track returned an error: %s", init_error);
@@ -233,8 +317,6 @@ xmms_gme_init (xmms_xform_t *xform)
 		xmms_xform_metadata_set_int (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_DURATION, fadelen);
 		gme_set_fade (data->emu, fadelen);
 	}
-
-	g_string_free (file_contents, TRUE);
 
 	return TRUE;
 }
@@ -279,6 +361,43 @@ xmms_gme_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len, xmms_error_t *
 	}
 
 	return len;
+}
+
+static gint64
+xmms_gme_seek (xmms_xform_t *xform, gint64 samples,
+               xmms_xform_seek_mode_t whence, xmms_error_t *err)
+{
+	xmms_gme_data_t *data;
+	gint64 target_time;
+	gint duration;
+	int samplerate;
+
+	g_return_val_if_fail (whence == XMMS_XFORM_SEEK_SET, -1);
+	g_return_val_if_fail (xform, -1);
+
+	data = (xmms_gme_data_t *) xmms_xform_private_data_get (xform);
+	g_return_val_if_fail (data, -1);
+
+	samplerate = data->samplerate;
+
+	if (samples < 0) {
+		xmms_error_set (err, XMMS_ERROR_INVAL,
+		                "Trying to seek before start of stream");
+		return -1;
+	}
+
+	target_time = (samples / samplerate) * 1000;
+	xmms_xform_metadata_get_int (xform, XMMS_MEDIALIB_ENTRY_PROPERTY_DURATION, &duration);
+
+	if (target_time > duration) {
+		xmms_error_set (err, XMMS_ERROR_INVAL,
+		                "Trying to seek past end of stream");
+		return -1;
+	}
+
+	gme_seek (data->emu, target_time);
+
+	return (gme_tell (data->emu) / 1000) * samplerate;
 }
 
 }

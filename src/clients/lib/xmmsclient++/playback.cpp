@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -63,7 +63,7 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Playback::seekMs(unsigned int milliseconds) const
+	VoidResult Playback::seekMs(int milliseconds) const
 	{
 		xmmsc_result_t* res =
 			call( connected_,
@@ -80,7 +80,7 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Playback::seekSamples(unsigned int samples) const
+	VoidResult Playback::seekSamples(int samples) const
 	{
 		xmmsc_result_t* res =
 			call( connected_,
@@ -97,12 +97,12 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	UintResult Playback::currentID() const
+	IntResult Playback::currentID() const
 	{
 		xmmsc_result_t* res = 
 		    call( connected_,
 		          boost::bind( xmmsc_playback_current_id, conn_ ) );
-		return UintResult( res, ml_ );
+		return IntResult( res, ml_ );
 	}
 
 	StatusResult Playback::getStatus() const
@@ -114,15 +114,15 @@ namespace Xmms
 		return StatusResult( res, ml_ );
 	}
 
-	UintResult Playback::getPlaytime() const
+	IntResult Playback::getPlaytime() const
 	{
 		xmmsc_result_t* res = 
 		    call( connected_, boost::bind( xmmsc_playback_playtime, conn_ ) );
-		return UintResult( res, ml_ );
+		return IntResult( res, ml_ );
 	}
 
 	VoidResult Playback::volumeSet(const std::string& channel,
-	                               unsigned int volume) const
+	                               int volume) const
 	{
 		xmmsc_result_t* res =
 			call( connected_,
@@ -139,12 +139,12 @@ namespace Xmms
 		return DictResult( res, ml_ );
 	}
 
-	UintSignal Playback::broadcastCurrentID() const
+	IntSignal Playback::broadcastCurrentID() const
 	{
 		xmmsc_result_t* res =
 		    call( connected_,
 		          boost::bind( xmmsc_broadcast_playback_current_id, conn_ ) );
-		return UintSignal( res, ml_ );
+		return IntSignal( res, ml_ );
 	}
 
 	StatusSignal Playback::broadcastStatus() const
@@ -163,12 +163,12 @@ namespace Xmms
 		return DictSignal( res, ml_ );
 	}
 
-	UintSignal Playback::signalPlaytime() const
+	IntSignal Playback::signalPlaytime() const
 	{
 		xmmsc_result_t* res =
 		    call( connected_,
 		          boost::bind( xmmsc_signal_playback_playtime, conn_ ) );
-		return UintSignal( res, ml_ );
+		return IntSignal( res, ml_ );
 	}
 
 	Playback::Playback( xmmsc_connection_t*& conn, bool& connected,

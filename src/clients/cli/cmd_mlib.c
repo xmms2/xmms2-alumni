@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -98,46 +98,50 @@ void
 cmd_info (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	guint id;
+	xmmsv_t *val;
+	gint id;
 
 	if (argc > 2) {
 		gint cnt;
 
 		for (cnt = 2; cnt < argc; cnt++) {
-			id = strtoul (argv[cnt], (gchar**) NULL, 10);
+			id = strtol (argv[cnt], (gchar**) NULL, 10);
 
 			res = xmmsc_medialib_get_info (conn, id);
 			xmmsc_result_wait (res);
+			val = xmmsc_result_get_value (res);
 
-			if (xmmsc_result_iserror (res)) {
-				print_error ("%s", xmmsc_result_get_error (res));
+			if (xmmsv_is_error (val)) {
+				print_error ("%s", xmmsv_get_error_old (val));
 			}
 
-			xmmsc_result_propdict_foreach (res, print_entry, res);
+			xmmsv_dict_foreach (val, print_entry, val);
 			xmmsc_result_unref (res);
 		}
 
 	} else {
 		res = xmmsc_playback_current_id (conn);
 		xmmsc_result_wait (res);
+		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_result_iserror (res)) {
-			print_error ("%s", xmmsc_result_get_error (res));
+		if (xmmsv_is_error (val)) {
+			print_error ("%s", xmmsv_get_error_old (val));
 		}
 
-		if (!xmmsc_result_get_uint (res, &id)) {
+		if (!xmmsv_get_int (val, &id)) {
 			print_error ("Broken resultset");
 		}
 		xmmsc_result_unref (res);
 
 		res = xmmsc_medialib_get_info (conn, id);
 		xmmsc_result_wait (res);
+		val = xmmsc_result_get_value (res);
 
-		if (xmmsc_result_iserror (res)) {
-			print_error ("%s", xmmsc_result_get_error (res));
+		if (xmmsv_is_error (val)) {
+			print_error ("%s", xmmsv_get_error_old (val));
 		}
 
-		xmmsc_result_propdict_foreach (res, print_entry, res);
+		xmmsv_dict_foreach (val, print_entry, val);
 		xmmsc_result_unref (res);
 	}
 }
@@ -267,8 +271,8 @@ cmd_mlib_loadall (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *playlist = NULL;
 	xmmsc_result_t *res;
-	xmmsc_coll_t *all = xmmsc_coll_universe ();
-	const gchar *empty[] = { NULL };
+	xmmsv_coll_t *all = xmmsv_coll_universe ();
+	xmmsv_t *empty = xmmsv_new_list ();
 
 	/* Load in another playlist */
 	if (argc == 4) {
@@ -278,7 +282,8 @@ cmd_mlib_loadall (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	res = xmmsc_playlist_add_collection (conn, playlist, all, empty);
 	xmmsc_result_wait (res);
 
-	xmmsc_coll_unref (all);
+	xmmsv_coll_unref (all);
+	xmmsv_unref (empty);
 
 	if (xmmsc_result_iserror (res)) {
 		print_error ("%s", xmmsc_result_get_error (res));
@@ -291,11 +296,11 @@ static void
 cmd_mlib_searchadd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
-	xmmsc_coll_t *query;
+	xmmsv_coll_t *query;
 	gchar *pattern;
 	gchar **args;
 	int i;
-	const gchar *order[] = { NULL };
+	xmmsv_t *empty = xmmsv_new_list ();
 
 	if (argc < 4) {
 		print_error ("give a search pattern of the form "
@@ -309,7 +314,7 @@ cmd_mlib_searchadd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	args[i] = NULL;
 
 	pattern = g_strjoinv (" ", args);
-	if (!xmmsc_coll_parse (pattern, &query)) {
+	if (!xmmsv_coll_parse (pattern, &query)) {
 		print_error ("Unable to generate query");
 	}
 
@@ -320,9 +325,10 @@ cmd_mlib_searchadd (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	g_free (pattern);
 
 	/* FIXME: Always add to active playlist: allow loading in other playlist! */
-	res = xmmsc_playlist_add_collection (conn, NULL, query, order);
+	res = xmmsc_playlist_add_collection (conn, NULL, query, empty);
 	xmmsc_result_wait (res);
-	xmmsc_coll_unref (query);
+	xmmsv_coll_unref (query);
+	xmmsv_unref (empty);
 
 	if (xmmsc_result_iserror (res)) {
 		print_error ("%s", xmmsc_result_get_error (res));
@@ -334,8 +340,10 @@ static void
 cmd_mlib_search (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsv_t *val;
+	xmmsv_list_iter_t *it;
 	GList *n = NULL;
-	xmmsc_coll_t *query;
+	xmmsv_coll_t *query;
 	gchar *pattern;
 	gchar **args;
 	int i;
@@ -352,7 +360,7 @@ cmd_mlib_search (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	args[i] = NULL;
 
 	pattern = g_strjoinv (" ", args);
-	if (!xmmsc_coll_parse (pattern, &query)) {
+	if (!xmmsv_coll_parse (pattern, &query)) {
 		print_error ("Unable to generate query");
 	}
 
@@ -364,21 +372,25 @@ cmd_mlib_search (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 	res = xmmsc_coll_query_ids (conn, query, NULL, 0, 0);
 	xmmsc_result_wait (res);
-	xmmsc_coll_unref (query);
+	xmmsv_coll_unref (query);
+	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_result_iserror (res)) {
-		print_error ("%s", xmmsc_result_get_error (res));
+	if (xmmsv_is_error (val)) {
+		print_error ("%s", xmmsv_get_error_old (val));
 	}
 
-	while (xmmsc_result_list_valid (res)) {
-		guint id;
+	xmmsv_get_list_iter (val, &it);
+	while (xmmsv_list_iter_valid (it)) {
+		gint id;
+		xmmsv_t *val_id;
 
-		if (!xmmsc_result_get_uint (res, &id)) {
+		if (!xmmsv_list_iter_entry (it, &val_id) ||
+		    !xmmsv_get_int (val_id, &id)) {
 			print_error ("Broken resultset");
 		}
 
 		n = g_list_prepend (n, XINT_TO_POINTER (id));
-		xmmsc_result_list_next (res);
+		xmmsv_list_iter_next (it);
 	}
 	n = g_list_reverse (n);
 	format_pretty_list (conn, n);
@@ -469,6 +481,7 @@ static void
 cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
+	xmmsv_t *val;
 	const gchar *filename;
 	GIOChannel* io = NULL;
 	GError *error = NULL;
@@ -503,14 +516,15 @@ cmd_mlib_addcover (xmmsc_connection_t *conn, gint argc, gchar **argv)
 
 		res = xmmsc_bindata_add (conn, (guchar*)contents, filesize);
 		xmmsc_result_wait (res);
+		val = xmmsc_result_get_value (res);
 
 		g_free (contents);
 
-		if (xmmsc_result_iserror (res)) {
-			print_error ("%s", xmmsc_result_get_error (res));
+		if (xmmsv_is_error (val)) {
+			print_error ("%s", xmmsv_get_error_old (val));
 		}
 
-		if (!xmmsc_result_get_string (res, &hash)) {
+		if (!xmmsv_get_string (val, &hash)) {
 			print_error ("Could not extract hash from result!");
 		}
 

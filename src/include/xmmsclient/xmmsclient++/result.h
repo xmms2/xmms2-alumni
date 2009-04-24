@@ -54,8 +54,12 @@ namespace Xmms
 				if( sig_ ) {
 					SignalHolder::getInstance().addSignal( sig_ );
 				}
-				xmmsc_result_notifier_set( res_, Xmms::generic_callback< T >,
-				                           static_cast< void* >( sig_ ) );
+				// sig_ will be removed from the SignalHolder (and freed)
+				// by freeSignal when the result is freed.
+				xmmsc_result_notifier_set_full( res_,
+				                                Xmms::generic_callback< T >,
+				                                static_cast< void* >( sig_ ),
+				                                &freeSignal );
 
 				// NOTE: This is intentional, the SignalHolder will destroy
 				// the Signal object when it's no longer needed.
@@ -104,7 +108,7 @@ namespace Xmms
 
 	};
 
-	template< typename T, typename A, int get( xmmsc_result_t*, A* ) >
+	template< typename T, typename A, int get( const xmmsv_t*, A* ) >
 	class Adapter : public AdapterBase< T >
 	{
 
@@ -138,7 +142,8 @@ namespace Xmms
 				xmmsc_result_wait( this->res_ );
 				check( this->res_ );
 
-				if( !get( this->res_, &value_ ) ) {
+				xmmsv_t *v = xmmsc_result_get_value( this->res_ );
+				if( !get( v, &value_ ) ) {
 					// FIXME: Handle failure
 				}
 				return T( value_ );
@@ -181,7 +186,10 @@ namespace Xmms
 			{
 				check( this->ml_ );
 				xmmsc_result_wait( this->res_ );
-				return T( this->res_ );
+				check( this->res_ );
+
+				xmmsv_t *v = xmmsc_result_get_value( this->res_ );
+				return T( v );
 			}
 
 	};
@@ -214,41 +222,39 @@ namespace Xmms
 
 	};
 
-	class QuitSignal : protected SignalAdapter< uint32_t >
+	class QuitSignal : protected SignalAdapter< int32_t >
 	{
 		public:
 
 			QuitSignal( xmmsc_result_t* res, MainloopInterface*& ml )
-				: SignalAdapter< uint32_t >( res, ml )
+				: SignalAdapter< int32_t >( res, ml )
 			{
-				xmmsc_result_notifier_set( res, 
-			                               Xmms::generic_callback<uint32_t>,
-			                               static_cast< void* >( this->sig_ ) );
+				xmmsc_result_notifier_set_full( res_,
+				                                Xmms::generic_callback<int32_t>,
+				                                static_cast< void* >( sig_ ),
+				                                &freeSignal );
 			}
 
-			using SignalAdapter< uint32_t >::connect;
-			using SignalAdapter< uint32_t >::connectError;
+			using SignalAdapter< int32_t >::connect;
+			using SignalAdapter< int32_t >::connectError;
 
 	};
 
-	typedef Adapter< int32_t, int32_t, xmmsc_result_get_int > IntResult;
-	typedef Adapter< uint32_t, uint32_t, xmmsc_result_get_uint > UintResult;
-	typedef Adapter< std::string, const char*, xmmsc_result_get_string > StringResult;
-	typedef Adapter< xmms_playback_status_t, uint32_t,
-	                 xmmsc_result_get_uint > StatusResult;
+	typedef Adapter< int32_t, int32_t, xmmsv_get_int > IntResult;
+	typedef Adapter< std::string, const char*, xmmsv_get_string > StringResult;
+	typedef Adapter< xmms_playback_status_t, int32_t,
+	                 xmmsv_get_int > StatusResult;
 
 	typedef ClassAdapter< Dict > DictResult;
 	typedef ClassAdapter< PropDict > PropDictResult;
 	typedef ClassAdapter< List< int > > IntListResult;
-	typedef ClassAdapter< List< unsigned int > > UintListResult;
 	typedef ClassAdapter< List< std::string > > StringListResult;
 	typedef ClassAdapter< List< Dict > > DictListResult;
 
 	typedef SignalAdapter< Dict > DictSignal;
-	typedef SignalAdapter< unsigned int > UintSignal;
+	typedef SignalAdapter< int > IntSignal;
 	typedef SignalAdapter< std::string > StringSignal;
 	typedef SignalAdapter< xmms_playback_status_t > StatusSignal;
-	typedef SignalAdapter< List< unsigned int > > UintListSignal;
 	typedef SignalAdapter< xmms_mediainfo_reader_status_t > ReaderStatusSignal;
 
 	class VoidResult : public AdapterBase< void >
@@ -315,9 +321,10 @@ namespace Xmms
 				xmmsc_result_wait( this->res_ );
 				check( this->res_ );
 
-				unsigned char* temp = 0;
+				const unsigned char* temp = 0;
 				unsigned int len = 0;
-				if( !xmmsc_result_get_bin( this->res_, &temp, &len ) ) {
+				xmmsv_t *v = xmmsc_result_get_value( this->res_ );
+				if( !xmmsv_get_bin( v, &temp, &len ) ) {
 					// FIXME: Handle failure
 				}
 				return Xmms::bin( temp, len );
@@ -356,20 +363,21 @@ namespace Xmms
 				xmmsc_result_wait( this->res_ );
 				check( this->res_ );
 
-				xmmsc_coll_t* coll = 0;
-				if( !xmmsc_result_get_collection( this->res_, &coll ) ) {
-					throw result_error( "Invalid collection in result" );
+				xmmsv_coll_t* coll = 0;
+				xmmsv_t *v = xmmsc_result_get_value( this->res_ );
+				if( !xmmsv_get_coll( v, &coll ) ) {
+					throw value_error( "Invalid collection in value" );
 				}
 				return createColl( coll );
 			}
 
 			static CollPtr
-			createColl( xmmsc_coll_t* coll )
+			createColl( xmmsv_coll_t* coll )
 			{
 
 				CollPtr collptr;
 
-				switch( xmmsc_coll_get_type( coll ) ) {
+				switch( xmmsv_coll_get_type( coll ) ) {
 
 					case XMMS_COLLECTION_TYPE_REFERENCE: {
 						collptr.reset( new Coll::Reference( coll ) );

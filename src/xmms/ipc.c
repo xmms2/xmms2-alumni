@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -15,8 +15,10 @@
  */
 
 #include <glib.h>
+#include <string.h>
 
 #include "xmms/xmms_log.h"
+#include "xmms/xmms_config.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmsc/xmmsc_ipc_msg.h"
 
@@ -86,187 +88,24 @@ static struct xmms_ipc_object_pool_t *ipc_object_pool = NULL;
 static void xmms_ipc_client_destroy (xmms_ipc_client_t *client);
 
 static gboolean xmms_ipc_client_msg_write (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg);
-static void xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val);
+
 
 static gboolean
-type_and_msg_to_arg (xmms_object_cmd_arg_type_t type, xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg, gint i)
+type_and_msg_to_arg (xmmsv_type_t type, xmms_ipc_msg_t *msg, xmms_object_cmd_arg_t *arg, gint i)
 {
-	guint len;
-	guint size, k;
-
-	switch (type) {
-		case XMMS_OBJECT_CMD_ARG_NONE:
-			break;
-		case XMMS_OBJECT_CMD_ARG_UINT32 :
-			if (!xmms_ipc_msg_get_uint32 (msg, &arg->values[i].value.uint32))
-				return FALSE;
-			break;
-		case XMMS_OBJECT_CMD_ARG_INT32 :
-			if (!xmms_ipc_msg_get_int32 (msg, &arg->values[i].value.int32))
-				return FALSE;
-			break;
-		case XMMS_OBJECT_CMD_ARG_STRING :
-			if (!xmms_ipc_msg_get_string_alloc (msg, &arg->values[i].value.string, &len)) {
-				return FALSE;
-			}
-			break;
-		case XMMS_OBJECT_CMD_ARG_STRINGLIST :
-			if (!xmms_ipc_msg_get_uint32 (msg, &size)) {
-				return FALSE;
-			}
-			for (k = 0; k < size; k++) {
-				gchar *buf;
-				if (!xmms_ipc_msg_get_string_alloc (msg, &buf, &len) ||
-				    !(arg->values[i].value.list = g_list_prepend (arg->values[i].value.list, buf))) {
-					GList * list = arg->values[i].value.list;
-					while (list) { g_free (list->data); list = g_list_remove (list, list); }
-					return FALSE;
-				}
-			}
-			arg->values[i].value.list = g_list_reverse (arg->values[i].value.list);
-			break;
-		case XMMS_OBJECT_CMD_ARG_COLL :
-			if (!xmms_ipc_msg_get_collection_alloc (msg, &arg->values[i].value.coll)) {
-				return FALSE;
-			}
-			break;
-		case XMMS_OBJECT_CMD_ARG_BIN :
-			{
-				GString *bin = g_string_new (NULL);
-				if (!xmms_ipc_msg_get_bin_alloc (msg, (unsigned char **)&bin->str, (uint32_t *)&bin->len)) {
-					return FALSE;
-				}
-				arg->values[i].value.bin = bin;
-			}
-			break;
-		default:
-			XMMS_DBG ("Unknown value for a caller argument?");
-			return FALSE;
-			break;
+	if (!xmms_ipc_msg_get_value_of_type_alloc (msg, type, &arg->values[i])) {
+		XMMS_DBG ("Failed fetching the value of the argument from the IPC message!");
+		return FALSE;
 	}
-	arg->values[i].type = type;
+
 	return TRUE;
 }
 
-typedef struct dict_to_dict_data_St {
-	xmms_ipc_msg_t *msg;
-	guint count;
-} dict_to_dict_data_t;
-
-static gboolean
-tree_to_dict (gpointer key, gpointer value, gpointer udata)
-{
-	gchar *k = key;
-	xmms_object_cmd_value_t *v = value;
-	dict_to_dict_data_t *d = udata;
-
-	if (k && v) {
-		xmms_ipc_msg_put_string (d->msg, k);
-		xmms_ipc_handle_cmd_value (d->msg, v);
-		d->count++;
-	}
-
-	return FALSE; /* keep going */
-}
-
 static void
-xmms_ipc_do_dict (xmms_ipc_msg_t *msg, GTree *dict)
+xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmmsv_t *val)
 {
-	dict_to_dict_data_t d = {msg, 0};
-	guint offset;
-
-	offset = xmms_ipc_msg_put_uint32 (msg, 0);
-	g_tree_foreach (dict, tree_to_dict, &d);
-	xmms_ipc_msg_store_uint32 (msg, offset, d.count);
-}
-
-static void
-hash_to_dict (gpointer key, gpointer value, gpointer udata)
-{
-	gchar *k = key;
-	xmms_object_cmd_value_t *v = value;
-	dict_to_dict_data_t *d = udata;
-
-	if (k && v) {
-		xmms_ipc_msg_put_string (d->msg, k);
-		xmms_ipc_handle_cmd_value (d->msg, v);
-		d->count++;
-	}
-}
-
-static void
-xmms_ipc_do_hash (xmms_ipc_msg_t *msg, GHashTable *table)
-{
-	dict_to_dict_data_t d = {msg, 0};
-	guint offset;
-
-	offset = xmms_ipc_msg_put_uint32 (msg, 0);
-	g_hash_table_foreach (table, hash_to_dict, &d);
-	xmms_ipc_msg_store_uint32 (msg, offset, d.count);
-}
-
-static void
-xmms_ipc_handle_cmd_value (xmms_ipc_msg_t *msg, xmms_object_cmd_value_t *val)
-{
-	GList *n;
-	guint offset, count;
-
-	/* hash tables are serialized the same way as dicts, and clients
-	 * don't know the difference.
-	 */
-	if (val->type == XMMS_OBJECT_CMD_ARG_HASH_TABLE)
-		xmms_ipc_msg_put_int32 (msg, XMMS_OBJECT_CMD_ARG_DICT);
-	else
-		xmms_ipc_msg_put_int32 (msg, val->type);
-
-	switch (val->type) {
-		case XMMS_OBJECT_CMD_ARG_BIN:
-			xmms_ipc_msg_put_bin (msg, (guchar *)val->value.bin->str, val->value.bin->len);
-			break;
-		case XMMS_OBJECT_CMD_ARG_STRING:
-			xmms_ipc_msg_put_string (msg, val->value.string);
-			break;
-		case XMMS_OBJECT_CMD_ARG_UINT32:
-			xmms_ipc_msg_put_uint32 (msg, val->value.uint32);
-			break;
-		case XMMS_OBJECT_CMD_ARG_INT32:
-			xmms_ipc_msg_put_int32 (msg, val->value.int32);
-			break;
-		case XMMS_OBJECT_CMD_ARG_LIST:
-		case XMMS_OBJECT_CMD_ARG_PROPDICT:
-			/* store a dummy value first, and get the offset at where
-			 * it was put, so we can store the real count later.
-			 */
-			offset = xmms_ipc_msg_put_uint32 (msg, 0);
-			count = 0;
-
-			for (n = val->value.list; n; n = g_list_next (n)) {
-				xmms_object_cmd_value_t *lval = n->data;
-
-				xmms_ipc_handle_cmd_value (msg, lval);
-				count++;
-			}
-
-			/* now that we know how many items we stored we can
-			 * overwrite the dummy value from before.
-			 */
-			xmms_ipc_msg_store_uint32 (msg, offset, count);
-
-			break;
-		case XMMS_OBJECT_CMD_ARG_DICT:
-			xmms_ipc_do_dict (msg, val->value.dict);
-			break;
-		case XMMS_OBJECT_CMD_ARG_HASH_TABLE:
-			xmms_ipc_do_hash (msg, val->value.hash);
-			break;
-		case XMMS_OBJECT_CMD_ARG_COLL :
-			xmms_ipc_msg_put_collection (msg, val->value.coll);
-			break;
-		case XMMS_OBJECT_CMD_ARG_NONE:
-			break;
-		default:
-			xmms_log_error ("Unknown returnvalue: %d, couldn't serialize message", val->type);
-			break;
+	if (xmms_ipc_msg_put_value (msg, val) == (uint32_t) -1) {
+		xmms_log_error ("Failed to serialize the return value into the IPC message!");
 	}
 }
 
@@ -274,7 +113,7 @@ static void
 process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 {
 	xmms_object_t *object;
-	xmms_object_cmd_desc_t *cmd;
+	xmms_object_cmd_desc_t *cmd = NULL;
 	xmms_object_cmd_arg_t arg;
 	xmms_ipc_msg_t *retmsg;
 	uint32_t objid, cmdid;
@@ -287,14 +126,14 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 
 	if (objid == XMMS_IPC_OBJECT_SIGNAL &&
 	    cmdid == XMMS_IPC_CMD_SIGNAL) {
-		guint signalid;
+		gint32 signalid;
 
-		if (!xmms_ipc_msg_get_uint32 (msg, &signalid)) {
+		if (!xmms_ipc_msg_get_int32 (msg, &signalid)) {
 			xmms_log_error ("No signalid in this msg?!");
 			return;
 		}
 
-		if (signalid >= XMMS_IPC_SIGNAL_END) {
+		if (signalid < 0 || signalid >= XMMS_IPC_SIGNAL_END) {
 			xmms_log_error ("Bad signal id (%d)", signalid);
 			return;
 		}
@@ -305,14 +144,14 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 		return;
 	} else if (objid == XMMS_IPC_OBJECT_SIGNAL &&
 	           cmdid == XMMS_IPC_CMD_BROADCAST) {
-		guint broadcastid;
+		gint32 broadcastid;
 
-		if (!xmms_ipc_msg_get_uint32 (msg, &broadcastid)) {
+		if (!xmms_ipc_msg_get_int32 (msg, &broadcastid)) {
 			xmms_log_error ("No broadcastid in this msg?!");
 			return;
 		}
 
-		if (broadcastid >= XMMS_IPC_SIGNAL_END) {
+		if (broadcastid < 0 || broadcastid >= XMMS_IPC_SIGNAL_END) {
 			xmms_log_error ("Bad broadcast id (%d)", broadcastid);
 			return;
 		}
@@ -344,7 +183,9 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 		return;
 	}
 
-	cmd = object->cmds[cmdid];
+	if (object->cmds)
+		cmd = g_tree_lookup (object->cmds, GUINT_TO_POINTER (cmdid));
+
 	if (!cmd) {
 		xmms_log_error ("No such cmd %d on object %d", cmdid, objid);
 		return;
@@ -367,25 +208,23 @@ process_msg (xmms_ipc_client_t *client, xmms_ipc_msg_t *msg)
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
 		xmms_ipc_handle_cmd_value (retmsg, arg.retval);
 	} else {
+		/* FIXME: or we could change the client code to transform
+		 * CMD_ERROR to an error value_t. If so, don't forget to
+		 * update the client-side of IPC too. */
 		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_ERROR);
 		xmms_ipc_msg_put_string (retmsg, xmms_error_message_get (&arg.error));
+/*
+		retmsg = xmms_ipc_msg_new (objid, XMMS_IPC_CMD_REPLY);
+		xmms_ipc_handle_cmd_value (retmsg, arg.retval);
+*/
 	}
 
 	if (arg.retval)
-		xmms_object_cmd_value_unref (arg.retval);
+		xmmsv_unref (arg.retval);
 
 err:
 	for (i = 0; i < XMMS_OBJECT_CMD_MAX_ARGS; i++) {
-		if (arg.values[i].type == XMMS_OBJECT_CMD_ARG_STRING) {
-			g_free (arg.values[i].value.string);
-		} else if (arg.values[i].type == XMMS_OBJECT_CMD_ARG_STRINGLIST) {
-			GList * list = arg.values[i].value.list;
-			while (list) { g_free (list->data); list = g_list_delete_link (list, list); }
-		} else if (arg.values[i].type == XMMS_OBJECT_CMD_ARG_COLL) {
-			xmmsc_coll_unref (arg.values[i].value.coll);
-		} else if (arg.values[i].type == XMMS_OBJECT_CMD_ARG_BIN) {
-			g_string_free (arg.values[i].value.bin, TRUE);
-		}
+		xmmsv_unref (arg.values[i]);
 	}
 	xmms_ipc_msg_set_cookie (retmsg, xmms_ipc_msg_get_cookie (msg));
 	g_mutex_lock (client->lock);
@@ -521,7 +360,9 @@ xmms_ipc_client_new (xmms_ipc_t *ipc, xmms_ipc_transport_t *transport)
 	client->iochan = g_io_channel_unix_new (fd);
 	g_return_val_if_fail (client->iochan, NULL);
 
-	g_io_channel_set_close_on_unref (client->iochan, TRUE);
+	/* We don't set the close_on_unref flag here, because
+	 * the transport will close the fd for us. No need to close it twice.
+	 */
 	g_io_channel_set_encoding (client->iochan, NULL, NULL);
 	g_io_channel_set_buffered (client->iochan, FALSE);
 
@@ -572,11 +413,15 @@ xmms_ipc_client_destroy (xmms_ipc_client_t *client)
  * Gets called when the config property "core.ipcsocket" has changed.
  */
 void
-on_config_ipcsocket_change (xmms_object_t *object, gconstpointer data, gpointer udata)
+on_config_ipcsocket_change (xmms_object_t *object, xmmsv_t *_data, gpointer udata)
 {
+	const gchar *value;
+
+	XMMS_DBG ("Shutting down ipc server threads through config property \"core.ipcsocket\" change.");
+
 	xmms_ipc_shutdown ();
-	XMMS_DBG ("Shuttind down ipc server threads through config property \"core.ipcsocket\" change.");
-	xmms_ipc_setup_server ((gchar *)data);
+	value = xmms_config_property_get_string ((xmms_config_property_t *) object);
+	xmms_ipc_setup_server (value);
 }
 
 /**
@@ -701,7 +546,7 @@ xmms_ipc_has_pending (guint signalid)
 }
 
 static void
-xmms_ipc_signal_cb (xmms_object_t *object, gconstpointer arg, gpointer userdata)
+xmms_ipc_signal_cb (xmms_object_t *object, xmmsv_t *arg, gpointer userdata)
 {
 	GList *c, *s;
 	guint signalid = GPOINTER_TO_UINT (userdata);
@@ -719,7 +564,7 @@ xmms_ipc_signal_cb (xmms_object_t *object, gconstpointer arg, gpointer userdata)
 			if (cli->pendingsignals[signalid]) {
 				msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_SIGNAL);
 				xmms_ipc_msg_set_cookie (msg, cli->pendingsignals[signalid]);
-				xmms_ipc_handle_cmd_value (msg, ((xmms_object_cmd_arg_t*)arg)->retval);
+				xmms_ipc_handle_cmd_value (msg, arg);
 				xmms_ipc_client_msg_write (cli, msg);
 				cli->pendingsignals[signalid] = 0;
 			}
@@ -733,7 +578,7 @@ xmms_ipc_signal_cb (xmms_object_t *object, gconstpointer arg, gpointer userdata)
 }
 
 static void
-xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userdata)
+xmms_ipc_broadcast_cb (xmms_object_t *object, xmmsv_t *arg, gpointer userdata)
 {
 	GList *c, *s;
 	guint broadcastid = GPOINTER_TO_UINT (userdata);
@@ -753,7 +598,7 @@ xmms_ipc_broadcast_cb (xmms_object_t *object, gconstpointer arg, gpointer userda
 			for (l = cli->broadcasts[broadcastid]; l; l = g_list_next (l)) {
 				msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_BROADCAST);
 				xmms_ipc_msg_set_cookie (msg, GPOINTER_TO_UINT (l->data));
-				xmms_ipc_handle_cmd_value (msg, ((xmms_object_cmd_arg_t*)arg)->retval);
+				xmms_ipc_handle_cmd_value (msg, arg);
 				xmms_ipc_client_msg_write (cli, msg);
 			}
 			g_mutex_unlock (cli->lock);

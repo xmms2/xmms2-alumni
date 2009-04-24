@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -54,7 +54,7 @@ static void xmms_output_seekms (xmms_output_t *output, guint32 ms, xmms_error_t 
 static void xmms_output_seekms_rel (xmms_output_t *output, gint32 ms, xmms_error_t *error);
 static void xmms_output_seeksamples (xmms_output_t *output, guint32 samples, xmms_error_t *error);
 static void xmms_output_seeksamples_rel (xmms_output_t *output, gint32 samples, xmms_error_t *error);
-static guint xmms_output_status (xmms_output_t *output, xmms_error_t *error);
+static gint32 xmms_output_status (xmms_output_t *output, xmms_error_t *error);
 
 typedef enum xmms_output_filler_state_E {
 	FILLER_STOP,
@@ -81,14 +81,14 @@ XMMS_CMD_DEFINE (start, xmms_output_start, xmms_output_t *, NONE, NONE, NONE);
 XMMS_CMD_DEFINE (stop, xmms_output_stop, xmms_output_t *, NONE, NONE, NONE);
 XMMS_CMD_DEFINE (pause, xmms_output_pause, xmms_output_t *, NONE, NONE, NONE);
 XMMS_CMD_DEFINE (xform_kill, xmms_output_xform_kill, xmms_output_t *, NONE, NONE, NONE);
-XMMS_CMD_DEFINE (playtime, xmms_output_playtime, xmms_output_t *, UINT32, NONE, NONE);
-XMMS_CMD_DEFINE (seekms, xmms_output_seekms, xmms_output_t *, NONE, UINT32, NONE);
+XMMS_CMD_DEFINE (playtime, xmms_output_playtime, xmms_output_t *, INT32, NONE, NONE);
+XMMS_CMD_DEFINE (seekms, xmms_output_seekms, xmms_output_t *, NONE, INT32, NONE);
 XMMS_CMD_DEFINE (seekms_rel, xmms_output_seekms_rel, xmms_output_t *, NONE, INT32, NONE);
-XMMS_CMD_DEFINE (seeksamples, xmms_output_seeksamples, xmms_output_t *, NONE, UINT32, NONE);
+XMMS_CMD_DEFINE (seeksamples, xmms_output_seeksamples, xmms_output_t *, NONE, INT32, NONE);
 XMMS_CMD_DEFINE (seeksamples_rel, xmms_output_seeksamples_rel, xmms_output_t *, NONE, INT32, NONE);
-XMMS_CMD_DEFINE (output_status, xmms_output_status, xmms_output_t *, UINT32, NONE, NONE);
-XMMS_CMD_DEFINE (currentid, xmms_output_current_id, xmms_output_t *, UINT32, NONE, NONE);
-XMMS_CMD_DEFINE (volume_set, xmms_output_volume_set, xmms_output_t *, NONE, STRING, UINT32);
+XMMS_CMD_DEFINE (output_status, xmms_output_status, xmms_output_t *, INT32, NONE, NONE);
+XMMS_CMD_DEFINE (currentid, xmms_output_current_id, xmms_output_t *, INT32, NONE, NONE);
+XMMS_CMD_DEFINE (volume_set, xmms_output_volume_set, xmms_output_t *, NONE, STRING, INT32);
 XMMS_CMD_DEFINE (volume_get, xmms_output_volume_get, xmms_output_t *, DICT, NONE, NONE);
 
 /*
@@ -200,12 +200,12 @@ xmms_output_stream_type_add (xmms_output_t *output, ...)
 }
 
 void
-update_playtime (xmms_output_t *output, int ret)
+update_playtime (xmms_output_t *output, int advance)
 {
 	guint buffersize = 0;
 
 	g_mutex_lock (output->playtime_mutex);
-	output->played += ret;
+	output->played += advance;
 	g_mutex_unlock (output->playtime_mutex);
 
 	buffersize = xmms_output_plugin_method_latency_get (output->plugin, output);
@@ -222,7 +222,7 @@ update_playtime (xmms_output_t *output, int ret)
 		if ((ms / 100) != (output->played_time / 100)) {
 			xmms_object_emit_f (XMMS_OBJECT (output),
 			                    XMMS_IPC_SIGNAL_OUTPUT_PLAYTIME,
-			                    XMMS_OBJECT_CMD_ARG_UINT32,
+			                    XMMSV_TYPE_INT32,
 			                    ms);
 		}
 		output->played_time = ms;
@@ -287,7 +287,7 @@ song_changed (void *data)
 
 	xmms_object_emit_f (XMMS_OBJECT (arg->output),
 	                    XMMS_IPC_SIGNAL_OUTPUT_CURRENTID,
-	                    XMMS_OBJECT_CMD_ARG_UINT32,
+	                    XMMSV_TYPE_INT32,
 	                    entry);
 
 	return TRUE;
@@ -415,7 +415,7 @@ xmms_output_filler (void *arg)
 				continue;
 			}
 
-			chain = xmms_xform_chain_setup (entry, output->format_list);
+			chain = xmms_xform_chain_setup (entry, output->format_list, FALSE);
 			if (!chain) {
 				session = xmms_medialib_begin_write ();
 				if (xmms_medialib_entry_property_get_int (session, entry, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS) == XMMS_MEDIALIB_ENTRY_STATUS_NEW) {
@@ -626,10 +626,10 @@ xmms_output_pause (xmms_output_t *output, xmms_error_t *err)
 }
 
 
-static guint
+static gint32
 xmms_output_status (xmms_output_t *output, xmms_error_t *error)
 {
-	guint ret;
+	gint32 ret;
 	g_return_val_if_fail (output, XMMS_PLAYBACK_STATUS_STOP);
 
 	g_mutex_lock (output->status_mutex);
@@ -638,7 +638,7 @@ xmms_output_status (xmms_output_t *output, xmms_error_t *error)
 	return ret;
 }
 
-guint
+gint
 xmms_output_current_id (xmms_output_t *output, xmms_error_t *error)
 {
 	return output->current_entry;
@@ -727,7 +727,7 @@ xmms_output_volume_get (xmms_output_t *output, xmms_error_t *error)
 /**
  * Get the current playtime in milliseconds.
  */
-guint32
+gint32
 xmms_output_playtime (xmms_output_t *output, xmms_error_t *error)
 {
 	guint32 ret;
@@ -740,6 +740,27 @@ xmms_output_playtime (xmms_output_t *output, xmms_error_t *error)
 	return ret;
 }
 
+/* returns the current latency: time left in ms until the data currently read
+ *                              from the latest xform in the chain will actually be played
+ */
+guint32
+xmms_output_latency (xmms_output_t *output)
+{
+	guint ret = 0;
+	guint buffersize = 0;
+
+	if (output->format) {
+		/* data already waiting in the ringbuffer */
+		buffersize += xmms_ringbuf_bytes_used (output->filler_buffer);
+
+		/* latency of the soundcard */
+		buffersize += xmms_output_plugin_method_latency_get (output->plugin, output);
+
+		ret = xmms_sample_bytes_to_ms (output->format, buffersize);
+	}
+
+	return ret;
+}
 
 /**
  * @internal
@@ -777,7 +798,7 @@ xmms_output_status_set (xmms_output_t *output, gint status)
 
 			xmms_object_emit_f (XMMS_OBJECT (output),
 			                    XMMS_IPC_SIGNAL_PLAYBACK_STATUS,
-			                    XMMS_OBJECT_CMD_ARG_UINT32,
+			                    XMMSV_TYPE_INT32,
 			                    output->status);
 		}
 	}
@@ -988,15 +1009,20 @@ xmms_output_format_set (xmms_output_t *output, xmms_stream_type_t *fmt)
 	XMMS_DBG ("Setting format!");
 
 	if (!xmms_output_plugin_format_set_always (output->plugin)) {
+		gboolean ret;
+
 		if (output->format && xmms_stream_type_match (output->format, fmt)) {
 			XMMS_DBG ("audio formats are equal, not updating");
 			return TRUE;
 		}
 
-		xmms_object_unref (output->format);
-		xmms_object_ref (fmt);
-		output->format = fmt;
-		return xmms_output_plugin_method_format_set (output->plugin, output, output->format);
+		ret = xmms_output_plugin_method_format_set (output->plugin, output, fmt);
+		if (ret) {
+			xmms_object_unref (output->format);
+			xmms_object_ref (fmt);
+			output->format = fmt;
+		}
+		return ret;
 	} else {
 		if (output->format && !xmms_stream_type_match (output->format, fmt)) {
 			xmms_object_unref (output->format);
@@ -1136,15 +1162,15 @@ xmms_volume_map_to_dict (xmms_volume_map_t *vl)
 	gint i;
 
 	ret = g_tree_new_full ((GCompareDataFunc) strcmp, NULL,
-	                       NULL, (GDestroyNotify)xmms_object_cmd_value_unref);
+	                       NULL, (GDestroyNotify) xmmsv_unref);
 	if (!ret) {
 		return NULL;
 	}
 
 	for (i = 0; i < vl->num_channels; i++) {
-		xmms_object_cmd_value_t *val;
+		xmmsv_t *val;
 
-		val = xmms_object_cmd_value_uint_new (vl->values[i]);
+		val = xmmsv_new_int (vl->values[i]);
 		g_tree_replace (ret, (gpointer) vl->names[i], val);
 	}
 
@@ -1202,13 +1228,13 @@ xmms_output_monitor_volume_thread (gpointer data)
 				dict = xmms_volume_map_to_dict (&cur);
 				xmms_object_emit_f (XMMS_OBJECT (output),
 				                    XMMS_IPC_SIGNAL_OUTPUT_VOLUME_CHANGED,
-				                    XMMS_OBJECT_CMD_ARG_DICT, dict);
+				                    XMMSV_TYPE_DICT, dict);
 				g_tree_destroy (dict);
 			} else {
 				/** @todo When bug 691 is solved, emit an error here */
 				xmms_object_emit_f (XMMS_OBJECT (output),
 				                    XMMS_IPC_SIGNAL_OUTPUT_VOLUME_CHANGED,
-				                    XMMS_OBJECT_CMD_ARG_NONE);
+				                    XMMSV_TYPE_NONE);
 			}
 		}
 

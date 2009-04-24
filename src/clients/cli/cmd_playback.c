@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -45,18 +45,20 @@ do_reljump (xmmsc_connection_t *conn, gint where)
 void
 cmd_toggleplay (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
-	uint32_t status;
+	int32_t status;
 	xmmsc_result_t *res;
+	xmmsv_t *val;
 
 	res = xmmsc_playback_status (conn);
 	xmmsc_result_wait (res);
+	val = xmmsc_result_get_value (res);
 
-	if (xmmsc_result_iserror (res)) {
+	if (xmmsv_is_error (val)) {
 		print_error ("Couldn't get playback status: %s",
-		             xmmsc_result_get_error (res));
+		             xmmsv_get_error_old (val));
 	}
 
-	if (!xmmsc_result_get_uint (res, &status)) {
+	if (!xmmsv_get_int (val, &status)) {
 		print_error ("Broken resultset");
 	}
 
@@ -177,10 +179,17 @@ cmd_jump (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	xmmsc_result_t *res;
 
 	if (argc < 3) {
-		print_error ("You'll need to specify a ID to jump to.");
+		print_error ("You'll need to specify a position to jump to. Usage:\n"
+		             "xmms2 jump n  - jump to absolute position n\n"
+		             "xmms2 jump +n - advance n positions\n"
+		             "xmms2 jump -n - jump n positions backwards\n");
 	}
 
-	res = xmmsc_playlist_set_next (conn, strtol (argv[2], NULL, 10));
+	if (argv[2][0] == '-' || argv[2][0] == '+') {
+		res = xmmsc_playlist_set_next_rel (conn, strtol (argv[2], NULL, 10));
+	} else {
+		res = xmmsc_playlist_set_next (conn, strtol (argv[2], NULL, 10));
+	}
 	xmmsc_result_wait (res);
 
 	if (xmmsc_result_iserror (res)) {

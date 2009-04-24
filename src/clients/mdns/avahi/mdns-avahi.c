@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -52,10 +52,11 @@ disconnected (void *data)
 	exit (0);
 }
 
-static void
-handle_quit (xmmsc_result_t *res, void *data)
+static int
+handle_quit (xmmsv_t *val, void *data)
 {
 	g_main_loop_quit ((GMainLoop *) data);
+	return 0;
 }
 
 static void

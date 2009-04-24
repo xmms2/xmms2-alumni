@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -52,12 +52,12 @@ namespace Xmms
 		signals_.clear();
 	}
 
-	Coll::Coll* extract_collection( xmmsc_result_t* res )
+	Coll::Coll* extract_collection( xmmsv_t* val )
 	{
 		Coll::Coll* temp = 0;
-		xmmsc_coll_t* coll = 0;
-		xmmsc_result_get_collection( res, &coll );
-		switch( xmmsc_coll_get_type( coll ) ) {
+		xmmsv_coll_t* coll = 0;
+		xmmsv_get_coll( val, &coll );
+		switch( xmmsv_coll_get_type( coll ) ) {
 
 			case XMMS_COLLECTION_TYPE_REFERENCE: {
 				temp = new Coll::Reference( coll );

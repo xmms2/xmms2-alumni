@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -24,7 +24,7 @@
 typedef struct {
 	xmmsc_connection_t *real;
 	bool deleted;
-	VALUE results;
+	VALUE result_callbacks;
 	VALUE disconnect_cb;
 	VALUE io_need_out_cb;
 
@@ -35,6 +35,7 @@ typedef struct {
 VALUE check_uint32 (VALUE arg);
 VALUE check_int32 (VALUE arg);
 const char **parse_string_array (VALUE value);
+xmmsv_t *parse_string_array2 (VALUE value);
 
 enum {
 	EACH_PAIR,

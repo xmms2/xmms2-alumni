@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -200,11 +200,13 @@ xmms_plugin_add_builtin_plugins (void)
 	extern const xmms_plugin_desc_t xmms_builtin_magic;
 	extern const xmms_plugin_desc_t xmms_builtin_converter;
 	extern const xmms_plugin_desc_t xmms_builtin_segment;
+	extern const xmms_plugin_desc_t xmms_builtin_visualization;
 
 	xmms_plugin_load (&xmms_builtin_ringbuf, NULL);
 	xmms_plugin_load (&xmms_builtin_magic, NULL);
 	xmms_plugin_load (&xmms_builtin_converter, NULL);
 	xmms_plugin_load (&xmms_builtin_segment, NULL);
+	xmms_plugin_load (&xmms_builtin_visualization, NULL);
 }
 
 
@@ -394,31 +396,24 @@ xmms_plugin_scan_directory (const gchar *dir)
 static gboolean
 xmms_plugin_client_list_foreach (xmms_plugin_t *plugin, gpointer data)
 {
-	GTree *dict;
+	xmmsv_t *dict;
 	GList **list = data;
 
-	dict = g_tree_new_full ((GCompareDataFunc) strcmp, NULL,
-	                        NULL,
-	                        (GDestroyNotify)xmms_object_cmd_value_unref);
+	dict = xmmsv_build_dict (
+	        XMMSV_DICT_ENTRY_STR ("name", xmms_plugin_name_get (plugin)),
+	        XMMSV_DICT_ENTRY_STR ("shortname", xmms_plugin_shortname_get (plugin)),
+	        XMMSV_DICT_ENTRY_STR ("version", xmms_plugin_version_get (plugin)),
+	        XMMSV_DICT_ENTRY_STR ("description", xmms_plugin_description_get (plugin)),
+	        XMMSV_DICT_ENTRY_INT ("type", xmms_plugin_type_get (plugin)),
+	        XMMSV_DICT_END);
 
-	g_tree_insert (dict, (gpointer) "name",
-	               xmms_object_cmd_value_str_new (xmms_plugin_name_get (plugin)));
-	g_tree_insert (dict, (gpointer) "shortname",
-	               xmms_object_cmd_value_str_new (xmms_plugin_shortname_get (plugin)));
-	g_tree_insert (dict, (gpointer) "version",
-	               xmms_object_cmd_value_str_new (xmms_plugin_version_get (plugin)));
-	g_tree_insert (dict, (gpointer) "description",
-	              xmms_object_cmd_value_str_new (xmms_plugin_description_get (plugin)));
-	g_tree_insert (dict, (gpointer) "type",
-	               xmms_object_cmd_value_uint_new (xmms_plugin_type_get (plugin)));
-
-	*list = g_list_prepend (*list, xmms_object_cmd_value_dict_new (dict));
+	*list = g_list_prepend (*list, dict);
 
 	return TRUE;
 }
 
 GList *
-xmms_plugin_client_list (xmms_object_t *main, guint32 type, xmms_error_t *err)
+xmms_plugin_client_list (xmms_object_t *main, gint32 type, xmms_error_t *err)
 {
 	GList *list = NULL;
 	xmms_plugin_foreach (type, xmms_plugin_client_list_foreach, &list);

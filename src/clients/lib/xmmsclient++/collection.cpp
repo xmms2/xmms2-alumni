@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -75,7 +75,7 @@ namespace Xmms
 	}
 
 	StringListResult
-	Collection::find( unsigned int id, Namespace nsname ) const
+	Collection::find( int id, Namespace nsname ) const
 	{
 		xmmsc_result_t* res
 		    = call( connected_,
@@ -104,51 +104,59 @@ namespace Xmms
 		return CollResult( res, ml_ );
 	}
 
-	UintListResult
+	IntListResult
 	Collection::queryIds( const Coll::Coll& coll,
 	                      const std::list< std::string >& order,
-	                      unsigned int limit_len,
-	                      unsigned int limit_start ) const
+	                      int limit_len,
+	                      int limit_start ) const
 	{
-		std::vector< const char* > corder;
-		fillCharArray( order, corder );
+		xmmsv_t *xorder = makeStringList( order );
 
 		xmmsc_result_t* res
 		    = call( connected_,
 		            boost::bind( xmmsc_coll_query_ids, conn_, coll.coll_,
-		                         &corder[0], limit_start, limit_len ) );
-		return UintListResult( res, ml_ );
+		                         xorder, limit_start, limit_len ) );
+
+		xmmsv_unref( xorder );
+
+		return IntListResult( res, ml_ );
 	}
 
 	DictListResult
 	Collection::queryInfos( const Coll::Coll& coll,
 	                        const std::list< std::string >& fetch,
 	                        const std::list< std::string >& order,
-	                        unsigned int limit_len,
-	                        unsigned int limit_start,
+	                        int limit_len,
+	                        int limit_start,
 	                        const std::list< std::string >& group
 	                      ) const
 	{
 		assertNonEmptyFetchList( fetch );
-		std::vector< const char* > corder, cfetch, cgroup;
-		fillCharArray( order, corder );
-		fillCharArray( fetch, cfetch );
-		fillCharArray( group, cgroup );
+
+		xmmsv_t *xorder, *xfetch, *xgroup;
+		xorder = makeStringList( order );
+		xfetch = makeStringList( fetch );
+		xgroup = makeStringList( group );
 
 		xmmsc_result_t* res
 		    = call( connected_,
 		            boost::bind( xmmsc_coll_query_infos, conn_, coll.coll_,
-		                         &corder[0], limit_start, limit_len,
-		                         &cfetch[0], &cgroup[0] ) );
+		                         xorder, limit_start, limit_len,
+		                         xfetch, xgroup ) );
+
+		xmmsv_unref( xorder );
+		xmmsv_unref( xfetch );
+		xmmsv_unref( xgroup );
+
 		return DictListResult( res, ml_ );
 	}
 
 	CollPtr
 	Collection::parse( const std::string& pattern ) const
 	{
-		xmmsc_coll_t* coll;
+		xmmsv_coll_t* coll;
 
-		if( !xmmsc_coll_parse( pattern.c_str(), &coll ) ) {
+		if( !xmmsv_coll_parse( pattern.c_str(), &coll ) ) {
 			throw collection_parsing_error( "invalid collection pattern" );
 		}
 

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -137,7 +137,7 @@ xmms_mediainfo_reader_thread (gpointer data)
 
 	xmms_object_emit_f (XMMS_OBJECT (mrt),
 	                    XMMS_IPC_SIGNAL_MEDIAINFO_READER_STATUS,
-	                    XMMS_OBJECT_CMD_ARG_INT32,
+	                    XMMSV_TYPE_INT32,
 	                    XMMS_MEDIAINFO_READER_STATUS_RUNNING);
 
 
@@ -163,7 +163,7 @@ xmms_mediainfo_reader_thread (gpointer data)
 
 			xmms_object_emit_f (XMMS_OBJECT (mrt),
 			                    XMMS_IPC_SIGNAL_MEDIAINFO_READER_STATUS,
-			                    XMMS_OBJECT_CMD_ARG_INT32,
+			                    XMMSV_TYPE_INT32,
 			                    XMMS_MEDIAINFO_READER_STATUS_IDLE);
 
 			g_mutex_lock (mrt->mutex);
@@ -174,7 +174,7 @@ xmms_mediainfo_reader_thread (gpointer data)
 
 			xmms_object_emit_f (XMMS_OBJECT (mrt),
 			                    XMMS_IPC_SIGNAL_MEDIAINFO_READER_STATUS,
-			                    XMMS_OBJECT_CMD_ARG_INT32,
+			                    XMMSV_TYPE_INT32,
 			                    XMMS_MEDIAINFO_READER_STATUS_RUNNING);
 			continue;
 		}
@@ -187,7 +187,7 @@ xmms_mediainfo_reader_thread (gpointer data)
 		if (num == 0) {
 			xmms_object_emit_f (XMMS_OBJECT (mrt),
 			                    XMMS_IPC_SIGNAL_MEDIAINFO_READER_UNINDEXED,
-			                    XMMS_OBJECT_CMD_ARG_UINT32,
+			                    XMMSV_TYPE_INT32,
 			                    xmms_medialib_num_not_resolved (session));
 			num = 10;
 		} else {
@@ -195,7 +195,7 @@ xmms_mediainfo_reader_thread (gpointer data)
 		}
 
 		xmms_medialib_end (session);
-		xform = xmms_xform_chain_setup_rehash (entry, goal_format);
+		xform = xmms_xform_chain_setup (entry, goal_format, TRUE);
 
 		if (!xform) {
 			if (prev_status == XMMS_MEDIALIB_ENTRY_STATUS_NEW) {

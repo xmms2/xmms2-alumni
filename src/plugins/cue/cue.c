@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -188,9 +188,16 @@ add_track (xmms_xform_t *xform, cue_track *tr)
 
 		xmms_xform_browse_add_symlink_args (xform, NULL, file, numargs, arg);
 		xmms_xform_browse_add_entry_property_int (xform, "intsort", t->index);
-		xmms_xform_browse_add_entry_property_str (xform, "title", t->title);
-		xmms_xform_browse_add_entry_property_str (xform, "artist", t->artist);
-		xmms_xform_browse_add_entry_property_str (xform, "album", tr->album);
+		if (*t->title) {
+			xmms_xform_browse_add_entry_property_str (xform, "title", t->title);
+		}
+		if (*t->artist || *tr->artist) {
+			xmms_xform_browse_add_entry_property_str (xform, "artist",
+			                                          (*t->artist)? t->artist : tr->artist);
+		}
+		if (*tr->album) {
+			xmms_xform_browse_add_entry_property_str (xform, "album", tr->album);
+		}
 
 		g_free (t);
 		n = g_list_delete_link (n, n);

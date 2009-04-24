@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -17,9 +17,9 @@
 #include "common.h"
 
 gint
-res_has_key (xmmsc_result_t *res, const gchar *key)
+val_has_key (xmmsv_t *val, const gchar *key)
 {
-	return xmmsc_result_get_dict_entry_type (res, key) != XMMSC_RESULT_VALUE_TYPE_NONE;
+	return xmmsv_dict_entry_get_type (val, key) != XMMSV_TYPE_NONE;
 }
 
 
@@ -80,57 +80,119 @@ print_error (const gchar *fmt, ...)
 
 
 void
-print_hash (const void *key, xmmsc_result_value_type_t type,
-            const void *value, void *udata)
+print_hash (const gchar *key, xmmsv_t *value, void *udata)
 {
-	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
-		print_info ("%s = %s", key, value);
-	} else {
-		print_info ("%s = %d", key, XPOINTER_TO_INT (value));
+	xmmsv_type_t value_type;
+	const char *string_val;
+	unsigned int uint_val;
+	int int_val;
+
+	value_type = xmmsv_get_type (value);
+
+	switch (value_type) {
+		case XMMSV_TYPE_STRING:
+			xmmsv_get_string (value, &string_val);
+			print_info ("%s = %s", key, string_val);
+
+			break;
+		case XMMSV_TYPE_INT32:
+			xmmsv_get_int (value, &int_val);
+			print_info ("%s = %d", key, int_val);
+
+			break;
+		default:
+			print_error ("unhandled hash value %i", value_type);
 	}
 }
 
 
-void
-print_entry (const void *key, xmmsc_result_value_type_t type,
-             const void *value, const gchar *source, void *udata)
+static void
+print_entry_string (xmmsv_t *v, const gchar *key, const gchar *source)
 {
-	if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
-		/* Ok it's a string, if it's the URL property from the
-		 * server source we need to decode it since it's
-		 * encoded in the server
-		 */
-		if (strcmp (key, "url") == 0 && strcmp (source, "server") == 0) {
-			/* First decode the URL encoding */
-			const gchar *tmp = xmmsc_result_decode_url ((xmmsc_result_t *)udata, value);
+	const gchar *value;
 
-			/* Let's see if the result is valid utf-8. This must be done
-			 * since we don't know the charset of the binary string */
-			if (g_utf8_validate (tmp, -1, NULL)) {
-				/* If it's valid utf-8 we don't have any problem just
-				 * printing it to the screen
-				 */
-				print_info ("[%s] %s = %s", source, key, tmp);
-			} else {
-				/* Not valid utf-8 :-( We make a valid guess here that
-				 * the string when it was encoded with URL it was in the
-				 * same charset as we have on the terminal now.
-				 *
-				 * THIS MIGHT BE WRONG since different clients can have
-				 * different charsets and DIFFERENT computers most likely
-				 * have it.
-				 */
-				gchar *tmp2 = g_locale_to_utf8 (tmp, -1, NULL, NULL, NULL);
-				/* Lets add a disclaimer */
-				print_info ("[%s] %s = %s (charset guessed)", source, key, tmp2);
-				g_free (tmp2);
-			}
-		} else {
-			/* Normal strings is ALWAYS utf-8 no problem */
-			print_info ("[%s] %s = %s", source, key, value);
+	xmmsv_get_string (v, &value);
+
+	/* Ok it's a string, if it's the URL property from the
+	 * server source we need to decode it since it's
+	 * encoded in the server
+	 */
+	if (strcmp (key, "url") == 0 && strcmp (source, "server") == 0) {
+		/* First decode the URL encoding */
+		xmmsv_t *tmp;
+		gchar *url = NULL;
+		const unsigned char *burl;
+		unsigned int blen;
+
+		tmp = xmmsv_decode_url (v);
+		if (tmp && xmmsv_get_bin (tmp, &burl, &blen)) {
+			url = g_malloc (blen + 1);
+			memcpy (url, burl, blen);
+			url[blen] = 0;
+			xmmsv_unref (tmp);
 		}
+
+		/* Let's see if the result is valid utf-8. This must be done
+		 * since we don't know the charset of the binary string */
+		if (url && g_utf8_validate (url, -1, NULL)) {
+			/* If it's valid utf-8 we don't have any problem just
+			 * printing it to the screen
+			 */
+			print_info ("[%s] %s = %s", source, key, url);
+		} else if (url) {
+			/* Not valid utf-8 :-( We make a valid guess here that
+			 * the string when it was encoded with URL it was in the
+			 * same charset as we have on the terminal now.
+			 *
+			 * THIS MIGHT BE WRONG since different clients can have
+			 * different charsets and DIFFERENT computers most likely
+			 * have it.
+			 */
+			gchar *tmp2 = g_locale_to_utf8 (url, -1, NULL, NULL, NULL);
+			/* Lets add a disclaimer */
+			print_info ("[%s] %s = %s (charset guessed)", source, key, tmp2);
+			g_free (tmp2);
+		} else {
+			/* Decoding the URL failed for some reason. That's not good. */
+			print_info ("[%s] %s = (invalid encoding)", source, key);
+		}
+
+		g_free (url);
 	} else {
-		print_info ("[%s] %s = %d", source, key, XPOINTER_TO_INT (value));
+		/* Normal strings is ALWAYS utf-8 no problem */
+		print_info ("[%s] %s = %s", source, key, value);
+	}
+}
+
+/* dumps a recursive key-source-val dict */
+void
+print_entry (const gchar *key, xmmsv_t *dict, void *udata)
+{
+	xmmsv_t *v;
+	const gchar *source;
+	if (xmmsv_get_type (dict) == XMMSV_TYPE_DICT) {
+		xmmsv_dict_iter_t *it;
+		xmmsv_get_dict_iter (dict, &it);
+
+		while (xmmsv_dict_iter_valid (it)) {
+			xmmsv_dict_iter_pair (it, &source, &v);
+			switch (xmmsv_get_type (v)) {
+			case XMMSV_TYPE_STRING:
+				print_entry_string (v, key, source);
+				break;
+			case XMMSV_TYPE_INT32:
+			{
+				gint i;
+				xmmsv_get_int (v, &i);
+				print_info ("[%s] %s = %d", source, key, i);
+				break;
+			}
+			default:
+				print_info ("[%s] %s = (unknown data)", source, key);
+				break;
+			}
+			xmmsv_dict_iter_next (it);
+		}
 	}
 }
 
@@ -196,6 +258,7 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 	for (n = list; n; n = g_list_next (n)) {
 		const gchar *title;
 		xmmsc_result_t *res;
+		xmmsv_t *propdict, *val;
 		gint mid = XPOINTER_TO_INT (n->data);
 
 		if (!mid) {
@@ -204,21 +267,23 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 
 		res = xmmsc_medialib_get_info (conn, mid);
 		xmmsc_result_wait (res);
+		propdict = xmmsc_result_get_value (res);
+		val = xmmsv_propdict_to_dict (propdict, NULL);
 
-		if (xmmsc_result_get_dict_entry_string (res, "title", &title)) {
+		if (xmmsv_dict_entry_get_string (val, "title", &title)) {
 			const gchar *artist, *album;
-			if (!xmmsc_result_get_dict_entry_string (res, "artist", &artist)) {
+			if (!xmmsv_dict_entry_get_string (val, "artist", &artist)) {
 				artist = "Unknown";
 			}
 
-			if (!xmmsc_result_get_dict_entry_string (res, "album", &album)) {
+			if (!xmmsv_dict_entry_get_string (val, "album", &album)) {
 				album = "Unknown";
 			}
 
 			print_info (format_rows, mid, artist, album, title);
 		} else {
 			const gchar *url;
-			xmmsc_result_get_dict_entry_string (res, "url", &url);
+			xmmsv_dict_entry_get_string (val, "url", &url);
 			if (url) {
 				gchar *filename = g_path_get_basename (url);
 				if (filename) {
@@ -227,7 +292,10 @@ format_pretty_list (xmmsc_connection_t *conn, GList *list)
 				}
 			}
 		}
+
 		count++;
+
+		xmmsv_unref (val);
 		xmmsc_result_unref (res);
 	}
 

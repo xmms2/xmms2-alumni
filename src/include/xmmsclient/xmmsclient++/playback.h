@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -110,7 +110,7 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult seekMs(unsigned int milliseconds) const;
+			VoidResult seekMs(int milliseconds) const;
 
 			/** Seek to a time relative to the current position 
 			 *  in the current playback.
@@ -139,7 +139,7 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult seekSamples(unsigned int samples) const;
+			VoidResult seekSamples(int samples) const;
 
 			/** Seek to a number of samples relative to the current
 			 *  position in the current playback.
@@ -167,7 +167,7 @@ namespace Xmms
 			 *
 			 *  @return The currently playing ID.
 			 */
-			UintResult currentID() const;
+			IntResult currentID() const;
 
 			/** Make server emit the playback status.
 			 *
@@ -194,7 +194,7 @@ namespace Xmms
 			 *
 			 *  @return The playtime in milliseconds.
 			 */
-			UintResult getPlaytime() const;
+			IntResult getPlaytime() const;
 
 			/** Set the volume of a channel.
 			 *
@@ -209,7 +209,7 @@ namespace Xmms
 			 *  @throw result_error If the operation failed.
 			 */
 			VoidResult volumeSet(const std::string& channel,
-			                     unsigned int volume) const;
+			                     int volume) const;
 
 			/** Get a channel<->volume list from the server.
 			 *
@@ -224,10 +224,10 @@ namespace Xmms
 			 */
 			DictResult volumeGet() const;
 
-			UintSignal broadcastCurrentID() const;
+			IntSignal broadcastCurrentID() const;
 			StatusSignal broadcastStatus() const;
 			DictSignal broadcastVolumeChanged() const;
-			UintSignal signalPlaytime() const;
+			IntSignal signalPlaytime() const;
 
 		/** @cond */
 		private:

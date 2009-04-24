@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -31,7 +31,7 @@
  * Private defintions
  */
 
-#include "xmmsc/xmmsc_coll.h"
+#include "xmmsc/xmmsv_coll.h"
 #include "xmmspriv/xmms_collection.h"
 
 

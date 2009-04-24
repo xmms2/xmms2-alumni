@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -34,6 +34,11 @@ namespace Xmms
 	}
 
 	result_error::result_error( const string& what_arg ) :
+		runtime_error( what_arg )
+	{
+	}
+
+	value_error::value_error( const string& what_arg ) :
 		runtime_error( what_arg )
 	{
 	}
@@ -84,6 +89,11 @@ namespace Xmms
 	}
 
 	collection_parsing_error::collection_parsing_error( const string& what_arg ) :
+		runtime_error( what_arg )
+	{
+	}
+
+	invalid_url::invalid_url( const string& what_arg ) :
 		runtime_error( what_arg )
 	{
 	}

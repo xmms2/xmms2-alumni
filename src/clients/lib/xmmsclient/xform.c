@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -39,7 +39,7 @@ xmmsc_xform_media_browse (xmmsc_connection_t *c, const char *url)
 	x_check_conn (c, NULL);
 	x_api_error_if (!url, "with a NULL url", NULL);
 
-	enc_url = _xmmsc_medialib_encode_url (url, 0, NULL);
+	enc_url = _xmmsc_medialib_encode_url (url, NULL);
 	if (!enc_url)
 		return NULL;
 

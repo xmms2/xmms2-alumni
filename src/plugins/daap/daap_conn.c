@@ -1,7 +1,7 @@
 /** @file daap_conn.c
  *  Manages the connection to a DAAP server.
  *
- *  Copyright (C) 2006-2008 XMMS2 Team
+ *  Copyright (C) 2006-2009 XMMS2 Team
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -62,9 +62,8 @@ daap_open_connection (gchar *host, gint port)
 
 	ai_hint = g_new0 (struct addrinfo, 1);
 	/* FIXME sometime in the future, we probably want to append
-	 *       " | {A,P}F_INET6" for IPv6 support */
+	 *       " | AF_INET6" for IPv6 support */
 	ai_hint->ai_family = AF_INET;
-	ai_hint->ai_protocol = PF_INET;
 
 	while ((ai_status = xmms_getaddrinfo (host, NULL, ai_hint, &ai_result))) {
 		if (ai_status != EAI_AGAIN) {

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -424,22 +424,22 @@ xmms_sqlite_open ()
 	return sql;
 }
 
-static xmms_object_cmd_value_t *
+static xmmsv_t *
 xmms_sqlite_column_to_val (sqlite3_stmt *stm, gint column)
 {
-	xmms_object_cmd_value_t *val = NULL;
+	xmmsv_t *val = NULL;
 
 	switch (sqlite3_column_type (stm, column)) {
 		case SQLITE_INTEGER:
 		case SQLITE_FLOAT:
-			val = xmms_object_cmd_value_int_new (sqlite3_column_int (stm, column));
+			val = xmmsv_new_int (sqlite3_column_int (stm, column));
 			break;
 		case SQLITE_TEXT:
 		case SQLITE_BLOB:
-			val = xmms_object_cmd_value_str_new ((gchar *)sqlite3_column_text (stm, column));
+			val = xmmsv_new_string ((gchar *)sqlite3_column_text (stm, column));
 			break;
 		case SQLITE_NULL:
-			val = xmms_object_cmd_value_none_new ();
+			val = xmmsv_new_none ();
 			break;
 		default:
 			XMMS_DBG ("Unhandled SQLite type!");
@@ -521,19 +521,29 @@ xmms_sqlite_query_table (sqlite3 *sql, xmms_medialib_row_table_method_t method, 
 	}
 
 	while ((ret = sqlite3_step (stm)) == SQLITE_ROW) {
-		gint i;
-		xmms_object_cmd_value_t *val;
-		GHashTable *ret = g_hash_table_new_full (g_str_hash, g_str_equal,
-		                                         g_free,
-		                                         (GDestroyNotify)xmms_object_cmd_value_unref);
-		gint num = sqlite3_data_count (stm);
+		gint num, i;
+		xmmsv_t *dict;
+
+		dict = xmmsv_new_dict ();
+		num = sqlite3_data_count (stm);
 
 		for (i = 0; i < num; i++) {
+			const char *key;
+			xmmsv_t *val;
+
+			/* We don't need to strdup the key because xmmsv_dict_set
+			 * will create its own copy.
+			 */
+			key = sqlite3_column_name (stm, i);
 			val = xmms_sqlite_column_to_val (stm, i);
-			g_hash_table_insert (ret, g_strdup (sqlite3_column_name (stm, i)), val);
+
+			xmmsv_dict_set (dict, key, val);
+
+			/* The dictionary owns the value. */
+			xmmsv_unref (val);
 		}
 
-		if (!method (ret, udata)) {
+		if (!method (dict, udata)) {
 			break;
 		}
 
@@ -557,21 +567,18 @@ xmms_sqlite_query_table (sqlite3 *sql, xmms_medialib_row_table_method_t method, 
 /**
  * Execute a query to the database.
  */
-gboolean
-xmms_sqlite_query_array (sqlite3 *sql, xmms_medialib_row_array_method_t method, gpointer udata, const gchar *query, ...)
+static gboolean
+xmms_sqlite_query_array_va (sqlite3 *sql, xmms_medialib_row_array_method_t method, gpointer udata, const gchar *query, va_list ap)
 {
 	gchar *q;
-	va_list ap;
 	gint ret, num_cols;
-	xmms_object_cmd_value_t **row;
+	xmmsv_t **row;
 	sqlite3_stmt *stm = NULL;
 
 	g_return_val_if_fail (query, FALSE);
 	g_return_val_if_fail (sql, FALSE);
 
-	va_start (ap, query);
 	q = sqlite3_vmprintf (query, ap);
-	va_end (ap);
 
 	ret = sqlite3_prepare (sql, q, -1, &stm, NULL);
 
@@ -588,7 +595,7 @@ xmms_sqlite_query_array (sqlite3 *sql, xmms_medialib_row_array_method_t method, 
 
 	num_cols = sqlite3_column_count (stm);
 
-	row = g_new (xmms_object_cmd_value_t *, num_cols + 1);
+	row = g_new (xmmsv_t *, num_cols + 1);
 	row[num_cols] = NULL;
 
 	while ((ret = sqlite3_step (stm)) == SQLITE_ROW) {
@@ -605,7 +612,7 @@ xmms_sqlite_query_array (sqlite3 *sql, xmms_medialib_row_array_method_t method, 
 		b = method (row, udata);
 
 		for (i = 0; i < num_cols; i++) {
-			xmms_object_cmd_value_unref (row[i]);
+			xmmsv_unref (row[i]);
 		}
 
 		if (!b) {
@@ -628,6 +635,49 @@ xmms_sqlite_query_array (sqlite3 *sql, xmms_medialib_row_array_method_t method, 
 
 	return (ret == SQLITE_DONE);
 }
+
+gboolean
+xmms_sqlite_query_array (sqlite3 *sql, xmms_medialib_row_array_method_t method, gpointer udata, const gchar *query, ...)
+{
+	va_list ap;
+	gboolean r;
+
+	va_start (ap, query);
+	r = xmms_sqlite_query_array_va (sql, method, udata, query, ap);
+	va_end (ap);
+
+	return r;
+}
+
+static gboolean
+xmms_sqlite_int_cb (xmmsv_t **row, gpointer udata)
+{
+	gint *i = udata;
+
+	if (row && row[0] && xmmsv_get_type (row[0]) == XMMSV_TYPE_INT32)
+		xmmsv_get_int (row[0], i);
+	else
+		XMMS_DBG ("Expected int32 but got something else!");
+
+	return TRUE;
+}
+
+gboolean
+xmms_sqlite_query_int (sqlite3 *sql, gint32 *out, const gchar *query, ...)
+{
+	va_list ap;
+	gboolean r;
+
+	g_return_val_if_fail (query, FALSE);
+	g_return_val_if_fail (sql, FALSE);
+
+	va_start (ap, query);
+	r = xmms_sqlite_query_array_va (sql, xmms_sqlite_int_cb, out, query, ap);
+	va_end (ap);
+
+	return r;
+}
+
 
 /**
  * Close database and free all resources used.

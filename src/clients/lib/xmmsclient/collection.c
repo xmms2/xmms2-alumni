@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -48,7 +48,7 @@
  */
 xmmsc_result_t*
 xmmsc_coll_get (xmmsc_connection_t *conn, const char *collname,
-                xmmsc_coll_namespace_t ns)
+                xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -86,7 +86,7 @@ xmmsc_coll_sync (xmmsc_connection_t *conn)
  * @param ns  The namespace containing the saved collections.
  */
 xmmsc_result_t*
-xmmsc_coll_list (xmmsc_connection_t *conn, xmmsc_coll_namespace_t ns)
+xmmsc_coll_list (xmmsc_connection_t *conn, xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -108,8 +108,8 @@ xmmsc_coll_list (xmmsc_connection_t *conn, xmmsc_coll_namespace_t ns)
  * @param ns  The namespace in which to save the collection.
  */
 xmmsc_result_t*
-xmmsc_coll_save (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
-                 const char* name, xmmsc_coll_namespace_t ns)
+xmmsc_coll_save (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
+                 const char* name, xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -134,7 +134,7 @@ xmmsc_coll_save (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
  */
 xmmsc_result_t*
 xmmsc_coll_remove (xmmsc_connection_t *conn,
-                   const char* name, xmmsc_coll_namespace_t ns)
+                   const char* name, xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -158,14 +158,14 @@ xmmsc_coll_remove (xmmsc_connection_t *conn,
  * @param ns  The namespace to consider (cannot be ALL).
  */
 xmmsc_result_t*
-xmmsc_coll_find (xmmsc_connection_t *conn, unsigned int mediaid, xmmsc_coll_namespace_t ns)
+xmmsc_coll_find (xmmsc_connection_t *conn, int mediaid, xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_COLLECTION, XMMS_IPC_CMD_COLLECTION_FIND);
-	xmms_ipc_msg_put_uint32 (msg, mediaid);
+	xmms_ipc_msg_put_int32 (msg, mediaid);
 	xmms_ipc_msg_put_string (msg, ns);
 
 	return xmmsc_send_msg (conn, msg);
@@ -182,7 +182,7 @@ xmmsc_coll_find (xmmsc_connection_t *conn, unsigned int mediaid, xmmsc_coll_name
 xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn,
                                    const char* from_name,
                                    const char* to_name,
-                                   xmmsc_coll_namespace_t ns)
+                                   xmmsv_coll_namespace_t ns)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -206,25 +206,34 @@ xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn,
  *
  * @param conn  The connection to the server.
  * @param coll  The collection used to query.
- * @param order  The list of properties to order by (NULL to disable).
+ * @param order  The list of properties to order by, passed as an #xmmsv_t list of strings.
  * @param limit_start  The offset at which to start retrieving results (0 to disable).
  * @param limit_len  The maximum number of entries to retrieve (0 to disable).
  */
 xmmsc_result_t*
-xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
-                      const char **order, unsigned int limit_start,
-                      unsigned int limit_len)
+xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
+                      xmmsv_t *order, int limit_start,
+                      int limit_len)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
 	x_api_error_if (!coll, "with a NULL collection", NULL);
 
+	/* default to empty ordering */
+	if (!order) {
+		order = xmmsv_new_list ();
+	} else {
+		xmmsv_ref (order);
+	}
+
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_COLLECTION, XMMS_IPC_CMD_QUERY_IDS);
 	xmms_ipc_msg_put_collection (msg, coll);
-	xmms_ipc_msg_put_uint32 (msg, limit_start);
-	xmms_ipc_msg_put_uint32 (msg, limit_len);
-	xmms_ipc_msg_put_string_list (msg, order);
+	xmms_ipc_msg_put_int32 (msg, limit_start);
+	xmms_ipc_msg_put_int32 (msg, limit_len);
+	xmms_ipc_msg_put_value_list (msg, order); /* purposedly skip typing */
+
+	xmmsv_unref (order);
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -238,32 +247,51 @@ xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
  *
  * @param conn  The connection to the server.
  * @param coll  The collection used to query.
- * @param order  The list of properties to order by (NULL to disable).
+ * @param order The list of properties to order by, passed as an
+ *              #xmmsv_t list of strings.
  * @param limit_start  The offset at which to start retrieving results (0 to disable).
  * @param limit_len  The maximum number of entries to retrieve (0 to disable).
- * @param fetch  The list of properties to retrieve (at least one property).
- * @param group  The list of properties to group by (NULL to disable).
+ * @param fetch  The list of properties to retrieve, passed as an
+ *               #xmmsv_t list of strings. At least one property is required.
+ * @param group  The list of properties to group by, passed as an
+ *               #xmmsv_t list of strings.
  */
 xmmsc_result_t*
-xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsc_coll_t *coll,
-                        const char **order, unsigned int limit_start,
-                        unsigned int limit_len, const char **fetch,
-                        const char **group)
+xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
+                        xmmsv_t *order, int limit_start,
+                        int limit_len, xmmsv_t *fetch,
+                        xmmsv_t *group)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
 	x_api_error_if (!coll, "with a NULL collection", NULL);
 	x_api_error_if (!fetch, "with a NULL fetch list", NULL);
-	x_api_error_if (!fetch[0], "with an empty fetch list", NULL);
+
+	/* default to empty ordering */
+	if (!order) {
+		order = xmmsv_new_list ();
+	} else {
+		xmmsv_ref (order);
+	}
+
+	/* default to empty grouping */
+	if (!group) {
+		group = xmmsv_new_list ();
+	} else {
+		xmmsv_ref (group);
+	}
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_COLLECTION, XMMS_IPC_CMD_QUERY_INFOS);
 	xmms_ipc_msg_put_collection (msg, coll);
-	xmms_ipc_msg_put_uint32 (msg, limit_start);
-	xmms_ipc_msg_put_uint32 (msg, limit_len);
-	xmms_ipc_msg_put_string_list (msg, order);
-	xmms_ipc_msg_put_string_list (msg, fetch);
-	xmms_ipc_msg_put_string_list (msg, group);
+	xmms_ipc_msg_put_int32 (msg, limit_start);
+	xmms_ipc_msg_put_int32 (msg, limit_len);
+	xmms_ipc_msg_put_value_list (msg, order); /* purposedly skip typing */
+	xmms_ipc_msg_put_value_list (msg, fetch); /* purposedly skip typing */
+	xmms_ipc_msg_put_value_list (msg, group); /* purposedly skip typing */
+
+	xmmsv_unref (order);
+	xmmsv_unref (group);
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -295,7 +323,7 @@ xmmsc_coll_idlist_from_playlist_file (xmmsc_connection_t *conn, const char *path
 
 	x_check_conn (conn, NULL);
 
-	enc_url = _xmmsc_medialib_encode_url (path, 0, NULL);
+	enc_url = _xmmsc_medialib_encode_url (path, NULL);
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_COLLECTION, XMMS_IPC_CMD_IDLIST_FROM_PLS);
 	xmms_ipc_msg_put_string (msg, enc_url);
 	free (enc_url);

@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -27,69 +27,92 @@
 #include <string>
 
 #include <iostream>
+#include <iterator>
 
 namespace Xmms
 {
+	template< typename T >
+	struct type_traits;
 
-	/** @class SuperList list.h "xmmsclient/xmmsclient++/list.h"
-	 *  @brief Superclass for List classes.
-	 */
-	class SuperList
+	template<>
+	struct type_traits< int32_t >
 	{
+		typedef int32_t type;
+		static int (*get_func)( const xmmsv_t*, int32_t* );
+	};
 
+	template<>
+	struct type_traits< std::string >
+	{
+		typedef const char* type;
+		static int (*get_func)( const xmmsv_t*, const char** );
+	};
+
+	template<>
+	struct type_traits< Dict >
+	{
+	};
+
+	namespace {
+		template< typename T >
+		T construct( xmmsv_t* elem )
+		{
+			typename type_traits< T >::type temp = 0;
+			if( !type_traits< T >::get_func( elem, &temp ) ) {
+				throw wrong_type_error( "Failed to retrieve a value"
+				                        " from the list" );
+			}
+			return T( temp );
+		}
+		template<>
+		Dict construct( xmmsv_t* elem )
+		{
+			return Dict( elem );
+		}
+	}
+
+	template< typename T >
+	class List;
+
+	template< typename T >
+	class List_const_iterator_
+	{
+		private:
+			List_const_iterator_( xmmsv_t*, int );
+			friend class List< T >;
 		public:
+			typedef ptrdiff_t difference_type;
+			typedef std::bidirectional_iterator_tag iterator_category;
+			typedef T value_type;
+			typedef const value_type& reference;
+			typedef const value_type* pointer;
 
-			/** Constructor.
-			 *
-			 *  @param result xmmsc_result_t* returned by one of the
-			 *         libxmmsclient functions, must be a list.
-			 *
-			 *  @throw result_error If the result was in error state.
-			 *  @throw not_list_error If the result is not a list.
-			 *
-			 *  @note You must unref the result you feed to this class.
-			 */
-			SuperList( xmmsc_result_t* result );
+			List_const_iterator_();
+			List_const_iterator_( const List_const_iterator_& );
+			List_const_iterator_& operator=( const List_const_iterator_& );
+			~List_const_iterator_();
+			const value_type& operator*() const;
+			const value_type* operator->() const;
+			List_const_iterator_& operator++();
+			List_const_iterator_ operator++( int );
+			List_const_iterator_& operator--();
+			List_const_iterator_ operator--( int );
+			bool equal( const List_const_iterator_& rh ) const;
 
-			/** Copy-constructor.
-			 */
-			SuperList( const SuperList& list );
+		private:
+			xmmsv_t* getElement() const
+			{
+				xmmsv_t *elem = NULL;
+				xmmsv_list_iter_entry( it_, &elem );
+				return elem;
+			}
 
-			/** Copy assignment operator.
-			 */
-			virtual SuperList& operator=( const SuperList& list );
-
-			/** Destructor.
-			 */
-			virtual ~SuperList();
-
-			/** Return to first entry in list.
-			 *
-			 *  @todo Should probably throw on error?
-			 */
-			virtual void first() const;
-
-			/** Skip to next entry in list.
-			 *
-			 *  Advances to next list entry. May advance outside of list,
-			 *  so isValid should be used to determine if end of list was
-			 *  reached.
-			 *
-			 *  @todo Throw on error?
-			 */
-			virtual void operator++() const;
-
-			/** Check if current listnode is inside list boundary.
-			 */
-			virtual bool isValid() const;
-
-		protected:
-			xmmsc_result_t* result_;
-
+			xmmsv_t* list_;
+			xmmsv_list_iter_t* it_;
 	};
 
 	/** @class List list.h "xmmsclient/xmmsclient++/list.h"
-	 *  @brief This class acts as a wrapper for list type results.
+	 *  @brief This class acts as a wrapper for list type values.
 	 *  This is actually a virtual class and is specialized with T being
 	 *  - std::string
 	 *  - int
@@ -99,323 +122,208 @@ namespace Xmms
 	 *  If any other type is used, a compile-time error should occur.
 	 */
 	template< typename T >
-	class List : public SuperList
+	class List
 	{
 
 		public:
 
+			typedef List_const_iterator_< T > const_iterator;
+
+			typedef std::reverse_iterator< const_iterator > const_reverse_iterator;
+
 			/** Constructor
-			 *  @see SuperList#SuperList.
 			 */
-			List( xmmsc_result_t* result ) :
-				SuperList( result )
+			List( xmmsv_t* value ) :
+				value_( 0 )
 			{
+				if( xmmsv_is_error( value ) ) {
+					const char *buf;
+					xmmsv_get_error( value, &buf );
+					throw value_error( buf );
+				}
+				if( !xmmsv_is_type( value, XMMSV_TYPE_LIST ) ) {
+					throw not_list_error( "Provided value is not a list" );
+				}
+
+				value_ = value;
+				xmmsv_ref( value_ );
 			}
 
 			/** Copy-constructor.
 			 */
 			List( const List<T>& list ) :
-				SuperList( list )
+				value_( list.value_ )
 			{
+				xmmsv_ref( value_ );
 			}
 
 			/** Copy assignment operator.
 			 */
 			List<T>& operator=( const List<T>& list )
 			{
-				SuperList::operator=( list );
+				value_ = list.value_;
+				xmmsv_ref( value_ );
 				return *this;
 			}
 
 			/** Destructor.
 			 */
-			virtual ~List()
+			~List()
 			{
+				xmmsv_unref( value_ );
 			}
 
-			/** Operator *.
-			 *  Used to get the underlying value from the list.
-			 */
-			const T operator*() const
+			const_iterator begin() const
 			{
-				return constructContents();
+				return const_iterator( value_, 0 );
+			}
+			const_iterator end() const
+			{
+				return const_iterator( value_, xmmsv_list_get_size(value_) );
 			}
 
-			/** Operator ->.
-			 *  Used to call a function of the underlying class
-			 *  (only applicable for std::string and Dict).
-			 *  Same as (*list).function();
-			 */
-			const T operator->() const
+			const_reverse_iterator rbegin() const
 			{
-				return constructContents();
+				return const_reverse_iterator(end());
+			}
+			const_reverse_iterator rend() const
+			{
+				return const_reverse_iterator(begin());
 			}
 
 		/** @cond */
 		private:
-
-			virtual T constructContents() const = 0;
+			xmmsv_t* value_;
 		/** @endcond */
 
 	};
 
-	/** @cond */
-	template<>
-	class List< int > : public SuperList
+	template< typename T >
+	inline
+	bool operator==( const List_const_iterator_< T >& lh, const List_const_iterator_< T >& rh )
 	{
+		return lh.equal( rh );
+	}
 
-		public:
-			List( xmmsc_result_t* result ) :
-				SuperList( result )
-			{
-
-				if( xmmsc_result_get_type( result ) !=
-				    XMMSC_RESULT_VALUE_TYPE_INT32 &&
-				    xmmsc_result_get_type( result ) !=
-				    XMMSC_RESULT_VALUE_TYPE_NONE ) {
-
-					// SuperList constructor refs the result so we'll unref
-					xmmsc_result_unref( result );
-					throw wrong_type_error( "Expected list of ints" );
-
-				}
-
-			}
-
-			List( const List<int>& list ) :
-				SuperList( list )
-			{
-			}
-
-			List<int>& operator=( const List<int>& list )
-			{
-				SuperList::operator=( list );
-				return *this;
-			}
-
-			virtual ~List()
-			{
-			}
-
-			int operator*() const
-			{
-				return constructContents();
-			}
-
-		private:
-
-			virtual int constructContents() const
-			{
-
-				if( !isValid() ) {
-					throw out_of_range( "List out of range or empty list" );
-				}
-
-				int temp = 0;
-				if( !xmmsc_result_get_int( result_, &temp ) ) {
-					// throw something
-				}
-				return temp;
-
-			}
-
-	};
-
-	template<>
-	class List< unsigned int > : public SuperList
+	template< typename T >
+	inline
+	bool operator!=( const List_const_iterator_< T >& lh, const List_const_iterator_< T >& rh )
 	{
+		return !( lh == rh );
+	}
 
-		public:
-			List( xmmsc_result_t* result ) :
-				SuperList( result )
-			{
-
-				if( xmmsc_result_get_type( result ) !=
-				    XMMSC_RESULT_VALUE_TYPE_UINT32 &&
-				    xmmsc_result_get_type( result ) !=
-				    XMMSC_RESULT_VALUE_TYPE_NONE ) {
-
-					// SuperList constructor refs the result so we'll unref
-					xmmsc_result_unref( result );
-					throw wrong_type_error( "Expected list of unsigned ints" );
-				}
-
-			}
-
-			List( const List<unsigned int>& list ) :
-				SuperList( list )
-			{
-			}
-
-			List<unsigned int>& operator=( const List<unsigned int>& list )
-			{
-				SuperList::operator=( list );
-				return *this;
-			}
-
-			virtual ~List()
-			{
-			}
-
-			unsigned int operator*() const
-			{
-				return constructContents();
-			}
-
-		private:
-
-			virtual unsigned int constructContents() const
-			{
-
-				if( !isValid() ) {
-					throw out_of_range( "List out of range or empty list" );
-				}
-
-				unsigned int temp = 0;
-				if( !xmmsc_result_get_uint( result_, &temp ) ) {
-					// throw something
-				}
-				return temp;
-
-			}
-
-	};
-
-	template<>
-	class List< std::string > : public SuperList
+	template< typename T >
+	List_const_iterator_< T >::List_const_iterator_( xmmsv_t* list, int pos )
+		: list_( list ), it_( 0 )
 	{
+		xmmsv_get_list_iter( list_, &it_ );
+		xmmsv_list_iter_seek( it_, pos );
+	}
 
-		public:
-			List( xmmsc_result_t* result ) :
-				SuperList( result )
-			{
-
-				if( xmmsc_result_get_type( result ) !=
-				    XMMSC_RESULT_VALUE_TYPE_STRING &&
-				    xmmsc_result_get_type( result ) !=
-				    XMMSC_RESULT_VALUE_TYPE_NONE ) {
-					// SuperList constructor refs the result so we'll unref
-					xmmsc_result_unref( result );
-					throw wrong_type_error( "Expected list of strings" );
-				}
-
-			}
-
-			List( const List<std::string>& list ) :
-				SuperList( list )
-			{
-			}
-
-			List<std::string>& operator=( const List<std::string>& list )
-			{
-				SuperList::operator=( list );
-				return *this;
-			}
-
-			virtual ~List()
-			{
-			}
-
-			const std::string& operator*() const
-			{
-				constructContents();
-				return value_;
-			}
-
-			const std::string* operator->() const
-			{
-				constructContents();
-				return &value_;
-			}
-
-		private:
-
-			mutable std::string value_;
-
-			virtual void constructContents() const
-			{
-
-				if( !isValid() ) {
-					throw out_of_range( "List out of range or empty list" );
-				}
-
-				const char* temp = 0;
-				if( !xmmsc_result_get_string( result_, &temp ) ) {
-					// throw something
-				}
-				value_ = std::string( temp );
-
-			}
-
-	};
-
-	template<>
-	class List< Dict > : public SuperList
+	template< typename T >
+	List_const_iterator_< T >::List_const_iterator_()
+		: list_( 0 ), it_( 0 )
 	{
+	}
 
-		public:
-			List( xmmsc_result_t* result ) try :
-				SuperList( result )
-			{
-				// checking the type here is a bit useless since
-				// Dict constructor checks it but we must catch it and
-				// unref the result which SuperList refs or we leak.
-			}
-			catch( Xmms::not_dict_error& e )
-			{
-				if( xmmsc_result_get_type( result ) !=
-				    XMMSC_RESULT_VALUE_TYPE_NONE ) {
+	template< typename T >
+	List_const_iterator_< T >::List_const_iterator_( const List_const_iterator_& rh )
+		: list_( rh.list_ ), it_( 0 )
+	{
+		if( list_ ) {
+			xmmsv_t* rh_parent( xmmsv_list_iter_get_parent( rh.it_ ) );
+			xmmsv_get_list_iter( rh_parent, &it_ );
+			xmmsv_list_iter_seek( it_, xmmsv_list_iter_tell( rh.it_ ) );
+		}
+	}
 
-					xmmsc_result_unref( result );
-					throw;
+	template< typename T >
+	List_const_iterator_< T >&
+	List_const_iterator_< T >::operator=( const List_const_iterator_& rh )
+	{
+		list_ = rh.list_;
+		if ( it_ ) {
+			xmmsv_list_iter_explicit_destroy( it_ );
+		}
 
-				}
-			}
+		if( list_ ) {
+			xmmsv_t* rh_parent( xmmsv_list_iter_get_parent( rh.it_ ) );
+			xmmsv_get_list_iter( rh_parent, &it_ );
+			xmmsv_list_iter_seek( it_, xmmsv_list_iter_tell( rh.it_ ) );
+		}
+		else {
+			it_ = 0;
+		}
 
-			List( const List<Dict>& list ) :
-				SuperList( list ), value_( list.value_ )
-			{
-			}
+		return *this;
+	}
 
-			List<Dict>& operator=( const List<Dict>& list )
-			{
-				SuperList::operator=( list );
-				return *this;
-			}
+	template< typename T >
+	List_const_iterator_< T >::~List_const_iterator_()
+	{
+		if ( it_ ) {
+			xmmsv_list_iter_explicit_destroy( it_ );
+		}
+	}
 
-			virtual ~List()
-			{
-			}
+	template< typename T >
+	const typename List_const_iterator_< T >::value_type&
+	List_const_iterator_<T>::operator*() const
+	{
+		static value_type value;
+		value = construct< T >( getElement() );
+		return value;
+	}
 
-			const Dict& operator*() const
-			{
-				constructContents();
-				return *value_;
-			}
+	template< typename T >
+	const typename List_const_iterator_< T >::value_type*
+	List_const_iterator_<T>::operator->() const
+	{
+		return &( operator*() );
+	}
 
-			const Dict* operator->() const
-			{
-				constructContents();
-				return value_.get();
-			}
+	template< typename T >
+	List_const_iterator_< T >&
+	List_const_iterator_< T >::operator++()
+	{
+		xmmsv_list_iter_next( it_ );
+		return *this;
+	}
 
-		private:
+	template< typename T >
+	List_const_iterator_< T >
+	List_const_iterator_< T >::operator++( int )
+	{
+		List_const_iterator_ tmp( *this );
+		++*this;
+		return tmp;
+	}
 
-			mutable boost::shared_ptr< Dict > value_;
+	template< typename T >
+	List_const_iterator_< T >&
+	List_const_iterator_< T >::operator--()
+	{
+		xmmsv_list_iter_prev( it_ );
+		return *this;
+	}
 
-			virtual void constructContents() const
-			{
+	template< typename T >
+	List_const_iterator_< T >
+	List_const_iterator_< T >::operator--( int )
+	{
+		List_const_iterator_ tmp( *this );
+		--*this;
+		return tmp;
+	}
 
-				if( !isValid() ) {
-					throw out_of_range( "List out of range or empty list" );
-				}
-
-				value_ = boost::shared_ptr< Dict >( new Dict( result_ ) );
-
-			}
-
-	};
-	/** @endcond */
+	template< typename T >
+	bool List_const_iterator_< T >::equal( const List_const_iterator_& rh ) const
+	{
+		if( list_ == rh.list_ ) {
+			return xmmsv_list_iter_tell( it_ ) == xmmsv_list_iter_tell( rh.it_ );
+		}
+		return false;
+	}
 }
 
 #endif // XMMSCLIENTPP_LIST_H

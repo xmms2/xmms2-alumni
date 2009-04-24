@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -165,7 +165,7 @@ c_coll_parse (VALUE klass, VALUE pattern)
 
 	Data_Get_Struct (obj, RbCollection, coll);
 
-	if (!xmmsc_coll_parse (StringValuePtr (pattern), &coll->real)) {
+	if (!xmmsv_coll_parse (StringValuePtr (pattern), &coll->real)) {
 		rb_raise (ePatternError, "invalid pattern");
 	}
 
@@ -279,7 +279,7 @@ c_attrs_init (VALUE self, VALUE collection)
 	return self;
 }
 
-#ifdef HAVE_PROTECT_INSPECT
+#ifdef HAVE_RB_PROTECT_INSPECT
 static VALUE
 attrs_inspect_cb (VALUE args, VALUE s)
 {
@@ -317,7 +317,7 @@ c_attrs_inspect (VALUE self)
 {
 	return rb_protect_inspect (attrs_inspect, self, 0);
 }
-#endif /* HAVE_PROTECT_INSPECT */
+#endif /* HAVE_RB_PROTECT_INSPECT */
 
 static VALUE
 c_attrs_aref (VALUE self, VALUE key)
@@ -491,28 +491,30 @@ c_operands_delete (VALUE self, VALUE arg)
 	return Qnil;
 }
 
+static void
+operands_each (xmmsv_t *value, void *user_data)
+{
+	xmmsv_coll_t *operand = NULL;
+
+	xmmsv_get_coll (value, &operand);
+	xmmsc_coll_ref (operand);
+
+	rb_yield (TO_XMMS_CLIENT_COLLECTION (operand));
+}
+
 static VALUE
 c_operands_each (VALUE self)
 {
 	RbCollection *coll = NULL;
+	xmmsv_t *operands_list;
 	VALUE tmp;
 
 	tmp = rb_iv_get (self, "collection");
 	Data_Get_Struct (tmp, RbCollection, coll);
 
-	if (!xmmsc_coll_operand_list_first (coll->real))
-		return self;
+	operands_list = xmmsv_coll_operands_get (coll->real);
 
-	while (xmmsc_coll_operand_list_valid (coll->real)) {
-		xmmsc_coll_t *operand = NULL;
-
-		xmmsc_coll_operand_list_entry (coll->real, &operand);
-		xmmsc_coll_ref (operand);
-
-		rb_yield (TO_XMMS_CLIENT_COLLECTION (operand));
-
-		xmmsc_coll_operand_list_next (coll->real);
-	}
+	xmmsv_list_foreach (operands_list, operands_each, NULL);
 
 	return self;
 }
@@ -576,9 +578,9 @@ Init_Collection (VALUE mXmms)
 	cAttributes = rb_define_class_under (cColl, "Attributes", rb_cObject);
 
 	rb_define_method (cAttributes, "initialize", c_attrs_init, 1);
-#ifdef HAVE_PROTECT_INSPECT
+#ifdef HAVE_RB_PROTECT_INSPECT
 	rb_define_method (cAttributes, "inspect", c_attrs_inspect, 0);
-#endif /* HAVE_PROTECT_INSPECT */
+#endif /* HAVE_RB_PROTECT_INSPECT */
 
 	rb_define_method (cAttributes, "[]", c_attrs_aref, 1);
 	rb_define_method (cAttributes, "[]=", c_attrs_aset, 2);

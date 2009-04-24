@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -64,6 +64,11 @@ xmms_pls_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	                              "audio/x-scpls",
 	                              NULL);
 
+	xmms_magic_add ("pls header",
+	                "audio/x-scpls",
+	                "0 string [playlist]\r\n",
+	                "0 string [playlist]\n", NULL);
+
 	xmms_magic_extension_add ("audio/x-scpls", "*.pls");
 
 	return TRUE;
@@ -92,7 +97,6 @@ typedef struct {
 	gint num;
 	gchar *file;
 	gchar *title;
-	gchar *length;
 } xmms_pls_entry_t;
 
 static void
@@ -101,17 +105,13 @@ xmms_pls_add_entry (xmms_xform_t *xform,
                     xmms_pls_entry_t *e)
 {
 	if (e->file) {
-		gchar *title;
 		gchar *path;
 
 		path = xmms_build_playlist_url (plspath, e->file);
-		title = e->file;
-
-		if (e->title)
-			title = e->title;
 
 		xmms_xform_browse_add_symlink (xform, NULL, path);
-		xmms_xform_browse_add_entry_property_str (xform, "title", e->title);
+		if (e->title)
+			xmms_xform_browse_add_entry_property_str (xform, "title", e->title);
 
 		g_free (path);
 		g_free (e->file);
@@ -121,11 +121,6 @@ xmms_pls_add_entry (xmms_xform_t *xform,
 	if (e->title) {
 		g_free (e->title);
 		e->title = NULL;
-	}
-
-	if (e->length) {
-		g_free (e->length);
-		e->length = NULL;
 	}
 }
 
@@ -166,9 +161,6 @@ xmms_pls_browse (xmms_xform_t *xform, const char *url, xmms_error_t *error)
 		if (g_ascii_strncasecmp (buffer, "File", 4) == 0) {
 			np = &buffer[4];
 			val = &entry.file;
-		} else if (g_ascii_strncasecmp (buffer, "Length", 6) == 0) {
-			np = &buffer[6];
-			val = &entry.length;
 		} else if (g_ascii_strncasecmp (buffer, "Title", 5) == 0) {
 			np = &buffer[5];
 			val = &entry.title;
@@ -182,11 +174,22 @@ xmms_pls_browse (xmms_xform_t *xform, const char *url, xmms_error_t *error)
 			continue;
 		}
 
+		ep++; /* Skip the '=' */
+
+		/* Remove leading and trailing whitespace from the value. */
+		g_strstrip (ep);
+
+		/* Ignore empty values. */
+		if (!*ep) {
+			XMMS_DBG ("Ignoring empty value in line '%s'", buffer);
+			continue;
+		}
+
 		if (entry.num != num && entry.num != -1) {
 			xmms_pls_add_entry (xform, plspath, &entry);
 		}
 
-		*val = g_strdup (ep + 1);
+		*val = g_strdup (ep);
 		entry.num = num;
 	}
 

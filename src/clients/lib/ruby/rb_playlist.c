@@ -1,5 +1,6 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -51,6 +52,15 @@
 	PLAYLIST_METHOD_HANDLER_HEADER \
 \
 	res = xmmsc_playlist_##action (xmms->real, pl->name, StringValuePtr (arg)); \
+\
+	PLAYLIST_METHOD_HANDLER_FOOTER
+
+#define PLAYLIST_METHOD_ADD_HANDLER_INT_STR(action, arg1, arg2)	\
+	PLAYLIST_METHOD_HANDLER_HEADER \
+\
+	res = xmmsc_playlist_##action (xmms->real, pl->name, \
+	                               check_int32 (arg1), \
+	                               StringValuePtr (arg2)); \
 \
 	PLAYLIST_METHOD_HANDLER_FOOTER
 
@@ -237,6 +247,19 @@ c_insert_entry (VALUE self, VALUE pos, VALUE arg)
 
 /*
  * call-seq:
+ *  pl.rinsert(pos, path) -> result
+ *
+ * Recursively imports all media files under _path_ at position _pos_
+ * in the playlist.
+ */
+static VALUE
+c_rinsert (VALUE self, VALUE pos, VALUE path)
+{
+	PLAYLIST_METHOD_ADD_HANDLER_INT_STR (rinsert, pos, path);
+}
+
+/*
+ * call-seq:
  *  pl.remove_entry(pos) -> result
  *
  * Removes the entry at _pos_ from the playlist.
@@ -293,30 +316,12 @@ c_clear (VALUE self)
 static VALUE
 c_sort (VALUE self, VALUE props)
 {
-	struct RArray *ary;
-	const char **cprops;
-	int i;
+	xmmsv_t *cprops;
 	PLAYLIST_METHOD_HANDLER_HEADER
 
-	if (!NIL_P (props = rb_check_array_type (props))) {
-		ary = RARRAY (props);
-
-		cprops = malloc (sizeof (char *) * (ary->len + 1));
-
-		for (i = 0; i < ary->len; i++)
-			cprops[i] = StringValuePtr (ary->ptr[i]);
-
-		cprops[i] = NULL;
-	} else if (!NIL_P (rb_check_string_type (props))) {
-		cprops = malloc (sizeof (char *) * 2);
-		cprops[0] = StringValuePtr (props);
-		cprops[1] = NULL;
-	} else
-		rb_raise (ePlaylistError, "unsupported argument");
-
+	cprops = parse_string_array2 (props);
 	res = xmmsc_playlist_sort (xmms->real, pl->name, cprops);
-
-	free (cprops);
+	xmmsv_unref (cprops);
 
 	PLAYLIST_METHOD_HANDLER_FOOTER
 }
@@ -357,7 +362,7 @@ c_add_collection (int argc, VALUE *argv, VALUE self)
 	PLAYLIST_METHOD_HANDLER_HEADER
 
 	VALUE rbcoll, order = Qnil;
-	const char **corder = NULL;
+	xmmsv_t *corder = NULL;
 	xmmsc_coll_t *coll;
 
 	rb_scan_args (argc, argv, "11", &rbcoll, &order);
@@ -365,12 +370,14 @@ c_add_collection (int argc, VALUE *argv, VALUE self)
 	coll = FROM_XMMS_CLIENT_COLLECTION (rbcoll);
 
 	if (!NIL_P (order))
-		corder = parse_string_array (order);
+		corder = parse_string_array2 (order);
 
 	res = xmmsc_playlist_add_collection (xmms->real, pl->name,
 	                                     coll, corder);
 
-	free (corder);
+	if (corder)
+		xmmsv_unref (corder);
+
 	PLAYLIST_METHOD_HANDLER_FOOTER
 }
 
@@ -390,6 +397,7 @@ Init_Playlist (VALUE mXmms)
 	rb_define_method (c, "clear", c_clear, 0);
 	rb_define_method (c, "add_entry", c_add_entry, 1);
 	rb_define_method (c, "radd", c_radd, 1);
+	rb_define_method (c, "rinsert", c_rinsert, 2);
 	rb_define_method (c, "insert_entry", c_insert_entry, 2);
 	rb_define_method (c, "remove_entry", c_remove_entry, 1);
 	rb_define_method (c, "move_entry", c_move_entry, 2);

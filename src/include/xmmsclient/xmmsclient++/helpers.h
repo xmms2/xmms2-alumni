@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -39,20 +39,24 @@ namespace Xmms
 
 	/** Get the absolute path to the user config dir.
 	 *  
-	 *  @throw result_error If there was an error.
+	 *  @throw value_error If there was an error.
 	 *  
 	 *  @return string containing the path.
 	 */
 	inline std::string getUserConfDir() {
 
-		char buf[PATH_MAX] = { '\0' };
-		if( !xmmsc_userconfdir_get( buf, PATH_MAX ) ) {
-			throw Xmms::result_error( "Error occured when trying to get "
-			                          "user config directory." );
+		char buf[XMMS_PATH_MAX] = { '\0' };
+		if( !xmmsc_userconfdir_get( buf, XMMS_PATH_MAX ) ) {
+			throw Xmms::value_error( "Error occured when trying to get "
+			                         "user config directory." );
 		}
 		return std::string(buf);
 
 	}
+
+
+	std::string decodeUrl( const std::string& encoded_url );
+
 
 	/** @cond INTERNAL */
 
@@ -89,17 +93,21 @@ namespace Xmms
 	}
 
 	/** Checks result for errors.
-	 *  Convenience function to check if result is in error state.
-	 *  @note result is unreffed if it's in error state.
+	 *  Convenience function to check if result contains an error.
+	 *  @note result is unreffed if it's an error.
 	 *
 	 *  @param res xmmsc_result_t* to check.
 	 *
-	 *  @throw result_error If the result is in error state.
+	 *  @throw result_error If the result contains an error.
 	 */
 	inline void check( xmmsc_result_t*& res )
 	{
-		if( xmmsc_result_iserror( res ) ) {
-			std::string error( xmmsc_result_get_error( res ) );
+		xmmsv_t *val = xmmsc_result_get_value( res );
+		if( xmmsv_is_error( val ) ) {
+			const char *buf;
+			xmmsv_get_error( val, &buf );
+
+			std::string error( buf );
 			xmmsc_result_unref( res );
 			throw result_error( error );
 		}
@@ -125,6 +133,30 @@ namespace Xmms
 		}
 	}
 
+	/** Make a #xmmsv_t* list from a list of std::string.
+	 *  Convenience function to convert C++ arguments into an XMMS value type
+	 *  accepted by the C functions.
+	 *
+	 *  @param input  The strings to put in the second argument.
+	 *  @return       The filled #xmmsv_t* list.
+	 */
+	inline xmmsv_t *
+	makeStringList( const std::list< std::string >& input )
+	{
+		xmmsv_t *vstr, *list;
+
+		list = xmmsv_new_list();
+		for( std::list< std::string >::const_iterator it = input.begin();
+		     it != input.end(); ++it ) {
+
+			vstr = xmmsv_new_string( it->c_str() );
+			xmmsv_list_append( list, vstr );
+			xmmsv_unref( vstr );
+		}
+
+		return list;
+	}
+
 	/** Convenience function to call a function.
 	 *  @note does not unref the result
 	 *
@@ -144,28 +176,6 @@ namespace Xmms
 		xmmsc_result_t* res = func();
 		return res;
 
-	}
-
-	/** Convenience function for converting an STL list of strings to
-	 *  an NULL-terminated array of char*.
-	 *
-	 *  @param li the list to convert
-	 *  @return a pointer to the newly allocated array of char*, must
-	 *          be freed manually.
-	 */ 
-	inline const char** c_stringList( const std::list<std::string>& li )
-	{
-		const char **clist = new const char*[ li.size() + 1 ];
-
-		int i;
-		std::list<std::string>::const_iterator it;
-
-		for( i = 0, it = li.begin(); it != li.end(); ++i, ++it ) {
-			clist[i] = it->c_str();
-		}
-		clist[i] = NULL;
-
-		return clist;
 	}
 
 	/** @endcond INTERNAL */

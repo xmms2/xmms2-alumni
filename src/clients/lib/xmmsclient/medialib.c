@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -51,110 +51,13 @@ do_methodcall (xmmsc_connection_t *conn, unsigned int id, const char *arg)
  * @param len Length of target
  * @param fmt A format string to use. You can insert items from the hash by
  * using specialformat "${field}".
- * @param res The #xmmsc_result_t that contains the dict.
+ * @param val The #xmmsv_t that contains the dict.
  * @returns The number of chars written to target
  */
-
 int
-xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res)
+xmmsc_entry_format (char *target, int len, const char *fmt, xmmsv_t *val)
 {
-	const char *pos;
-
-	if (!target) {
-		return 0;
-	}
-
-	if (!fmt) {
-		return 0;
-	}
-
-	memset (target, 0, len);
-
-	pos = fmt;
-	while (strlen (target) + 1 < len) {
-		char *next_key, *key, *end;
-		int keylen;
-
-		next_key = strstr (pos, "${");
-		if (!next_key) {
-			strncat (target, pos, len - strlen (target) - 1);
-			break;
-		}
-
-		strncat (target, pos, MIN (next_key - pos, len - strlen (target) - 1));
-		keylen = strcspn (next_key + 2, "}");
-		key = malloc (keylen + 1);
-
-		if (!key) {
-			fprintf (stderr, "Unable to allocate %u bytes of memory, OOM?", keylen);
-			break;
-		}
-
-		memset (key, 0, keylen + 1);
-		strncpy (key, next_key + 2, keylen);
-
-		if (strcmp (key, "seconds") == 0) {
-			int duration;
-
-			xmmsc_result_get_dict_entry_int (res, "duration", &duration);
-
-			if (!duration) {
-				strncat (target, "00", len - strlen (target) - 1);
-			} else {
-				char seconds[10];
-				/* rounding */
-				duration += 500;
-				snprintf (seconds, sizeof (seconds), "%02d", (duration/1000)%60);
-				strncat (target, seconds, len - strlen (target) - 1);
-			}
-		} else if (strcmp (key, "minutes") == 0) {
-			int duration;
-
-			xmmsc_result_get_dict_entry_int (res, "duration", &duration);
-
-			if (!duration) {
-				strncat (target, "00", len - strlen (target) - 1);
-			} else {
-				char minutes[10];
-				/* rounding */
-				duration += 500;
-				snprintf (minutes, sizeof (minutes), "%02d", duration/60000);
-				strncat (target, minutes, len - strlen (target) - 1);
-			}
-		} else {
-			const char *result = NULL;
-			char tmp[12];
-
-			xmmsc_result_value_type_t type = xmmsc_result_get_dict_entry_type (res, key);
-			if (type == XMMSC_RESULT_VALUE_TYPE_STRING) {
-				xmmsc_result_get_dict_entry_string (res, key, &result);
-			} else if (type == XMMSC_RESULT_VALUE_TYPE_UINT32) {
-				uint32_t ui;
-				xmmsc_result_get_dict_entry_uint (res, key, &ui);
-				snprintf (tmp, 12, "%u", ui);
-				result = tmp;
-			} else if (type == XMMSC_RESULT_VALUE_TYPE_INT32) {
-				int32_t i;
-				xmmsc_result_get_dict_entry_int (res, key, &i);
-				snprintf (tmp, 12, "%d", i);
-				result = tmp;
-			}
-
-			if (result)
-				strncat (target, result, len - strlen (target) - 1);
-		}
-
-		free (key);
-		end = strchr (next_key, '}');
-
-		if (!end) {
-			break;
-		}
-
-		pos = end + 1;
-	}
-
-	return strlen (target);
+	return xmmsv_dict_format (target, len, fmt, val);
 }
 
 /**
@@ -164,6 +67,32 @@ xmmsc_entry_format (char *target, int len, const char *fmt, xmmsc_result_t *res)
  */
 xmmsc_result_t *
 xmmsc_medialib_get_id (xmmsc_connection_t *conn, const char *url)
+{
+	xmmsc_result_t *res;
+	char *enc_url;
+	x_check_conn (conn, NULL);
+
+	enc_url = _xmmsc_medialib_encode_url (url, NULL);
+	if (!enc_url)
+		return NULL;
+
+	res = xmmsc_medialib_get_id_encoded (conn, enc_url);
+
+	free (enc_url);
+
+	return res;
+}
+
+/**
+ * Search for a entry (URL) in the medialib db and return its ID number
+ *
+ * Same as #xmmsc_medialib_get_id but expects a encoded URL instead
+ *
+ * @param conn The #xmmsc_connection_t
+ * @param url The URL to search for
+ */
+xmmsc_result_t *
+xmmsc_medialib_get_id_encoded (xmmsc_connection_t *conn, const char *url)
 {
 	x_check_conn (conn, NULL);
 
@@ -179,14 +108,14 @@ xmmsc_medialib_get_id (xmmsc_connection_t *conn, const char *url)
  * @param url The url to move it to
  */
 xmmsc_result_t *
-xmmsc_medialib_move_entry (xmmsc_connection_t *conn, uint32_t entry, const char *url)
+xmmsc_medialib_move_entry (xmmsc_connection_t *conn, int entry, const char *url)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MEDIALIB, XMMS_IPC_CMD_MOVE_URL);
-	xmms_ipc_msg_put_uint32 (msg, entry);
+	xmms_ipc_msg_put_int32 (msg, entry);
 	xmms_ipc_msg_put_string (msg, url);
 
 	return xmmsc_send_msg (conn, msg);
@@ -198,14 +127,14 @@ xmmsc_medialib_move_entry (xmmsc_connection_t *conn, uint32_t entry, const char 
  * @param entry The entry id you want to remove
  */
 xmmsc_result_t *
-xmmsc_medialib_remove_entry (xmmsc_connection_t *conn, uint32_t entry)
+xmmsc_medialib_remove_entry (xmmsc_connection_t *conn, int entry)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MEDIALIB, XMMS_IPC_CMD_REMOVE_ID);
-	xmms_ipc_msg_put_uint32 (msg, entry);
+	xmms_ipc_msg_put_int32 (msg, entry);
 
 	return xmmsc_send_msg (conn, msg);
 }
@@ -219,7 +148,7 @@ xmmsc_medialib_remove_entry (xmmsc_connection_t *conn, uint32_t entry)
 xmmsc_result_t *
 xmmsc_medialib_add_entry (xmmsc_connection_t *conn, const char *url)
 {
-	return xmmsc_medialib_add_entry_args (conn, url, 0, NULL);
+	return xmmsc_medialib_add_entry_full (conn, url, NULL);
 }
 
 /**
@@ -240,7 +169,34 @@ xmmsc_medialib_add_entry_args (xmmsc_connection_t *conn, const char *url, int nu
 
 	x_check_conn (conn, NULL);
 
-	enc_url = _xmmsc_medialib_encode_url (url, numargs, args);
+	enc_url = _xmmsc_medialib_encode_url_old (url, numargs, args);
+	if (!enc_url)
+		return NULL;
+
+	res = xmmsc_medialib_add_entry_encoded (conn, enc_url);
+
+	free (enc_url);
+
+	return res;
+}
+
+/**
+ * Add a URL with arguments to the medialib.
+ *
+ * @param conn The #xmmsc_connection_t
+ * @param url URL to add to the medialib.
+ * @param numargs The number of arguments
+ * @param args array of numargs strings used as arguments
+ */
+xmmsc_result_t *
+xmmsc_medialib_add_entry_full (xmmsc_connection_t *conn, const char *url, xmmsv_t *args)
+{
+	char *enc_url;
+	xmmsc_result_t *res;
+
+	x_check_conn (conn, NULL);
+
+	enc_url = _xmmsc_medialib_encode_url (url, args);
 	if (!enc_url)
 		return NULL;
 
@@ -287,7 +243,7 @@ xmmsc_medialib_path_import (xmmsc_connection_t *conn, const char *path)
 
 	x_check_conn (conn, NULL);
 
-	enc_path = _xmmsc_medialib_encode_url (path, 0, NULL);
+	enc_path = _xmmsc_medialib_encode_url (path, NULL);
 	if (!enc_path)
 		return NULL;
 
@@ -330,15 +286,14 @@ xmmsc_medialib_path_import_encoded (xmmsc_connection_t *conn,
  * the whole medialib.
  */
 xmmsc_result_t *
-xmmsc_medialib_rehash (xmmsc_connection_t *conn,
-                       unsigned int id)
+xmmsc_medialib_rehash (xmmsc_connection_t *conn, int id)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (conn, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MEDIALIB, XMMS_IPC_CMD_REHASH);
-	xmms_ipc_msg_put_uint32 (msg, id);
+	xmms_ipc_msg_put_int32 (msg, id);
 
 	return xmmsc_send_msg (conn, msg);
 
@@ -348,14 +303,14 @@ xmmsc_medialib_rehash (xmmsc_connection_t *conn,
  * Retrieve information about a entry from the medialib.
  */
 xmmsc_result_t *
-xmmsc_medialib_get_info (xmmsc_connection_t *c, unsigned int id)
+xmmsc_medialib_get_info (xmmsc_connection_t *c, int id)
 {
 	xmms_ipc_msg_t *msg;
 
 	x_check_conn (c, NULL);
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MEDIALIB, XMMS_IPC_CMD_INFO);
-	xmms_ipc_msg_put_uint32 (msg, id);
+	xmms_ipc_msg_put_int32 (msg, id);
 
 	return xmmsc_send_msg (c, msg);
 }
@@ -390,7 +345,7 @@ xmmsc_broadcast_medialib_entry_changed (xmmsc_connection_t *c)
  * source which is client/&lt;clientname&gt;
  */
 xmmsc_result_t *
-xmmsc_medialib_entry_property_set_int (xmmsc_connection_t *c, uint32_t id,
+xmmsc_medialib_entry_property_set_int (xmmsc_connection_t *c, int id,
                                        const char *key, int32_t value)
 {
 	char tmp[256];
@@ -410,7 +365,7 @@ xmmsc_medialib_entry_property_set_int (xmmsc_connection_t *c, uint32_t id,
  */
 xmmsc_result_t *
 xmmsc_medialib_entry_property_set_int_with_source (xmmsc_connection_t *c,
-                                                   uint32_t id,
+                                                   int id,
                                                    const char *source,
                                                    const char *key,
                                                    int32_t value)
@@ -421,7 +376,7 @@ xmmsc_medialib_entry_property_set_int_with_source (xmmsc_connection_t *c,
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MEDIALIB,
 	                        XMMS_IPC_CMD_PROPERTY_SET_INT);
-	xmms_ipc_msg_put_uint32 (msg, id);
+	xmms_ipc_msg_put_int32 (msg, id);
 	xmms_ipc_msg_put_string (msg, source);
 	xmms_ipc_msg_put_string (msg, key);
 	xmms_ipc_msg_put_int32 (msg, value);
@@ -434,7 +389,7 @@ xmmsc_medialib_entry_property_set_int_with_source (xmmsc_connection_t *c,
  * source which is client/&lt;clientname&gt;
  */
 xmmsc_result_t *
-xmmsc_medialib_entry_property_set_str (xmmsc_connection_t *c, uint32_t id,
+xmmsc_medialib_entry_property_set_str (xmmsc_connection_t *c, int id,
                                        const char *key, const char *value)
 {
 	char tmp[256];
@@ -454,7 +409,7 @@ xmmsc_medialib_entry_property_set_str (xmmsc_connection_t *c, uint32_t id,
  */
 xmmsc_result_t *
 xmmsc_medialib_entry_property_set_str_with_source (xmmsc_connection_t *c,
-                                                   uint32_t id,
+                                                   int id,
                                                    const char *source,
                                                    const char *key,
                                                    const char *value)
@@ -465,7 +420,7 @@ xmmsc_medialib_entry_property_set_str_with_source (xmmsc_connection_t *c,
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MEDIALIB,
 	                        XMMS_IPC_CMD_PROPERTY_SET_STR);
-	xmms_ipc_msg_put_uint32 (msg, id);
+	xmms_ipc_msg_put_int32 (msg, id);
 	xmms_ipc_msg_put_string (msg, source);
 	xmms_ipc_msg_put_string (msg, key);
 	xmms_ipc_msg_put_string (msg, value);
@@ -478,7 +433,7 @@ xmmsc_medialib_entry_property_set_str_with_source (xmmsc_connection_t *c,
  * Uses default source which is client/&lt;clientname&gt;
  */
 xmmsc_result_t *
-xmmsc_medialib_entry_property_remove (xmmsc_connection_t *c, uint32_t id,
+xmmsc_medialib_entry_property_remove (xmmsc_connection_t *c, int id,
                                       const char *key)
 {
 	char tmp[256];
@@ -497,7 +452,7 @@ xmmsc_medialib_entry_property_remove (xmmsc_connection_t *c, uint32_t id,
  */
 xmmsc_result_t *
 xmmsc_medialib_entry_property_remove_with_source (xmmsc_connection_t *c,
-                                                  uint32_t id,
+                                                  int id,
                                                   const char *source,
                                                   const char *key)
 {
@@ -507,7 +462,7 @@ xmmsc_medialib_entry_property_remove_with_source (xmmsc_connection_t *c,
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MEDIALIB,
 	                        XMMS_IPC_CMD_PROPERTY_REMOVE);
-	xmms_ipc_msg_put_uint32 (msg, id);
+	xmms_ipc_msg_put_int32 (msg, id);
 	xmms_ipc_msg_put_string (msg, source);
 	xmms_ipc_msg_put_string (msg, key);
 
@@ -532,14 +487,14 @@ _xmmsc_medialib_verify_url (const char *url)
 	int i;
 
 	for (i = 0; url[i]; i++) {
-		if (!(GOODCHAR (url[i]) || url[i] == '+' || url[i] == '%' || url[i] == '?' || url[i] == '&'))
+		if (!(GOODCHAR (url[i]) || url[i] == '+' || url[i] == '%' || url[i] == '?'  || url[i] == '=' || url[i] == '&'))
 			return 0;
 	}
 	return 1;
 }
 
 char *
-_xmmsc_medialib_encode_url (const char *url, int narg, const char **args)
+_xmmsc_medialib_encode_url_old (const char *url, int narg, const char **args)
 {
 	static const char hex[16] = "0123456789abcdef";
 	int i = 0, j = 0, extra = 0;
@@ -575,6 +530,87 @@ _xmmsc_medialib_encode_url (const char *url, int narg, const char **args)
 		j++;
 		memcpy (&res[j], args[i], l);
 		j += l;
+	}
+
+	res[j] = '\0';
+
+	return res;
+}
+
+static void
+_sum_len_string_dict (const char *key, xmmsv_t *val, void *userdata)
+{
+	const char *arg;
+	int *extra = (int *) userdata;
+
+	if (xmmsv_get_type (val) == XMMSV_TYPE_NONE) {
+		*extra += strlen (key) + 1; /* Leave room for the ampersand. */
+	} else if (xmmsv_get_string (val, &arg)) {
+		/* Leave room for the equals sign and ampersand. */
+		*extra += strlen (key) + strlen (arg) + 2;
+	} else {
+		x_api_warning ("with non-string argument");
+	}
+}
+
+char *
+_xmmsc_medialib_encode_url (const char *url, xmmsv_t *args)
+{
+	static const char hex[16] = "0123456789abcdef";
+	int i = 0, j = 0, extra = 0, l;
+	char *res;
+	xmmsv_dict_iter_t *it;
+
+	x_api_error_if (!url, "with a NULL url", NULL);
+
+	if (args) {
+		if (!xmmsv_dict_foreach (args, _sum_len_string_dict, (void *) &extra)) {
+			return NULL;
+		}
+	}
+
+	/* Provide enough room for the worst-case scenario (all characters of the
+	   URL must be encoded), the args, and a \0. */
+	res = malloc (strlen (url) * 3 + 1 + extra);
+	if (!res) {
+		return NULL;
+	}
+
+	for (i = 0; url[i]; i++) {
+		unsigned char chr = url[i];
+		if (GOODCHAR (chr)) {
+			res[j++] = chr;
+		} else if (chr == ' ') {
+			res[j++] = '+';
+		} else {
+			res[j++] = '%';
+			res[j++] = hex[((chr & 0xf0) >> 4)];
+			res[j++] = hex[(chr & 0x0f)];
+		}
+	}
+
+	if (args) {
+		for (xmmsv_get_dict_iter (args, &it), i = 0;
+		     xmmsv_dict_iter_valid (it);
+		     xmmsv_dict_iter_next (it), i++) {
+
+			const char *arg, *key;
+			xmmsv_t *val;
+
+			xmmsv_dict_iter_pair (it, &key, &val);
+			l = strlen (key);
+			res[j] = (i == 0) ? '?' : '&';
+			j++;
+			memcpy (&res[j], key, l);
+			j += l;
+			if (xmmsv_get_string (val, &arg)) {
+				l = strlen (arg);
+				res[j] = '=';
+				j++;
+				memcpy (&res[j], arg, l);
+				j += l;
+			}
+		}
 	}
 
 	res[j] = '\0';

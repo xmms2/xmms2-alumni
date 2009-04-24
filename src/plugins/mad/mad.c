@@ -1,6 +1,6 @@
 /*  XMMS2 - X Music Multiplexer System
  *
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -157,7 +157,9 @@ xmms_mad_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_seek_mode_t whenc
 
 	data = xmms_xform_private_data_get (xform);
 
-	if (data->xing) {
+	if (data->xing &&
+	    xmms_xing_has_flag (data->xing, XMMS_XING_FRAMES) &&
+	    xmms_xing_has_flag (data->xing, XMMS_XING_TOC)) {
 		guint i;
 
 		i = (guint) (100ULL * samples / xmms_xing_get_frames (data->xing) / 1152);
@@ -180,35 +182,6 @@ xmms_mad_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_seek_mode_t whenc
 	data->samples_to_play = -1;
 
 	return samples;
-}
-
-static void
-xmms_mad_get_id3v1 (xmms_xform_t *xform)
-{
-	xmms_error_t err;
-	gint64 res;
-	guchar buf[128];
-
-	xmms_error_reset (&err);
-
-	res = xmms_xform_seek (xform, -128, XMMS_XFORM_SEEK_END, &err);
-
-	if (res == -1) {
-		XMMS_DBG ("Couldn't seek - not getting id3v1 tag");
-		return;
-	}
-
-	if (xmms_xform_read (xform, buf, 128, &err) == 128) {
-		xmms_mad_id3v1_parse (xform, buf);
-	} else {
-		XMMS_DBG ("Read of 128 bytes failed?!");
-		xmms_error_reset (&err);
-	}
-
-	res = xmms_xform_seek (xform, 0, XMMS_XFORM_SEEK_SET, &err);
-	if (res == -1) {
-		XMMS_DBG ("Couldn't seek after getting id3 tag?!? very bad");
-	}
 }
 
 
@@ -296,7 +269,8 @@ xmms_mad_init (xmms_xform_t *xform)
 			}
 		}
 
-		if ((lame = xmms_xing_get_lame (data->xing))) {
+		lame = xmms_xing_get_lame (data->xing);
+		if (lame) {
 			/* FIXME: add a check for ignore_lame_headers from the medialib */
 			data->frames_to_skip = 1;
 			data->samples_to_skip = lame->start_delay;
@@ -337,7 +311,15 @@ xmms_mad_init (xmms_xform_t *xform)
 	/* seeking needs bitrate */
 	data->bitrate = frame.header.bitrate;
 
-	xmms_mad_get_id3v1 (xform);
+	if (xmms_id3v1_get_tags (xform) < 0) {
+		mad_stream_finish (&data->stream);
+		mad_frame_finish (&data->frame);
+		mad_synth_finish (&data->synth);
+		if (data->xing) {
+			xmms_xing_free (data->xing);
+		}
+		return FALSE;
+	}
 
 	xmms_xform_outdata_type_add (xform,
 	                             XMMS_STREAM_TYPE_MIMETYPE,

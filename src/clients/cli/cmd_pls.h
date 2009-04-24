@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -30,6 +30,7 @@ void cmd_addarg (xmmsc_connection_t *conn, gint argc, gchar **argv);
 void cmd_insert (xmmsc_connection_t *conn, gint argc, gchar **argv);
 void cmd_insertid (xmmsc_connection_t *conn, gint argc, gchar **argv);
 void cmd_radd (xmmsc_connection_t *conn, gint argc, gchar **argv);
+void cmd_rinsert (xmmsc_connection_t *conn, gint argc, gchar **argv);
 void cmd_clear (xmmsc_connection_t *conn, gint argc, gchar **argv);
 void cmd_shuffle (xmmsc_connection_t *conn, gint argc, gchar **argv);
 void cmd_sort (xmmsc_connection_t *conn, gint argc, gchar **argv);

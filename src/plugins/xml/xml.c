@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2008 XMMS2 Team
+ *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -83,7 +83,8 @@ get_root_node_name (xmms_xform_t *xform)
 			if (isalpha (buf[i])) {
 				len++;
 			} else if (len) {
-				ret = g_memdup (buf + start + 1, len);
+				ret = g_malloc (len + 1);
+				memcpy (ret, buf + start + 1, len);
 				ret[len] = '\0';
 				break;
 			}
