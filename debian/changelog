@@ -1,6 +1,7 @@
 xmms2 (0.6DrMattDestruction-1) unstable; urgency=low
 
   * New upstream release.
+    + Uses the new libmpcdec API (Closes: #476373).
   * Acknowledge NMU. Thanks Adeodato.
   * Fix typo Replaces (Closes: 489521).
 
