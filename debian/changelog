@@ -2,6 +2,7 @@ xmms2 (0.6DrMattDestruction-1) unstable; urgency=low
 
   * New upstream release.
   * Acknowledge NMU. Thanks Adeodato.
+  * Fix typo Replaces (Closes: 489521).
 
  -- Florian Ragwitz <rafl@debian.org>  Fri, 24 Apr 2009 22:55:03 +0200
 

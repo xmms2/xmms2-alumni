@@ -59,7 +59,7 @@ Depends: ${misc:Depends},
          xmms2-plugin-alsa [!kfreebsd-i386 !kfreebsd-amd64],
          xmms2-plugin-oss [kfreebsd-i386 kfreebsd-amd64]
 Conflicts: xmms2-plugin-nulstripper
-Replaces: xmms2-plugin-nulstipper
+Replaces: xmms2-plugin-nulstripper
 Description: Client/server based media player system
  XMMS2 is a redesign of the XMMS music player. It features a client-server
  model, allowing multiple (even simultaneous!) user interfaces, both textual
