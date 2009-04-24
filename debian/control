@@ -92,7 +92,6 @@ Depends: ${misc:Depends},
          xmms2-plugin-icymetaint,
          xmms2-plugin-daap,
          xmms2-plugin-ices,
-         xmms2-plugin-lastfm,
          xmms2-plugin-vocoder,
          xmms2-plugin-ao,
          xmms2-plugin-mp4,
@@ -547,18 +546,7 @@ Depends: ${misc:Depends},
          xmms2-core (= ${binary:Version})
 Enhances: xmms2-core
 Description: XMMS2 - ogg streaming output
- This package contains an output plugin for ogg/vorbis streaming. 
-
-Package: xmms2-plugin-lastfm
-Architecture: any
-Depends: ${misc:Depends},
-         ${shlibs:Depends},
-         xmms2-core (= ${binary:Version})
-Enhances: xmms2-core
-Description: XMMS2 - Last.FM plugin
- This package allows you to play lastfm:// streams.
- .
- For more information on AudioScrobbler see http://www.last.fm/
+ This package contains an output plugin for ogg/vorbis streaming.
 
 Package: xmms2-plugin-vocoder
 Architecture: any
