@@ -7,10 +7,11 @@ xmms2 (0.6DrMattDestruction-1) unstable; urgency=low
     + Add xmms2-client-nycli.
     + Add xmms2-client-vis.
     + Add xmms2-plugin-flv.
+    + Add xmms2-plugin-html.
   * Acknowledge NMU. Thanks Adeodato.
   * Fix typo Replaces (Closes: 489521).
 
- -- Florian Ragwitz <rafl@debian.org>  Sat, 25 Apr 2009 00:21:53 +0200
+ -- Florian Ragwitz <rafl@debian.org>  Sat, 25 Apr 2009 00:25:39 +0200
 
 xmms2 (0.5DrLecter-2.1) unstable; urgency=medium
 

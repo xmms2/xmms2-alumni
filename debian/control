@@ -115,7 +115,8 @@ Depends: ${misc:Depends},
          xmms2-plugin-speex,
          xmms2-plugin-gme,
          xmms2-plugin-gvfs,
-         xmms2-plugin-flv
+         xmms2-plugin-flv,
+         xmms2-plugin-html
 Description: XMMS2 - all plugins
  This is a metapackage depending on all available XMMS2 plugins to make
  installation easier.
@@ -781,3 +782,12 @@ Depends: ${misc:Depends},
 Enhances: xmms2-core
 Description: XMMS2 - flv plugin
  This package enables audio extraction from Flash Video files for xmms2.
+
+Package: xmms2-plugin-html
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends},
+         xmms2-core (= ${binary:Version}),
+Enhances: xmms2-core
+Description: XMMS2 - html playlist plugin
+ This package enables loading html playlists for xmms2.
