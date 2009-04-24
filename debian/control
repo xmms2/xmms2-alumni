@@ -114,7 +114,8 @@ Depends: ${misc:Depends},
          xmms2-plugin-airplay,
          xmms2-plugin-speex,
          xmms2-plugin-gme,
-         xmms2-plugin-gvfs
+         xmms2-plugin-gvfs,
+         xmms2-plugin-flv
 Description: XMMS2 - all plugins
  This is a metapackage depending on all available XMMS2 plugins to make
  installation easier.
@@ -771,3 +772,12 @@ Depends: ${misc:Depends},
 Suggests: xmms2-core (= ${binary:Version})
 Description: XMMS2 - visualization clients
  This package contains the test clients for xmms2's visualization framework
+
+Package: xmms2-plugin-flv
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends},
+         xmms2-core (= ${binary:Version}),
+Enhances: xmms2-core
+Description: XMMS2 - flv plugin
+ This package enables audio extraction from Flash Video files for xmms2.
