@@ -19,7 +19,7 @@ build-stamp:
 
 build-python%:
 	dh_testdir
-	PYTHON=python$* ./waf configure --prefix=/usr --without-xmms2d=1 --with-optionals=python --nocache
+	PYTHON=python$* ./waf configure --prefix=/usr --without-xmms2d --with-optionals=python --nocache
 	./waf -v
 	mv _build_ _build_python$*_
 	touch $@
