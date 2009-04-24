@@ -1,3 +1,11 @@
+xmms2 (0.5DrLecter-2.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Fix FTBFS due to missing includes and changed location of ffmpeg headers.
+    Patch by peter green and Cyril Brulebois. (Closes: #517464)
+
+ -- Adeodato Simó <dato@net.com.org.es>  Tue, 10 Mar 2009 15:02:58 +0000
+
 xmms2 (0.5DrLecter-2) unstable; urgency=medium
 
   * Make wma playback work with the latest libavcodec.

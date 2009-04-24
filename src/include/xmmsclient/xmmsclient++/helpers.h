@@ -32,6 +32,7 @@
 #include <string>
 #include <list>
 #include <vector>
+#include <climits>
 
 namespace Xmms
 {

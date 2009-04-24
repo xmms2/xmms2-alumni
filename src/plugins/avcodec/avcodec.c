@@ -24,7 +24,7 @@
 #include <glib.h>
 
 #undef ABS
-#include "avcodec.h"
+#include "libavcodec/avcodec.h"
 
 #define AVCODEC_BUFFER_SIZE 16384
 
@@ -173,7 +173,7 @@ xmms_avcodec_init (xmms_xform_t *xform)
 	data->codecctx->sample_rate = data->samplerate;
 	data->codecctx->channels = data->channels;
 	data->codecctx->bit_rate = data->bitrate;
-	data->codecctx->bits_per_sample = data->samplebits;
+	data->codecctx->bits_per_coded_sample = data->samplebits;
 	data->codecctx->block_align = data->block_align;
 	data->codecctx->extradata = data->extradata;
 	data->codecctx->extradata_size = data->extradata_size;
