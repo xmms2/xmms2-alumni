@@ -67,7 +67,10 @@ install-stamp:
 		-Xusr/lib/libxmmsclient-ecore.so.1.0.0 \
 		-Xusr/lib/libxmmsclient-ecore.so.1 \
 		-Xusr/lib/libxmmsclient-ecore.so \
-		-Xusr/lib/ruby/1.8/i486-linux/xmmsclient_ecore.so
+		-Xusr/lib/ruby/1.8/i486-linux/xmmsclient_ecore.so \
+		-Xusr/bin/vistest \
+		-Xusr/bin/vistest-fft
+
 	for pkg in `dh_listpackages`; do \
 		for checker in lintian; do \
 			src="debian/$${pkg}.$${checker}-overrides"; \
