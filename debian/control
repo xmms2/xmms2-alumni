@@ -20,6 +20,7 @@ Build-Depends: debhelper (>= 5.0.37.2),
                libflac-dev,
                libmodplug-dev,
                libmad0-dev,
+               libmpg123-dev (>= 1.5.1),
                libasound2-dev [!kfreebsd-i386 !kfreebsd-amd64],
                libjack-dev,
                libavahi-client-dev,
@@ -118,7 +119,8 @@ Depends: ${misc:Depends},
          xmms2-plugin-flv,
          xmms2-plugin-html,
          xmms2-plugin-apefile,
-         xmms2-plugin-tta
+         xmms2-plugin-tta,
+         xmms2-plugin-mpg123
 Description: XMMS2 - all plugins
  This is a metapackage depending on all available XMMS2 plugins to make
  installation easier.
@@ -811,3 +813,13 @@ Depends: ${misc:Depends},
 Enhances: xmms2-core
 Description: XMMS2 - TTA decoder plugin
  This package enables True Audio file decoding for xmms2.
+
+Package: xmms2-plugin-mpg123
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends},
+         xmms2-core (= ${binary:Version}),
+Recommends: xmms2-plugin-id3v2
+Enhances: xmms2-core
+Description: XMMS2 - libmpg123 based mp3 decoder
+ This package enables mp3 decoding for xmms2.
