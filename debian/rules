@@ -41,7 +41,10 @@ clean1:
 		_build_ \
 		_build_default_ \
 		$(PYVERS:%=_build_python%_) \
-		waf-lightc
+		waf-lightc \
+		wafadmin/*.pyc \
+		wafadmin/Tools/*.pyc \
+		waftools/*.pyc
 	dh_clean
 
 install: install-clean install-default $(PYVERS:%=install-python%) install-stamp
