@@ -11,10 +11,11 @@ xmms2 (0.6DrMattDestruction-1) unstable; urgency=low
     + Add xmms2-plugin-apefile.
     + Add xmms2-plugin-tta.
     + Add xmms2-plugin-mpg123.
+    + Rename library packages to reflect SONAME changes.
   * Acknowledge NMU. Thanks Adeodato.
   * Fix typo Replaces (Closes: 489521).
 
- -- Florian Ragwitz <rafl@debian.org>  Sat, 25 Apr 2009 01:14:34 +0200
+ -- Florian Ragwitz <rafl@debian.org>  Sun, 26 Apr 2009 16:59:18 +0200
 
 xmms2 (0.5DrLecter-2.1) unstable; urgency=medium
 

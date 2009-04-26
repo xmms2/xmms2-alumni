@@ -105,10 +105,10 @@ binary-arch: build install
 	dh_compress -s
 	dh_fixperms -s
 	dh_perl -s -plibaudio-xmmsclient-perl
-	dh_makeshlibs -s -V -plibxmmsclient3 -plibxmmsclient-glib1 -plibxmmsclient++2 -plibxmmsclient++-glib1
+	dh_makeshlibs -s -V -plibxmmsclient5 -plibxmmsclient-glib1 -plibxmmsclient++3 -plibxmmsclient++-glib1
 	dh_pysupport -s -ppython-xmmsclient
 	dh_installdeb -s
-	dh_shlibdeps -s -Llibxmmsclient3 -Llibxmmsclient-glib1 -Llibxmmsclient++2 -Llibxmmsclient++-glib1 -ldebian/tmp/usr/lib
+	dh_shlibdeps -s -Llibxmmsclient5 -Llibxmmsclient-glib1 -Llibxmmsclient++3 -Llibxmmsclient++-glib1 -ldebian/tmp/usr/lib
 	dh_gencontrol -s
 	dh_md5sums -s
 	dh_builddeb -s
