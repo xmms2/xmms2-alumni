@@ -1598,52 +1598,23 @@ cli_pl_config (cli_infos_t *infos, command_context_t *ctx)
 
 	history = -1;
 	upcoming = -1;
-	type = -1;
 	input = NULL;
 
 	/* Convert type string to type id */
 	if (command_flag_string_get (ctx, "type", &typestr)) {
-		if (strcmp (typestr, "list") == 0) {
-			type = XMMS_COLLECTION_TYPE_IDLIST;
-		} else if (strcmp (typestr, "queue") == 0) {
-			type = XMMS_COLLECTION_TYPE_QUEUE;
-		} else if (strcmp (typestr, "pshuffle") == 0) {
-			type = XMMS_COLLECTION_TYPE_PARTYSHUFFLE;
-		} else {
-			g_printf ("Invalid playlist type: '%s'!\n", typestr);
-			return FALSE;
-		}
 		modif = TRUE;
 	}
 
 	if (command_flag_int_get (ctx, "history", &history)) {
-		if (type != XMMS_COLLECTION_TYPE_QUEUE &&
-		    type != XMMS_COLLECTION_TYPE_PARTYSHUFFLE) {
-			g_printf ("--history flag only valid for "
-			          "queue and pshuffle playlists!\n");
-			return FALSE;
-		}
 		modif = TRUE;
 	}
 	if (command_flag_int_get (ctx, "upcoming", &upcoming)) {
-		if (type != XMMS_COLLECTION_TYPE_PARTYSHUFFLE) {
-			g_printf ("--upcoming flag only valid for pshuffle playlists!\n");
-			return FALSE;
-		}
 		modif = TRUE;
 	}
 
 	/* FIXME: extract namespace too */
 	if (command_flag_string_get (ctx, "input", &input)) {
-		if (type != XMMS_COLLECTION_TYPE_PARTYSHUFFLE) {
-			g_printf ("--input flag only valid for pshuffle playlists!\n");
-			return FALSE;
-		}
 		modif = TRUE;
-	} else if (type == XMMS_COLLECTION_TYPE_PARTYSHUFFLE) {
-		/* Default to All Media if no input provided. */
-		/* FIXME: Don't overwrite with this if already a pshuffle! */
-		input = "All Media";
 	}
 
 	if (!command_arg_longstring_get (ctx, 0, &playlist)) {
@@ -1655,7 +1626,7 @@ cli_pl_config (cli_infos_t *infos, command_context_t *ctx)
 		res = xmmsc_coll_get (infos->sync, playlist, XMMS_COLLECTION_NS_PLAYLISTS);
 		xmmsc_result_wait (res);
 		configure_playlist (res, infos, playlist, history, upcoming,
-		                    type, input);
+		                    typestr, input);
 	} else {
 		/* Display current config of the playlist. */
 		res = xmmsc_coll_get (infos->sync, playlist, XMMS_COLLECTION_NS_PLAYLISTS);
