@@ -97,10 +97,10 @@ const char *xmms_xform_shortname (xmms_xform_t *xform);
 static xmms_xform_t *add_effects (xmms_xform_t *last,
                                   xmms_medialib_entry_t entry,
                                   GList *goal_formats);
-static xmms_xform_t *xmms_xform_new_effect (xmms_xform_t* last,
+/*xmms_xform_t *xmms_xform_new_effect (xmms_xform_t* last,
                                             xmms_medialib_entry_t entry,
                                             GList *goal_formats,
-                                            const gchar *name);
+                                            const gchar *name);*/
 static void xmms_xform_destroy (xmms_object_t *object);
 static void effect_callbacks_init (void);
 
@@ -123,6 +123,12 @@ xmms_xform_browse_add_entry_property_int (xmms_xform_t *xform,
 	xmmsv_t *val = xmmsv_new_int (value);
 	xmms_xform_browse_add_entry_property (xform, key, val);
 	xmmsv_unref (val);
+}
+
+void
+xmms_xform_set_prev (xmms_xform_t *xform, xmms_xform_t *prev)
+{
+	xform->prev = prev;
 }
 
 void
@@ -1607,7 +1613,7 @@ add_effects (xmms_xform_t *last, xmms_medialib_entry_t entry,
 	return last;
 }
 
-static xmms_xform_t *
+xmms_xform_t *
 xmms_xform_new_effect (xmms_xform_t *last, xmms_medialib_entry_t entry,
                        GList *goal_formats, const gchar *name)
 {

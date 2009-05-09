@@ -138,7 +138,7 @@ typedef struct xmms_xform_methods_St {
 	 * Called to change the offset in the stream.  Observe that
 	 * the offset is measured in "natural" units; audio/pcm-data
 	 * is measured in samples, application/octet-stream in bytes.
-	 * 
+	 *
 	 */
 	gint64 (*seek)(xmms_xform_t *, gint64, xmms_xform_seek_mode_t, xmms_error_t *);
 
@@ -193,10 +193,11 @@ gpointer xmms_xform_private_data_get (xmms_xform_t *xform);
  * #xmms_xform_private_data_get in read, seek and destroy methods.
  *
  * @param xform current xform
- * @param data 
+ * @param data
  */
 void xmms_xform_private_data_set (xmms_xform_t *xform, gpointer data);
 
+void xmms_xform_set_prev (xmms_xform_t *xform, xmms_xform_t *prev);
 
 void xmms_xform_outdata_type_add (xmms_xform_t *xform, ...);
 void xmms_xform_outdata_type_copy (xmms_xform_t *xform);
@@ -263,7 +264,7 @@ gint xmms_xform_peek (xmms_xform_t *xform, gpointer buf, gint siz, xmms_error_t 
  * @param err error container which is filled in if error occours.
  * @returns the line read from the parent or NULL to indicate error.
  */
-gchar *xmms_xform_read_line (xmms_xform_t *xform, gchar *buf, xmms_error_t *err);         
+gchar *xmms_xform_read_line (xmms_xform_t *xform, gchar *buf, xmms_error_t *err);
 
 /**
  * Read data from previous xform.
@@ -312,7 +313,7 @@ xmms_config_property_t *xmms_xform_config_lookup (xmms_xform_t *xform,
  * Get the medialib entry played by this xform.
  *
  * @param xform
- * @returns 
+ * @returns
  */
 xmms_medialib_entry_t xmms_xform_entry_get (xmms_xform_t *xform);
 const gchar *xmms_xform_get_url (xmms_xform_t *xform);

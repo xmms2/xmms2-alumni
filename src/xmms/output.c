@@ -341,7 +341,9 @@ static void *
 xmms_output_filler (void *arg)
 {
 	xmms_output_t *output = (xmms_output_t *)arg;
-	xmms_xform_t *chain = NULL;
+	xmms_xform_t *inputChain = NULL;
+	xmms_xform_t *outputChainEnd = NULL;
+	xmms_xform_t *outputChainBegin = NULL;
 	gboolean last_was_kill = FALSE;
 	char buf[4096];
 	xmms_error_t err;
@@ -352,9 +354,12 @@ xmms_output_filler (void *arg)
 	g_mutex_lock (output->filler_mutex);
 	while (output->filler_state != FILLER_QUIT) {
 		if (output->filler_state == FILLER_STOP) {
-			if (chain) {
-				xmms_object_unref (chain);
-				chain = NULL;
+		    /* TODO_xforms: Kill both chains? */
+			if (inputChain) {
+				xmms_object_unref (inputChain);
+				xmms_object_unref (outputChainEnd);
+				inputChain = NULL;
+				outputChainEnd = NULL;
 			}
 			xmms_ringbuf_set_eos (output->filler_buffer, TRUE);
 			g_cond_wait (output->filler_state_cond, output->filler_mutex);
@@ -362,9 +367,10 @@ xmms_output_filler (void *arg)
 			continue;
 		}
 		if (output->filler_state == FILLER_KILL) {
-			if (chain) {
-				xmms_object_unref (chain);
-				chain = NULL;
+			/* TODO_xforms: Kill both chains */
+			if (inputChain) {
+				xmms_object_unref (inputChain);
+				inputChain = NULL;
 				output->filler_state = FILLER_RUN;
 				last_was_kill = TRUE;
 			} else {
@@ -373,13 +379,14 @@ xmms_output_filler (void *arg)
 			continue;
 		}
 		if (output->filler_state == FILLER_SEEK) {
-			if (!chain) {
+			/* TODO_xforms: Seek with both chains? */
+			if (!inputChain) {
 				XMMS_DBG ("Seek without chain, ignoring..");
 				output->filler_state = FILLER_STOP;
 				continue;
 			}
 
-			ret = xmms_xform_this_seek (chain, output->filler_seek, XMMS_XFORM_SEEK_SET, &err);
+			ret = xmms_xform_this_seek (inputChain, output->filler_seek, XMMS_XFORM_SEEK_SET, &err);
 			if (ret == -1) {
 				XMMS_DBG ("Seeking failed: %s", xmms_error_message_get (&err));
 			} else {
@@ -400,7 +407,62 @@ xmms_output_filler (void *arg)
 			output->filler_state = FILLER_RUN;
 		}
 
-		if (!chain) {
+		if (!outputChainEnd) {
+			xmms_medialib_entry_t entry;
+			gint effect_no;
+
+			entry = xmms_playlist_current_entry (output->playlist);
+			if (!entry) {
+				XMMS_DBG ("No entry from playlist!");
+				output->filler_state = FILLER_STOP;
+				g_mutex_lock (output->filler_mutex);
+				continue;
+			}
+
+			/* TODO_xforms: Change this to a throughput xform */
+			outputChainBegin = xmms_xform_new (NULL, NULL, 0, output->format_list);
+			outputChainEnd = outputChainBegin;
+
+			xmms_xform_outdata_type_add (outputChainBegin, XMMS_STREAM_TYPE_MIMETYPE,
+	                              "audio/pcm",
+	                              XMMS_STREAM_TYPE_FMT_FORMAT,
+	                              XMMS_SAMPLE_FORMAT_S16,
+	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	                              44100, XMMS_STREAM_TYPE_FMT_CHANNELS, 2,
+	                              XMMS_STREAM_TYPE_END);
+
+			for (effect_no = 0; TRUE; effect_no++) {
+				xmms_config_property_t *cfg;
+				gchar key[64];
+				const gchar *name;
+
+				g_snprintf (key, sizeof (key), "effect.order.%i", effect_no);
+
+				cfg = xmms_config_lookup (key);
+				if (!cfg) {
+					break;
+				}
+
+				name = xmms_config_property_get_string (cfg);
+
+				if (!name[0]) {
+					continue;
+				}
+
+				/* TODO_xforms: Hackish and ugly */
+				if (outputChainBegin == outputChainEnd)
+				{
+					outputChainEnd = xmms_xform_new_effect (outputChainEnd, entry, output->format_list, name);
+					outputChainBegin = outputChainEnd;
+				} else {
+					outputChainEnd = xmms_xform_new_effect (outputChainEnd, entry, output->format_list, name);
+				}
+			}
+
+			xmms_object_ref(outputChainEnd);
+		}
+
+		if (!inputChain) {
 			xmms_medialib_entry_t entry;
 			xmms_output_song_changed_arg_t *arg;
 			xmms_medialib_session_t *session;
@@ -415,8 +477,9 @@ xmms_output_filler (void *arg)
 				continue;
 			}
 
-			chain = xmms_xform_chain_setup (entry, output->format_list, FALSE);
-			if (!chain) {
+            /* TODO_xforms: Create a two part chain */
+			inputChain = xmms_xform_chain_setup (entry, output->format_list, TRUE);
+			if (!inputChain) {
 				session = xmms_medialib_begin_write ();
 				if (xmms_medialib_entry_property_get_int (session, entry, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS) == XMMS_MEDIALIB_ENTRY_STATUS_NEW) {
 					xmms_medialib_end (session);
@@ -435,11 +498,14 @@ xmms_output_filler (void *arg)
 				continue;
 			}
 
+			xmms_xform_set_prev(outputChainBegin, inputChain);
+
 			arg = g_new0 (xmms_output_song_changed_arg_t, 1);
 			arg->output = output;
-			arg->chain = chain;
+			arg->chain = outputChainEnd;
 			arg->flush = last_was_kill;
-			xmms_object_ref (chain);
+			xmms_object_ref (outputChainEnd);
+			/*outputChainBegin->prev = inputChain;*/
 
 			last_was_kill = FALSE;
 
@@ -455,7 +521,7 @@ xmms_output_filler (void *arg)
 		}
 		g_mutex_unlock (output->filler_mutex);
 
-		ret = xmms_xform_this_read (chain, buf, sizeof (buf), &err);
+		ret = xmms_xform_this_read (outputChainEnd, buf, sizeof (buf), &err);
 
 		g_mutex_lock (output->filler_mutex);
 
@@ -474,8 +540,9 @@ xmms_output_filler (void *arg)
 				/* print error */
 				xmms_error_reset (&err);
 			}
-			xmms_object_unref (chain);
-			chain = NULL;
+			/* TODO_xforms: Change this so that only the input chain is destroyed */
+			xmms_object_unref (inputChain);
+			inputChain = NULL;
 			if (!xmms_playlist_advance (output->playlist)) {
 				XMMS_DBG ("End of playlist");
 				output->filler_state = FILLER_STOP;
