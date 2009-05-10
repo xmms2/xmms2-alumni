@@ -104,7 +104,7 @@ xmms_crossfade_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 }
 
 static gboolean
-xmms_eq_init (xmms_xform_t *xform)
+xmms_crossfade_init (xmms_xform_t *xform)
 {
 	xmms_crossfade_data_t *priv;
 	xmms_config_property_t *config;
@@ -146,6 +146,12 @@ xmms_crossfade_destroy (xmms_xform_t *xform)
 
 	g_free (((xmms_crossfade_data_t*)priv)->buffer);
 	g_free (priv);
+}
+
+static gint64
+xmms_crossfade_seek (xmms_xform_t *xform, gint64 offset, xmms_xform_seek_mode_t whence, xmms_error_t *err)
+{
+	return xmms_xform_seek (xform, offset, whence, err);
 }
 
 static gint
