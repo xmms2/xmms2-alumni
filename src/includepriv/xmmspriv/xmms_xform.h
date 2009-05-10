@@ -52,6 +52,9 @@ GList *xmms_xform_browse_method (xmms_xform_t *xform, const gchar *url, xmms_err
 
 const char *xmms_xform_indata_find_str (xmms_xform_t *xform, xmms_stream_type_key_t key);
 
+void xmms_xform_reset_effects (xmms_xform_t *outputEnd, xmms_xform_t *outputBegin);
+void xmms_xform_set_prev (xmms_xform_t *xform, xmms_xform_t *prev);
+
 #define XMMS_XFORM_BUILTIN(shname, name, ver, desc, setupfunc) XMMS_BUILTIN(XMMS_PLUGIN_TYPE_XFORM, XMMS_XFORM_API_VERSION, shname, name, ver, desc, (gboolean (*)(gpointer))setupfunc)
 
 #endif

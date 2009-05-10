@@ -161,6 +161,21 @@ xmms_xform_browse_add_symlink_args (xmms_xform_t *xform, const gchar *basename,
 }
 
 void
+xmms_xform_reset_effects (xmms_xform_t *outputEnd, xmms_xform_t *outputBegin)
+{
+	xmms_xform_t *ptr = outputEnd;
+	while (ptr != outputBegin)
+	{
+		ptr->eos = false;
+		ptr->error = false;
+		ptr = ptr->prev;
+	}
+
+	ptr->eos = false;
+	ptr->error = false;
+}
+
+void
 xmms_xform_browse_add_symlink (xmms_xform_t *xform, const gchar *basename,
                                const gchar *url)
 {

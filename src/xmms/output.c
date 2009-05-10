@@ -460,6 +460,9 @@ xmms_output_filler (void *arg)
 			}
 
 			xmms_object_ref(outputChainEnd);
+		} else {
+			/* Need to clean the existing effect xforms */
+			xmms_xform_reset_effects(outputChainEnd, outputChainBegin);
 		}
 
 		if (!inputChain) {
@@ -505,7 +508,6 @@ xmms_output_filler (void *arg)
 			arg->chain = outputChainEnd;
 			arg->flush = last_was_kill;
 			xmms_object_ref (outputChainEnd);
-			/*outputChainBegin->prev = inputChain;*/
 
 			last_was_kill = FALSE;
 

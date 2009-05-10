@@ -197,8 +197,6 @@ gpointer xmms_xform_private_data_get (xmms_xform_t *xform);
  */
 void xmms_xform_private_data_set (xmms_xform_t *xform, gpointer data);
 
-void xmms_xform_set_prev (xmms_xform_t *xform, xmms_xform_t *prev);
-
 void xmms_xform_outdata_type_add (xmms_xform_t *xform, ...);
 void xmms_xform_outdata_type_copy (xmms_xform_t *xform);
 
