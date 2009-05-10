@@ -1,0 +1,7 @@
+from waftools.plugin import plugin
+
+def plugin_configure(conf):
+    return True
+
+configure, build = plugin("crossfade", configure=plugin_configure,
+                          source=["crossfade.c"])

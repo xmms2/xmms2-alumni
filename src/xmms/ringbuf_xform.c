@@ -1,7 +1,7 @@
 
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_medialib.h"
-#include "xmmspriv/xmms_ringbuf.h"
+#include "xmms/xmms_ringbuf.h"
 #include "xmmspriv/xmms_xform.h"
 
 /*

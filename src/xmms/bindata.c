@@ -28,7 +28,7 @@
 
 #include "xmms/xmms_log.h"
 
-#include "xmmspriv/xmms_ringbuf.h"
+#include "xmms/xmms_ringbuf.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmspriv/xmms_playlist.h"
 #include "xmmspriv/xmms_config.h"

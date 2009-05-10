@@ -23,7 +23,7 @@
 #include <unistd.h>
 
 #include "xmmspriv/xmms_output.h"
-#include "xmmspriv/xmms_ringbuf.h"
+#include "xmms/xmms_ringbuf.h"
 #include "xmmspriv/xmms_plugin.h"
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_sample.h"
