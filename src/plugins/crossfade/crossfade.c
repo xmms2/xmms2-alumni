@@ -35,6 +35,8 @@ static void xmms_crossfade_duration_changed (xmms_object_t *object, xmmsv_t *_da
 
 typedef struct xmms_crossfade_priv_St {
 	xmms_ringbuf_t* buffer;
+	GMutex *buffer_lock;
+	gint max_buffer_size;
 } xmms_crossfade_data_t;
 
 XMMS_XFORM_PLUGIN ("crossfade",
@@ -126,7 +128,9 @@ xmms_crossfade_init (xmms_xform_t *xform)
 	srate = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_SAMPLERATE);
 	channels = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
 
-	priv->buffer = g_new0 (char, srate * xmms_config_property_get_int (config));
+	priv->max_buffer_size = 4096*8;
+	priv->buffer = xmms_ringbuf_new (priv->max_buffer_size);
+	priv->buffer_lock = g_mutex_new ();
 
 	xmms_xform_outdata_type_copy (xform);
 
@@ -144,14 +148,33 @@ xmms_crossfade_destroy (xmms_xform_t *xform)
 
 	priv = xmms_xform_private_data_get (xform);
 
-	g_free (((xmms_crossfade_data_t*)priv)->buffer);
+	xmms_ringbuf_clear (((xmms_crossfade_data_t*)priv)->buffer);
+
 	g_free (priv);
 }
 
 static gint64
 xmms_crossfade_seek (xmms_xform_t *xform, gint64 offset, xmms_xform_seek_mode_t whence, xmms_error_t *err)
 {
+	/* TODO_xforms: Fix seek */
 	return xmms_xform_seek (xform, offset, whence, err);
+}
+
+static void
+fill (xmms_xform_t *xform, xmms_crossfade_data_t *priv)
+{
+	xmms_error_t err;
+	char buf[4096];
+	int res;
+
+	res = xmms_xform_read (xform, buf, sizeof (buf), &err);
+	if (res > 0) {
+		xmms_ringbuf_write_wait (priv->buffer, buf, res, priv->buffer_lock);
+	} else if (res == -1) {
+		/* XXX copy error */
+	} else {
+		xmms_ringbuf_set_eos (priv->buffer, TRUE);
+	}
 }
 
 static gint
@@ -159,18 +182,25 @@ xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
               xmms_error_t *error)
 {
 	xmms_crossfade_data_t *priv;
-	gint read, chan;
+	gint read, chan, i;
 
 	g_return_val_if_fail (xform, -1);
 
 	priv = xmms_xform_private_data_get (xform);
 	g_return_val_if_fail (priv, -1);
 
-	read = xmms_xform_read (xform, buf, len, error);
 	chan = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
-/*	if (read > 0 && priv->enabled) {
-		iir (buf, read, chan, priv->extra_filtering);
-	}*/
+
+	read = xmms_ringbuf_read (priv->buffer, buf, len);
+	fill (xform, priv);
+
+	//if (xmms_ringbuf_iseos (priv->buffer)) {
+		/* TODO_xforms: Check for the duration, if we hit duration left in buffer then start crossfade */
+		/* For now, mute to cert things work so far */
+		for (i = 0; i < read; i++) {
+			((gint8*)buf)[i] = 0;
+		}
+	//}
 
 	return read;
 }

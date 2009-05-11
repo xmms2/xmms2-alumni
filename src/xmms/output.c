@@ -523,7 +523,12 @@ xmms_output_filler (void *arg)
 		}
 		g_mutex_unlock (output->filler_mutex);
 
-		ret = xmms_xform_this_read (outputChainEnd, buf, sizeof (buf), &err);
+		/* TODO_xforms: Make this work for no enabled effects */
+		if (outputChainEnd) {
+			ret = xmms_xform_this_read (outputChainEnd, buf, sizeof (buf), &err);
+		} else {
+			ret = xmms_xform_this_read (inputChain, buf, sizeof (buf), &err);
+		}
 
 		g_mutex_lock (output->filler_mutex);
 
