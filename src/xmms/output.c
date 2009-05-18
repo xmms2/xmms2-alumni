@@ -386,7 +386,7 @@ xmms_output_filler (void *arg)
 				continue;
 			}
 
-			ret = xmms_xform_this_seek (inputChain, output->filler_seek, XMMS_XFORM_SEEK_SET, &err);
+			ret = xmms_xform_this_seek (outputChainEnd, output->filler_seek, XMMS_XFORM_SEEK_SET, &err);
 			if (ret == -1) {
 				XMMS_DBG ("Seeking failed: %s", xmms_error_message_get (&err));
 			} else {
@@ -407,6 +407,7 @@ xmms_output_filler (void *arg)
 			output->filler_state = FILLER_RUN;
 		}
 
+		/* TODO_xforms: what about changes in effects configurations */
 		if (!outputChainEnd) {
 			xmms_medialib_entry_t entry;
 			gint effect_no;
@@ -419,17 +420,8 @@ xmms_output_filler (void *arg)
 				continue;
 			}
 
-			/* TODO_xforms: Change this to a throughput xform */
-			outputChainBegin = xmms_xform_new (NULL, NULL, 0, output->format_list);
+			outputChainBegin = xmms_middleman_xform_new (NULL, 1, output->format_list);
 			outputChainEnd = outputChainBegin;
-
-			xmms_xform_outdata_type_add (outputChainBegin, XMMS_STREAM_TYPE_MIMETYPE,
-	                              "audio/pcm",
-	                              XMMS_STREAM_TYPE_FMT_FORMAT,
-	                              XMMS_SAMPLE_FORMAT_S16,
-	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
-	                              44100, XMMS_STREAM_TYPE_FMT_CHANNELS, 2,
-	                              XMMS_STREAM_TYPE_END);
 
 			for (effect_no = 0; TRUE; effect_no++) {
 				xmms_config_property_t *cfg;
@@ -449,14 +441,7 @@ xmms_output_filler (void *arg)
 					continue;
 				}
 
-				/* TODO_xforms: Hackish and ugly */
-				if (outputChainBegin == outputChainEnd)
-				{
-					outputChainEnd = xmms_xform_new_effect (outputChainEnd, entry, output->format_list, name);
-					outputChainBegin = outputChainEnd;
-				} else {
-					outputChainEnd = xmms_xform_new_effect (outputChainEnd, entry, output->format_list, name);
-				}
+				outputChainEnd = xmms_xform_new_effect (outputChainEnd, entry, output->format_list, name);
 			}
 
 			xmms_object_ref(outputChainEnd);
@@ -480,7 +465,6 @@ xmms_output_filler (void *arg)
 				continue;
 			}
 
-            /* TODO_xforms: Create a two part chain */
 			inputChain = xmms_xform_chain_setup (entry, output->format_list, TRUE);
 			if (!inputChain) {
 				session = xmms_medialib_begin_write ();
@@ -501,7 +485,7 @@ xmms_output_filler (void *arg)
 				continue;
 			}
 
-			xmms_xform_set_prev(outputChainBegin, inputChain);
+			xmms_middleman_xform_set_prev (outputChainBegin, inputChain);
 
 			arg = g_new0 (xmms_output_song_changed_arg_t, 1);
 			arg->output = output;
@@ -523,12 +507,7 @@ xmms_output_filler (void *arg)
 		}
 		g_mutex_unlock (output->filler_mutex);
 
-		/* TODO_xforms: Make this work for no enabled effects */
-		if (outputChainEnd) {
-			ret = xmms_xform_this_read (outputChainEnd, buf, sizeof (buf), &err);
-		} else {
-			ret = xmms_xform_this_read (inputChain, buf, sizeof (buf), &err);
-		}
+		ret = xmms_xform_this_read (outputChainEnd, buf, sizeof (buf), &err);
 
 		g_mutex_lock (output->filler_mutex);
 

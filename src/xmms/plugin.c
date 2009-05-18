@@ -65,7 +65,7 @@ static gboolean xmms_plugin_scan_directory (const gchar *dir);
  */
 
 /**
- * @internal 
+ * @internal
  * Lookup the value of a plugin's config property, given the property key.
  * @param[in] plugin The plugin
  * @param[in] key The property key (config path)
@@ -90,7 +90,7 @@ xmms_plugin_config_lookup (xmms_plugin_t *plugin,
 }
 
 /**
- * @internal 
+ * @internal
  * Register a config property for a plugin.
  * @param[in] plugin The plugin
  * @param[in] name The property name
@@ -201,12 +201,14 @@ xmms_plugin_add_builtin_plugins (void)
 	extern const xmms_plugin_desc_t xmms_builtin_converter;
 	extern const xmms_plugin_desc_t xmms_builtin_segment;
 	extern const xmms_plugin_desc_t xmms_builtin_visualization;
+	extern const xmms_plugin_desc_t xmms_builtin_middleman;
 
 	xmms_plugin_load (&xmms_builtin_ringbuf, NULL);
 	xmms_plugin_load (&xmms_builtin_magic, NULL);
 	xmms_plugin_load (&xmms_builtin_converter, NULL);
 	xmms_plugin_load (&xmms_builtin_segment, NULL);
 	xmms_plugin_load (&xmms_builtin_visualization, NULL);
+	xmms_plugin_load (&xmms_builtin_middleman, NULL);
 }
 
 

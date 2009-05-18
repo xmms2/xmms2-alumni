@@ -194,13 +194,13 @@ xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 	read = xmms_ringbuf_read (priv->buffer, buf, len);
 	fill (xform, priv);
 
-	//if (xmms_ringbuf_iseos (priv->buffer)) {
+	if (xmms_ringbuf_iseos (priv->buffer)) {
 		/* TODO_xforms: Check for the duration, if we hit duration left in buffer then start crossfade */
 		/* For now, mute to cert things work so far */
 		for (i = 0; i < read; i++) {
 			((gint8*)buf)[i] = 0;
 		}
-	//}
+	}
 
 	return read;
 }
