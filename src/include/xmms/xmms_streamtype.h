@@ -22,6 +22,7 @@
 
 #include <glib.h>
 #include <string.h>
+#include "xmms/xmms_object.h"
 
 G_BEGIN_DECLS
 
@@ -36,7 +37,12 @@ typedef enum xmms_stream_type_key_E {
 	XMMS_STREAM_TYPE_NAME
 } xmms_stream_type_key_t;
 
-struct xmms_stream_type_St;
+struct xmms_stream_type_St {
+	xmms_object_t obj;
+	gint priority;
+	gchar *name;
+	GList *list;
+};
 typedef struct xmms_stream_type_St xmms_stream_type_t;
 
 #define XMMS_STREAM_TYPE_PRIORITY_DEFAULT 50

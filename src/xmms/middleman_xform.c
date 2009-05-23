@@ -2,6 +2,7 @@
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_medialib.h"
 #include "xmmspriv/xmms_xform.h"
+#include "xmms/xmms_streamtype.h"
 
 typedef struct xmms_middleman_priv_St {
 } xmms_middleman_priv_t;
@@ -180,6 +181,7 @@ void xmms_middleman_xform_set_prev (xmms_xform_t *xform, xmms_xform_t *prev)
 
 	/* TODO: Configure input/output types correctly */
 	xmms_xform_outdata_type_copy (xform);
+	xmms_xform_auxdata_set_bin (xform, "input format changed", xmms_xform_outdata_get (xform), sizeof(xmms_stream_type_t));
 }
 
 xmms_xform_t *

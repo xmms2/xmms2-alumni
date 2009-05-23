@@ -49,6 +49,13 @@ static void xmms_crossfade_duration_changed (xmms_object_t *object, xmmsv_t *dat
 {
 }
 
+static void xmms_crossfade_auxdata_notification (xmms_xform_t *xform, const gchar *key, void *val)
+{
+	if (!g_strcasecmp (key, "input format changed")) {
+		xmms_xform_outdata_type_copy (xform);
+	}
+}
+
 static gboolean
 xmms_crossfade_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 {
@@ -60,6 +67,7 @@ xmms_crossfade_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	methods.destroy = xmms_crossfade_destroy;
 	methods.read = xmms_crossfade_read;
 	methods.seek = xmms_crossfade_seek;
+	methods.auxdata_notification = xmms_crossfade_auxdata_notification;
 
 	xmms_xform_plugin_methods_set (xform_plugin, &methods);
 
@@ -102,6 +110,42 @@ xmms_crossfade_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	                              11025,
 	                              XMMS_STREAM_TYPE_END);
 
+	xmms_xform_outdata_type_add (xform_plugin,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "audio/pcm",
+	                              XMMS_STREAM_TYPE_FMT_FORMAT,
+	                              XMMS_SAMPLE_FORMAT_S16,
+	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	                              48000,
+	                              XMMS_STREAM_TYPE_END);
+
+	xmms_xform_outdata_type_add (xform_plugin,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "audio/pcm",
+	                              XMMS_STREAM_TYPE_FMT_FORMAT,
+	                              XMMS_SAMPLE_FORMAT_S16,
+	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	                              44100,
+	                              XMMS_STREAM_TYPE_END);
+
+	xmms_xform_outdata_type_add (xform_plugin,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "audio/pcm",
+	                              XMMS_STREAM_TYPE_FMT_FORMAT,
+	                              XMMS_SAMPLE_FORMAT_S16,
+	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	                              22050,
+	                              XMMS_STREAM_TYPE_END);
+
+	xmms_xform_outdata_type_add (xform_plugin,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "audio/pcm",
+	                              XMMS_STREAM_TYPE_FMT_FORMAT,
+	                              XMMS_SAMPLE_FORMAT_S16,
+	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	                              11025,
+	                              XMMS_STREAM_TYPE_END);
+
 	return TRUE;
 }
 
@@ -126,15 +170,47 @@ xmms_crossfade_init (xmms_xform_t *xform)
 	priv->enabled = !!xmms_config_property_get_int (config);*/
 
 	srate = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_SAMPLERATE);
-	channels = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
+	xmms_xform_outdata_type_add (xform, XMMS_STREAM_TYPE_FMT_CHANNELS, 2);
 
 	priv->max_buffer_size = 4096*8;
 	priv->buffer = xmms_ringbuf_new (priv->max_buffer_size);
 	priv->buffer_lock = g_mutex_new ();
 
-	xmms_xform_outdata_type_copy (xform);
+	xmms_xform_outdata_type_add (xform,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "audio/pcm",
+	                              XMMS_STREAM_TYPE_FMT_FORMAT,
+	                              XMMS_SAMPLE_FORMAT_S16,
+	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	                              48000,
+	                              XMMS_STREAM_TYPE_END);
 
-	XMMS_DBG ("Equalizer initialized successfully!");
+	xmms_xform_outdata_type_add (xform,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "audio/pcm",
+	                              XMMS_STREAM_TYPE_FMT_FORMAT,
+	                              XMMS_SAMPLE_FORMAT_S16,
+	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	                              44100,
+	                              XMMS_STREAM_TYPE_END);
+
+	xmms_xform_outdata_type_add (xform,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "audio/pcm",
+	                              XMMS_STREAM_TYPE_FMT_FORMAT,
+	                              XMMS_SAMPLE_FORMAT_S16,
+	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	                              22050,
+	                              XMMS_STREAM_TYPE_END);
+
+	xmms_xform_outdata_type_add (xform,
+	                              XMMS_STREAM_TYPE_MIMETYPE,
+	                              "audio/pcm",
+	                              XMMS_STREAM_TYPE_FMT_FORMAT,
+	                              XMMS_SAMPLE_FORMAT_S16,
+	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	                              11025,
+	                              XMMS_STREAM_TYPE_END);
 
 	return TRUE;
 }

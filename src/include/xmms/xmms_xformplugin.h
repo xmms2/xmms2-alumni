@@ -149,6 +149,13 @@ typedef struct xmms_xform_methods_St {
 	 * This is called without init() beeing called.
 	 */
 	gboolean (*browse)(xmms_xform_t *, const gchar *, xmms_error_t *);
+	/**
+	 * AuxData Notification.
+	 *
+	 * Called when the last read hit an AuxData hotspot.
+	 *
+	 */
+	void (*auxdata_notification)(xmms_xform_t *, const gchar *, void *);
 } xmms_xform_methods_t;
 
 #define XMMS_XFORM_METHODS_INIT(m) memset (&m, 0, sizeof (xmms_xform_methods_t))

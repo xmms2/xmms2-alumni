@@ -26,13 +26,6 @@
 #include "xmms/xmms_object.h"
 
 
-struct xmms_stream_type_St {
-	xmms_object_t obj;
-	gint priority;
-	gchar *name;
-	GList *list;
-};
-
 typedef enum xmms_stream_type_val_type_E {
 	STRING,
 	INT,

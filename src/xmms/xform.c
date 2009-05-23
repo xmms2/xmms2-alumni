@@ -469,6 +469,11 @@ xmms_xform_outdata_type_set (xmms_xform_t *xform, xmms_stream_type_t *type)
 	xform->out_type = type;
 }
 
+xmms_stream_type_t *xmms_xform_outdata_get (xmms_xform_t *xform)
+{
+	return xform->out_type;
+}
+
 void
 xmms_xform_outdata_type_copy (xmms_xform_t *xform)
 {
@@ -974,6 +979,11 @@ xmms_xform_this_read (xmms_xform_t *xform, gpointer buf, gint siz,
 
 	/* update hotspots */
 	nexths = xmms_xform_hotspots_update (xform);
+	if (xmms_xform_auxdata_has_val (xform, "input format changed")) {
+		xform->plugin->methods.auxdata_notification (xform, "input format changed", NULL);
+		g_hash_table_remove (xform->prev->privdata, "input format changed");
+	}
+
 	if (nexths >= 0) {
 		siz = MIN (siz, nexths);
 	}
