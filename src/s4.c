@@ -9,7 +9,7 @@
 
 
 typedef struct s4_header_St {
-	int32_t string_store;
+	int32_t string_store, int_store;
 	int32_t alloc_off;
 } s4_header_t;
 

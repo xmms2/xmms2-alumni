@@ -11,6 +11,9 @@ typedef struct s4_St {
 
 #define S4_PNT(s, i, t) ((t*)((char*)(s)->map + (i)))
 
+#define S4_STRING_STORE 0
+#define S4_INT_STORE 4
+
 s4_t *s4_open (const char *filename);
 int s4_close (s4_t *s4);
 

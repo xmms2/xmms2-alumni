@@ -1,5 +1,7 @@
 #include <db.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 
 int main (int argc, char *argv[])
@@ -28,7 +30,7 @@ int main (int argc, char *argv[])
 	while (1) {
 		if (fgets(buffer, 1024, stdin) == NULL)
 			break;
-		if (!strncmp(buffer, "done", 4))
+		if (!strncmp(buffer, "DONE", 4))
 			break;
 		buffer[strlen(buffer) - 1] = '\0';
 		
@@ -44,7 +46,7 @@ int main (int argc, char *argv[])
 	while (1) {
 		if (fgets(buffer, 1024, stdin) == NULL)
 			break;
-		if (!strncmp(buffer, "done", 4))
+		if (!strncmp(buffer, "DONE", 4))
 			break;
 		buffer[strlen(buffer) - 1] = '\0';
 
