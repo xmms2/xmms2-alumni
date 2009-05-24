@@ -130,14 +130,3 @@ void s4_free(s4_t* s4, int32_t off)
 {
 	/* DUMMY, write some real code here */
 }
-
-
-int32_t s4_get_string_store (s4_t *s4)
-{
-	return ((s4_header_t*)s4->map)->string_store;
-}
-
-void s4_set_string_store (s4_t *s4, int32_t ss)
-{
-	((s4_header_t*)s4->map)->string_store = ss;
-}

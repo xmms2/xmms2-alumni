@@ -3,6 +3,7 @@
  */
 
 #include "s4.h"
+#include "pat.h"
 #include <string.h>
 
 #define MAX(a, b) (((a) > (b))?((a)):((b)))
@@ -24,12 +25,6 @@ typedef union pat_node_St {
 } pat_node_t;
 
 
-typedef struct pat_key_St {
-	const void *data;
-	int32_t key_len, data_len;
-} pat_key_t;
-
-
 
 static inline int is_leaf (pat_node_t *pn)
 {
@@ -37,6 +32,9 @@ static inline int is_leaf (pat_node_t *pn)
 }
 
 
+/* Check if a bit is set in the string key.
+ * Return 0 if it is not, non-0 if it is.
+ */
 static inline int bit_set (const char *key, int bit)
 {
 	int i = bit >> 3;
@@ -46,17 +44,22 @@ static inline int bit_set (const char *key, int bit)
 }
 
 
-static inline int string_diff (s4_t *s4, pat_key_t *key,
-		const char *sb, uint32_t lenb)
+/* Find the bit position of the first bit that is different
+ * between the key and the node.
+ * Returns -1 when there is no difference.
+ */
+static inline int string_diff (s4_t *s4, pat_key_t *key, int32_t node)
 {
 	int i, diff, ret;
-	int lena = key->key_len;
 	const char *sa = key->data;
+	int lena = key->key_len;
+	pat_node_t *pn = S4_PNT(s4, node, pat_node_t);
+	const char *sb = S4_PNT(s4, pn->leaf.key, char);
+	int lenb = pn->leaf.len;
 
 	for (i = 0, diff = 0; i*8 < lena && i*8 < lenb; i++) {
 		diff = sa[i] ^ sb[i];
-		if (diff)
-			break;
+		if (diff) break;
 	}
 
 	for (ret = i * 8; diff && !(diff & 1); diff >>= 1, ret++);
@@ -71,15 +74,14 @@ static inline int string_diff (s4_t *s4, pat_key_t *key,
 
 static inline int nodes_equal (s4_t *s4, pat_key_t *key, int32_t node)
 {
-	pat_node_t *pn = S4_PNT(s4, node, pat_node_t);
-	const char *nkey = S4_PNT(s4, pn->leaf.key, char);
-
-	return pn->leaf.len == key->key_len &&
-		string_diff(s4, key, nkey, pn->leaf.len) == -1;
+	return string_diff(s4, key, node) == -1;
 }
 
 
-int32_t pat_walk (s4_t *s4, int32_t trie, pat_key_t *key)
+/* Walk the trie using the key as direction.
+ * Returns the leaf node it finds (-1 if the trie is empty)
+ */
+static int32_t trie_walk (s4_t *s4, int32_t trie, pat_key_t *key)
 {
 	int32_t node = GET_ROOT(s4, trie);
 	pat_node_t *pn;
@@ -103,7 +105,10 @@ int32_t pat_walk (s4_t *s4, int32_t trie, pat_key_t *key)
 
 	return node;
 }
-void pat_insert_internal (s4_t *s4, int32_t trie, pat_key_t *key,
+
+
+/* Insert an internal node at the position pos */
+static void insert_internal (s4_t *s4, int32_t trie, pat_key_t *key,
 		int pos, int32_t node)
 {
 	int32_t internal = s4_alloc (s4, sizeof(pat_node_t));
@@ -147,10 +152,17 @@ void pat_insert_internal (s4_t *s4, int32_t trie, pat_key_t *key,
 }
 
 
-
+/**
+ * Lookup the key in the trie
+ *
+ * @param s4 Database handle
+ * @param trie The offset of the trie into the database
+ * @param key The key to lookup
+ * @return The node, or -1 if it is not found
+ */
 int32_t pat_lookup (s4_t *s4, int32_t trie, pat_key_t *key)
 {
-	int32_t node = pat_walk (s4, trie, key);
+	int32_t node = trie_walk (s4, trie, key);
 
 	if (!nodes_equal (s4, key, node))
 		return -1;
@@ -159,6 +171,14 @@ int32_t pat_lookup (s4_t *s4, int32_t trie, pat_key_t *key)
 }
 
 
+/**
+ * Insert something into the trie
+ *
+ * @param s4 Handle for the database
+ * @param trie The offset of the trie into the database
+ * @param key_s The key to insert
+ * @return The new node, or -1 if it already exists
+ */
 int32_t pat_insert (s4_t *s4, int32_t trie, pat_key_t *key_s)
 {
 	int32_t key, node, comp;
@@ -166,7 +186,7 @@ int32_t pat_insert (s4_t *s4, int32_t trie, pat_key_t *key_s)
 	pat_node_t *pn;
 
 	/* Check if the node already exist */
-	comp = pat_walk (s4, trie, key_s);
+	comp = trie_walk (s4, trie, key_s);
 	if (nodes_equal (s4, key_s, comp)) {
 		return -1;
 	}
@@ -188,16 +208,16 @@ int32_t pat_insert (s4_t *s4, int32_t trie, pat_key_t *key_s)
 		return node;
 	}
 
-	pn = S4_PNT(s4, comp, pat_node_t);
-	const char *sb = S4_PNT(s4, pn->leaf.key, char);
-	diff = string_diff(s4, key_s, sb, pn->leaf.len);
-
-	pat_insert_internal (s4, trie, key_s, diff, node);
+	diff = string_diff(s4, key_s, comp);
+	insert_internal (s4, trie, key_s, diff, node);
 
 	return node;
 }
 
 
+/* Temporary functions for testing only,
+ * should be (re)moved to the stringstore.
+ */
 int32_t pat_insert_string (s4_t *s4, const char *string)
 {
 	pat_key_t key;

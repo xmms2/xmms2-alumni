@@ -1,4 +1,4 @@
-test_src = s4.c main.c strings.c
+test_src = s4.c main.c pat.c
 bdb_src = bdb.c
 
 all:
