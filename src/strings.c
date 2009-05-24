@@ -24,16 +24,16 @@ typedef struct pat_node_St {
 } pat_node_t;
 
 
-int is_leaf (pat_node_t *pn)
+static inline int is_leaf (pat_node_t *pn)
 {
 	return pn->u.leaf.magic == -1;
 }
 
 
-int bit_set (const char *key, int bit)
+static inline int bit_set (const char *key, int bit)
 {
-	int i = bit / 8;
-	int j = bit % 8;
+	int i = bit >> 3;
+	int j = bit & 7;
 	char c = key[i];
 	return (c >> j) & 1;
 }
@@ -128,13 +128,20 @@ void pat_insert_internal (s4_t *s4, const char *key, uint32_t len, int pos, int3
 }
 
 
-int32_t pat_lookup (s4_t *s4, const char *key, uint32_t key_len)
+static inline int nodes_equal (s4_t *s4, const char *key, uint32_t key_len, int32_t node)
 {
-	int32_t node = pat_walk (s4, key, key_len);
 	pat_node_t *pn = S4_PNT(s4, node, pat_node_t);
 	const char *nkey = S4_PNT(s4, pn->u.leaf.key, char);
 
-	if (pn->u.leaf.len != key_len || string_diff(s4, key, key_len, nkey, pn->u.leaf.len) != -1)
+	return pn->u.leaf.len == key_len &&
+		string_diff(s4, key, key_len, nkey, pn->u.leaf.len) == -1;
+}
+
+int32_t pat_lookup (s4_t *s4, const char *key, uint32_t key_len)
+{
+	int32_t node = pat_walk (s4, key, key_len);
+
+	if (!nodes_equal (s4, key, key_len, node))
 		return -1;
 
 	return node;
@@ -143,23 +150,28 @@ int32_t pat_lookup (s4_t *s4, const char *key, uint32_t key_len)
 
 int32_t pat_insert (s4_t *s4, const char *key_string, uint32_t key_len)
 {
-	/* Check if it already exist */
-	if (pat_lookup (s4, key_string, key_len) != -1) {
+	int32_t key, node, comp;
+	int diff;
+	pat_node_t *pn;
+
+	/* Check if the node already exist */
+	comp = pat_walk (s4, key_string, key_len);
+	if (nodes_equal (s4, key_string, key_len, comp)) {
 		return -1;
 	}
-	int32_t key = s4_alloc (s4, (key_len + 7) / 8);
 
+	/* Copy the key into the database */
+	key = s4_alloc (s4, (key_len + 7) / 8);
 	memcpy (S4_PNT(s4, key, char), key_string, (key_len + 7) / 8);
 
-	int32_t node = s4_alloc (s4, sizeof(pat_node_t));
-	int32_t comp = pat_walk (s4, key_string, key_len);
-	int diff;
-	pat_node_t *pn = S4_PNT(s4, node, pat_node_t);
-
+	/* Allocate and setup the node */
+	node = s4_alloc (s4, sizeof(pat_node_t));
+	pn = S4_PNT(s4, node, pat_node_t);
 	pn->u.leaf.key = key;
 	pn->u.leaf.len = key_len;
 	pn->u.leaf.magic = -1;
 
+	/* If there is no root, we are the root */
 	if (comp == -1) {
 		s4_set_string_store(s4, node);
 		return node;

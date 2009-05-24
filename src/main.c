@@ -28,7 +28,8 @@ int main(int argc, char *argv[])
 			break;
 		buffer[strlen(buffer) - 1] = '\0';
 
-		printf("%i\n", pat_lookup_string (s4, buffer));
+		pat_lookup_string(s4, buffer);
+	//	printf("%i\n", pat_lookup_string (s4, buffer));
 	}
 
 	s4_close (s4);
