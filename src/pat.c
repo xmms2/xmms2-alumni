@@ -78,30 +78,40 @@ static inline int nodes_equal (s4_t *s4, pat_key_t *key, int32_t node)
 }
 
 
+/* Finds the next node to go to and saves it in node
+ * If the current node is a leaf the function returns 0,
+ * otherwise it returns 1;
+ */
+static inline int get_next (s4_t *s4, pat_key_t *key, int32_t *node)
+{
+	pat_node_t *pn;
+	pn = S4_PNT(s4, *node, pat_node_t);
+
+	if (is_leaf (pn))
+		return 0;
+
+	if (pn->internal.pos < key->key_len) {
+		if (bit_set(key->data, pn->internal.pos)) {
+			*node = pn->internal.right;
+		} else {
+			*node = pn->internal.left;
+		}
+	} else {
+		*node = pn->internal.left;
+	}
+
+	return 1;
+}
+
+
 /* Walk the trie using the key as direction.
  * Returns the leaf node it finds (-1 if the trie is empty)
  */
 static int32_t trie_walk (s4_t *s4, int32_t trie, pat_key_t *key)
 {
 	int32_t node = GET_ROOT(s4, trie);
-	pat_node_t *pn;
 
-	while (node != -1) {
-		pn = S4_PNT(s4, node, pat_node_t);
-
-		if (is_leaf (pn))
-			break;
-
-		if (pn->internal.pos < key->key_len) {
-			if (bit_set(key->data, pn->internal.pos)) {
-				node = pn->internal.right;
-			} else {
-				node = pn->internal.left;
-			}
-		} else {
-			node = pn->internal.left;
-		}
-	}
+	while (node != -1 && get_next (s4, key, &node));
 
 	return node;
 }
@@ -215,6 +225,58 @@ int32_t pat_insert (s4_t *s4, int32_t trie, pat_key_t *key_s)
 }
 
 
+/**
+ * Remove an entry from the trie
+ *
+ * @param s4 The database handle
+ * @param trie The trie to remove it from
+ * @param key The key to remove
+ */
+int pat_remove (s4_t *s4, int32_t trie, pat_key_t *key)
+{
+	int32_t node, prev, pprev, sibling, tmp;
+	pat_node_t *pn;
+
+	prev = pprev = -1;
+	tmp = node = GET_ROOT(s4, trie);
+
+	while (node != -1 && get_next (s4, key, &tmp))
+	{
+		pprev = prev;
+		prev = node;
+		node = tmp;
+	}
+
+	/* Check if this is the right node */
+	if (node == -1 || !nodes_equal (s4, key, node)) {
+		return -1;
+	}
+
+	s4_free (s4, node);
+
+	if (prev == -1) {
+		sibling = -1;
+	} else {
+		pn = S4_PNT(s4, prev, pat_node_t);
+		sibling = ((pn->internal.left == node)?pn->internal.right:pn->internal.left);
+		s4_free (s4, prev);
+	}
+
+	if (pprev == -1) {
+		SET_ROOT(s4, trie, sibling);
+	} else {
+		pn = S4_PNT(s4, pprev, pat_node_t);
+		if (pn->internal.left == prev) {
+			pn->internal.left = sibling;
+		} else {
+			pn->internal.right = sibling;
+		}
+	}
+
+	return 0;
+}
+
+
 /* Temporary functions for testing only,
  * should be (re)moved to the stringstore.
  */
@@ -238,4 +300,15 @@ int32_t pat_lookup_string (s4_t *s4, char *string)
 	key.key_len = key.data_len * 8;
 
 	return pat_lookup (s4, S4_STRING_STORE, &key);
+}
+
+int32_t pat_remove_string (s4_t *s4, char *string)
+{
+	pat_key_t key;
+
+	key.data = string;
+	key.data_len = strlen (string) + 1;
+	key.key_len = key.data_len * 8;
+
+	return pat_remove (s4, S4_STRING_STORE, &key);
 }
