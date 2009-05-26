@@ -1,6 +1,7 @@
 /* Just to test the s4 lib */
 
 #include "s4.h"
+#include "strstore.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -20,7 +21,7 @@ int main(int argc, char *argv[])
 
 		buffer[strlen(buffer) - 1] = '\0';
 
-		pat_insert_string (s4, buffer);
+		strstore_ref_str (s4, buffer);
 	}
 	while (1) {
 		if (fgets(buffer, 1024, stdin) == NULL)
@@ -29,8 +30,18 @@ int main(int argc, char *argv[])
 			break;
 		buffer[strlen(buffer) - 1] = '\0';
 
-		ret = pat_lookup_string(s4, buffer);
-//		printf("%i\n", ret);
+		ret = strstore_unref_str (s4, buffer);
+		printf("u: %d\n", ret);
+	}
+	while (1) {
+		if (fgets(buffer, 1024, stdin) == NULL)
+			break;
+		if (!strncmp(buffer, "DONE", 4))
+			break;
+		buffer[strlen(buffer) - 1] = '\0';
+
+		ret = strstore_str_to_int (s4, buffer);
+		printf("%i\n", ret);
 	}
 
 	s4_close (s4);

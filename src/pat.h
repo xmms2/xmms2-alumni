@@ -13,5 +13,6 @@ typedef struct pat_key_St {
 int32_t pat_lookup (s4_t *s4, int32_t trie, pat_key_t *key);
 int32_t pat_insert (s4_t *s4, int32_t trie, pat_key_t *key);
 int     pat_remove (s4_t *s4, int32_t trie, pat_key_t *key);
+int32_t pat_node_to_key (s4_t *s4, int32_t node);
 
 #endif /* _PAT_H */

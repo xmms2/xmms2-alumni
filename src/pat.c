@@ -1,7 +1,3 @@
-/*
- * The s4 string store
- */
-
 #include "s4.h"
 #include "pat.h"
 #include <string.h>
@@ -35,11 +31,11 @@ static inline int is_leaf (pat_node_t *pn)
 /* Check if a bit is set in the string key.
  * Return 0 if it is not, non-0 if it is.
  */
-static inline int bit_set (const char *key, int bit)
+static inline int bit_set (pat_key_t *key, int bit)
 {
 	int i = bit >> 3;
 	int j = bit & 7;
-	char c = key[i];
+	char c = ((char*)key->data)[i];
 	return (c >> j) & 1;
 }
 
@@ -74,7 +70,7 @@ static inline int string_diff (s4_t *s4, pat_key_t *key, int32_t node)
 
 static inline int nodes_equal (s4_t *s4, pat_key_t *key, int32_t node)
 {
-	return string_diff(s4, key, node) == -1;
+	return node != -1 && string_diff(s4, key, node) == -1;
 }
 
 
@@ -91,7 +87,7 @@ static inline int get_next (s4_t *s4, pat_key_t *key, int32_t *node)
 		return 0;
 
 	if (pn->internal.pos < key->key_len) {
-		if (bit_set(key->data, pn->internal.pos)) {
+		if (bit_set(key, pn->internal.pos)) {
 			*node = pn->internal.right;
 		} else {
 			*node = pn->internal.left;
@@ -129,7 +125,7 @@ static void insert_internal (s4_t *s4, int32_t trie, pat_key_t *key,
 	/* Look for the internal node before the new one */
 	while (!is_leaf(pn) && pn->internal.pos < pos) {
 		prev = cur;
-		cur = (bit_set (key->data, pn->internal.pos))?
+		cur = (bit_set (key, pn->internal.pos))?
 			pn->internal.right:pn->internal.left;
 		pn = S4_PNT(s4, cur, pat_node_t);
 	}
@@ -140,7 +136,7 @@ static void insert_internal (s4_t *s4, int32_t trie, pat_key_t *key,
 		prev = cur;
 	} else {
 		pn = S4_PNT(s4, prev, pat_node_t); 
-		if (bit_set (key->data, pn->internal.pos)) {
+		if (bit_set (key, pn->internal.pos)) {
 			prev = pn->internal.right;
 			pn->internal.right = internal;
 		} else {
@@ -152,7 +148,7 @@ static void insert_internal (s4_t *s4, int32_t trie, pat_key_t *key,
 	/* Add the leaf to the internal node */
 	pn = S4_PNT(s4, internal, pat_node_t);
 	pn->internal.pos = pos;
-	if (bit_set (key->data, pos)) {
+	if (bit_set (key, pos)) {
 		pn->internal.right = node;
 		pn->internal.left = prev;
 	} else {
@@ -207,6 +203,7 @@ int32_t pat_insert (s4_t *s4, int32_t trie, pat_key_t *key_s)
 
 	/* Allocate and setup the node */
 	node = s4_alloc (s4, sizeof(pat_node_t));
+
 	pn = S4_PNT(s4, node, pat_node_t);
 	pn->leaf.key = key;
 	pn->leaf.len = key_s->key_len;
@@ -277,38 +274,16 @@ int pat_remove (s4_t *s4, int32_t trie, pat_key_t *key)
 }
 
 
-/* Temporary functions for testing only,
- * should be (re)moved to the stringstore.
+/**
+ * Find the key for the node
+ *
+ * @param s4 The database handle
+ * @param node The node
+ * @return The key
  */
-int32_t pat_insert_string (s4_t *s4, const char *string)
+int32_t pat_node_to_key (s4_t *s4, int32_t node)
 {
-	pat_key_t key;
+	pat_node_t *pn = S4_PNT(s4, node, pat_node_t);
 
-	key.data = string;
-	key.data_len = strlen (string) + 1;
-	key.key_len = key.data_len * 8;
-
-	return pat_insert (s4, S4_STRING_STORE, &key);
-}
-
-int32_t pat_lookup_string (s4_t *s4, char *string)
-{
-	pat_key_t key;
-
-	key.data = string;
-	key.data_len = strlen (string) + 1;
-	key.key_len = key.data_len * 8;
-
-	return pat_lookup (s4, S4_STRING_STORE, &key);
-}
-
-int32_t pat_remove_string (s4_t *s4, char *string)
-{
-	pat_key_t key;
-
-	key.data = string;
-	key.data_len = strlen (string) + 1;
-	key.key_len = key.data_len * 8;
-
-	return pat_remove (s4, S4_STRING_STORE, &key);
+	return pn->leaf.key;
 }
