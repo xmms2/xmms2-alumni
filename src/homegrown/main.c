@@ -5,6 +5,19 @@
 #include <stdio.h>
 #include <string.h>
 
+
+int getline (char *buffer, int size)
+{
+	if (fgets (buffer, size, stdin) == NULL)
+		return 0;
+	if (!strncmp (buffer, "DONE", 4))
+		return 0;
+
+	buffer[strlen (buffer) - 1] = '\0';
+
+	return 1;
+}
+
 int main(int argc, char *argv[])
 {
 	char buffer[1024];
@@ -13,33 +26,14 @@ int main(int argc, char *argv[])
 
 	printf("Testing patricia trie string insertion\n\n");
 
-	while (1) {
-		if (fgets(buffer, 1024, stdin) == NULL)
-			break;
-		if (!strncmp(buffer, "DONE", 4))
-			break;
-
-		buffer[strlen(buffer) - 1] = '\0';
-
+	while (getline (buffer, 1024)) {
 		strstore_ref_str (s4, buffer);
 	}
-	while (1) {
-		if (fgets(buffer, 1024, stdin) == NULL)
-			break;
-		if (!strncmp(buffer, "DONE", 4))
-			break;
-		buffer[strlen(buffer) - 1] = '\0';
-
+	while (getline (buffer, 1024)) {
 		ret = strstore_unref_str (s4, buffer);
 		printf("u: %d\n", ret);
 	}
-	while (1) {
-		if (fgets(buffer, 1024, stdin) == NULL)
-			break;
-		if (!strncmp(buffer, "DONE", 4))
-			break;
-		buffer[strlen(buffer) - 1] = '\0';
-
+	while (getline (buffer, 1024)) {
 		ret = strstore_str_to_int (s4, buffer);
 		printf("%i\n", ret);
 	}
