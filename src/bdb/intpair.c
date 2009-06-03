@@ -83,9 +83,9 @@ int intpair_remove_property (s4_t *s4,
 }
 
 
-static set_t *db_get_set (DB *db, intpair_t pair_a)
+static s4_set_t *db_get_set (DB *db, intpair_t pair_a)
 {
-	set_t *root, *cur, *prev;
+	s4_set_t *root, *cur, *prev;
 	DBT key, data;
 	DBC *cursor;
 	intpair_t pair_b;
@@ -99,7 +99,7 @@ static set_t *db_get_set (DB *db, intpair_t pair_a)
 	root = prev = cur = NULL;
 	while (!ret) {
 		prev = cur;
-		cur = malloc (sizeof (set_t) + sizeof (intpair_t));
+		cur = malloc (sizeof (s4_set_t) + sizeof (intpair_t));
 		cur->next = NULL;
 		if (prev != NULL) {
 			prev->next = cur;
@@ -120,13 +120,13 @@ static set_t *db_get_set (DB *db, intpair_t pair_a)
 }
 
 
-set_t *intpair_has_this (s4_t *s4, intpair_t pair)
+s4_set_t *intpair_has_this (s4_t *s4, intpair_t pair)
 {
 	return db_get_set (s4->pair_rev_db, pair);
 }
 
 
-set_t *intpair_this_has (s4_t *s4, intpair_t pair)
+s4_set_t *intpair_this_has (s4_t *s4, intpair_t pair)
 {
 	return db_get_set (s4->pair_db, pair);
 }

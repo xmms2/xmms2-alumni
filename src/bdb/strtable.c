@@ -17,7 +17,7 @@ static void setup_dbts (DBT *key, DBT *data,
 	key->data = (void*)str;
 
 	data->data = val;
-	data->flags = DB_DBT_USERMEM;
+	data->ulen = sizeof (string_val_t);
 }
 
 int strtab_associate (DB *db, const DBT *key, const DBT *data, DBT *result)
@@ -37,7 +37,7 @@ int strtab_ref (s4_t *s4, const char *str)
 	string_val_t strval;
 
 	setup_dbts (&key, &data, str, &strval);
-	data.ulen = sizeof (string_val_t);
+	data.flags = DB_DBT_USERMEM;
 
 	ret = s4->str_db->get (s4->str_db, NULL, &key, &data, 0);
 
@@ -58,12 +58,12 @@ int strtab_ref (s4_t *s4, const char *str)
 	ret = s4->str_db->put (s4->str_db, NULL, &key, &data, 0);
 
 	if (ret) {
-		printf("Error2\n");
+		printf("Error2 %i\n", ret);
 		return -1;
 		/* More error handling */
 	}
 
-	return strval.ref_count;
+	return strval.id;
 }
 
 int strtab_unref (s4_t *s4, const char *str)
@@ -74,7 +74,7 @@ int strtab_unref (s4_t *s4, const char *str)
 
 
 	setup_dbts (&key, &data, str, &strval);
-	data.ulen = sizeof (string_val_t);
+	data.flags = DB_DBT_USERMEM;
 
 	ret = s4->str_db->get (s4->str_db, NULL, &key, &data, 0);
 
@@ -113,7 +113,6 @@ int strtab_lookup (s4_t *s4, const char *str)
 	key.size = strlen (str) + 1;
 
 	data.data = &strval;
-	data.ulen = sizeof (string_val_t);
 	data.flags = DB_DBT_USERMEM;
 	
 	ret = s4->str_db->get (s4->str_db, NULL, &key, &data, 0);

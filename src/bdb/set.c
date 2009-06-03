@@ -1,7 +1,8 @@
 #include <stdlib.h>
-#include "intpair.h"
+#include "s4.h"
 
-int set_compare (set_t *a, set_t *b)
+
+int set_compare (s4_set_t *a, s4_set_t *b)
 {
 	int ret;
 	if (a == NULL)
@@ -17,9 +18,9 @@ int set_compare (set_t *a, set_t *b)
 	return ret;
 }
 
-set_t *set_intersection (set_t *a, set_t *b)
+s4_set_t *s4_set_intersection (s4_set_t *a, s4_set_t *b)
 {
-	set_t *ret, *cur;
+	s4_set_t *ret, *cur;
 	int c;
 
 	cur = ret = NULL;
@@ -32,9 +33,9 @@ set_t *set_intersection (set_t *a, set_t *b)
 			a = a->next;
 		} else {
 			if (cur == NULL) {
-				ret = cur = malloc (sizeof (set_t));
+				ret = cur = malloc (sizeof (s4_set_t));
 			} else {
-				cur->next = malloc (sizeof (set_t));
+				cur->next = malloc (sizeof (s4_set_t));
 				cur = cur->next;
 			}
 			cur->next = NULL;
@@ -50,9 +51,9 @@ set_t *set_intersection (set_t *a, set_t *b)
 }
 
 
-set_t *set_union (set_t *a, set_t *b)
+s4_set_t *s4_set_union (s4_set_t *a, s4_set_t *b)
 {
-	set_t *ret, *cur;
+	s4_set_t *ret, *cur;
 	int c;
 
 	cur = ret = NULL;
@@ -61,9 +62,9 @@ set_t *set_union (set_t *a, set_t *b)
 		c = set_compare (a, b);
 
 		if (cur == NULL) {
-			ret = cur = malloc (sizeof (set_t));
+			ret = cur = malloc (sizeof (s4_set_t));
 		} else {
-			cur->next = malloc (sizeof (set_t));
+			cur->next = malloc (sizeof (s4_set_t));
 			cur = cur->next;
 		}
 
@@ -88,9 +89,9 @@ set_t *set_union (set_t *a, set_t *b)
 	return ret;
 }
 
-void set_free (set_t *set)
+void s4_set_free (s4_set_t *set)
 {
-	set_t *tmp;
+	s4_set_t *tmp;
 	while (set != NULL) {
 		tmp = set->next;
 		free (set);
