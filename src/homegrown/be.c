@@ -1,4 +1,5 @@
-#include "s4.h"
+#include "s4_be.h"
+#include "be.h"
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -8,10 +9,10 @@
 
 
 
-typedef struct s4_header_St {
-	int32_t string_store, int_store;
+typedef struct header_St {
+	int32_t string_store, int_store, int_rev;
 	int32_t alloc_off;
-} s4_header_t;
+} header_t;
 
 
 
@@ -28,7 +29,7 @@ static inline int align (int a, int b)
 /* Grow the database by the number of bytes given.
  * It will align to a pagesize boundry.
  */
-static void grow_db (s4_t *s4, int n)
+static void grow_db (s4be_t *s4, int n)
 {
 	n = align (n, pagesize());
 
@@ -42,15 +43,17 @@ static void grow_db (s4_t *s4, int n)
 
 
 /* Initilize a new database */
-static void init_db (s4_t *s4)
+static void init_db (s4be_t *s4)
 {
-	s4_header_t *header;
+	header_t *header;
 
 	grow_db (s4, 1);
 
 	header = s4->map;
 	header->string_store = -1;
-	header->alloc_off = sizeof(s4_header_t);
+	header->int_store = -1;
+	header->int_rev = -1;
+	header->alloc_off = sizeof(header_t);
 }
 
 
@@ -60,10 +63,10 @@ static void init_db (s4_t *s4)
  * @param filename The file to open
  * @return A pointer to an s4 structure, or NULL on error
  */
-s4_t *s4_open (const char* filename)
+s4be_t *s4be_open (const char* filename)
 {
 	struct stat stat_buf;
-	s4_t* s4 = malloc (sizeof(s4_t));
+	s4be_t* s4 = malloc (sizeof(s4be_t));
 
 	s4->fd = open (filename, O_RDWR | O_CREAT, 0644);
 	if (s4->fd == -1) {
@@ -93,7 +96,7 @@ s4_t *s4_open (const char* filename)
  * @param s4 The database to close
  * @return 0 on success, anything else on error
  */
-int s4_close (s4_t* s4)
+int s4be_close (s4be_t* s4)
 {
 	munmap (s4->map, s4->size);
 	close (s4->fd);
@@ -108,9 +111,9 @@ int s4_close (s4_t* s4)
  * @param n The number of bytes needed
  * @return The offset into the database
  */
-int32_t s4_alloc (s4_t* s4, int n)
+int32_t be_alloc (s4be_t* s4, int n)
 {
-	s4_header_t* header = s4->map;
+	header_t* header = s4->map;
 	int32_t ret = header->alloc_off;
 	header->alloc_off += n;
 
@@ -126,7 +129,7 @@ int32_t s4_alloc (s4_t* s4, int n)
  *
  * @param off The allocation to free
  */
-void s4_free(s4_t* s4, int32_t off)
+void be_free(s4be_t* s4, int32_t off)
 {
 	/* DUMMY, write some real code here */
 }

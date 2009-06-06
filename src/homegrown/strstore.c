@@ -1,4 +1,3 @@
-#include "strstore.h"
 #include "pat.h"
 #include <string.h>
 #include <stdlib.h>
@@ -19,7 +18,7 @@ typedef struct str_info_St {
  * @param str The string to look up
  * @return The int, or -1 if it can not find it
  */
-int32_t strstore_str_to_int (s4_t *s4, const char *str)
+int32_t s4be_st_lookup (s4be_t *s4, const char *str)
 {
 	pat_key_t key;
 	key.data = str;
@@ -36,9 +35,9 @@ int32_t strstore_str_to_int (s4_t *s4, const char *str)
  * @param node The int
  * @return The string
  */
-char *strstore_int_to_str (s4_t *s4, int32_t node)
+char *s4be_st_reverse (s4be_t *s4, int32_t node)
 {
-	return S4_PNT(s4, pat_node_to_key (s4, node), char);
+	return strdup (S4_PNT(s4, pat_node_to_key (s4, node), char));
 }
 
 
@@ -49,7 +48,7 @@ char *strstore_int_to_str (s4_t *s4, int32_t node)
  * @param str The string to reference
  * @return 0 if the string already exist, 1 otherwise
  */
-int strstore_ref_str (s4_t *s4, const char *str)
+int s4be_st_ref (s4be_t *s4, const char *str)
 {
 	pat_key_t key;
 	int32_t node;
@@ -57,14 +56,14 @@ int strstore_ref_str (s4_t *s4, const char *str)
 	str_info_t *info;
 	char *data;
 
-	node = strstore_str_to_int (s4, str);
+	node = s4be_st_lookup (s4, str);
 
 	if (node != -1) {
-		data = strstore_int_to_str (s4, node);
+		data = S4_PNT (s4, pat_node_to_key (s4, node), char);
 		info = (str_info_t*)(data + len);
 
 		info->refs++;
-		return 0;
+		return node;
 	}
 
 	data = malloc (len + sizeof(str_info_t));
@@ -80,7 +79,7 @@ int strstore_ref_str (s4_t *s4, const char *str)
 
 	free (data);
 
-	return 1;
+	return node;
 }
 
 
@@ -91,16 +90,16 @@ int strstore_ref_str (s4_t *s4, const char *str)
  * @param str The string to unref
  * @return -1 if the string does not exist, 0 otherwise
  */
-int strstore_unref_str (s4_t * s4, const char *str)
+int s4be_st_unref (s4be_t * s4, const char *str)
 {
 	int32_t node;
-	char *data;
 	str_info_t *info;
+	char *data;
 	int len = strlen (str) + 1;
 	pat_key_t key;
 
 	key.data = str;
-	key.key_len = (strlen(str) + 1) * 8;
+	key.key_len = len * 8;
 
 	node = pat_lookup (s4, S4_STRING_STORE, &key);
 
@@ -108,7 +107,7 @@ int strstore_unref_str (s4_t * s4, const char *str)
 		return -1;
 	}
 
-	data = strstore_int_to_str (s4, node);
+	data = S4_PNT (s4, pat_node_to_key (s4, node), char);
 	info = (str_info_t*)(data + len);
 	info->refs--;
 

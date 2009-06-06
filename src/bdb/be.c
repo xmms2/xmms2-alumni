@@ -1,6 +1,5 @@
-#include "s4.h"
-#include "intpair.h"
-#include "strtable.h"
+#include "s4_be.h"
+#include "be.h"
 #include <stdlib.h>
 #include <db.h>
 #include <string.h>
@@ -40,9 +39,9 @@ int pair_open (DB **db, const char *filename, const char *table)
 }
 
 
-s4_t *s4_open (const char *filename)
+s4be_t *s4be_open (const char *filename)
 {
-	s4_t *s4 = malloc (sizeof (s4_t));
+	s4be_t *s4 = malloc (sizeof (s4be_t));
 	int ret;
 
 	memset (s4, 0, sizeof (s4_t));
@@ -66,12 +65,12 @@ s4_t *s4_open (const char *filename)
 
 cleanup:
 	printf("Something went wrong\n");
-	s4_close (s4);
+	s4be_close (s4);
 	return NULL;
 }
 
 
-int s4_close (s4_t *s4)
+int s4be_close (s4be_t *s4)
 {
 	if (s4->str_db) {
 		s4->str_db->close (s4->str_db, 0);

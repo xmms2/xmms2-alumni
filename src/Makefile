@@ -1,6 +1,22 @@
-test_src = s4.c main.c pat.c strstore.c
-bdb_src = bdb.c
+src = s4.c set.c entry.c main.c
+obj = $(addsuffix .o, $(basename $(src)))
+backfile = $(CURDIR)/s4be.o
+backend = homegrown
 
-all:
-	gcc -g -Wall -o test $(test_src)
-	gcc -g -Wall -O3 -ldb -o bdb $(bdb_src)
+CFLAGS += -g -I $(CURDIR) -O3
+
+export CFLAGS
+export backfile
+
+all: $(obj) backend
+	gcc -o s4_test $(obj) $(backfile) -ldb
+
+$(obj): %.o : %.c
+	gcc -c $(CFLAGS) $< -o $@
+
+backend:
+	make -C $(backend)
+
+clean:
+	make -C $(backend) clean
+	rm *.o

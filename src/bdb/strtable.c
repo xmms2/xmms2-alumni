@@ -1,4 +1,5 @@
-#include "s4.h"
+#include "s4_be.h"
+#include "be.h"
 #include <string.h>
 
 typedef struct string_val_St {
@@ -29,7 +30,7 @@ int strtab_associate (DB *db, const DBT *key, const DBT *data, DBT *result)
 	return 0;
 }
 
-int strtab_ref (s4_t *s4, const char *str)
+int s4be_st_ref (s4be_t *s4, const char *str)
 {
 	DBT key, data;
 	int ret;
@@ -66,7 +67,7 @@ int strtab_ref (s4_t *s4, const char *str)
 	return strval.id;
 }
 
-int strtab_unref (s4_t *s4, const char *str)
+int s4be_st_unref (s4be_t *s4, const char *str)
 {
 	DBT key, data;
 	int ret;
@@ -100,19 +101,13 @@ int strtab_unref (s4_t *s4, const char *str)
 	return strval.ref_count;
 }
 
-int strtab_lookup (s4_t *s4, const char *str)
+int s4be_st_lookup (s4be_t *s4, const char *str)
 {
 	DBT key, data;
 	int ret;
 	string_val_t strval;
 
-	memset (&key, 0, sizeof (key));
-	memset (&data, 0, sizeof (data));
-
-	key.data = (void*)str;
-	key.size = strlen (str) + 1;
-
-	data.data = &strval;
+	setup_dbts (&key, &data, str, &strval);
 	data.flags = DB_DBT_USERMEM;
 	
 	ret = s4->str_db->get (s4->str_db, NULL, &key, &data, 0);
@@ -125,7 +120,7 @@ int strtab_lookup (s4_t *s4, const char *str)
 	return strval.id;
 }
 
-const char *strtab_reverse (s4_t *s4, int id)
+char *s4be_st_reverse (s4be_t *s4, int id)
 {
 	DBT key, data, pkey;
 	int ret;
@@ -136,10 +131,12 @@ const char *strtab_reverse (s4_t *s4, int id)
 
 	key.data = &id;
 	key.size = sizeof (int);
+	pkey.flags = DB_DBT_MALLOC;
 
 	ret = s4->str_rev_db->pget (s4->str_rev_db, NULL, &key, &pkey, &data, 0);
 
 	if (ret) {
+		printf ("Error4 %i\n", ret);
 		/* Error handling */
 		return NULL;
 	}

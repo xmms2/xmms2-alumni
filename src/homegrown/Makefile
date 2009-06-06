@@ -1,4 +1,4 @@
-src = be.c strtable.c intpair.c
+src = be.c intpair.c strstore.c pat.c
 obj = $(addsuffix .o, $(basename $(src)))
 
 all: $(backfile)

@@ -11,9 +11,9 @@ int main (int argc, char *argv[])
 	char *key, *val;
 	int id;
 	s4_set_t *set;
-	s4_entry_t entry;
+	s4_entry_t *entry, *prop;
 
-	s4 = s4_open ("test.db");
+	s4 = s4_open ("medialib");
 
 	if (s4 == NULL) {
 		printf("Could not open database\n");
@@ -32,9 +32,15 @@ int main (int argc, char *argv[])
 			key = strtok (NULL, "|");
 			val = strtok (NULL, "|");
 
-			entry = s4_entry_get_i (s4, "song_id", id);
-			if (key != NULL && val != NULL)
-				s4_entry_add_s (s4, entry, key, val);
+			if (key != NULL && val != NULL) {
+				entry = s4_entry_get_i (s4, "song_id", id);
+				prop = s4_entry_get_s (s4, key, val);
+
+				s4_entry_add (s4, entry, prop);
+
+				s4_entry_free (entry);
+				s4_entry_free (prop);
+			}
 		}
 	} else {
 		while (fgets (buffer, 2048, stdin) != NULL) {
@@ -45,10 +51,12 @@ int main (int argc, char *argv[])
 			entry = s4_entry_get_s (s4, key, val);
 			set = s4_entry_contained (s4, entry);
 			while (set != NULL) {
-				printf ("Found (%i, %i)\n", set->pair.key, set->pair.val);
-				set = set->next;
+				s4_entry_fillin (s4, &set->entry);
+				printf ("Found (%i, %i)\n", set->entry.key_i, set->entry.val_i);
+				set = s4_set_next (set);
 			}
-			s4_set_free (set);
+
+			s4_entry_free (entry);
 		}
 	}
 
