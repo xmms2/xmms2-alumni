@@ -100,6 +100,7 @@ int s4be_close (s4be_t* s4)
 {
 	munmap (s4->map, s4->size);
 	close (s4->fd);
+	free (s4);
 
 	return 0;
 }

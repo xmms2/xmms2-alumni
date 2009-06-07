@@ -42,6 +42,8 @@ int main (int argc, char *argv[])
 				s4_entry_free (prop);
 			}
 		}
+
+		fclose (file);
 	} else {
 		while (fgets (buffer, 2048, stdin) != NULL) {
 			buffer[strlen (buffer) - 1] = 0;

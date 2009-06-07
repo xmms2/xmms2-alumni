@@ -55,6 +55,7 @@ int s4be_ip_add (s4be_t *s4,
 		s4_entry_t *prop)
 {
 	DBT key, data;
+	DB_TXN *tid;
 	int ret;
 	intpair_t pair_a, pair_b;
 
@@ -64,11 +65,21 @@ int s4be_ip_add (s4be_t *s4,
 	_setup_dbts (&key, &data, &pair_a, &pair_b);
 	data.size = sizeof (intpair_t);
 
-	if ((ret = s4->pair_db->put (s4->pair_db, NULL, &key, &data, 0)) ||
-	    (ret = s4->pair_rev_db->put (s4->pair_rev_db, NULL, &data, &key, 0))) {
+	if ((ret = s4->env->txn_begin (s4->env, NULL, &tid, DB_TXN_NOSYNC)) != 0) {
+		tid->abort (tid);
+		printf ("Error in intpair_add_property (txn_begin)\n");
+		return -1;
+	}
+
+	if ((ret = s4->pair_db->put (s4->pair_db, tid, &key, &data, 0)) != 0 ||
+	    (ret = s4->pair_rev_db->put (s4->pair_rev_db, tid, &data, &key, 0))) {
+		tid->abort (tid);
 		printf ("Error in intpair_add_property\n");
 		return -1;
 	}
+
+	tid->commit (tid, DB_TXN_NOSYNC);
+
 
 	return 0;
 }

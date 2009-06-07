@@ -9,6 +9,8 @@ struct s4be_St {
 
 	DB *pair_db;
 	DB *pair_rev_db;
+
+	DB_ENV *env;
 };
 
 int intpair_compare (DB *db, const DBT *key1, const DBT *key2);

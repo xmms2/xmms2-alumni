@@ -36,7 +36,8 @@ static int _list_insert (s4be_t *be, int32_t list, int32_t new)
 	this = S4_PNT (be, new, int_list_t);
 
 	while (list != -1) {
-		if (_cmp_list (this, l) <= 0) {
+		int c = _cmp_list (this, l);
+		if (c < 0) {
 			this->next = list;
 
 			if (prev == NULL)
@@ -44,6 +45,8 @@ static int _list_insert (s4be_t *be, int32_t list, int32_t new)
 
 			prev->next = new;
 			break;
+		} else if (c == 0) {
+			return 0;
 		}
 
 		prev = l;

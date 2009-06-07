@@ -1,7 +1,7 @@
 src = s4.c set.c entry.c main.c
 obj = $(addsuffix .o, $(basename $(src)))
 backfile = $(CURDIR)/s4be.o
-backend = homegrown
+backend = bdb
 
 CFLAGS += -g -I $(CURDIR) -O3
 
