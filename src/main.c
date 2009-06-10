@@ -54,7 +54,7 @@ int main (int argc, char *argv[])
 			set = s4_entry_contained (s4, entry);
 			while (set != NULL) {
 				s4_entry_fillin (s4, &set->entry);
-				printf ("Found (%i, %i)\n", set->entry.key_i, set->entry.val_i);
+				printf ("Found (%s, %i)\n", set->entry.key_s, set->entry.val_i);
 				set = s4_set_next (set);
 			}
 

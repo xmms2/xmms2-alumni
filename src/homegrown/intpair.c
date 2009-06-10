@@ -99,8 +99,10 @@ static int _add_entry (s4be_t *be, int32_t trie, s4_entry_t *a, s4_entry_t *b)
 
 int s4be_ip_add (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop)
 {
+	be_wlock (be);
 	_add_entry (be, S4_INT_STORE, entry, prop);
 	_add_entry (be, S4_REV_STORE, prop, entry);
+	be_unlock (be);
 
 	return 0;
 }
@@ -158,10 +160,20 @@ static s4_set_t *_list_to_set (s4be_t *be, int32_t trie, s4_entry_t *entry)
 
 s4_set_t *s4be_ip_has_this (s4be_t *be, s4_entry_t *entry)
 {
-	return _list_to_set (be, S4_REV_STORE, entry);
+	s4_set_t *ret;
+	be_rlock (be);
+	ret = _list_to_set (be, S4_REV_STORE, entry);
+	be_unlock (be);
+
+	return ret;
 }
 
 s4_set_t *s4be_ip_this_has (s4be_t *be, s4_entry_t *entry)
 {
-	return _list_to_set (be, S4_INT_STORE, entry);
+	s4_set_t *ret;
+	be_rlock (be);
+	ret = _list_to_set (be, S4_INT_STORE, entry);
+	be_unlock (be);
+
+	return ret;
 }

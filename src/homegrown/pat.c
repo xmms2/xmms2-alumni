@@ -4,27 +4,79 @@
 
 #define MAX(a, b) (((a) > (b))?((a)):((b)))
 
-#define GET_ROOT(s, t) (*(S4_PNT(s, t, int32_t)))
-#define SET_ROOT(s, t, r) (GET_ROOT(s, t) = (r))
 
 /* The structure used for the patricie trie nodes */
 typedef union pat_node_St {
 	struct {
 		uint32_t pos;
+		int32_t magic;
 		int32_t left, right;
 	} internal;
 	struct {
 		uint32_t len;
 		int32_t key;
-		int32_t magic;
+		int32_t prev, next;
 	} leaf;
 } pat_node_t;
 
 
 
+static int get_root (s4be_t *s4, int32_t t)
+{
+	pat_trie_t *trie = S4_PNT(s4, t, pat_trie_t);
+
+	return trie->root;
+}
+
+static void set_root (s4be_t *s4, int32_t t,  int32_t root)
+{
+	pat_trie_t *trie = S4_PNT(s4, t, pat_trie_t);
+
+	trie->root = root;
+}
+
+static void add_to_list (s4be_t *s4, int32_t trie, int32_t node)
+{
+	pat_trie_t *ptrie = S4_PNT(s4, trie, pat_trie_t);
+	pat_node_t *pnode = S4_PNT(s4, node, pat_node_t);
+	pat_node_t *end = S4_PNT(s4, ptrie->list_end, pat_node_t);
+
+	if (ptrie->list_end == -1) {
+		ptrie->list_end = ptrie->list_start = node;
+		pnode->leaf.next = pnode->leaf.prev = -1;
+	} else {
+		pnode->leaf.prev = ptrie->list_end;
+		pnode->leaf.next = -1;
+		end->leaf.next = node;
+		ptrie->list_end = node;
+	}
+}
+
+static void del_from_list (s4be_t *s4, int32_t trie, int32_t node)
+{
+	pat_trie_t *ptrie = S4_PNT(s4, trie, pat_trie_t);
+	pat_node_t *pnode = S4_PNT(s4, node, pat_node_t);
+	pat_node_t *tmp;
+
+	if (pnode->leaf.prev != -1) {
+		tmp = S4_PNT(s4, pnode->leaf.prev, pat_node_t);
+		tmp->leaf.next = pnode->leaf.next;
+	} else {
+		ptrie->list_start = pnode->leaf.next;
+	}
+
+	if (pnode->leaf.next != -1) {
+		tmp = S4_PNT(s4, pnode->leaf.next, pat_node_t);
+		tmp->leaf.prev = pnode->leaf.prev;
+	} else {
+		ptrie->list_end = pnode->leaf.prev;
+	}
+}
+
+
 static inline int is_leaf (pat_node_t *pn)
 {
-	return pn->leaf.magic == -1;
+	return pn->internal.magic != -1;
 }
 
 
@@ -105,7 +157,7 @@ static inline int get_next (s4be_t *s4, pat_key_t *key, int32_t *node)
  */
 static int32_t trie_walk (s4be_t *s4, int32_t trie, pat_key_t *key)
 {
-	int32_t node = GET_ROOT(s4, trie);
+	int32_t node = get_root(s4, trie);
 
 	while (node != -1 && get_next (s4, key, &node));
 
@@ -119,7 +171,7 @@ static void insert_internal (s4be_t *s4, int32_t trie, pat_key_t *key,
 {
 	int32_t internal = be_alloc (s4, sizeof(pat_node_t));
 	int32_t prev = -1;
-	int32_t cur = GET_ROOT(s4, trie);
+	int32_t cur = get_root(s4, trie);
 	pat_node_t *pn = S4_PNT(s4, cur, pat_node_t);
 
 	/* Look for the internal node before the new one */
@@ -132,7 +184,7 @@ static void insert_internal (s4be_t *s4, int32_t trie, pat_key_t *key,
 
 	/* Insert the internal node */
 	if (prev == -1) {
-		SET_ROOT(s4, trie, internal);
+		set_root(s4, trie, internal);
 		prev = cur;
 	} else {
 		pn = S4_PNT(s4, prev, pat_node_t); 
@@ -148,6 +200,7 @@ static void insert_internal (s4be_t *s4, int32_t trie, pat_key_t *key,
 	/* Add the leaf to the internal node */
 	pn = S4_PNT(s4, internal, pat_node_t);
 	pn->internal.pos = pos;
+	pn->internal.magic = -1;
 	if (bit_set (key, pos)) {
 		pn->internal.right = node;
 		pn->internal.left = prev;
@@ -207,16 +260,17 @@ int32_t pat_insert (s4be_t *s4, int32_t trie, pat_key_t *key_s)
 	pn = S4_PNT(s4, node, pat_node_t);
 	pn->leaf.key = key;
 	pn->leaf.len = key_s->key_len;
-	pn->leaf.magic = -1;
+	pn->leaf.prev = pn->leaf.next = -1;
 
 	/* If there is no root, we are the root */
 	if (comp == -1) {
-		SET_ROOT(s4, trie, node);
+		set_root(s4, trie, node);
 		return node;
 	}
 
 	diff = string_diff(s4, key_s, comp);
 	insert_internal (s4, trie, key_s, diff, node);
+	add_to_list (s4, trie, node);
 
 	return node;
 }
@@ -235,7 +289,7 @@ int pat_remove (s4be_t *s4, int32_t trie, pat_key_t *key)
 	pat_node_t *pn;
 
 	prev = pprev = -1;
-	tmp = node = GET_ROOT(s4, trie);
+	tmp = node = get_root(s4, trie);
 
 	while (node != -1 && get_next (s4, key, &tmp))
 	{
@@ -260,7 +314,7 @@ int pat_remove (s4be_t *s4, int32_t trie, pat_key_t *key)
 	}
 
 	if (pprev == -1) {
-		SET_ROOT(s4, trie, sibling);
+		set_root(s4, trie, sibling);
 	} else {
 		pn = S4_PNT(s4, pprev, pat_node_t);
 		if (pn->internal.left == prev) {
@@ -269,6 +323,8 @@ int pat_remove (s4be_t *s4, int32_t trie, pat_key_t *key)
 			pn->internal.right = sibling;
 		}
 	}
+
+	del_from_list (s4, trie, node);
 
 	return 0;
 }
@@ -286,4 +342,21 @@ int32_t pat_node_to_key (s4be_t *s4, int32_t node)
 	pat_node_t *pn = S4_PNT(s4, node, pat_node_t);
 
 	return pn->leaf.key;
+}
+
+int32_t pat_first (s4be_t *s4, int32_t trie)
+{
+	pat_trie_t *ptrie = S4_PNT(s4, trie, pat_trie_t);
+
+	return ptrie->list_start;
+}
+
+int32_t pat_next (s4be_t *s4, int32_t node)
+{
+	pat_node_t *pnode = S4_PNT(s4, node, pat_node_t);
+
+	if (node == -1)
+		return -1;
+
+	return pnode->leaf.next;
 }

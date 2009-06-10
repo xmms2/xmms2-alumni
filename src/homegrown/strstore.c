@@ -37,7 +37,13 @@ int32_t s4be_st_lookup (s4be_t *s4, const char *str)
  */
 char *s4be_st_reverse (s4be_t *s4, int32_t node)
 {
-	return strdup (S4_PNT(s4, pat_node_to_key (s4, node), char));
+	char *ret;
+	be_rlock (s4);
+
+	ret = strdup (S4_PNT(s4, pat_node_to_key (s4, node), char));
+
+	be_unlock (s4);
+	return ret;
 }
 
 
@@ -56,13 +62,19 @@ int s4be_st_ref (s4be_t *s4, const char *str)
 	str_info_t *info;
 	char *data;
 
-	node = s4be_st_lookup (s4, str);
+
+	be_wlock (s4);
+
+	key.data = str;
+	key.key_len = (strlen(str) + 1) * 8;
+	node = pat_lookup (s4, S4_STRING_STORE, &key);
 
 	if (node != -1) {
 		data = S4_PNT (s4, pat_node_to_key (s4, node), char);
 		info = (str_info_t*)(data + len);
 
 		info->refs++;
+		be_unlock (s4);
 		return node;
 	}
 
@@ -77,6 +89,7 @@ int s4be_st_ref (s4be_t *s4, const char *str)
 	key.key_len = len * 8;
 	node = pat_insert (s4, S4_STRING_STORE, &key);
 
+	be_unlock (s4);
 	free (data);
 
 	return node;
@@ -98,12 +111,14 @@ int s4be_st_unref (s4be_t * s4, const char *str)
 	int len = strlen (str) + 1;
 	pat_key_t key;
 
+	be_wlock (s4);
+
 	key.data = str;
 	key.key_len = len * 8;
-
 	node = pat_lookup (s4, S4_STRING_STORE, &key);
 
 	if (node == -1) {
+		be_unlock (s4);
 		return -1;
 	}
 
@@ -113,8 +128,10 @@ int s4be_st_unref (s4be_t * s4, const char *str)
 
 	if (info->refs == 0) {
 		pat_remove (s4, S4_STRING_STORE, &key);
+		be_unlock (s4);
 		return 0;
 	}
 
+	be_unlock (s4);
 	return info->refs;
 }

@@ -1,6 +1,8 @@
 #include "s4_be.h"
 #include "be.h"
+#include "pat.h"
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -8,13 +10,17 @@
 #include <fcntl.h>
 
 
+#define CLEAN 0
+#define DIRTY 1
 
 typedef struct header_St {
-	int32_t string_store, int_store, int_rev;
+	pat_trie_t string_store, int_store, int_rev;
 	int32_t alloc_off;
+	int32_t sync_state;
 } header_t;
 
 
+pthread_t s_thread;
 
 static inline long pagesize ()
 {
@@ -42,6 +48,26 @@ static void grow_db (s4be_t *s4, int n)
 }
 
 
+/* Sync the database if it is dirty */
+void sync_db (s4be_t *s4)
+{
+	header_t *header;
+
+	/* We only need a read lock, we're not modifying any data
+	 * just flushing it to disk, so we can other threads reading
+	 */
+	be_rlock (s4);
+	header = s4->map;
+
+	if (header->sync_state != CLEAN) {
+		msync (s4->map, s4->size, MS_SYNC);
+		header->sync_state = CLEAN;
+		msync (s4->map, pagesize(), MS_SYNC);
+	}
+	be_unlock (s4);
+}
+
+
 /* Initilize a new database */
 static void init_db (s4be_t *s4)
 {
@@ -50,10 +76,37 @@ static void init_db (s4be_t *s4)
 	grow_db (s4, 1);
 
 	header = s4->map;
-	header->string_store = -1;
-	header->int_store = -1;
-	header->int_rev = -1;
+
+	memset (header, -1, sizeof (header_t));
 	header->alloc_off = sizeof(header_t);
+	header->sync_state = DIRTY;
+	sync_db(s4);
+}
+
+
+/* Marks the database as dirty, it should be
+ * marked as dirty BEFORE anything is written
+ */
+void mark_dirty (s4be_t *s4)
+{
+	header_t *header = s4->map;
+
+	/* This should be fairly cheap, a 4 byte write */
+	if (header->sync_state != DIRTY) {
+		header->sync_state = DIRTY;
+		msync (s4->map, pagesize(), MS_SYNC);
+	}
+}
+
+
+/* The loop for the sync thread */
+void *sync_thread (void *be)
+{
+	s4be_t *s4 = be;
+	while (1) {
+		sleep (60);
+		sync_db (s4);
+	}
 }
 
 
@@ -86,6 +139,9 @@ s4be_t *s4be_open (const char* filename)
 		}
 	}
 
+	pthread_rwlock_init (&s4->rwlock, NULL);
+	pthread_create (&s_thread, NULL, sync_thread, s4);
+
 	return s4;
 }
 
@@ -98,6 +154,7 @@ s4be_t *s4be_open (const char* filename)
  */
 int s4be_close (s4be_t* s4)
 {
+	sync_db (s4);
 	munmap (s4->map, s4->size);
 	close (s4->fd);
 	free (s4);
@@ -133,4 +190,25 @@ int32_t be_alloc (s4be_t* s4, int n)
 void be_free(s4be_t* s4, int32_t off)
 {
 	/* DUMMY, write some real code here */
+}
+
+/* Locking routines
+ * The database is protected by a multiple readers,
+ * single writer lock. Use these functions to lock/unlock
+ * the database.
+ */
+void be_rlock (s4be_t *s4)
+{
+	pthread_rwlock_rdlock (&s4->rwlock);
+}
+
+void be_unlock (s4be_t *s4)
+{
+	pthread_rwlock_unlock (&s4->rwlock);
+}
+
+void be_wlock (s4be_t *s4)
+{
+	pthread_rwlock_wrlock (&s4->rwlock);
+	mark_dirty (s4);
 }
