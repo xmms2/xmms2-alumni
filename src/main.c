@@ -12,6 +12,7 @@ int main (int argc, char *argv[])
 	int id;
 	s4_set_t *set;
 	s4_entry_t *entry, *prop;
+	int foo = 0;
 
 	s4 = s4_open ("medialib");
 
@@ -33,6 +34,11 @@ int main (int argc, char *argv[])
 			val = strtok (NULL, "|");
 
 			if (key != NULL && val != NULL) {
+				if (!(foo % 100)) {
+					txn_commit();
+					txn_begin (s4->be);
+				}
+				foo++;
 				entry = s4_entry_get_i (s4, "song_id", id);
 				prop = s4_entry_get_s (s4, key, val);
 
@@ -42,6 +48,8 @@ int main (int argc, char *argv[])
 				s4_entry_free (prop);
 			}
 		}
+
+		txn_commit();
 
 		fclose (file);
 	} else {

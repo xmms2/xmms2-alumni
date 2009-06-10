@@ -7,6 +7,8 @@ typedef struct string_val_St {
 	int ref_count;
 } string_val_t;
 
+DB_TXN *tid = NULL;
+
 
 static void setup_dbts (DBT *key, DBT *data,
 		const char *str, string_val_t *val)
@@ -30,51 +32,51 @@ int strtab_associate (DB *db, const DBT *key, const DBT *data, DBT *result)
 	return 0;
 }
 
+int txn_begin (s4be_t *s4)
+{
+	s4->env->txn_begin (s4->env, NULL, &tid, DB_TXN_NOSYNC);
+}
+int txn_commit ()
+{
+	if (tid != NULL)
+		tid->commit (tid, DB_TXN_NOSYNC);
+}
+int txn_abort ()
+{
+	tid->abort (tid);
+}
+
 int s4be_st_ref (s4be_t *s4, const char *str)
 {
 	DBT key, data;
-	DB_TXN *tid;
 	int ret;
 	static int id = 0;
 	string_val_t strval;
-	int tries = 10;
 
 	setup_dbts (&key, &data, str, &strval);
 	data.flags = DB_DBT_USERMEM;
 
-	while (tries--) {
-		s4->env->txn_begin (s4->env, NULL, &tid, DB_TXN_NOSYNC);
+	ret = s4->str_db->get (s4->str_db, tid, &key, &data, DB_RMW);
 
-		ret = s4->str_db->get (s4->str_db, tid, &key, &data, DB_RMW);
-
-		if (ret == DB_NOTFOUND) {
-			strval.id = ++id;
-			strval.ref_count = 1;
-		} else if (!ret) {
-			strval.ref_count++;
-		} else {
-			printf("Error\n");
-			tid->abort (tid);
-			continue;
-		}
-
-		setup_dbts (&key, &data, str, &strval);
-		data.size = sizeof (string_val_t);
-
-		ret = s4->str_db->put (s4->str_db, tid, &key, &data, 0);
-
-		if (ret) {
-			printf("Error2 %i\n", ret);
-			tid->abort (tid);
-			continue;
-		} else {
-			tid->commit (tid, DB_TXN_NOSYNC);
-			break;
-		}
+	if (ret == DB_NOTFOUND) {
+		strval.id = ++id;
+		strval.ref_count = 1;
+	} else if (!ret) {
+		strval.ref_count++;
+	} else {
+		printf("Error\n");
+		return -1;
 	}
 
-	if (!tries)
+	setup_dbts (&key, &data, str, &strval);
+	data.size = sizeof (string_val_t);
+
+	ret = s4->str_db->put (s4->str_db, tid, &key, &data, 0);
+
+	if (ret) {
+		printf("Error2 %i\n", ret);
 		return -1;
+	}
 
 	return strval.id;
 }

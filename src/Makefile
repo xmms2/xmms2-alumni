@@ -3,7 +3,7 @@ obj = $(addsuffix .o, $(basename $(src)))
 backfile = $(CURDIR)/s4be.o
 backend = bdb
 
-CFLAGS += -g -I $(CURDIR) -O3
+CFLAGS += -g -I $(CURDIR)
 
 export CFLAGS
 export backfile

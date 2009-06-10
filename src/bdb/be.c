@@ -59,7 +59,7 @@ int env_open (DB_ENV **env, const char *env_dir)
 
 	(*env)->set_errpfx (*env, "s4");
 	(*env)->set_errfile (*env, stderr);
-	(*env)->set_flags (*env, DB_TXN_NOSYNC | DB_AUTO_COMMIT, 1);
+	(*env)->set_flags (*env, DB_TXN_NOSYNC , 1);
 
 	/* Do deadlock detection internally. */
 	if ((ret = (*env)->set_lk_detect(*env, DB_LOCK_DEFAULT)) != 0) {
