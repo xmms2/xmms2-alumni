@@ -28,4 +28,7 @@ void be_rlock (s4be_t *s4);
 void be_unlock (s4be_t *s4);
 void be_wlock (s4be_t *s4);
 
+int _st_recover (s4be_t *old, s4be_t *rec);
+int _ip_recover (s4be_t *old, s4be_t *rec);
+
 #endif /* _BE_H */

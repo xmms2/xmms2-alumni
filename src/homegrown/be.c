@@ -1,6 +1,8 @@
 #include "s4_be.h"
 #include "be.h"
 #include "pat.h"
+#include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -32,22 +34,6 @@ static inline int align (int a, int b)
 	return a + ((b - (a % b)) % b);
 }
 
-/* Grow the database by the number of bytes given.
- * It will align to a pagesize boundry.
- */
-static void grow_db (s4be_t *s4, int n)
-{
-	n = align (n, pagesize());
-
-	munmap(s4->map, s4->size);
-
-	s4->size += n;
-	ftruncate(s4->fd, s4->size);
-
-	s4->map = mmap (NULL, s4->size, PROT_READ | PROT_WRITE, MAP_SHARED, s4->fd, 0);
-}
-
-
 /* Sync the database if it is dirty */
 void sync_db (s4be_t *s4)
 {
@@ -68,12 +54,30 @@ void sync_db (s4be_t *s4)
 }
 
 
+/* Grow the database by the number of bytes given.
+ * It will align to a pagesize boundry.
+ */
+static void grow_db (s4be_t *s4, int n)
+{
+	n = align (n, pagesize());
+
+	munmap(s4->map, s4->size);
+
+	s4->size += n;
+	ftruncate(s4->fd, s4->size);
+
+	s4->map = mmap (NULL, s4->size, PROT_READ | PROT_WRITE, MAP_SHARED, s4->fd, 0);
+}
+
+
 /* Initilize a new database */
 static void init_db (s4be_t *s4)
 {
 	header_t *header;
 
-	grow_db (s4, 1);
+	s4->size = pagesize();
+	ftruncate (s4->fd, s4->size);
+	s4->map = mmap (NULL, s4->size, PROT_READ | PROT_WRITE, MAP_SHARED, s4->fd, 0);
 
 	header = s4->map;
 
@@ -110,6 +114,44 @@ void *sync_thread (void *be)
 }
 
 
+s4be_t *be_open (const char *filename, int recover)
+{
+	struct stat stat_buf;
+	s4be_t* s4 = malloc (sizeof(s4be_t));
+	int flags = O_RDWR | O_CREAT;
+
+	if (recover) {
+		flags |= O_EXCL;
+	}
+
+	s4->fd = open (filename, flags, 0644);
+	if (s4->fd == -1) {
+		free (s4);
+		fprintf (stderr, "Could not open %s: %s\n", filename, strerror (errno));
+		return NULL;
+	}
+
+	pthread_rwlock_init (&s4->rwlock, NULL);
+
+	fstat(s4->fd, &stat_buf);
+	s4->size = stat_buf.st_size;
+	if (s4->size == 0) {
+		init_db(s4);
+	}
+	else {
+		s4->map = mmap (NULL, s4->size,
+				PROT_READ | PROT_WRITE,	MAP_SHARED, s4->fd, 0);
+		if (s4->map == MAP_FAILED) {
+			fprintf (stderr, "Could not mmap %s: %s\n",
+					filename, strerror (errno));
+			return NULL;
+		}
+	}
+
+	return s4;
+}
+
+
 /**
  * Open an s4 database
  *
@@ -118,31 +160,40 @@ void *sync_thread (void *be)
  */
 s4be_t *s4be_open (const char* filename)
 {
-	struct stat stat_buf;
-	s4be_t* s4 = malloc (sizeof(s4be_t));
+	s4be_t *ret, *rec;
+	header_t *header;
 
-	s4->fd = open (filename, O_RDWR | O_CREAT, 0644);
-	if (s4->fd == -1) {
-		free (s4);
+	ret = be_open (filename, 0);
+
+	if (ret == NULL)
 		return NULL;
-	}
 
-	fstat(s4->fd, &stat_buf);
-	s4->size = stat_buf.st_size;
-	if (s4->size == 0) {
-		init_db(s4);
-	}
-	else {
-		s4->map = mmap (NULL, s4->size, PROT_READ | PROT_WRITE,	MAP_SHARED, s4->fd, 0);
-		if (s4->map == MAP_FAILED) {
+	header = ret->map;
+
+	if (header->sync_state != CLEAN) {
+		char buf[4096];
+		strcpy (buf, filename);
+		strcat (buf, ".rec");
+
+		rec = be_open (buf, 1);
+
+		if (rec == NULL)
 			return NULL;
-		}
+
+		_st_recover (ret, rec);
+		_ip_recover (ret, rec);
+		
+		s4be_close (ret);
+		s4be_close (rec);
+
+		unlink (filename);
+		rename (buf, filename);
+
+		ret = be_open (filename, 0);
 	}
 
-	pthread_rwlock_init (&s4->rwlock, NULL);
-	pthread_create (&s_thread, NULL, sync_thread, s4);
-
-	return s4;
+	pthread_create (&s_thread, NULL, sync_thread, ret);
+	return ret;
 }
 
 

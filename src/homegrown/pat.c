@@ -262,6 +262,8 @@ int32_t pat_insert (s4be_t *s4, int32_t trie, pat_key_t *key_s)
 	pn->leaf.len = key_s->key_len;
 	pn->leaf.prev = pn->leaf.next = -1;
 
+	add_to_list (s4, trie, node);
+
 	/* If there is no root, we are the root */
 	if (comp == -1) {
 		set_root(s4, trie, node);
@@ -270,7 +272,6 @@ int32_t pat_insert (s4be_t *s4, int32_t trie, pat_key_t *key_s)
 
 	diff = string_diff(s4, key_s, comp);
 	insert_internal (s4, trie, key_s, diff, node);
-	add_to_list (s4, trie, node);
 
 	return node;
 }

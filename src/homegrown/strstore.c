@@ -135,3 +135,55 @@ int s4be_st_unref (s4be_t * s4, const char *str)
 	be_unlock (s4);
 	return info->refs;
 }
+
+
+/* Try to read the key and return it in pkey
+ * Return 1 if it succeded, 0 otherwise
+ */
+int _copy_key (s4be_t *db, int32_t key, pat_key_t *pkey)
+{
+	int len;
+	char *data;
+	str_info_t *info;
+
+	if (key < 0 || key > db->size)
+		return 0;
+
+	data = S4_PNT (db, key, char);
+	for (len = 0; data[len] && len < (db->size - key); len++);
+	len++;
+
+	info = S4_PNT (db, key + len, str_info_t);
+	if (len >= (db->size - key - sizeof (str_info_t)) || info->magic != STR_MAGIC)
+		return 0;
+
+	pkey->data = data;
+	pkey->key_len = len * 8;
+	pkey->data_len = len + sizeof (str_info_t);
+
+	return 1;
+}
+
+
+/* Called when the database is recovering. We walk through all
+ * the nodes in the string-trie and check if the key makes sense.
+ * If it does we insert it into the new db.
+ */
+int _st_recover (s4be_t *old, s4be_t *rec)
+{
+	int32_t node = pat_first (old, S4_STRING_STORE);
+	int32_t key;
+	pat_key_t pkey;
+
+	while (node != -1) {
+		key = pat_node_to_key (old, node);
+
+		if (_copy_key (old, key, &pkey)) {
+			pat_insert (rec, S4_STRING_STORE, &pkey);
+		}
+
+		node = pat_next (old, node);
+	}
+
+	return 0;
+}

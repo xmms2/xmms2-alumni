@@ -3,6 +3,8 @@
 #include "pat.h"
 #include <stdlib.h>
 
+#define INTLIST_MAGIC 0xf00dbabe
+
 typedef struct int_pair_St {
 	int key;
 	int val;
@@ -14,6 +16,7 @@ typedef struct int_list_St {
 	int32_t next;
 	int key;
 	int val;
+	int magic;
 } int_list_t;
 
 static int _cmp_list (int_list_t *a, int_list_t *b)
@@ -63,7 +66,9 @@ static int _list_insert (s4be_t *be, int32_t list, int32_t new)
 	return 0;
 }
 
-static int _add_entry (s4be_t *be, int32_t trie, s4_entry_t *a, s4_entry_t *b)
+static int _add_entry (s4be_t *be, int32_t trie,
+		int32_t key_a, int32_t val_a,
+		int32_t key_b, int32_t val_b)
 {
 	int_pair_t pair, *ppair;
 	int32_t off, list;
@@ -72,12 +77,13 @@ static int _add_entry (s4be_t *be, int32_t trie, s4_entry_t *a, s4_entry_t *b)
 
 	list = be_alloc (be, sizeof (int_list_t));
 	plist = S4_PNT (be, list, int_list_t);
-	plist->key = b->key_i;
-	plist->val = b->val_i;
+	plist->key = key_b;
+	plist->val = val_b;
+	plist->magic = INTLIST_MAGIC;
 	plist->next = -1;
 
-	pair.key = a->key_i;
-	pair.val = a->val_i;
+	pair.key = key_a;
+	pair.val = val_a;
 	pair.list = list;
 
 	key.data = &pair;
@@ -100,8 +106,12 @@ static int _add_entry (s4be_t *be, int32_t trie, s4_entry_t *a, s4_entry_t *b)
 int s4be_ip_add (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop)
 {
 	be_wlock (be);
-	_add_entry (be, S4_INT_STORE, entry, prop);
-	_add_entry (be, S4_REV_STORE, prop, entry);
+	_add_entry (be, S4_INT_STORE,
+			entry->key_i, entry->val_i,
+			prop->key_i, prop->val_i);
+	_add_entry (be, S4_REV_STORE,
+			prop->key_i, prop->val_i,
+			entry->key_i, entry->val_i);
 	be_unlock (be);
 
 	return 0;
@@ -176,4 +186,60 @@ s4_set_t *s4be_ip_this_has (s4be_t *be, s4_entry_t *entry)
 	be_unlock (be);
 
 	return ret;
+}
+
+
+void _keyval_save (s4be_t *old, s4be_t *new,
+		int32_t key_old, int32_t val_old,
+		int32_t *key_new, int32_t *val_new)
+{
+	if (key_old < 0) {
+		*key_new = -s4be_st_lookup (new,
+				S4_PNT (old, pat_node_to_key (old, -key_old), char));
+		*val_new = val_old;
+	} else {
+		*key_new = s4be_st_lookup (new,
+				S4_PNT (old, pat_node_to_key (old, key_old), char));
+		*val_new = s4be_st_lookup (new,
+				S4_PNT (old, pat_node_to_key (old, val_old), char));
+	}
+}
+
+
+/* This function is called if the database wasn't synced
+ * last time it was opened. That means we can't assume anything
+ * about the state of the data.
+ */
+int _ip_recover (s4be_t *old, s4be_t *rec)
+{
+	int32_t node;
+	int32_t list;
+	int_pair_t *pair;
+	int_list_t *plist;
+	int32_t ka, kb, va, vb;
+
+	for (node = pat_first (old, S4_INT_STORE);
+			node != -1;
+			node = pat_next (old, node)) {
+		pair = S4_PNT (old, pat_node_to_key (old, node), int_pair_t);
+		for (list = pair->list; list != -1 && list < old->size;) {
+			plist = S4_PNT (old, list, int_list_t);
+
+			if (plist->magic != INTLIST_MAGIC)
+				break;
+
+			_keyval_save (old, rec, pair->key, pair->val, &ka, &va);
+			_keyval_save (old, rec, plist->key, plist->val, &kb, &vb);
+
+			if (ka != -1 && va != -1 && kb != -1 && vb != -1) {
+				printf ("saving (%i %i), (%i %i)\n", ka, va, kb, vb);
+				_add_entry (rec, S4_INT_STORE, ka, va, kb, vb);
+				_add_entry (rec, S4_REV_STORE, kb, vb, ka, va);
+			}
+
+			list = plist->next;
+		}
+	}
+
+	return 0;
 }
