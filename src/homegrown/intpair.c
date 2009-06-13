@@ -9,18 +9,21 @@ typedef struct int_pair_St {
 	int key;
 	int val;
 
-	int32_t list;
+	pat_trie_t trie;
+//	int32_t list;
 } int_pair_t;
 
+/*
 typedef struct int_list_St {
 	int32_t next;
 	int key;
 	int val;
 	int magic;
 } int_list_t;
+*/
 
 
-
+#if 0
 /* Compare a and b,
  * return <0 if a<b, 0 if a=b and >0 if a>b
  */
@@ -76,7 +79,7 @@ static int _list_insert (s4be_t *be, int32_t list, int32_t new)
 	return 0;
 }
 
-
+#endif
 /* Add the entry (key_a, val_a) with property (key_b, val_b) */
 static int _add_entry (s4be_t *be, int32_t trie,
 		int32_t key_a, int32_t val_a,
@@ -84,19 +87,21 @@ static int _add_entry (s4be_t *be, int32_t trie,
 {
 	int_pair_t pair, *ppair;
 	int32_t off, list;
-	int_list_t *plist;
+	//int_list_t *plist;
 	pat_key_t key;
 
+	/*
 	list = be_alloc (be, sizeof (int_list_t));
 	plist = S4_PNT (be, list, int_list_t);
 	plist->key = key_b;
 	plist->val = val_b;
 	plist->magic = INTLIST_MAGIC;
 	plist->next = -1;
+	*/
 
+	memset (&pair, -1, sizeof (int_pair_t));
 	pair.key = key_a;
 	pair.val = val_a;
-	pair.list = list;
 
 	key.data = &pair;
 	key.data_len = sizeof(int_pair_t);
@@ -106,16 +111,20 @@ static int _add_entry (s4be_t *be, int32_t trie,
 
 	if (off == -1) {
 		off = pat_insert (be, trie, &key);
-	} else {
-		ppair = S4_PNT (be, pat_node_to_key (be, off), int_pair_t);
-		switch (_list_insert (be, ppair->list, list)) {
-			case 1:
-				ppair->list = list;
-				break;
-			case -1:
-				return -1;
-		}
 	}
+
+	off = pat_node_to_key (be, off);
+
+	pair.key = key_b;
+	pair.val = val_b;
+	key.data = &pair;
+	key.data_len = sizeof(int) * 2;
+	key.key_len = sizeof(int) * 2 * 8;
+
+	if (pat_lookup (be, off + sizeof (int) * 2, &key) == -1)
+		pat_insert (be, off + sizeof (int) * 2, &key);
+	else
+		return -1;
 
 	return 0;
 }
@@ -158,6 +167,20 @@ int s4be_ip_del (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop)
 }
 
 
+void *_node_to_set (s4be_t *be, int32_t key, void *next)
+{
+	int_pair_t *pair = S4_PNT (be, key, int_pair_t);
+	s4_set_t *set = malloc (sizeof (s4_set_t));
+
+	set->entry.key_s = set->entry.val_s = NULL;
+	set->entry.key_i = pair->key;
+	set->entry.val_i = pair->val;
+	set->next = next;
+
+	return set;
+}
+
+
 /* Get the list for the entry and convert it to a set and return it */
 static s4_set_t *_list_to_set (s4be_t *be, int32_t trie, s4_entry_t *entry)
 {
@@ -166,7 +189,7 @@ static s4_set_t *_list_to_set (s4be_t *be, int32_t trie, s4_entry_t *entry)
 	int32_t off;
 	int32_t list;
 	s4_set_t *cur = NULL, *ret = NULL;
-	int_list_t *l;
+//	int_list_t *l;
 
 	pair.key = entry->key_i;
 	pair.val = entry->val_i;
@@ -180,6 +203,10 @@ static s4_set_t *_list_to_set (s4be_t *be, int32_t trie, s4_entry_t *entry)
 	if (off == -1)
 		return NULL;
 
+	off = pat_node_to_key (be, off);
+
+	ret = pat_fold (be, off + sizeof(int) * 2, NULL, _node_to_set);
+/*
 	list = (S4_PNT (be, pat_node_to_key (be, off), int_pair_t))->list;
 
 	while (list != -1) {
@@ -202,7 +229,7 @@ static s4_set_t *_list_to_set (s4be_t *be, int32_t trie, s4_entry_t *entry)
 
 		list = l->next;
 	}
-
+*/
 	return ret;
 }
 
@@ -270,7 +297,7 @@ static void _keyval_save (s4be_t *old, s4be_t *new,
  */
 int _ip_recover (s4be_t *old, s4be_t *rec)
 {
-	int32_t node, list;
+	/*int32_t node, list;
 	int_pair_t *pair;
 	int_list_t *plist;
 	int32_t ka, kb, va, vb;
@@ -295,7 +322,7 @@ int _ip_recover (s4be_t *old, s4be_t *rec)
 
 			list = plist->next;
 		}
-	}
+	}*/
 
 	return 0;
 }
