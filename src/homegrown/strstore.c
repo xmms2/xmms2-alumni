@@ -16,15 +16,21 @@ typedef struct str_info_St {
  *
  * @param s4 The database handle
  * @param str The string to look up
- * @return The int, or -1 if it can not find it
+ * @return The int, or 0 if it can not find it
  */
 int32_t s4be_st_lookup (s4be_t *s4, const char *str)
 {
+	int32_t ret;
 	pat_key_t key;
 	key.data = str;
 	key.key_len = (strlen(str) + 1) * 8;
 
-	return pat_lookup (s4, S4_STRING_STORE, &key);
+	ret = pat_lookup (s4, S4_STRING_STORE, &key);
+
+	if (ret == -1)
+		ret = 0;
+
+	return ret;
 }
 
 

@@ -50,6 +50,9 @@ int main (int argc, char *argv[])
 			key = strtok (buffer, " ");
 			val = strtok (NULL, " ");
 
+			if (key == NULL || val == NULL)
+				continue;
+
 			entry = s4_entry_get_s (s4, key, val);
 			set = s4_entry_contained (s4, entry);
 			while (set != NULL) {

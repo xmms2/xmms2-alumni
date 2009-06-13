@@ -36,7 +36,10 @@ static int _cmp_list (int_list_t *a, int_list_t *b)
 }
 
 
-/* Insert new into the list */
+/* Insert new into the list
+ * Returns -1 if it already exists,
+ * 1 if the root needs to be changed and 0 otherwise
+ */
 static int _list_insert (s4be_t *be, int32_t list, int32_t new)
 {
 	int_list_t *l, *this, *prev;
@@ -56,7 +59,7 @@ static int _list_insert (s4be_t *be, int32_t list, int32_t new)
 			prev->next = new;
 			break;
 		} else if (c == 0) {
-			return 0;
+			return -1;
 		}
 
 		prev = l;
@@ -105,8 +108,13 @@ static int _add_entry (s4be_t *be, int32_t trie,
 		off = pat_insert (be, trie, &key);
 	} else {
 		ppair = S4_PNT (be, pat_node_to_key (be, off), int_pair_t);
-		if (_list_insert (be, ppair->list, list))
-			ppair->list = list;
+		switch (_list_insert (be, ppair->list, list)) {
+			case 1:
+				ppair->list = list;
+				break;
+			case -1:
+				return -1;
+		}
 	}
 
 	return 0;
@@ -119,20 +127,22 @@ static int _add_entry (s4be_t *be, int32_t trie,
  * @param be The database handle
  * @param entry The entry to get a new property
  * @param prop The property to be set
- * @return 0
+ * @return 0 on success, -1 otherwise
  */
 int s4be_ip_add (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop)
 {
+	int ret;
 	be_wlock (be);
-	_add_entry (be, S4_INT_STORE,
+	ret =_add_entry (be, S4_INT_STORE,
 			entry->key_i, entry->val_i,
 			prop->key_i, prop->val_i);
-	_add_entry (be, S4_REV_STORE,
-			prop->key_i, prop->val_i,
-			entry->key_i, entry->val_i);
+	if (!ret)
+		_add_entry (be, S4_REV_STORE,
+				prop->key_i, prop->val_i,
+				entry->key_i, entry->val_i);
 	be_unlock (be);
 
-	return 0;
+	return ret;
 }
 
 
@@ -140,9 +150,11 @@ int s4be_ip_add (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop)
  * Remove the binding entry->prop
  *
  * TODO: Implement it
+ * @return 0 on success, -1 otherwise
  */
 int s4be_ip_del (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop)
 {
+	return -1;
 }
 
 
