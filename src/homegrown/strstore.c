@@ -52,7 +52,7 @@ char *s4be_st_reverse (s4be_t *s4, int32_t node)
  *
  * @param s4 The database handle
  * @param str The string to reference
- * @return 0 if the string already exist, 1 otherwise
+ * @return The integer associated with the string
  */
 int s4be_st_ref (s4be_t *s4, const char *str)
 {
@@ -101,7 +101,7 @@ int s4be_st_ref (s4be_t *s4, const char *str)
  *
  * @param s4 The database handle
  * @param str The string to unref
- * @return -1 if the string does not exist, 0 otherwise
+ * @return -1 if the string does not exist, the refcount otherwise
  */
 int s4be_st_unref (s4be_t * s4, const char *str)
 {

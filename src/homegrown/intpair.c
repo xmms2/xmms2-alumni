@@ -19,6 +19,11 @@ typedef struct int_list_St {
 	int magic;
 } int_list_t;
 
+
+
+/* Compare a and b,
+ * return <0 if a<b, 0 if a=b and >0 if a>b
+ */
 static int _cmp_list (int_list_t *a, int_list_t *b)
 {
 	int ret;
@@ -30,6 +35,8 @@ static int _cmp_list (int_list_t *a, int_list_t *b)
 	return ret;
 }
 
+
+/* Insert new into the list */
 static int _list_insert (s4be_t *be, int32_t list, int32_t new)
 {
 	int_list_t *l, *this, *prev;
@@ -66,6 +73,8 @@ static int _list_insert (s4be_t *be, int32_t list, int32_t new)
 	return 0;
 }
 
+
+/* Add the entry (key_a, val_a) with property (key_b, val_b) */
 static int _add_entry (s4be_t *be, int32_t trie,
 		int32_t key_a, int32_t val_a,
 		int32_t key_b, int32_t val_b)
@@ -103,6 +112,15 @@ static int _add_entry (s4be_t *be, int32_t trie,
 	return 0;
 }
 
+
+/**
+ * Add the binding entry->prop to the database
+ *
+ * @param be The database handle
+ * @param entry The entry to get a new property
+ * @param prop The property to be set
+ * @return 0
+ */
 int s4be_ip_add (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop)
 {
 	be_wlock (be);
@@ -117,10 +135,18 @@ int s4be_ip_add (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop)
 	return 0;
 }
 
+
+/**
+ * Remove the binding entry->prop
+ *
+ * TODO: Implement it
+ */
 int s4be_ip_del (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop)
 {
 }
 
+
+/* Get the list for the entry and convert it to a set and return it */
 static s4_set_t *_list_to_set (s4be_t *be, int32_t trie, s4_entry_t *entry)
 {
 	pat_key_t key;
@@ -168,6 +194,14 @@ static s4_set_t *_list_to_set (s4be_t *be, int32_t trie, s4_entry_t *entry)
 	return ret;
 }
 
+
+/**
+ * Get all the entries that has the property entry
+ *
+ * @param be The database handle
+ * @param entry The property
+ * @return A set with all the entries
+ */
 s4_set_t *s4be_ip_has_this (s4be_t *be, s4_entry_t *entry)
 {
 	s4_set_t *ret;
@@ -178,6 +212,14 @@ s4_set_t *s4be_ip_has_this (s4be_t *be, s4_entry_t *entry)
 	return ret;
 }
 
+
+/**
+ * Get all the properties that this entry has
+ *
+ * @param be The database handle
+ * @param entry The entry
+ * @return A set with all the properties
+ */
 s4_set_t *s4be_ip_this_has (s4be_t *be, s4_entry_t *entry)
 {
 	s4_set_t *ret;
@@ -189,7 +231,10 @@ s4_set_t *s4be_ip_this_has (s4be_t *be, s4_entry_t *entry)
 }
 
 
-void _keyval_save (s4be_t *old, s4be_t *new,
+/* Check if the key/val pair given is good, if they are
+ * we save the translated key/val pair into key_new/val_new
+ */
+static void _keyval_save (s4be_t *old, s4be_t *new,
 		int32_t key_old, int32_t val_old,
 		int32_t *key_new, int32_t *val_new)
 {
@@ -206,14 +251,14 @@ void _keyval_save (s4be_t *old, s4be_t *new,
 }
 
 
-/* This function is called if the database wasn't synced
- * last time it was opened. That means we can't assume anything
- * about the state of the data.
+/* Try to recover the database
+ * We walk through all the pairs and their lists. We do a check on
+ * every key/val pair to make sure they are good, if they are we
+ * save the pair into the new database
  */
 int _ip_recover (s4be_t *old, s4be_t *rec)
 {
-	int32_t node;
-	int32_t list;
+	int32_t node, list;
 	int_pair_t *pair;
 	int_list_t *plist;
 	int32_t ka, kb, va, vb;
@@ -232,7 +277,6 @@ int _ip_recover (s4be_t *old, s4be_t *rec)
 			_keyval_save (old, rec, plist->key, plist->val, &kb, &vb);
 
 			if (ka != -1 && va != -1 && kb != -1 && vb != -1) {
-				printf ("saving (%i %i), (%i %i)\n", ka, va, kb, vb);
 				_add_entry (rec, S4_INT_STORE, ka, va, kb, vb);
 				_add_entry (rec, S4_REV_STORE, kb, vb, ka, va);
 			}
