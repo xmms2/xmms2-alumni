@@ -34,6 +34,37 @@ static int32_t _bpt_insert_internal (s4be_t *be, int32_t node,
 		int32_t child, bpt_record_t record);
 
 
+static int _print_tree (s4be_t *be, int32_t root, int depth)
+{
+	bpt_node_t *p = S4_PNT (be, root, bpt_node_t);
+	int i,j;
+
+	if (root == -1) {
+		printf ("(null)\n");
+		return 0;
+	}
+
+
+	for (i = 0; i < p->key_count; i++) {
+		if (p->magic != LEAF_MAGIC)
+			_print_tree (be, p->pointers[i], depth + 1);
+
+		for (j = 0; j < depth; j++)
+			printf ("  ");
+		printf ("(%i %i %i %i)\n", p->keys[i].key_a, p->keys[i].val_a,
+				p->keys[i].key_b, p->keys[i].val_b);
+
+		if (p->magic != LEAF_MAGIC)
+			_print_tree (be, p->pointers[i + 1], depth + 1);
+	}
+
+	if (depth == 0)
+		printf("\n");
+
+	return 0;
+}
+
+
 /* Create a new leaf node */
 static int32_t _bpt_create_leaf (s4be_t *be)
 {
@@ -97,6 +128,12 @@ static int32_t _bpt_find_leaf (s4be_t *be, int32_t bpt, bpt_record_t record)
 	bpt_node_t *i;
 	int index = 0;
 
+	/*
+	printf("This: %i %i %i %i\n",
+			record.key_a, record.val_a,
+			record.key_b, record.val_b);
+			*/
+
 	while (cur != -1) {
 		i = S4_PNT (be, cur, bpt_node_t);
 
@@ -104,6 +141,18 @@ static int32_t _bpt_find_leaf (s4be_t *be, int32_t bpt, bpt_record_t record)
 			break;
 
 		index = _bpt_search (i, record);
+		if (index < i->key_count && _bpt_comp (record, i->keys[index]) == 0)
+			index++;
+/*
+		printf ("%i %i\n", i->key_count, index);
+
+		int j;
+		for (j = 0; j < i->key_count; j++)
+			printf ("%i - %i %i %i %i\n", j,
+					i->keys[j].key_a, i->keys[j].val_a,
+					i->keys[j].key_b, i->keys[j].val_b);
+					*/
+
 		cur = i->pointers[index];
 	}
 
@@ -249,6 +298,15 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 	int32_t leaf = _bpt_find_leaf (be, bpt, record);
 	bpt_node_t *pl = S4_PNT (be, leaf, bpt_node_t);
 
+//	printf ("bpt_insert %i %i\n", record.val_a, record.key_b);
+//	printf ("%i", leaf);
+
+//	if (leaf != -1)
+//		printf (" %i\n", pl->key_count);
+//	else
+//		printf ("\n");
+
+
 	if (leaf == -1) {
 		/* There are no root, we create one */
 		leaf = _bpt_create_leaf (be);
@@ -262,8 +320,13 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 		int index = _bpt_search (pl, record);
 		int i;
 
+//		printf ("index: %i\n", index);
+//		printf ("comp : %i\n", _bpt_comp (pl->keys[index], record));
+
 		/* Check if it already exists */
 		if (index < pl->key_count && _bpt_comp (pl->keys[index], record) == 0) {
+//			printf ("Returning -1\n");
+			//_print_tree (be, *S4_PNT (be, bpt, int32_t), 0);
 			return -1;
 		}
 
@@ -276,6 +339,7 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 		/* The leaf is full, we need to split it */
 		if ((leaf = _bpt_split (be, leaf, record, -1)) != 0) {
 			if (leaf == -1) {
+				//_print_tree (be, *S4_PNT (be, bpt, int32_t), 0);
 				return -1;
 			}
 
@@ -283,6 +347,7 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 		}
 	}
 
+	//_print_tree (be, *S4_PNT (be, bpt, int32_t), 0);
 	return 0;
 }
 
