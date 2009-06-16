@@ -36,7 +36,9 @@ int main (int argc, char *argv[])
 				entry = s4_entry_get_i (s4, "song_id", id);
 				prop = s4_entry_get_s (s4, key, val);
 
-				s4_entry_add (s4, entry, prop);
+				if (s4_entry_add (s4, entry, prop))
+					printf ("Error inserting %i (%s %s)\n",
+							id, key, val);
 
 				s4_entry_free (entry);
 				s4_entry_free (prop);
