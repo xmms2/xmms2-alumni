@@ -1,6 +1,6 @@
 #include "s4_be.h"
 #include "be.h"
-#include "pat.h"
+#include "bpt.h"
 #include <stdlib.h>
 
 #define INTLIST_MAGIC 0xf00dbabe
@@ -141,14 +141,24 @@ static int _add_entry (s4be_t *be, int32_t trie,
 int s4be_ip_add (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop)
 {
 	int ret;
+	bpt_record_t a, b;
+
+	b.key_b = a.key_a = entry->key_i;
+	b.val_b = a.val_a = entry->val_i;
+	a.key_b = b.key_a = prop->key_i;
+	a.val_b = b.val_a = prop->val_i;
+
 	be_wlock (be);
-	ret =_add_entry (be, S4_INT_STORE,
+/*	ret =_add_entry (be, S4_INT_STORE,
 			entry->key_i, entry->val_i,
 			prop->key_i, prop->val_i);
 	if (!ret)
 		_add_entry (be, S4_REV_STORE,
 				prop->key_i, prop->val_i,
-				entry->key_i, entry->val_i);
+				entry->key_i, entry->val_i);*/
+	ret = bpt_insert (be, S4_INT_STORE, a);
+	bpt_insert (be, S4_REV_STORE, b);
+
 	be_unlock (be);
 
 	return ret;
@@ -245,7 +255,7 @@ s4_set_t *s4be_ip_has_this (s4be_t *be, s4_entry_t *entry)
 {
 	s4_set_t *ret;
 	be_rlock (be);
-	ret = _list_to_set (be, S4_REV_STORE, entry);
+	ret = bpt_get_set (be, S4_REV_STORE, entry->key_i, entry->val_i);
 	be_unlock (be);
 
 	return ret;
@@ -263,7 +273,7 @@ s4_set_t *s4be_ip_this_has (s4be_t *be, s4_entry_t *entry)
 {
 	s4_set_t *ret;
 	be_rlock (be);
-	ret = _list_to_set (be, S4_INT_STORE, entry);
+	ret = bpt_get_set (be, S4_INT_STORE, entry->key_i, entry->val_i);
 	be_unlock (be);
 
 	return ret;

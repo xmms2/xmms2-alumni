@@ -1,9 +1,9 @@
 src = s4.c set.c entry.c main.c
 obj = $(addsuffix .o, $(basename $(src)))
 backfile = $(CURDIR)/s4be.o
-backend = bdb
+backend = homegrown
 
-CFLAGS += -g -I $(CURDIR) -O3
+CFLAGS += -g -I $(CURDIR) -Wall
 
 export CFLAGS
 export backfile
