@@ -5,6 +5,7 @@
 #include "be.h"
 #include "bpt.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 
 #define LEAF_MAGIC 0x12345678
@@ -34,6 +35,7 @@ static int32_t _bpt_insert_internal (s4be_t *be, int32_t node,
 		int32_t child, bpt_record_t record);
 
 
+/* Handy debug function */
 static int _print_tree (s4be_t *be, int32_t root, int depth)
 {
 	bpt_node_t *p = S4_PNT (be, root, bpt_node_t);
@@ -50,13 +52,13 @@ static int _print_tree (s4be_t *be, int32_t root, int depth)
 			_print_tree (be, p->pointers[i], depth + 1);
 
 		for (j = 0; j < depth; j++)
-			printf ("  ");
-		printf ("(%i %i %i %i)\n", p->keys[i].key_a, p->keys[i].val_a,
+			printf ("-");
+		printf ("%.2i (%i %i %i %i)\n", i, p->keys[i].key_a, p->keys[i].val_a,
 				p->keys[i].key_b, p->keys[i].val_b);
 
-		if (p->magic != LEAF_MAGIC)
-			_print_tree (be, p->pointers[i + 1], depth + 1);
 	}
+	if (p->magic != LEAF_MAGIC)
+		_print_tree (be, p->pointers[i], depth + 1);
 
 	if (depth == 0)
 		printf("\n");
@@ -112,12 +114,26 @@ static int _bpt_comp (bpt_record_t a, bpt_record_t b)
 }
 
 
-/* TODO: use binary search? */
+/* Search the node n for the first key bigger or equal to r */
 static int _bpt_search (bpt_node_t *n, bpt_record_t r)
 {
-	int i;
-	for (i = 0; i < n->key_count && _bpt_comp (r, n->keys[i]) > 0; i++);
-	return i;
+	int lower = 0;
+	int upper = n->key_count;
+
+	while ((upper - lower) > 0) {
+		int gap = (upper - lower) / 2;
+		int c = _bpt_comp (r, n->keys[lower + gap]);
+
+		if (c < 0) {
+			upper = lower + gap;
+		} else if (c > 0) {
+			lower += gap + 1;
+		} else {
+			return (lower + gap);
+		}
+	}
+
+	return upper;
 }
 
 
@@ -125,35 +141,16 @@ static int _bpt_search (bpt_node_t *n, bpt_record_t r)
 static int32_t _bpt_find_leaf (s4be_t *be, int32_t bpt, bpt_record_t record)
 {
 	int32_t cur = *S4_PNT (be, bpt, int32_t);
-	bpt_node_t *i;
+	bpt_node_t *i = S4_PNT (be, cur, bpt_node_t);
 	int index = 0;
 
-	/*
-	printf("This: %i %i %i %i\n",
-			record.key_a, record.val_a,
-			record.key_b, record.val_b);
-			*/
-
-	while (cur != -1) {
-		i = S4_PNT (be, cur, bpt_node_t);
-
-		if (i->magic == LEAF_MAGIC)
-			break;
-
+	while (cur != -1 && i->magic != LEAF_MAGIC) {
 		index = _bpt_search (i, record);
 		if (index < i->key_count && _bpt_comp (record, i->keys[index]) == 0)
 			index++;
-/*
-		printf ("%i %i\n", i->key_count, index);
-
-		int j;
-		for (j = 0; j < i->key_count; j++)
-			printf ("%i - %i %i %i %i\n", j,
-					i->keys[j].key_a, i->keys[j].val_a,
-					i->keys[j].key_b, i->keys[j].val_b);
-					*/
 
 		cur = i->pointers[index];
+		i = S4_PNT (be, cur, bpt_node_t);
 	}
 
 	return cur;
@@ -169,7 +166,7 @@ static void _bpt_move_keys (s4be_t *be, bpt_node_t *pl, bpt_node_t *pn,
 {
 	int i, j;
 	int foo = (index > (SIZE / 2))?1:0;
-	int leaf = child == -1;// pl->magic == LEAF_MAGIC;
+	int leaf = child == -1;
 	bpt_node_t *pc;
 
 	for (j = 0, i = SIZE / 2 + foo; j < (SIZE/2 + 1); j++) {
@@ -228,8 +225,9 @@ static int32_t _bpt_split (s4be_t *be, int32_t node,
 
 	pl = S4_PNT (be, node, bpt_node_t);
 	index = _bpt_search (pl, record);
-	if (index < pl->key_count && _bpt_comp (pl->keys[index], record) == 0)
+	if (index < pl->key_count && _bpt_comp (pl->keys[index], record) == 0) {
 		return -1;
+	}
 
 	new = (leaf) ? (_bpt_create_leaf (be)) : (_bpt_create_internal (be));
 	pl = S4_PNT (be, node, bpt_node_t);
@@ -245,6 +243,8 @@ static int32_t _bpt_split (s4be_t *be, int32_t node,
 		int32_t parent = _bpt_create_internal(be);
 		bpt_node_t *pp = S4_PNT (be, parent, bpt_node_t);
 		pp->pointers[0] = node;
+		pl = S4_PNT (be, node, bpt_node_t);
+		pn = S4_PNT (be, new, bpt_node_t);
 		pl->parent = pn->parent = parent;
 	}
 
@@ -275,8 +275,9 @@ static int32_t _bpt_insert_internal (s4be_t *be, int32_t node,
 		pn->pointers[index + 1] = child;
 		pn->key_count++;
 
-		if (pn->key_count == 1)
+		if (pn->key_count == 1) {
 			ret = node;
+		}
 	} else {
 		ret = _bpt_split (be, node, record, child);
 	}
@@ -298,15 +299,6 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 	int32_t leaf = _bpt_find_leaf (be, bpt, record);
 	bpt_node_t *pl = S4_PNT (be, leaf, bpt_node_t);
 
-//	printf ("bpt_insert %i %i\n", record.val_a, record.key_b);
-//	printf ("%i", leaf);
-
-//	if (leaf != -1)
-//		printf (" %i\n", pl->key_count);
-//	else
-//		printf ("\n");
-
-
 	if (leaf == -1) {
 		/* There are no root, we create one */
 		leaf = _bpt_create_leaf (be);
@@ -320,13 +312,8 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 		int index = _bpt_search (pl, record);
 		int i;
 
-//		printf ("index: %i\n", index);
-//		printf ("comp : %i\n", _bpt_comp (pl->keys[index], record));
-
 		/* Check if it already exists */
 		if (index < pl->key_count && _bpt_comp (pl->keys[index], record) == 0) {
-//			printf ("Returning -1\n");
-			//_print_tree (be, *S4_PNT (be, bpt, int32_t), 0);
 			return -1;
 		}
 
@@ -339,7 +326,6 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 		/* The leaf is full, we need to split it */
 		if ((leaf = _bpt_split (be, leaf, record, -1)) != 0) {
 			if (leaf == -1) {
-				//_print_tree (be, *S4_PNT (be, bpt, int32_t), 0);
 				return -1;
 			}
 
@@ -347,7 +333,6 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 		}
 	}
 
-	//_print_tree (be, *S4_PNT (be, bpt, int32_t), 0);
 	return 0;
 }
 
@@ -379,19 +364,11 @@ s4_set_t *bpt_get_set (s4be_t *be, int32_t bpt, int32_t key, int32_t val)
 
 	index = _bpt_search (pl, rec);
 
-	printf ("%i %i\n", index, pl->key_count);
-
 	if (leaf != -1 && index == pl->key_count) {
 		leaf = pl->next;
 		pl = S4_PNT (be, leaf, bpt_node_t);
 		index = 0;
 	}
-
-	int i;
-	printf ("This key:\n%i %i\n--\n", key, val);
-	for (i = 0; i < pl->key_count; i++)
-		printf ("%i - %i %i %i %i\n",i,  pl->keys[i].key_a, pl->keys[i].val_a,
-				pl->keys[i].key_b, pl->keys[i].val_b);
 
 	while (leaf != -1 &&
 			(pl->keys[index].key_a < key ||
