@@ -6,6 +6,7 @@
 #include "s4_be.h"
 #include "s4.h"
 #include "pat.h"
+#include "bpt.h"
 
 struct s4be_St {
 	int fd;
@@ -19,7 +20,7 @@ struct s4be_St {
 
 #define S4_STRING_STORE 0
 #define S4_INT_STORE (sizeof (pat_trie_t))
-#define S4_REV_STORE (sizeof (pat_trie_t) * 2)
+#define S4_REV_STORE (sizeof (pat_trie_t) + sizeof (bpt_t))
 
 int32_t be_alloc (s4be_t *s4, int n);
 void be_free (s4be_t *s4, int32_t off);

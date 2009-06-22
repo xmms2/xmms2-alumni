@@ -1,6 +1,7 @@
 #include "s4_be.h"
 #include "be.h"
 #include "pat.h"
+#include "bpt.h"
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -16,7 +17,8 @@
 #define DIRTY 1
 
 typedef struct header_St {
-	pat_trie_t string_store, int_store, int_rev;
+	pat_trie_t string_store;
+	bpt_t int_store, int_rev;
 	int32_t alloc_off;
 	int32_t sync_state;
 } header_t;

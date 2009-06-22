@@ -100,9 +100,48 @@ s4_set_t *s4be_ip_this_has (s4be_t *be, s4_entry_t *entry)
 }
 
 
+int _fix_key (s4be_t *old, s4be_t *new, bpt_record_t key)
+{
+	bpt_record_t nkey, rkey;;
+	if (key.key_a < 0) {
+		nkey.key_a = -s4be_st_lookup (new,
+				S4_PNT (old, pat_node_to_key (old, -key.key_a), char));
+		nkey.val_a = key.val_a;
+	} else {
+		nkey.key_a = s4be_st_lookup (new,
+				S4_PNT (old, pat_node_to_key (old, key.key_a), char));
+		nkey.val_a = s4be_st_lookup (new,
+				S4_PNT (old, pat_node_to_key (old, key.val_a), char));
+	}
+	if (key.key_b < 0) {
+		nkey.key_b = -s4be_st_lookup (new,
+				S4_PNT (old, pat_node_to_key (old, -key.key_b), char));
+		nkey.val_b = key.val_b;
+	} else {
+		nkey.key_b = s4be_st_lookup (new,
+				S4_PNT (old, pat_node_to_key (old, key.key_b), char));
+		nkey.val_b = s4be_st_lookup (new,
+				S4_PNT (old, pat_node_to_key (old, key.val_b), char));
+	}
+
+	if (nkey.key_a == -1 || nkey.val_a == -1 ||
+			nkey.key_b == -1 || nkey.val_b == -1)
+		return -1;
+
+	rkey.key_a = nkey.key_b;
+	rkey.val_a = nkey.val_b;
+	rkey.key_b = nkey.key_a;
+	rkey.val_b = nkey.val_a;
+
+	bpt_insert (new, S4_INT_STORE, nkey);
+	bpt_insert (new, S4_REV_STORE, rkey);
+
+	return 0;
+}
+
 /* Try to recover the database */
 int _ip_recover (s4be_t *old, s4be_t *rec)
 {
-
+	bpt_recover (old, rec, S4_INT_STORE, _fix_key);
 	return 0;
 }

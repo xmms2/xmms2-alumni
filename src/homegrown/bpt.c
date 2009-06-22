@@ -70,13 +70,26 @@ static int _print_tree (s4be_t *be, int32_t root, int depth)
 
 static void _bpt_set_root (s4be_t *be, int32_t bpt, int32_t root)
 {
-	int32_t *r = S4_PNT (be, bpt, int32_t);
-	*r = root;
+	bpt_t *b = S4_PNT (be, bpt, bpt_t);
+	b->root = root;
 }
 
 static int32_t _bpt_get_root (s4be_t *be, int32_t bpt)
 {
-	return *S4_PNT (be, bpt, int32_t);
+	bpt_t *b = S4_PNT (be, bpt, bpt_t);
+	return b->root;
+}
+
+static void _bpt_set_leaves (s4be_t *be, int32_t bpt, int32_t leaves)
+{
+	bpt_t *b = S4_PNT (be, bpt, bpt_t);
+	b->leaves = leaves;
+}
+
+static int32_t _bpt_get_leaves (s4be_t *be, int32_t bpt)
+{
+	bpt_t *b = S4_PNT (be, bpt, bpt_t);
+	return b->leaves;
 }
 
 /* Create a new leaf node */
@@ -540,7 +553,7 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 		pl->key_count = 1;
 		pl->keys[0] = record;
 		_bpt_set_root (be, bpt, leaf);
-
+		_bpt_set_leaves (be, bpt, leaf);
 	} else if (pl->key_count < SIZE) {
 		/* There's room for more keys in this leaf, we simpy add it */
 		int index = _bpt_search (pl, record);
@@ -604,6 +617,7 @@ int bpt_remove (s4be_t *be, int32_t bpt, bpt_record_t record)
 	else if (pl->key_count == 0) {
 		be_free (be, leaf);
 		_bpt_set_root (be, bpt, -1);
+		_bpt_set_leaves (be, bpt, -1);
 	}
 
 	return 0;
@@ -668,4 +682,21 @@ s4_set_t *bpt_get_set (s4be_t *be, int32_t bpt, int32_t key, int32_t val)
 	}
 
 	return root;
+}
+
+
+void bpt_recover (s4be_t *old, s4be_t *rec, int32_t bpt,
+		int (*func)(s4be_t*, s4be_t*, bpt_record_t))
+{
+	int32_t leaf = _bpt_get_leaves (old, bpt);
+	bpt_node_t *node = S4_PNT (old, leaf, bpt_node_t);
+
+	while (leaf != -1 && node->magic == LEAF_MAGIC) {
+		int i;
+		for (i = 0; i < node->key_count; i++)
+			func (old, rec, node->keys[i]); 
+
+		leaf = node->next;
+		node = S4_PNT (old, leaf, bpt_node_t);
+	}
 }
