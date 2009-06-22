@@ -31,8 +31,10 @@ typedef struct bpt_node_St {
 } bpt_node_t;
 
 
+/* Prototypes */
 static int32_t _bpt_insert_internal (s4be_t *be, int32_t node,
 		int32_t child, bpt_record_t record);
+static void _bpt_underflow (s4be_t *be, int32_t bpt, int32_t node);
 
 
 /* Handy debug function */
@@ -66,6 +68,16 @@ static int _print_tree (s4be_t *be, int32_t root, int depth)
 	return 0;
 }
 
+static void _bpt_set_root (s4be_t *be, int32_t bpt, int32_t root)
+{
+	int32_t *r = S4_PNT (be, bpt, int32_t);
+	*r = root;
+}
+
+static int32_t _bpt_get_root (s4be_t *be, int32_t bpt)
+{
+	return *S4_PNT (be, bpt, int32_t);
+}
 
 /* Create a new leaf node */
 static int32_t _bpt_create_leaf (s4be_t *be)
@@ -102,13 +114,14 @@ static int32_t _bpt_create_internal (s4be_t *be)
  */
 static int _bpt_comp (bpt_record_t a, bpt_record_t b)
 {
-	int ret = a.key_a - b.key_a;
+	int ret = 0;
+	ret = (a.key_a < b.key_a)?-1:(a.key_a > b.key_a);
 	if (!ret)
-		ret = a.val_a - b.val_a;
+		ret = (a.val_a < b.val_a)?-1:(a.val_a > b.val_a);
 	if (!ret)
-		ret = a.key_b - b.key_b;
+		ret = (a.key_b < b.key_b)?-1:(a.key_b > b.key_b);
 	if (!ret)
-		ret = a.val_b - b.val_b;
+		ret = (a.val_b < b.val_b)?-1:(a.val_b > b.val_b);
 
 	return ret;
 }
@@ -140,7 +153,7 @@ static int _bpt_search (bpt_node_t *n, bpt_record_t r)
 /* Searches for the leaf that might contain record */
 static int32_t _bpt_find_leaf (s4be_t *be, int32_t bpt, bpt_record_t record)
 {
-	int32_t cur = *S4_PNT (be, bpt, int32_t);
+	int32_t cur = _bpt_get_root(be, bpt);
 	bpt_node_t *i = S4_PNT (be, cur, bpt_node_t);
 	int index = 0;
 
@@ -165,7 +178,7 @@ static void _bpt_move_keys (s4be_t *be, bpt_node_t *pl, bpt_node_t *pn,
 		int32_t index, int32_t new, int32_t child, bpt_record_t record)
 {
 	int i, j;
-	int foo = (index > (SIZE / 2))?1:0;
+	int foo = index > (SIZE / 2);
 	int leaf = child == -1;
 	bpt_node_t *pc;
 
@@ -204,7 +217,7 @@ static void _bpt_move_keys (s4be_t *be, bpt_node_t *pl, bpt_node_t *pn,
 		pc->parent = new;
 	}
 
-	pl->key_count = SIZE / 2 + ((leaf)?1:0);
+	pl->key_count = SIZE / 2 + leaf;
 	pn->key_count = SIZE / 2 + 1;
 }
 
@@ -286,6 +299,227 @@ static int32_t _bpt_insert_internal (s4be_t *be, int32_t node,
 }
 
 
+/* A helper function for _bpt_left_sibling */
+static int32_t _bpt_left_helper (s4be_t *be, int depth,
+		int32_t node, bpt_record_t key)
+{
+	if (node == -1)
+		return -1;
+
+	bpt_node_t *pnode = S4_PNT (be, node, bpt_node_t);
+	int index = _bpt_search (pnode, key);
+	int32_t ret;
+
+	if (index == 0 && _bpt_comp (key, pnode->keys[0]) != 0)
+		return _bpt_left_helper (be, depth + 1, pnode->parent, key);
+	else if (index != 0 && _bpt_comp (key, pnode->keys[index]) != 0)
+		index--;
+
+	if (depth == 0)
+		ret = pnode->pointers[index];
+	else
+		ret = _bpt_left_helper (be, depth - 1, pnode->pointers[index], key);
+
+	return ret;
+}
+
+
+/* Return the left sibling of node, or -1 if it doesn't exist */
+static int32_t _bpt_left_sibling (s4be_t *be, int32_t node)
+{
+	bpt_node_t *pnode = S4_PNT (be, node, bpt_node_t);
+	return _bpt_left_helper (be, 0, pnode->parent, pnode->keys[0]);
+}
+
+
+/* Replace the old key with the new key in the parent (or the parents parent) */
+static bpt_record_t _bpt_update_parent (s4be_t *be, int32_t parent,
+		bpt_record_t old, bpt_record_t new)
+{
+	bpt_node_t *node = S4_PNT (be, parent, bpt_node_t);
+	int index;
+	bpt_record_t ret;
+
+	if (parent == -1)
+		return old;
+
+	index = _bpt_search (node, old);
+
+	if (index == node->key_count || _bpt_comp (old, node->keys[index]) != 0)
+		index--;
+
+	if (index < 0) {
+		ret = _bpt_update_parent (be, node->parent, old, new);
+	} else {
+		ret = node->keys[index];
+		node->keys[index] = new;
+	}
+
+	return ret;
+}
+
+
+/* Remove the given key (or the one closest) from the internal node */
+static bpt_record_t _bpt_remove_internal (s4be_t *be, int32_t bpt,
+		int32_t node, bpt_record_t key)
+{
+	bpt_node_t *pnode = S4_PNT (be, node, bpt_node_t);
+	int index = _bpt_search (pnode, key);
+	bpt_record_t ret;
+	int i;
+
+	if (index == pnode->key_count || _bpt_comp (key, pnode->keys[index]) != 0)
+		index--;
+
+	if (index < 0) {
+		ret = pnode->keys[0];
+		for (i = 1; i < pnode->key_count; i++)
+			pnode->keys[i - 1] = pnode->keys[i];
+		for (i = 1; i <= pnode->key_count; i++)
+			pnode->pointers[i - 1] = pnode->pointers[i];
+
+		ret =  _bpt_update_parent (be, pnode->parent, key, ret);
+	} else {
+		ret = pnode->keys[index];
+
+		for (i = index; i < pnode->key_count; i++) {
+			pnode->keys[i] = pnode->keys[i + 1];
+			pnode->pointers[i + 1] = pnode->pointers[i + 2];
+		}
+	}
+
+	pnode->key_count--;
+
+	if (pnode->key_count < SIZE/2 && pnode->parent != -1)
+		_bpt_underflow (be, bpt, node);
+	else if (pnode->key_count == 0) {
+		_bpt_set_root (be, bpt, pnode->pointers[0]);
+		pnode = S4_PNT (be, pnode->pointers[0], bpt_node_t);
+		pnode->parent = -1;
+		be_free (be, node);
+	}
+
+	return ret;
+}
+
+
+/* Merge to nodes and delete one of them */
+static void _bpt_merge_nodes (s4be_t *be, int32_t bpt, int leaf,
+		bpt_node_t *plo, bpt_node_t *phi,
+		int32_t lo, int32_t hi)
+{
+	int i;
+	int add = !leaf;
+	bpt_node_t *pc;
+
+	for (i = 0; i < phi->key_count; i++)
+		plo->keys[i + plo->key_count + add] = phi->keys[i];
+	for (i = 0; i <= phi->key_count && !leaf; i++) {
+		plo->pointers[i + plo->key_count + 1] = phi->pointers[i];
+		pc = S4_PNT (be, phi->pointers[i], bpt_node_t);
+		pc->parent = lo;
+	}
+
+	plo->key_count += phi->key_count + add;
+	plo->next = phi->next;
+
+	plo->keys[plo->key_count - phi->key_count - add] =
+	   	_bpt_remove_internal (be, bpt, phi->parent, phi->keys[0]);
+
+	be_free (be, hi);
+}
+
+
+/* Take keys from one node and put them in the other so that there
+ * is the same amount of keys in both (+- 1).
+ */
+static void _bpt_blend_nodes (s4be_t *be, int leaf,
+		bpt_node_t *plo, bpt_node_t *phi,
+		int32_t lo, int32_t hi)
+{
+	int diff = (phi->key_count - plo->key_count) / 2;
+	int i;
+	int add = !leaf;
+	bpt_node_t *pc;
+
+	if (diff > 0) {
+		plo->keys[plo->key_count] = _bpt_update_parent (be, phi->parent,
+				phi->keys[0], phi->keys[diff - add]);
+
+		/* Copy keys and pointers from high to low node */
+		for (i = 0; i < (diff - 1); i++)
+			plo->keys[plo->key_count + i + 1] = phi->keys[i + leaf];
+		for (i = 0; i < diff && !leaf; i++) {
+			plo->pointers[plo->key_count + i + 1] = phi->pointers[i];
+			pc = S4_PNT (be, phi->pointers[i], bpt_node_t);
+			pc->parent = lo;
+		}
+		/* Move keys and pointers inside the high node */
+		for (i = diff; i < phi->key_count; i++)
+			phi->keys[i - diff] = phi->keys[i];
+		for (i = diff; i <= phi->key_count && !leaf; i++)
+			phi->pointers[i - diff] = phi->pointers[i];
+
+		phi->key_count -= diff;
+		plo->key_count += diff;
+	} else if (diff < 0) {
+		diff = -diff;
+
+		/* Move the keys and pointers in the high node to make room */
+		for (i = phi->key_count - 1; i >= 0; i--)
+			phi->keys[i + diff] = phi->keys[i];
+		for (i = phi->key_count; i >= 0 && !leaf; i--)
+			phi->pointers[i + diff] = phi->pointers[i];
+
+		/* Copy keys and pointers from low to high */
+		for (i = 0; i < (diff - add); i++)
+			phi->keys[i] = plo->keys[i + plo->key_count - (diff - add)];
+		for (i = 0; i < diff && !leaf; i++) {
+			phi->pointers[i] = plo->pointers[i + plo->key_count - diff + 1];
+			pc = S4_PNT (be, phi->pointers[i], bpt_node_t);
+			pc->parent = hi;
+		}
+
+		phi->keys[diff - add] = _bpt_update_parent (be, phi->parent,
+				phi->keys[diff], plo->keys[plo->key_count - diff]);
+
+		phi->key_count += diff;
+		plo->key_count -= diff;
+	}
+}
+
+
+/* Deal with underflow in a node */
+static void _bpt_underflow (s4be_t *be, int32_t bpt, int32_t node)
+{
+	bpt_node_t *pnode = S4_PNT (be, node, bpt_node_t);
+	int leaf = pnode->magic == LEAF_MAGIC;
+	int32_t right = pnode->next;
+	int32_t left = _bpt_left_sibling (be, node);
+	int32_t hi, lo;
+	bpt_node_t *pr = S4_PNT (be, right, bpt_node_t);
+	bpt_node_t *pl = S4_PNT (be, left , bpt_node_t);
+	bpt_node_t *phi, *plo;
+
+	if (right == -1 || (left != -1 && pl->key_count > pr->key_count)) {
+		plo = pl;
+		phi = pnode;
+		hi = node;
+		lo = left;
+	} else {
+		phi = pr;
+		plo = pnode;
+		hi = right;
+		lo = node;
+	}
+
+	if ((plo->key_count + phi->key_count) < (SIZE + leaf))
+		_bpt_merge_nodes (be, bpt, leaf, plo, phi, lo, hi);
+	else
+		_bpt_blend_nodes (be, leaf, plo, phi, lo, hi);
+}
+
+
 /**
  * Insert a new record into the tree
  *
@@ -305,7 +539,7 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 		pl = S4_PNT (be, leaf, bpt_node_t);
 		pl->key_count = 1;
 		pl->keys[0] = record;
-		*S4_PNT (be, bpt, int32_t) = leaf;
+		_bpt_set_root (be, bpt, leaf);
 
 	} else if (pl->key_count < SIZE) {
 		/* There's room for more keys in this leaf, we simpy add it */
@@ -328,9 +562,48 @@ int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record)
 			if (leaf == -1) {
 				return -1;
 			}
-
-			*S4_PNT (be, bpt, int32_t) = leaf;
+			_bpt_set_root (be, bpt, leaf);
 		}
+	}
+
+	return 0;
+}
+
+
+/**
+ * Remove the record given from the tree
+ *
+ * @param be The database handle
+ * @param bpt The tree
+ * @param record The record to remove
+ * @return 0 on success, -1 on error.
+ */
+int bpt_remove (s4be_t *be, int32_t bpt, bpt_record_t record)
+{
+	int leaf = _bpt_find_leaf (be, bpt, record);
+	bpt_node_t *pl = S4_PNT (be, leaf, bpt_node_t);
+	int index, i;
+
+	if (leaf == -1)
+		return -1;
+
+	index = _bpt_search (pl, record);
+
+	if (index >= pl->key_count || _bpt_comp (pl->keys[index], record) != 0)
+		return -1;
+
+	if (index == 0)
+		_bpt_update_parent (be, pl->parent, pl->keys[0], pl->keys[1]);
+
+	pl->key_count--;
+	for (i = index; i < pl->key_count; i++)
+		pl->keys[i] = pl->keys[i + 1];
+
+	if (pl->key_count <= SIZE / 2 && pl->parent != -1)
+		_bpt_underflow (be, bpt, leaf);
+	else if (pl->key_count == 0) {
+		be_free (be, leaf);
+		_bpt_set_root (be, bpt, -1);
 	}
 
 	return 0;

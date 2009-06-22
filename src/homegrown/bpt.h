@@ -10,6 +10,7 @@ typedef struct bpt_record_St {
 
 
 int bpt_insert (s4be_t *be, int32_t bpt, bpt_record_t record);
+int bpt_remove (s4be_t *be, int32_t bpt, bpt_record_t record);
 s4_set_t *bpt_get_set (s4be_t *be, int32_t bpt, int32_t key, int32_t val);
 
 #endif /* _BPT_H */
