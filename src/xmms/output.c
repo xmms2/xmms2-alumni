@@ -337,6 +337,60 @@ xmms_output_filler_seek_state (xmms_output_t *output, guint32 samples)
 	g_mutex_unlock (output->filler_mutex);
 }
 
+gboolean xmms_start_next_song (xmms_xform_t *inputChain, xmms_output_t *output, xmms_xform_t *outputChainBegin, xmms_xform_t *outputChainEnd)
+{
+	if (!inputChain) {
+		xmms_medialib_entry_t entry;
+		xmms_output_song_changed_arg_t *arg;
+		xmms_medialib_session_t *session;
+
+		g_mutex_unlock (output->filler_mutex);
+
+		entry = xmms_playlist_current_entry (output->playlist);
+		if (!entry) {
+			XMMS_DBG ("No entry from playlist!");
+			output->filler_state = FILLER_STOP;
+			g_mutex_lock (output->filler_mutex);
+			return FALSE; /* Was continue */
+		}
+
+		inputChain = xmms_xform_chain_setup (entry, output->format_list, TRUE);
+		if (!inputChain) {
+			session = xmms_medialib_begin_write ();
+			if (xmms_medialib_entry_property_get_int (session, entry, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS) == XMMS_MEDIALIB_ENTRY_STATUS_NEW) {
+				xmms_medialib_end (session);
+				xmms_medialib_entry_remove (entry);
+			} else {
+				xmms_medialib_entry_status_set (session, entry, XMMS_MEDIALIB_ENTRY_STATUS_NOT_AVAILABLE);
+				xmms_medialib_entry_send_update (entry);
+				xmms_medialib_end (session);
+			}
+
+			if (!xmms_playlist_advance (output->playlist)) {
+				XMMS_DBG ("End of playlist");
+				output->filler_state = FILLER_STOP;
+			}
+			g_mutex_lock (output->filler_mutex);
+			return FALSE; /* Was continue */
+		}
+
+		xmms_middleman_xform_set_prev (outputChainBegin, inputChain);
+		xmms_middleman_xform_set_next_song_args (outputChainBegin, inputChain, output, outputChainBegin, outputChainEnd);
+
+		arg = g_new0 (xmms_output_song_changed_arg_t, 1);
+		arg->output = output;
+		arg->chain = outputChainEnd;
+		arg->flush = FALSE; /* Was last_was_kill */
+		xmms_object_ref (outputChainEnd);
+
+		/* last_was_kill = FALSE; */
+
+		g_mutex_lock (output->filler_mutex);
+		xmms_ringbuf_hotspot_set (output->filler_buffer, song_changed, song_changed_arg_free, arg);
+	}
+	return TRUE;
+}
+
 static void *
 xmms_output_filler (void *arg)
 {
@@ -421,6 +475,7 @@ xmms_output_filler (void *arg)
 			}
 
 			outputChainBegin = xmms_middleman_xform_new (NULL, 1, output->format_list);
+			xmms_middleman_xform_set_next_song_args (outputChainBegin, inputChain, output, outputChainBegin, outputChainEnd);
 			outputChainEnd = outputChainBegin;
 
 			for (effect_no = 0; TRUE; effect_no++) {
@@ -447,10 +502,11 @@ xmms_output_filler (void *arg)
 			xmms_object_ref(outputChainEnd);
 		} else {
 			/* Need to clean the existing effect xforms */
+			/* TODO: Xforms, this shouldn't be needed? */
 			xmms_xform_reset_effects(outputChainEnd, outputChainBegin);
 		}
 
-		if (!inputChain) {
+		/* if (!inputChain) {
 			xmms_medialib_entry_t entry;
 			xmms_output_song_changed_arg_t *arg;
 			xmms_medialib_session_t *session;
@@ -497,6 +553,11 @@ xmms_output_filler (void *arg)
 
 			g_mutex_lock (output->filler_mutex);
 			xmms_ringbuf_hotspot_set (output->filler_buffer, song_changed, song_changed_arg_free, arg);
+		} */
+
+		if (!xmms_start_next_song (inputChain, output, outputChainBegin, outputChainEnd))
+		{
+			continue;
 		}
 
 		xmms_ringbuf_wait_free (output->filler_buffer, sizeof (buf), output->filler_mutex);

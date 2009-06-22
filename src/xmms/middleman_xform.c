@@ -3,8 +3,13 @@
 #include "xmms/xmms_medialib.h"
 #include "xmmspriv/xmms_xform.h"
 #include "xmms/xmms_streamtype.h"
+#include "xmmspriv/xmms_outputplugin.h"
 
 typedef struct xmms_middleman_priv_St {
+	xmms_xform_t *inputChain;
+	xmms_output_t *output;
+	xmms_xform_t *outputChainBegin;
+	xmms_xform_t *outputChainEnd;
 } xmms_middleman_priv_t;
 
 static xmms_xform_plugin_t *middleman_plugin;
@@ -64,6 +69,18 @@ xmms_middleman_plugin_destroy (xmms_xform_t *xform)
 	priv = xmms_xform_private_data_get (xform);
 }
 
+void
+xmms_middleman_xform_set_next_song_args (xmms_xform_t *xform, xmms_xform_t *inputChain, xmms_output_t *output, xmms_xform_t *outputChainBegin, xmms_xform_t *outputChainEnd)
+{
+	xmms_middleman_priv_t *priv;
+	priv = xmms_xform_private_data_get (xform);
+
+	priv->inputChain = inputChain;
+	priv->output = output;
+	priv->outputChainBegin;
+	priv->outputChainEnd;
+}
+
 static gint
 xmms_middleman_plugin_read (xmms_xform_t *xform, void *buffer, gint len, xmms_error_t *error)
 {
@@ -78,6 +95,7 @@ xmms_middleman_plugin_read (xmms_xform_t *xform, void *buffer, gint len, xmms_er
 	if (read < len) { /* eos */
 		/* TODO_xforms: request the next stream */
 		/* TODO_xforms: send bitrate changes as auxdata */
+/*		xmms_start_next_song (priv->inputChain, priv->output, priv->outputChainBegin, priv->outputChainEnd);*/
 	}
 	return read;
 }
