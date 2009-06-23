@@ -46,4 +46,7 @@ int s4_entry_add (s4_t *s4, s4_entry_t *entry, s4_entry_t *prop);
 int s4_entry_del (s4_t *s4, s4_entry_t *entry, s4_entry_t *prop);
 void s4_entry_fillin (s4_t *s4, s4_entry_t *entry);
 
+/* query.c */
+s4_set_t *s4_query (s4_t *s4, const char *query);
+
 #endif /* _S4_H */
