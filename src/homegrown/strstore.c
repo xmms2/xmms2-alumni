@@ -1,6 +1,8 @@
 #include "pat.h"
 #include <string.h>
 #include <stdlib.h>
+#include <glib.h>
+#include <xmmsclient/xmmsclient.h>
 
 
 #define STR_MAGIC 0xafa7beef
@@ -10,6 +12,15 @@ typedef struct str_info_St {
 	int32_t refs;
 } str_info_t;
 
+static char *collate_key (const char *key)
+{
+	char *tmp = g_utf8_casefold (key, -1);
+	char *ret = g_utf8_collate_key (tmp, -1);
+
+	g_free (tmp);
+
+	return ret;
+}
 
 /**
  * Look up a string and return the associated int
@@ -22,10 +33,13 @@ int32_t s4be_st_lookup (s4be_t *s4, const char *str)
 {
 	int32_t ret;
 	pat_key_t key;
-	key.data = str;
-	key.key_len = (strlen(str) + 1) * 8;
+
+	key.data = collate_key (str);
+	key.key_len = (strlen(key.data) + 1) * 8;
 
 	ret = pat_lookup (s4, S4_STRING_STORE, &key);
+
+	g_free (key.data);
 
 	if (ret == -1)
 		ret = 0;
@@ -46,7 +60,9 @@ char *s4be_st_reverse (s4be_t *s4, int32_t node)
 	char *ret;
 	be_rlock (s4);
 
-	ret = strdup (S4_PNT(s4, pat_node_to_key (s4, node), char));
+	ret = S4_PNT (s4, pat_node_to_key (s4, node), char);
+	ret += strlen (ret) + 1;
+	ret = strdup (ret);
 
 	be_unlock (s4);
 	return ret;
@@ -64,39 +80,44 @@ int s4be_st_ref (s4be_t *s4, const char *str)
 {
 	pat_key_t key;
 	int32_t node;
-	int len = strlen (str) + 1;
+	int lena = strlen (str) + 1;
+	int lenb;
 	str_info_t *info;
-	char *data;
+	char *data, *cstr = collate_key(str);
 
+	lenb = strlen (cstr) + 1;
 
 	be_wlock (s4);
 
-	key.data = str;
-	key.key_len = (strlen(str) + 1) * 8;
+	key.data = cstr;
+	key.key_len = lenb * 8;
 	node = pat_lookup (s4, S4_STRING_STORE, &key);
 
 	if (node != -1) {
 		data = S4_PNT (s4, pat_node_to_key (s4, node), char);
-		info = (str_info_t*)(data + len);
+		info = (str_info_t*)(data + lenb + lena);
 
 		info->refs++;
 		be_unlock (s4);
+		g_free (cstr);
 		return node;
 	}
 
-	data = malloc (len + sizeof(str_info_t));
-	strcpy (data, str);
-	info = (str_info_t*)(data + len);
+	data = malloc (lenb + lena + sizeof(str_info_t));
+	strcpy (data, key.data);
+	strcpy (data + lenb, str);
+	info = (str_info_t*)(data + lena + lenb);
 	info->magic = STR_MAGIC;
 	info->refs = 1;
 
 	key.data = data;
-	key.data_len = len + sizeof(str_info_t);
-	key.key_len = len * 8;
+	key.data_len = lenb + lena + sizeof(str_info_t);
 	node = pat_insert (s4, S4_STRING_STORE, &key);
 
 	be_unlock (s4);
 	free (data);
+
+	g_free (cstr);
 
 	return node;
 }
@@ -114,31 +135,36 @@ int s4be_st_unref (s4be_t * s4, const char *str)
 	int32_t node;
 	str_info_t *info;
 	char *data;
-	int len = strlen (str) + 1;
+	int lena = strlen (str) + 1;
+	int lenb;
 	pat_key_t key;
 
 	be_wlock (s4);
 
-	key.data = str;
-	key.key_len = len * 8;
+	key.data = collate_key (str);
+	lenb = strlen (key.data) + 1;
+	key.key_len = lenb * 8;
 	node = pat_lookup (s4, S4_STRING_STORE, &key);
 
 	if (node == -1) {
 		be_unlock (s4);
+		g_free (key.data);
 		return -1;
 	}
 
 	data = S4_PNT (s4, pat_node_to_key (s4, node), char);
-	info = (str_info_t*)(data + len);
+	info = (str_info_t*)(data + lena + lenb);
 	info->refs--;
 
 	if (info->refs == 0) {
 		pat_remove (s4, S4_STRING_STORE, &key);
 		be_unlock (s4);
+		g_free (key.data);
 		return 0;
 	}
 
 	be_unlock (s4);
+	g_free (key.data);
 	return info->refs;
 }
 
@@ -192,4 +218,37 @@ int _st_recover (s4be_t *old, s4be_t *rec)
 	}
 
 	return 0;
+}
+
+
+xmmsv_t *s4be_st_regexp (s4be_t *be, const char *pat)
+{
+	xmmsv_t *list = xmmsv_new_list();
+	xmmsv_list_iter_t *it;
+	GError *error = NULL;
+	GRegex *regex = g_regex_new (pat, 0, 0, &error);
+	int32_t node = pat_first (be, S4_STRING_STORE);
+	char *str;
+
+	if (regex == NULL) {
+		printf ("Regex error: %s\n", error->message);
+		return list;
+	}
+
+	xmmsv_get_list_iter (list, &it);
+
+	while (node != -1) {
+		str = s4be_st_reverse (be, node);
+		if (g_regex_match (regex, str, 0, NULL)) {
+			xmmsv_t *s = xmmsv_new_string (str);
+			xmmsv_list_iter_insert (it, s);
+		}
+		free (str);
+
+		node = pat_next (be, node);
+	}
+
+	g_regex_unref (regex);
+
+	return list;
 }
