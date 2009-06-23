@@ -87,6 +87,9 @@ s4_set_t *_coll_to_set (s4_t *s4, xmmsv_coll_t *coll)
 
 				xmmsv_list_iter_next (it);
 			}
+
+			xmmsv_list_clear (list);
+			xmmsv_unref (list);
 			break;
 
 		default:
@@ -101,11 +104,15 @@ s4_set_t *_coll_to_set (s4_t *s4, xmmsv_coll_t *coll)
 s4_set_t *s4_query (s4_t *s4, const char *query)
 {
 	xmmsv_coll_t *coll;
+	s4_set_t *ret;
 
 	if (!xmmsv_coll_parse (query, &coll)) {
 		printf ("The query '%s' could not be parsed\n", query);
 		return NULL;
 	}
 
-	return _coll_to_set (s4, coll);
+	ret = _coll_to_set (s4, coll);
+	xmmsv_coll_unref (coll);
+
+	return ret;
 }

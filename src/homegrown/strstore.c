@@ -224,9 +224,9 @@ int _st_recover (s4be_t *old, s4be_t *rec)
 xmmsv_t *s4be_st_regexp (s4be_t *be, const char *pat)
 {
 	xmmsv_t *list = xmmsv_new_list();
-	xmmsv_list_iter_t *it;
 	GError *error = NULL;
-	GRegex *regex = g_regex_new (pat, 0, 0, &error);
+	GRegex *regex = g_regex_new (pat,
+			G_REGEX_CASELESS | G_REGEX_OPTIMIZE, 0, &error);
 	int32_t node = pat_first (be, S4_STRING_STORE);
 	char *str;
 
@@ -235,13 +235,12 @@ xmmsv_t *s4be_st_regexp (s4be_t *be, const char *pat)
 		return list;
 	}
 
-	xmmsv_get_list_iter (list, &it);
-
 	while (node != -1) {
 		str = s4be_st_reverse (be, node);
 		if (g_regex_match (regex, str, 0, NULL)) {
 			xmmsv_t *s = xmmsv_new_string (str);
-			xmmsv_list_iter_insert (it, s);
+			xmmsv_list_append (list, s);
+			xmmsv_unref (s);
 		}
 		free (str);
 
