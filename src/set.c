@@ -29,9 +29,18 @@ static void _set_free (s4_set_t *set)
 }
 
 
+/**
+ * Return the intersection of a and b.
+ * It will free the parts of a and b not used, you can in other words
+ * NOT refer to a and b after calling s4_set_intersection.
+ *
+ * @param a One of the two sets
+ * @param b The other of the two sets
+ * @return The intersection of a and b
+ */
 s4_set_t *s4_set_intersection (s4_set_t *a, s4_set_t *b)
 {
-	s4_set_t *ret, *cur;
+	s4_set_t *ret, *cur, *tmp;
 	int c;
 
 	cur = ret = NULL;
@@ -40,22 +49,27 @@ s4_set_t *s4_set_intersection (s4_set_t *a, s4_set_t *b)
 		c = set_compare (a, b);
 
 		if (c > 0) {
+			tmp = b;
 			b = b->next;
+			_set_free (tmp);
 		} else if (c < 0) {
+			tmp = a;
 			a = a->next;
+			_set_free (tmp);
 		} else {
 			if (cur == NULL) {
-				ret = cur = malloc (sizeof (s4_set_t));
+				ret = cur = a;
 			} else {
-				cur->next = malloc (sizeof (s4_set_t));
+				cur->next = a;
 				cur = cur->next;
 			}
 
 			cur->next = NULL;
-			cur->entry = a->entry;
 
 			a = a->next;
+			tmp = b;
 			b = b->next;
+			_set_free (tmp);
 		}
 	}
 
@@ -63,9 +77,17 @@ s4_set_t *s4_set_intersection (s4_set_t *a, s4_set_t *b)
 }
 
 
+/**
+ * Return the union of two sets.
+ * Note: It will free the two sets a and b
+ *
+ * @param a One of the two sets
+ * @param b The other of the two sets
+ * @return A new set that's the union of a and b
+ */
 s4_set_t *s4_set_union (s4_set_t *a, s4_set_t *b)
 {
-	s4_set_t *ret, *cur;
+	s4_set_t *ret, *cur, *tmp;
 	int c;
 
 	cur = ret = NULL;
@@ -73,25 +95,29 @@ s4_set_t *s4_set_union (s4_set_t *a, s4_set_t *b)
 	while (a != NULL || b != NULL) {
 		c = set_compare (a, b);
 
-		if (ret == NULL)
-			cur = ret = malloc (sizeof (s4_set_t));
-		else {
-			cur->next = malloc (sizeof (s4_set_t));
-			cur = cur->next;
-		}
-		cur->next = NULL;
-
 		if (c > 0) {
-			cur->entry = b->entry;
+			tmp = b;
 			b = b->next;
 		} else if (c < 0) {
-			cur->entry = a->entry;
+			tmp = a;
 			a = a->next;
 		} else {
-			cur->entry = a->entry;
-			a = a->next;
+			tmp = b;
 			b = b->next;
+			_set_free (b);
+
+			tmp = a;
+			a = a->next;
 		}
+
+		if (ret == NULL)
+			ret = cur = tmp;
+		else {
+			cur->next = tmp;
+			cur = cur->next;
+		}
+
+		cur->next = NULL;
 	}
 
 	return ret;

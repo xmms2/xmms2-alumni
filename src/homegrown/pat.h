@@ -4,7 +4,7 @@
 #include "be.h"
 
 typedef struct pat_key_St {
-	const void *data;
+	void *data;
 	int32_t key_len;
 	int32_t data_len;
 } pat_key_t;

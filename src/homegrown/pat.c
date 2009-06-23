@@ -345,30 +345,14 @@ int32_t pat_node_to_key (s4be_t *s4, int32_t node)
 	return pn->leaf.key;
 }
 
-void *_fold (s4be_t *s4, int32_t node, void *start,
-		void *(*func)(s4be_t *, int32_t, void*))
-{
-	pat_node_t *pn = S4_PNT (s4, node, pat_node_t);
 
-	if (is_leaf (pn)) {
-		return func (s4, pat_node_to_key (s4, node), start);
-	}
-
-	start = _fold (s4, pn->internal.right, start, func);
-	return  _fold (s4, pn->internal.left, start, func);
-}
-
-void *pat_fold (s4be_t *s4, int32_t trie, void *start,
-		void *(*func)(s4be_t*, int32_t, void*))
-{
-	int32_t node = get_root (s4, trie);
-
-	if (node == -1)
-		return start;
-
-	return _fold (s4, node, start, func);
-}
-
+/**
+ * Return the first node in the trie (not sorted)
+ *
+ * @param s4 The database handle
+ * @param trie The trie
+ * @return The first node
+ */
 int32_t pat_first (s4be_t *s4, int32_t trie)
 {
 	pat_trie_t *ptrie = S4_PNT(s4, trie, pat_trie_t);
@@ -376,6 +360,14 @@ int32_t pat_first (s4be_t *s4, int32_t trie)
 	return ptrie->list_start;
 }
 
+
+/**
+ * Return the node after this one
+ *
+ * @param s4 The database handle
+ * @param node The node to find the next one of
+ * @param The node after node.
+ */
 int32_t pat_next (s4be_t *s4, int32_t node)
 {
 	pat_node_t *pnode = S4_PNT(s4, node, pat_node_t);
