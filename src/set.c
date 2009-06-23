@@ -11,12 +11,14 @@ static int set_compare (s4_set_t *a, s4_set_t *b)
 	if (b == NULL)
 		return -1;
 
-	ret = a->entry.key_i - a->entry.key_i;
+	ret = (a->entry.key_i < b->entry.key_i)?-1:
+		(a->entry.key_i > b->entry.key_i);
 
 	if (!ret)
-		ret = a->entry.val_i - b->entry.val_i;
+		ret = (a->entry.val_i < b->entry.val_i)?-1:
+			(a->entry.val_i > b->entry.val_i);
 
-	return 0;
+	return ret;
 }
 
 static void _set_free (s4_set_t *set)
@@ -29,35 +31,31 @@ static void _set_free (s4_set_t *set)
 
 s4_set_t *s4_set_intersection (s4_set_t *a, s4_set_t *b)
 {
-	s4_set_t *ret, *cur, *tmp;
+	s4_set_t *ret, *cur;
 	int c;
 
 	cur = ret = NULL;
 
 	while (a != NULL && b != NULL) {
 		c = set_compare (a, b);
+
 		if (c > 0) {
-			tmp = b->next;
-			_set_free (b);
-			b = tmp;
+			b = b->next;
 		} else if (c < 0) {
-			tmp = a->next;
-			_set_free (a);
-			a = tmp;
+			a = a->next;
 		} else {
 			if (cur == NULL) {
-				ret = cur = a;
+				ret = cur = malloc (sizeof (s4_set_t));
 			} else {
-				cur->next = a;
+				cur->next = malloc (sizeof (s4_set_t));
 				cur = cur->next;
 			}
 
 			cur->next = NULL;
+			cur->entry = a->entry;
 
 			a = a->next;
-			tmp = b->next;
-			_set_free (b);
-			b = tmp;
+			b = b->next;
 		}
 	}
 
@@ -67,7 +65,7 @@ s4_set_t *s4_set_intersection (s4_set_t *a, s4_set_t *b)
 
 s4_set_t *s4_set_union (s4_set_t *a, s4_set_t *b)
 {
-	s4_set_t *ret, *cur, *tmp;
+	s4_set_t *ret, *cur;
 	int c;
 
 	cur = ret = NULL;
@@ -75,35 +73,25 @@ s4_set_t *s4_set_union (s4_set_t *a, s4_set_t *b)
 	while (a != NULL || b != NULL) {
 		c = set_compare (a, b);
 
-		if (c > 0) {
-			cur->next = b;
-			cur = b;
-
-			tmp = b->next;
-			_set_free (b);
-			b = tmp;
-		} else if (c < 0) {
-			cur->next = a;
-			cur = a;
-
-			tmp = a->next;
-			_set_free (a);
-			a = tmp;
-		} else {
-			cur->next = a;
-			cur = a;
-
-			tmp = a->next;
-			_set_free (a);
-			a = tmp;
-			tmp = b->next;
-			_set_free (b);
-			b = tmp;
-		}
-
 		if (ret == NULL)
-			ret = cur;
+			cur = ret = malloc (sizeof (s4_set_t));
+		else {
+			cur->next = malloc (sizeof (s4_set_t));
+			cur = cur->next;
+		}
 		cur->next = NULL;
+
+		if (c > 0) {
+			cur->entry = b->entry;
+			b = b->next;
+		} else if (c < 0) {
+			cur->entry = a->entry;
+			a = a->next;
+		} else {
+			cur->entry = a->entry;
+			a = a->next;
+			b = b->next;
+		}
 	}
 
 	return ret;
@@ -123,7 +111,7 @@ s4_set_t *s4_set_next (s4_set_t *set)
 }
 
 
-void s4_set__set_free (s4_set_t *set)
+void s4_set_free (s4_set_t *set)
 {
 	s4_set_t *tmp;
 	while (set != NULL) {

@@ -672,6 +672,10 @@ s4_set_t *bpt_get_set (s4be_t *be, int32_t bpt, int32_t key, int32_t val)
 			cur->entry.key_s = cur->entry.val_s = NULL;
 			cur->entry.key_i = pl->keys[index].key_b;
 			cur->entry.val_i = pl->keys[index].val_b;
+			if (cur->entry.key_i < 0)
+				cur->entry.type = ENTRY_INT;
+			else
+				cur->entry.type = ENTRY_STR;
 		}
 
 		if (++index >= pl->key_count) {
