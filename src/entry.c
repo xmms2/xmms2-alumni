@@ -224,3 +224,33 @@ s4_set_t *s4_entry_contained(s4_t *s4, s4_entry_t *entry)
 	s4_entry_fillin (s4, entry);
 	return s4be_ip_has_this (s4->be, entry);
 }
+
+
+/**
+ * Get all entries smaller than this one
+ *
+ * @param s4 The database handle
+ * @param entry The entry
+ * @return A set will all the entries that is contained in an entry
+ * that has a smaller value than this one (but same key).
+ */
+s4_set_t *s4_entry_smaller (s4_t *s4, s4_entry_t *entry)
+{
+	s4_entry_fillin (s4, entry);
+	return s4be_ip_smaller (s4->be, entry);
+}
+
+
+/**
+ * Get all entries greater than this one
+ *
+ * @param s4 The database handle
+ * @param entry The entry
+ * @return A set will all the entries that is contained in an entry
+ * that has a greater value than this one (but same key).
+ */
+s4_set_t *s4_entry_greater (s4_t *s4, s4_entry_t *entry)
+{
+	s4_entry_fillin (s4, entry);
+	return s4be_ip_greater (s4->be, entry);
+}

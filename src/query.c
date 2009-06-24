@@ -3,7 +3,22 @@
 #include <xmmsclient/xmmsclient.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
+
+static int is_int (const char *str, int *val)
+{
+	int ret = 0;
+	char *end;
+
+	if (!isspace (*str)) {
+		*val = strtol (str, &end, 10);
+		if (*end == '\0')
+			ret = 1;
+	}
+
+	return ret;
+}
 
 s4_set_t *_coll_to_set (s4_t *s4, xmmsv_coll_t *coll)
 {
@@ -13,6 +28,7 @@ s4_set_t *_coll_to_set (s4_t *s4, xmmsv_coll_t *coll)
 	xmmsv_coll_t *c;
 	const char *key, *val;
 	s4_entry_t *entry;
+	int32_t ival;
 
 	xmmsv_get_list_iter (xmmsv_coll_operands_get (coll), &it);
 
@@ -51,10 +67,16 @@ s4_set_t *_coll_to_set (s4_t *s4, xmmsv_coll_t *coll)
 			xmmsv_dict_get (xmmsv_coll_attributes_get (coll), "value", &v);
 			xmmsv_get_string (v, &val);
 
-			printf ("Looking for (%s, %s)\n", key, val);
 			entry = s4_entry_get_s (s4, key, val);
 			ret = s4_entry_contained (s4, entry);
 			s4_entry_free (entry);
+
+			/* If it is an int we should search for integer entries too */
+			if (is_int (val, &ival)) {
+				entry = s4_entry_get_i (s4, key, ival);
+				ret = s4_set_union (ret, s4_entry_contained (s4, entry));
+				s4_entry_free (entry);
+			}
 			break;
 
 		case XMMS_COLLECTION_TYPE_MATCH:
@@ -90,6 +112,31 @@ s4_set_t *_coll_to_set (s4_t *s4, xmmsv_coll_t *coll)
 
 			xmmsv_list_clear (list);
 			xmmsv_unref (list);
+			break;
+
+		case XMMS_COLLECTION_TYPE_SMALLER:
+			xmmsv_dict_get (xmmsv_coll_attributes_get (coll), "field", &v);
+			xmmsv_get_string (v, &key);
+
+			xmmsv_dict_get (xmmsv_coll_attributes_get (coll), "value", &v);
+			xmmsv_get_string (v, &val);
+
+			entry = s4_entry_get_i (s4, key, atoi(val));
+			ret = s4_entry_smaller (s4, entry);
+			s4_entry_free (entry);
+
+			break;
+		case XMMS_COLLECTION_TYPE_GREATER:
+			xmmsv_dict_get (xmmsv_coll_attributes_get (coll), "field", &v);
+			xmmsv_get_string (v, &key);
+
+			xmmsv_dict_get (xmmsv_coll_attributes_get (coll), "value", &v);
+			xmmsv_get_string (v, &val);
+
+			entry = s4_entry_get_i (s4, key, atoi(val));
+			ret = s4_entry_greater (s4, entry);
+			s4_entry_free (entry);
+
 			break;
 
 		default:

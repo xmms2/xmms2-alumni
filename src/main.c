@@ -2,11 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 const char *info[] = {
 	"artist",
 	"title",
 	"album",
+	"duration",
+	"tracknr",
 	NULL
 };
 
@@ -20,12 +23,26 @@ int in_info (const char *str)
 	return 0;
 }
 
+static int is_int (const char *str, int *val)
+{
+	int ret = 0;
+	char *end;
+
+	if (!isspace (*str)) {
+		*val = strtol (str, &end, 10);
+		if (*end == '\0')
+			ret = 1;
+	}
+
+	return ret;
+}
+
 int main (int argc, char *argv[])
 {
 	s4_t *s4;
 	char buffer[2048];
 	char *key, *val;
-	int id;
+	int id, ival;
 	s4_set_t *set, *props;
 	s4_entry_t *entry, *prop;
 
@@ -50,7 +67,10 @@ int main (int argc, char *argv[])
 
 			if (key != NULL && val != NULL) {
 				entry = s4_entry_get_i (s4, "song_id", id);
-				prop = s4_entry_get_s (s4, key, val);
+				if (is_int (val, &ival))
+					prop = s4_entry_get_i (s4, key, ival);
+				else
+					prop = s4_entry_get_s (s4, key, val);
 
 				if (s4_entry_add (s4, entry, prop))
 					printf ("Error inserting %i (%s %s)\n",
@@ -75,8 +95,12 @@ int main (int argc, char *argv[])
 
 				while (props != NULL) {
 					s4_entry_fillin (s4, &props->entry);
-					if (in_info (props->entry.key_s))
-						printf ("  %s: %s\n", props->entry.key_s, props->entry.val_s);
+					if (in_info (props->entry.key_s)) {
+						if (props->entry.val_s != NULL)
+							printf ("  %s: %s\n", props->entry.key_s, props->entry.val_s);
+						else
+							printf ("i %s: %i\n", props->entry.key_s, props->entry.val_i);
+					}
 					props = s4_set_next (props);
 				}
 

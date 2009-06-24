@@ -18,5 +18,7 @@ int s4be_ip_add (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop);
 int s4be_ip_del (s4be_t *be, s4_entry_t *entry, s4_entry_t *prop);
 s4_set_t *s4be_ip_has_this (s4be_t *be, s4_entry_t *entry);
 s4_set_t *s4be_ip_this_has (s4be_t *be, s4_entry_t *entry);
+s4_set_t *s4be_ip_smaller (s4be_t *be, s4_entry_t *entry);
+s4_set_t *s4be_ip_greater (s4be_t *be, s4_entry_t *entry);
 
 #endif /* _S4_BE_H */

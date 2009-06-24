@@ -624,32 +624,21 @@ int bpt_remove (s4be_t *be, int32_t bpt, bpt_record_t record)
 }
 
 
-/**
- * Return a set with all the entries that has main key/val pair = key/val
- *
- * @param be The database handle
- * @param bpt The tree
- * @param key The main key
- * @param val The main val
- * @return A set with all the entries, or NULL if there are none
- */
-s4_set_t *bpt_get_set (s4be_t *be, int32_t bpt, int32_t key, int32_t val)
+/* Return a set with all entries between start and stop */
+s4_set_t *_bpt_find (s4be_t *be, int32_t bpt, bpt_record_t start, bpt_record_t stop)
 {
-	bpt_record_t rec;
-	bpt_node_t *pl;
-	int32_t leaf;
+	s4_set_t *prev, *root, *cur;
 	int index;
-	s4_set_t *root, *cur;
-	root = cur = NULL;
+	int32_t leaf, val;
+	bpt_node_t *pl;
 
-	rec.key_a = key;
-	rec.val_a = val;
-	rec.key_b = rec.val_b = INT32_MIN;
+	prev = root = cur = NULL;
 
-	leaf = _bpt_find_leaf (be, bpt, rec);
+	val = start.val_a;
+
+	leaf = _bpt_find_leaf (be, bpt, start);
 	pl = S4_PNT (be, leaf, bpt_node_t);
-
-	index = _bpt_search (pl, rec);
+	index = _bpt_search (pl, start);
 
 	if (leaf != -1 && index == pl->key_count) {
 		leaf = pl->next;
@@ -657,10 +646,14 @@ s4_set_t *bpt_get_set (s4be_t *be, int32_t bpt, int32_t key, int32_t val)
 		index = 0;
 	}
 
-	while (leaf != -1 &&
-			(pl->keys[index].key_a < key ||
-			 (pl->keys[index].key_a == key && pl->keys[index].val_a <= val))) {
-		if (_bpt_comp (rec, pl->keys[index]) <= 0) {
+	while (leaf != -1 && _bpt_comp (stop, pl->keys[index]) > 0) {
+		if (_bpt_comp (start, pl->keys[index]) <= 0) {
+			if (pl->keys[index].val_a != val) {
+				prev = s4_set_union (prev, root);
+				cur = root = NULL;
+				val = pl->keys[index].val_a;
+			}
+
 			if (cur == NULL) {
 				root = cur = malloc (sizeof (s4_set_t));
 			} else {
@@ -685,7 +678,82 @@ s4_set_t *bpt_get_set (s4be_t *be, int32_t bpt, int32_t key, int32_t val)
 		}
 	}
 
-	return root;
+	return s4_set_union (root, prev);
+}
+
+
+/**
+ * Return a set with all the entries that has main key/val pair = key/val
+ *
+ * @param be The database handle
+ * @param bpt The tree
+ * @param key The main key
+ * @param val The main val
+ * @return A set with all the entries, or NULL if there are none
+ */
+s4_set_t *bpt_get_set (s4be_t *be, int32_t bpt, int32_t key, int32_t val)
+{
+	bpt_record_t start, stop;
+
+	start.key_a = key;
+	start.val_a = val;
+	start.key_b = start.val_b = INT32_MIN;
+
+	stop.key_a = key;
+	stop.val_a = val + 1;
+	stop.key_b = stop.val_b = INT32_MIN;
+
+	return _bpt_find (be, bpt, start, stop);
+}
+
+
+/**
+ * Get all entries with key key and values less smaller than val.
+ *
+ * @param be The database handle
+ * @param bpt The tree to search
+ * @param key The key to search for
+ * @param val The value to stop at
+ * @return A set with all the entries that has key and value less than val.
+ */
+s4_set_t *bpt_get_smaller (s4be_t *be, int32_t bpt, int32_t key, int32_t val)
+{
+	bpt_record_t start, stop;
+
+	start.key_a = key;
+	start.val_a = INT32_MIN;
+	start.key_b = start.val_b = INT32_MIN;
+
+	stop.key_a = key;
+	stop.val_a = val;
+	stop.key_b = stop.val_b = INT32_MIN;
+
+	return _bpt_find (be, bpt, start, stop);
+}
+
+
+/**
+ * Get all entries with key key and values less greater than val.
+ *
+ * @param be The database handle
+ * @param bpt The tree to search
+ * @param key The key to search for
+ * @param val The value to stop at
+ * @return A set with all the entries that has key and value greater than val.
+ */
+s4_set_t *bpt_get_greater (s4be_t *be, int32_t bpt, int32_t key, int32_t val)
+{
+	bpt_record_t start, stop;
+
+	start.key_a = key;
+	start.val_a = val + 1;
+	start.key_b = start.val_b = INT32_MIN;
+
+	stop.key_a = key + 1;
+	stop.val_a = INT32_MIN;
+	stop.key_b = stop.val_b = INT32_MIN;
+
+	return _bpt_find (be, bpt, start, stop);
 }
 
 

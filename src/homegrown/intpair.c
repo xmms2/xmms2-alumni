@@ -100,6 +100,18 @@ s4_set_t *s4be_ip_this_has (s4be_t *be, s4_entry_t *entry)
 }
 
 
+s4_set_t *s4be_ip_smaller (s4be_t *be, s4_entry_t *entry)
+{
+	return bpt_get_smaller (be, S4_REV_STORE, entry->key_i, entry->val_i);
+}
+
+
+s4_set_t *s4be_ip_greater (s4be_t *be, s4_entry_t *entry)
+{
+	return bpt_get_greater (be, S4_REV_STORE, entry->key_i, entry->val_i);
+}
+
+
 int _fix_key (s4be_t *old, s4be_t *new, bpt_record_t key)
 {
 	bpt_record_t nkey, rkey;;
