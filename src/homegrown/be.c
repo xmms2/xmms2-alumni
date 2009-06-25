@@ -16,12 +16,22 @@
 #define CLEAN 0
 #define DIRTY 1
 
+/* Define the biggest and smallest chunk size (exponents) */
+#define BIGGEST_CHUNK 12 /* 2^12 = 4096 */
+#define SMALLEST_CHUNK 4 /* 2^4  = 16 */
+
 typedef struct header_St {
 	pat_trie_t string_store;
 	bpt_t int_store, int_rev;
-	int32_t alloc_off;
 	int32_t sync_state;
+
+	int32_t free_lists[BIGGEST_CHUNK - SMALLEST_CHUNK + 1];
+	int free;
 } header_t;
+
+typedef struct chunk_St {
+	int32_t next;
+} chunk_t;
 
 
 pthread_t s_thread;
@@ -31,18 +41,31 @@ static inline long pagesize ()
 	return sysconf (_SC_PAGESIZE);
 }
 
-static inline int align (int a, int b)
+
+static int log2 (unsigned int x)
 {
-	return a + ((b - (a % b)) % b);
+	int ret = 31;
+
+	if (!x) return 0;
+
+	while (!(x & (1 << 31))) {
+		x <<= 1;
+		ret--;
+	}
+
+	if (x > (1 << 31)) ret++;
+
+	return ret;
 }
+
 
 /* Sync the database if it is dirty */
 void sync_db (s4be_t *s4)
 {
 	header_t *header;
 
-	/* We only need a read lock, we're not modifying any data
-	 * just flushing it to disk, so we can other threads reading
+	/* We only need a read lock, we're not modifying any data, just
+	 * flushing it to disk, so we can have other threads reading.
 	 */
 	be_rlock (s4);
 	header = s4->map;
@@ -61,7 +84,7 @@ void sync_db (s4be_t *s4)
  */
 static void grow_db (s4be_t *s4, int n)
 {
-	n = align (n, pagesize());
+	n = S4_ALIGN (n, pagesize());
 
 	munmap(s4->map, s4->size);
 
@@ -84,9 +107,29 @@ static void init_db (s4be_t *s4)
 	header = s4->map;
 
 	memset (header, -1, sizeof (header_t));
-	header->alloc_off = sizeof(header_t);
 	header->sync_state = DIRTY;
+	header->free = 0;
 	sync_db(s4);
+}
+
+
+static int32_t make_chunks (s4be_t *be, int exp)
+{
+	int size = 2 << (exp + SMALLEST_CHUNK - 1);
+	int32_t ret = be->size;
+	int i;
+	chunk_t *chunk;
+
+	grow_db (be, 1);
+
+	for (i = 0; i < pagesize(); i += size) {
+		chunk = S4_PNT (be, ret + i, chunk_t);
+		chunk->next = ret + i + size;
+	}
+
+	chunk->next = -1;
+
+	return ret;
 }
 
 
@@ -207,6 +250,10 @@ s4be_t *s4be_open (const char* filename)
  */
 int s4be_close (s4be_t* s4)
 {
+	header_t *header = s4->map;
+
+	printf ("free %i\n", header->free);
+
 	sync_db (s4);
 	munmap (s4->map, s4->size);
 	close (s4->fd);
@@ -225,11 +272,30 @@ int s4be_close (s4be_t* s4)
 int32_t be_alloc (s4be_t* s4, int n)
 {
 	header_t* header = s4->map;
-	int32_t ret = header->alloc_off;
-	header->alloc_off += n;
+	chunk_t *chunk;
+	int32_t ret;
+	int l = log2 (n) - SMALLEST_CHUNK;
 
-	if ((n + ret) > s4->size)
-		grow_db (s4, n + ret - s4->size);
+	if (l < 0)
+		l = 0;
+
+	if (l >= BIGGEST_CHUNK) {
+		printf ("trying to allocate a bigger chunk than the biggest we allow!\n");
+		return -1;
+	}
+
+	if (header->free_lists[l] == -1) {
+		ret = make_chunks (s4, l);
+		header = s4->map;
+		header->free_lists[l] = ret;
+		header->free += pagesize();
+	}
+
+	ret = header->free_lists[l];
+	chunk = S4_PNT (s4, ret, chunk_t);
+	header->free_lists[l] = chunk->next;
+
+	header->free -= 2 << (l + SMALLEST_CHUNK - 1);
 
 	return ret;
 }
@@ -240,9 +306,15 @@ int32_t be_alloc (s4be_t* s4, int n)
  *
  * @param off The allocation to free
  */
-void be_free(s4be_t* s4, int32_t off)
+void be_free(s4be_t* s4, int32_t off, int size)
 {
-	/* DUMMY, write some real code here */
+	int32_t l = log2 (size) - SMALLEST_CHUNK;
+	header_t *header = s4->map;
+	chunk_t *chunk = S4_PNT (s4, off, chunk_t);
+
+	chunk->next = header->free_lists[l];
+	header->free_lists[l] = off;
+	header->free += 2 << (l + SMALLEST_CHUNK - 1);
 }
 
 /* Locking routines

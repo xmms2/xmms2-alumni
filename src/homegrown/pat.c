@@ -16,6 +16,7 @@ typedef union pat_node_St {
 		uint32_t len;
 		int32_t key;
 		int32_t prev, next;
+		int32_t data_len;
 	} leaf;
 } pat_node_t;
 
@@ -261,6 +262,7 @@ int32_t pat_insert (s4be_t *s4, int32_t trie, pat_key_t *key_s)
 	pn->leaf.key = key;
 	pn->leaf.len = key_s->key_len;
 	pn->leaf.prev = pn->leaf.next = -1;
+	pn->leaf.data_len = key_s->data_len;
 
 	add_to_list (s4, trie, node);
 
@@ -283,6 +285,7 @@ int32_t pat_insert (s4be_t *s4, int32_t trie, pat_key_t *key_s)
  * @param s4 The database handle
  * @param trie The trie to remove it from
  * @param key The key to remove
+ * @return -1 on error, 0 on success
  */
 int pat_remove (s4be_t *s4, int32_t trie, pat_key_t *key)
 {
@@ -304,14 +307,16 @@ int pat_remove (s4be_t *s4, int32_t trie, pat_key_t *key)
 		return -1;
 	}
 
-	be_free (s4, node);
+	pn = S4_PNT (s4, node, pat_node_t);
+	be_free (s4, pn->leaf.key, pn->leaf.data_len);
+	be_free (s4, node, sizeof (pat_node_t));
 
 	if (prev == -1) {
 		sibling = -1;
 	} else {
 		pn = S4_PNT(s4, prev, pat_node_t);
 		sibling = ((pn->internal.left == node)?pn->internal.right:pn->internal.left);
-		be_free (s4, prev);
+		be_free (s4, prev, sizeof (pat_node_t));
 	}
 
 	if (pprev == -1) {

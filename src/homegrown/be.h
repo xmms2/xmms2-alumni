@@ -17,13 +17,14 @@ struct s4be_St {
 
 
 #define S4_PNT(s, i, t) ((t*)((char*)(s)->map + (i)))
+#define S4_ALIGN(a, b) ((a) + (((b) - ((a) % (b))) % (b)))
 
 #define S4_STRING_STORE 0
 #define S4_INT_STORE (sizeof (pat_trie_t))
 #define S4_REV_STORE (sizeof (pat_trie_t) + sizeof (bpt_t))
 
 int32_t be_alloc (s4be_t *s4, int n);
-void be_free (s4be_t *s4, int32_t off);
+void be_free (s4be_t *s4, int32_t off, int size);
 
 void be_rlock (s4be_t *s4);
 void be_unlock (s4be_t *s4);

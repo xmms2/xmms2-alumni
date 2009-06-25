@@ -409,7 +409,7 @@ static bpt_record_t _bpt_remove_internal (s4be_t *be, int32_t bpt,
 		_bpt_set_root (be, bpt, pnode->pointers[0]);
 		pnode = S4_PNT (be, pnode->pointers[0], bpt_node_t);
 		pnode->parent = -1;
-		be_free (be, node);
+		be_free (be, node, sizeof (bpt_node_t) + sizeof(int32_t) * (SIZE + 1));
 	}
 
 	return ret;
@@ -439,7 +439,10 @@ static void _bpt_merge_nodes (s4be_t *be, int32_t bpt, int leaf,
 	plo->keys[plo->key_count - phi->key_count - add] =
 	   	_bpt_remove_internal (be, bpt, phi->parent, phi->keys[0]);
 
-	be_free (be, hi);
+	if (leaf)
+		be_free (be, hi, sizeof (bpt_node_t));
+	else
+		be_free (be, hi, sizeof (bpt_node_t) + sizeof(int32_t) * (SIZE + 1));
 }
 
 
@@ -615,7 +618,7 @@ int bpt_remove (s4be_t *be, int32_t bpt, bpt_record_t record)
 	if (pl->key_count <= SIZE / 2 && pl->parent != -1)
 		_bpt_underflow (be, bpt, leaf);
 	else if (pl->key_count == 0) {
-		be_free (be, leaf);
+		be_free (be, leaf, sizeof (bpt_node_t));
 		_bpt_set_root (be, bpt, -1);
 		_bpt_set_leaves (be, bpt, -1);
 	}
