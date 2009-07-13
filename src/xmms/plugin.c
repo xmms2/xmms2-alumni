@@ -207,6 +207,10 @@ xmms_plugin_add_builtin_plugins (void)
 	xmms_plugin_load (&xmms_builtin_converter, NULL);
 	xmms_plugin_load (&xmms_builtin_segment, NULL);
 	xmms_plugin_load (&xmms_builtin_visualization, NULL);
+
+
+	/* how to handle this? */
+	#include "builtin_plugins.c"
 }
 
 
