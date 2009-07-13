@@ -39,10 +39,10 @@ typedef struct xmms_plugin_desc_St {
 } xmms_plugin_desc_t;
 
 #define XMMS_PLUGIN(type, api_ver, shname, name, ver, desc, setupfunc)	\
-	xmms_plugin_desc_t XMMS_PLUGIN_DESC = {				\
+	xmms_plugin_desc_t XMMS_PLUGIN_DESC_##shname = {				\
 		type,							\
 		api_ver,						\
-		shname,							\
+		G_STRINGIFY(shname),			\
 		name,							\
 		ver,							\
 		desc,							\
