@@ -44,7 +44,7 @@ static void xmms_m3u_destroy (xmms_xform_t *xform);
 /*
  * Plugin header
  */
-XMMS_XFORM_PLUGIN ("m3u",
+XMMS_XFORM_PLUGIN (m3u,
                    "M3U reader",
                    XMMS_VERSION,
                    "Playlist parser for m3u's",

@@ -73,7 +73,7 @@ xmms_daap_browse (xmms_xform_t *xform, const gchar *url, xmms_error_t *error);
 /*
  * Plugin header
  */
-XMMS_XFORM_PLUGIN ("daap",
+XMMS_XFORM_PLUGIN (daap,
                    "DAAP access plugin",
                    "SoC",
                    "Accesses iTunes (DAAP) music shares",

@@ -82,7 +82,7 @@ static gint64 xmms_vorbis_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("vorbis",
+XMMS_XFORM_PLUGIN (vorbis,
                    "Vorbis Decoder", XMMS_VERSION,
                    "Xiph's Ogg/Vorbis decoder",
                    xmms_vorbis_plugin_setup);

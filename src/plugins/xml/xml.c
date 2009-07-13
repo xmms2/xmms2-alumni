@@ -26,7 +26,7 @@ static gboolean xmms_xml_init (xmms_xform_t *xform);
 static gint xmms_xml_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len, xmms_error_t *err);
 static gint64 xmms_xml_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_seek_mode_t whence, xmms_error_t *err);
 
-XMMS_XFORM_PLUGIN ("xml",
+XMMS_XFORM_PLUGIN (xml,
                    "XML plugin", XMMS_VERSION,
                    "XML plugin", xmms_xml_plugin_setup);
 

@@ -47,7 +47,7 @@ typedef struct xmms_equalizer_priv_St {
 	gboolean enabled;
 } xmms_equalizer_data_t;
 
-XMMS_XFORM_PLUGIN ("equalizer",
+XMMS_XFORM_PLUGIN (equalizer,
                    "Equalizer effect",
                    XMMS_VERSION,
                    "Equalizer effect",

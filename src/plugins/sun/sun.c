@@ -95,7 +95,7 @@ static gboolean xmms_sun_format_set (xmms_output_t *output,
  * Plugin header
  */
 
-XMMS_OUTPUT_PLUGIN ("sun", "Sun Output", XMMS_VERSION,
+XMMS_OUTPUT_PLUGIN (sun, "Sun Output", XMMS_VERSION,
                     "OpenBSD output plugin", xmms_sun_plugin_setup);
 
 static gboolean

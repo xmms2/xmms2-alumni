@@ -122,7 +122,7 @@ static gint64 xmms_apefile_seek (xmms_xform_t *xform, gint64 samples,
                                  xmms_xform_seek_mode_t whence,
                                  xmms_error_t *err);
 
-XMMS_XFORM_PLUGIN ("apefile", "Monkey's Audio demuxer", XMMS_VERSION,
+XMMS_XFORM_PLUGIN (apefile, "Monkey's Audio demuxer", XMMS_VERSION,
                    "Monkey's Audio file format demuxer",
                    xmms_apefile_plugin_setup);
 

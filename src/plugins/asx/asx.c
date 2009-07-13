@@ -29,7 +29,7 @@ static void xmms_asx_destroy (xmms_xform_t *xform);
 /*
  * Plugin header
  */
-XMMS_XFORM_PLUGIN ("asx", "ASX reader", XMMS_VERSION,
+XMMS_XFORM_PLUGIN (asx, "ASX reader", XMMS_VERSION,
                    "Playlist plugin for Advanced Stream Redirector files.",
                    xmms_asx_plugin_setup);
 

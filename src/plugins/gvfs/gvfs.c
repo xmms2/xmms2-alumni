@@ -60,7 +60,7 @@ static gint64 xmms_gvfs_seek (xmms_xform_t *xform, gint64 offset,
 static gboolean xmms_gvfs_browse (xmms_xform_t *xform, const gchar *url,
                                   xmms_error_t *error);
 
-XMMS_XFORM_PLUGIN ("gvfs",
+XMMS_XFORM_PLUGIN (gvfs,
                    "gvfs transport",
                    XMMS_VERSION,
                    "Transport for glibs virtual filesystem",

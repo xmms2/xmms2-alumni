@@ -60,7 +60,7 @@ static int xmms_mp4_get_track (xmms_xform_t *xform, mp4ff_t *infile);
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("mp4",
+XMMS_XFORM_PLUGIN (mp4,
                    "MP4 Demuxer", XMMS_VERSION,
                    "MPEG-4 Part 14 file format demuxer",
                    xmms_mp4_plugin_setup);

@@ -66,7 +66,7 @@ static gboolean xmms_ao_try_format (gint driver_id, ao_option *options, xmms_sam
 /*
  * Plugin header
  */
-XMMS_OUTPUT_PLUGIN ("ao",
+XMMS_OUTPUT_PLUGIN (ao,
                     "libao output",
                     XMMS_VERSION,
                     "libao output plugin",

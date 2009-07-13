@@ -85,7 +85,7 @@ static void CALLBACK on_block_done (HWAVEOUT hWaveOut, UINT uMsg,
  * Plugin header
  */
 
-XMMS_OUTPUT_PLUGIN ("waveout", "WaveOut Output", XMMS_VERSION,
+XMMS_OUTPUT_PLUGIN (waveout, "WaveOut Output", XMMS_VERSION,
                     "WaveOut Output plugin",
                     xmms_waveout_plugin_setup);
 

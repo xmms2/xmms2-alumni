@@ -95,7 +95,7 @@ static size_t xmms_curl_callback_header (void *ptr, size_t size, size_t nmemb, v
 /*
  * Plugin header
  */
-XMMS_XFORM_PLUGIN ("curl",
+XMMS_XFORM_PLUGIN (curl,
                    "Curl Transport for HTTP",
                    XMMS_VERSION,
                    "HTTP transport using CURL",

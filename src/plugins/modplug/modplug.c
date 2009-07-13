@@ -40,7 +40,7 @@ static gboolean xmms_modplug_init (xmms_xform_t *xform);
 /*
  * Plugin header
  */
-XMMS_XFORM_PLUGIN ("modplug",
+XMMS_XFORM_PLUGIN (modplug,
                    "MODPLUG decoder ",
                    XMMS_VERSION,
                    "Module file decoder",

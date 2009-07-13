@@ -29,7 +29,7 @@ static gboolean xmms_html_browse (xmms_xform_t *xform,
 static gchar* parse_tag (const gchar *tag, const gchar *plspath);
 
 /* declare the plugin */
-XMMS_XFORM_PLUGIN ("html",
+XMMS_XFORM_PLUGIN (html,
                    "HTML Playlist Reader",
                    XMMS_VERSION,
                    "Reads HTML playlists",

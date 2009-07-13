@@ -82,7 +82,7 @@ get_be24 (guint8 *b)
 	return (b[2]) | (b[1] << 8) | (b[0] << 16);
 }
 
-XMMS_XFORM_PLUGIN ("flv", "FLV demuxer", XMMS_VERSION,
+XMMS_XFORM_PLUGIN (flv, "FLV demuxer", XMMS_VERSION,
                    "Extracts an audio stream from an FLV",
                    xmms_flv_setup)
 

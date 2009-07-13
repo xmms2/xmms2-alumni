@@ -45,7 +45,7 @@ static void xmms_cue_destroy (xmms_xform_t *xform);
 /*
  * Plugin header
  */
-XMMS_XFORM_PLUGIN ("cue",
+XMMS_XFORM_PLUGIN (cue,
                    "CUE reader",
                    XMMS_VERSION,
                    "Playlist parser for cue files",

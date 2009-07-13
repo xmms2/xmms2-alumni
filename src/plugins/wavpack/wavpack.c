@@ -113,7 +113,7 @@ static int wavpack_can_seek (void *id);
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("wavpack",
+XMMS_XFORM_PLUGIN (wavpack,
                    "WavPack Decoder", XMMS_VERSION,
                    "WavPack decoder",
                    xmms_wavpack_plugin_setup);

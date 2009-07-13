@@ -54,7 +54,7 @@ static void handle_shoutcast_metadata (xmms_xform_t *xform, gchar *metadata);
 /*
  * Plugin header
  */
-XMMS_XFORM_PLUGIN ("icymetaint",
+XMMS_XFORM_PLUGIN (icymetaint,
                    "Icy-metaint stream decoder",
                    XMMS_VERSION,
                    "Decode & use shoutcast stream metadata",

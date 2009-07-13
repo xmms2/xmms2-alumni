@@ -62,7 +62,7 @@ static void xmms_karaoke_update_coeffs (xmms_karaoke_data_t *data);
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("karaoke",
+XMMS_XFORM_PLUGIN (karaoke,
                    "Karaoke effect", XMMS_VERSION,
                    "Voice removal effect plugin",
                    xmms_karaoke_plugin_setup);

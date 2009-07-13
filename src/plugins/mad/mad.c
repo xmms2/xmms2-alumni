@@ -78,7 +78,7 @@ static gint64 xmms_mad_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_see
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("mad",
+XMMS_XFORM_PLUGIN (mad,
                    "MAD decoder",
                    XMMS_VERSION,
                    "MPEG Layer 1/2/3 decoder",

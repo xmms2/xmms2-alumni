@@ -57,7 +57,7 @@ static void xmms_speex_read_metadata (xmms_xform_t *xform, xmms_speex_data_t *da
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("speex",
+XMMS_XFORM_PLUGIN (speex,
                    "Speex Decoder", XMMS_VERSION,
                    "Speex decoder",
                    xmms_speex_plugin_setup);

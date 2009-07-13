@@ -64,7 +64,7 @@ static void xmms_faad_get_mediainfo (xmms_xform_t *xform);
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("faad",
+XMMS_XFORM_PLUGIN (faad,
                    "AAC Decoder", XMMS_VERSION,
                    "Advanced Audio Coding decoder",
                    xmms_faad_plugin_setup);

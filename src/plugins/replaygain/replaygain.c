@@ -87,7 +87,7 @@ static void apply_double (void *buf, gint len, gfloat gain);
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("replaygain",
+XMMS_XFORM_PLUGIN (replaygain,
                    "Replaygain effect",
                    XMMS_VERSION,
                    "Replaygain effect",

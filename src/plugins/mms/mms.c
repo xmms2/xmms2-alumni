@@ -42,7 +42,7 @@ static gint xmms_mms_read (xmms_xform_t *xform, void *buffer, gint len,
 /*
  * Plugin header
  */
-XMMS_XFORM_PLUGIN ("mms", "MMS xform plugin", XMMS_VERSION,
+XMMS_XFORM_PLUGIN (mms, "MMS xform plugin", XMMS_VERSION,
                    "Microsoft Media Services xform", xmms_mms_plugin_setup);
 
 static gboolean

@@ -81,7 +81,7 @@ static gint64 xmms_avcodec_seek (xmms_xform_t *xform, gint64 samples,
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("avcodec",
+XMMS_XFORM_PLUGIN (avcodec,
                    "AVCodec Decoder", XMMS_VERSION,
                    "ffmpeg libavcodec decoder",
                    xmms_avcodec_plugin_setup);

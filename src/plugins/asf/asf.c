@@ -57,7 +57,7 @@ gint xmms_asf_get_track (xmms_xform_t *xform, asf_file_t *file);
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("asf",
+XMMS_XFORM_PLUGIN (asf,
                    "ASF Demuxer", XMMS_VERSION,
                    "Advanced Systems Format demuxer",
                    xmms_asf_plugin_setup);

@@ -77,7 +77,7 @@ static gint64 xmms_mpg123_seek (xmms_xform_t *xform, gint64 samples,
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("mpg123", "mpg123 decoder", XMMS_VERSION,
+XMMS_XFORM_PLUGIN (mpg123, "mpg123 decoder", XMMS_VERSION,
                    "mpg123 decoder for MPEG 1.0/2.0/2.5 layer 1/2/3 audio",
                    xmms_mpg123_plugin_setup);
 

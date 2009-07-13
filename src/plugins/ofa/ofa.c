@@ -64,7 +64,7 @@ static gpointer xmms_ofa_thread (gpointer arg);
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("ofa",
+XMMS_XFORM_PLUGIN (ofa,
                    "Open Fingerprint Architecture",
                    XMMS_VERSION,
                    "Open Fingerprint calculator",

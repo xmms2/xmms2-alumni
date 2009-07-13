@@ -44,7 +44,7 @@ static gint64 xmms_id3v2_seek (xmms_xform_t *xform, gint64 bytes, xmms_xform_see
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("id3v2",
+XMMS_XFORM_PLUGIN (id3v2,
                    "ID3v2 parser",
                    XMMS_VERSION,
                    "ID3v2 tag container handler",

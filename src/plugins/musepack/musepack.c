@@ -73,7 +73,7 @@ static gint xmms_mpc_read (xmms_xform_t *xform, xmms_sample_t *buffer,
 static gint64 xmms_mpc_seek (xmms_xform_t *xform, gint64 offset,
                              xmms_xform_seek_mode_t whence, xmms_error_t *err);
 
-XMMS_XFORM_PLUGIN ("musepack", "Musepack decoder", XMMS_VERSION,
+XMMS_XFORM_PLUGIN (musepack, "Musepack decoder", XMMS_VERSION,
                    "Musepack Living Audio Compression",
                    xmms_mpc_plugin_setup);
 

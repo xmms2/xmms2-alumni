@@ -62,7 +62,7 @@ static void xmms_jack_error (const gchar *desc);
  * Plugin header
  */
 
-XMMS_OUTPUT_PLUGIN ("jack", "Jack Output", XMMS_VERSION,
+XMMS_OUTPUT_PLUGIN (jack, "Jack Output", XMMS_VERSION,
                     "Jack audio server output plugin",
                     xmms_jack_plugin_setup);
 

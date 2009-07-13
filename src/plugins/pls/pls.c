@@ -41,7 +41,7 @@ static void xmms_pls_destroy (xmms_xform_t *xform);
 /*
  * Plugin header
  */
-XMMS_XFORM_PLUGIN ("pls",
+XMMS_XFORM_PLUGIN (pls,
                    "PLS reader",
                    XMMS_VERSION,
                    "Playlist parser for PLS files.",

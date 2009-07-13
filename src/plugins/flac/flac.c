@@ -80,7 +80,7 @@ static gint64 xmms_flac_seek (xmms_xform_t *xform, gint64 samples, xmms_xform_se
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("flac",
+XMMS_XFORM_PLUGIN (flac,
                    "FLAC Decoder", XMMS_VERSION,
                    "Free Lossless Audio Codec decoder",
                    xmms_flac_plugin_setup);

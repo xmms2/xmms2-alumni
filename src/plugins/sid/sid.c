@@ -50,7 +50,7 @@ static void xmms_sid_get_songlength (xmms_xform_t *xform);
 /*
  * Plugin header
  */
-XMMS_XFORM_PLUGIN ("sid",
+XMMS_XFORM_PLUGIN (sid,
                    "SID Decoder",
                    XMMS_VERSION,
                    "libsidplay2 based SID decoder",

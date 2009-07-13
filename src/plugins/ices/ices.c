@@ -85,7 +85,7 @@ xmms_ices_flush_internal (xmms_ices_data_t *data)
 /*
  * Main plugin definition and handler functions.
  */
-XMMS_OUTPUT_PLUGIN ("ices",
+XMMS_OUTPUT_PLUGIN (ices,
                     "ICES Output",
                     XMMS_VERSION,
                     "Icecast source output plugin",

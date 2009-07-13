@@ -94,7 +94,7 @@ static xmms_wave_format_t read_wave_header (xmms_wave_data_t *data,
  * Plugin header
  */
 
-XMMS_XFORM_PLUGIN ("wave",
+XMMS_XFORM_PLUGIN (wave,
                    "Wave Decoder", XMMS_VERSION,
                    "Wave decoder",
                    xmms_wave_plugin_setup);

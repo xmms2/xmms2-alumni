@@ -65,7 +65,7 @@ static gboolean xmms_xspf_plugin_setup (xmms_xform_plugin_t *xform_plugin);
 static gboolean xmms_xspf_init (xmms_xform_t *xform);
 static gboolean xmms_xspf_browse (xmms_xform_t *xform, const gchar *url, xmms_error_t *error);
 
-XMMS_XFORM_PLUGIN ("xspf",
+XMMS_XFORM_PLUGIN (xspf,
                    "reader for xspf playlists",
                    XMMS_VERSION,
                    "reader for xspf playlists",
