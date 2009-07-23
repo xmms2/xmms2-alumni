@@ -36,7 +36,6 @@ xmmsc_io_cf_event_callback (CFSocketRef s,
                             void *info)
 {
 	CFSocketContext context;
-
 	context.version = 0;
 	CFSocketGetContext (s, &context);
 
@@ -55,8 +54,7 @@ xmmsc_io_cf_event_callback (CFSocketRef s,
 unsigned int
 xmmsc_setup_with_cf (xmmsc_connection_t *c)
 {
-
-	CFRunLoopRef runLoopRef = CFRunLoopGetCurrent ();
+	CFRunLoopRef runloop = CFRunLoopGetCurrent();
 	CFRunLoopSourceRef runLoopSourceRef;
 	CFSocketContext context;
 	CFSocketRef sockRef;
@@ -68,9 +66,7 @@ xmmsc_setup_with_cf (xmmsc_connection_t *c)
 	context.release = NULL;
 	context.copyDescription = NULL;
 
-	flags = kCFSocketReadCallBack;
-	if (xmmsc_io_want_out (c))
-		flags |= kCFSocketWriteCallBack;
+	flags = kCFSocketReadCallBack | kCFSocketWriteCallBack;
 
 	sockRef = CFSocketCreateWithNative (kCFAllocatorDefault,
 	                                    xmmsc_io_fd_get (c),
@@ -85,10 +81,10 @@ xmmsc_setup_with_cf (xmmsc_connection_t *c)
 	runLoopSourceRef = CFSocketCreateRunLoopSource (kCFAllocatorDefault,
 	                                                sockRef, 4);
 
-	CFRunLoopAddSource (runLoopRef, runLoopSourceRef, kCFRunLoopDefaultMode);
+	CFRunLoopAddSource (runloop, runLoopSourceRef, kCFRunLoopDefaultMode);
 
 
 	xmmsc_io_need_out_callback_set (c, xmmsc_io_cf_toggle_socket_flags, sockRef);
-
+	
 	return 1;
 }
