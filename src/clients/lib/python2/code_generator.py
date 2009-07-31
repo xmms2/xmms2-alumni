@@ -88,13 +88,13 @@ def emit_method_code(object, method, name_prefix):
 	if not method.return_value:
 		print 'returns=NONE',
 	else:
-		s = 'returns=%s' % py_map[method.return_value.type]
+		s = 'returns=%s' % py_map[method.return_value.type[0]]
 		print s,
 
 	if not arguments:
 		print ')'
 	else:
-		s = ', '.join(py_map[a.type] for a in arguments)
+		s = ', '.join(py_map[a.type[0]] for a in arguments)
 		print ', args=[%s])' % s
 
 	if method.documentation != None:
