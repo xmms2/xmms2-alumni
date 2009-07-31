@@ -2,7 +2,6 @@ import sys
 
 py_map = {}
 py_map['int'] = 'INT32'
-py_map['uint'] = 'UINT32'
 py_map['string'] = 'STRING'
 py_map['list'] = 'LIST'
 py_map['dictionary'] = 'DICT'
