@@ -41,10 +41,6 @@ class NONE(XMMSType):
         return
 
 
-class UINT32(XMMSType):
-    ID = 2
-    STRUCT = '>I'
-
 class INT32(XMMSType):
     ID = 3
     STRUCT = '>i'
@@ -64,13 +60,13 @@ class STRING(XMMSType):
     @valuedmethod
     def pack(self, string):
         string = string + '\x00'
-        payload = UINT32.pack(len(string))
+        payload = INT32.pack(len(string))
         payload += struct.pack(self.STRUCT % len(string), *string)
         return payload
 
     @valuedmethod
     def unpack(self, ins, offset=0):
-        length, offset = UINT32.unpack(ins, offset)
+        length, offset = INT32.unpack(ins, offset)
         noffset = offset+struct.calcsize(self.STRUCT  % length)
         string = ins[offset:noffset]
         
@@ -91,14 +87,14 @@ class LIST(XMMSType):
 
     @valuedmethod
     def pack(self, array):
-        payload = UINT32.pack(len(array))
+        payload = INT32.pack(len(array))
         for a in array:
             payload += AType(a)
         return payload
 
     @valuedmethod
     def unpack(self, ins, offset=0):
-        length, offset = UINT32.unpack(ins, offset)
+        length, offset = INT32.unpack(ins, offset)
         out = []
         while length:
             v, offset = AType.unpack(ins, offset)
@@ -110,7 +106,7 @@ class DICT(XMMSType):
     ID = 8
     @valuedmethod
     def pack(self, hashmap):
-        payload = UINT32.pack(len(hashmap))
+        payload = INT32.pack(len(hashmap))
         for k,v in hashmap.iteritems():
             payload += STRING.pack(k)
             payload += AType.pack(v)
@@ -118,7 +114,7 @@ class DICT(XMMSType):
 
     @valuedmethod
     def unpack(self, ins, offset=0):
-        length, offset = UINT32.unpack(ins, offset)
+        length, offset = INT32.unpack(ins, offset)
         out = {}
         while length:
             k, offset = STRING.unpack(ins, offset)
