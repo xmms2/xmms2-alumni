@@ -1,0 +1,12 @@
+def build(bld):
+    bld.new_task_gen(
+        source=['../../../ipc.xml', 'code_generator.py'],
+        target='generated.rb',
+        rule='${PYTHON} ${SRC[1].abspath()} > ${TGT}',
+    )
+
+def configure(conf):
+    return True
+
+def set_options(opt):
+    pass
