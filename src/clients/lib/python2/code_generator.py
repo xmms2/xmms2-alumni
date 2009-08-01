@@ -1,8 +1,16 @@
+#!/usr/bin/env python
 import sys
+
+sys.path.append('../waftools')
+
+import genipc
+from indenter import Indenter
 
 py_map = {}
 py_map['int'] = 'INT32'
 py_map['string'] = 'STRING'
+py_map['binary'] = 'BIN'
+py_map['collection'] = 'COLL'
 py_map['list'] = 'LIST'
 py_map['dictionary'] = 'DICT'
 
@@ -10,38 +18,6 @@ py_map['dictionary'] = 'DICT'
 def camel_case(s):
 	return ''.join(x.capitalize() for x in s.split('_'))
 
-class Indenter:
-	indent = 0
-
-	@classmethod
-	def enter(cls, s = None):
-		if s != None:
-			Indenter.printline(s)
-
-		cls.indent += 1
-
-	@classmethod
-	def leave(cls):
-		cls.indent -= 1
-
-		Indenter.printline()
-
-	# print the given string without a trailing newline
-	@classmethod
-	def printx(cls, s):
-		sys.stdout.write('\t' * cls.indent)
-		sys.stdout.write(s)
-
-	# print the given string including a trailing newline
-	@classmethod
-	def printline(cls, s = ''):
-		if not s:
-			print ''
-		else:
-			sys.stdout.write('\t' * cls.indent)
-			print s
-
-# entry point
 def build(ipc):
 	Indenter.printline('# This code is automatically generated from foobar. Do not edit.')
 	Indenter.printline()
@@ -100,3 +76,6 @@ def emit_method_code(object, method, name_prefix):
 		Indenter.printline('%s.__doc__ = \'%s\'' % (method_name, method.documentation))
 
 	Indenter.printline()
+
+ipc = genipc.parse_xml('../src/ipc.xml')
+build(ipc)
