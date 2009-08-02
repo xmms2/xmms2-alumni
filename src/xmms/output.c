@@ -337,9 +337,9 @@ xmms_output_filler_seek_state (xmms_output_t *output, guint32 samples)
 	g_mutex_unlock (output->filler_mutex);
 }
 
-gboolean xmms_start_next_song (xmms_xform_t *inputChain, xmms_output_t *output, xmms_xform_t *outputChainBegin, xmms_xform_t *outputChainEnd)
+gboolean xmms_start_next_song (xmms_xform_t **inputChain, xmms_output_t *output, xmms_xform_t *outputChainBegin, xmms_xform_t *outputChainEnd)
 {
-	if (!inputChain) {
+	if (!*inputChain) {
 		xmms_medialib_entry_t entry;
 		xmms_output_song_changed_arg_t *arg;
 		xmms_medialib_session_t *session;
@@ -354,8 +354,8 @@ gboolean xmms_start_next_song (xmms_xform_t *inputChain, xmms_output_t *output, 
 			return FALSE; /* Was continue */
 		}
 
-		inputChain = xmms_xform_chain_setup (entry, output->format_list, TRUE);
-		if (!inputChain) {
+		*inputChain = xmms_xform_chain_setup (entry, output->format_list, TRUE);
+		if (!*inputChain) {
 			session = xmms_medialib_begin_write ();
 			if (xmms_medialib_entry_property_get_int (session, entry, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS) == XMMS_MEDIALIB_ENTRY_STATUS_NEW) {
 				xmms_medialib_end (session);
@@ -374,8 +374,8 @@ gboolean xmms_start_next_song (xmms_xform_t *inputChain, xmms_output_t *output, 
 			return FALSE; /* Was continue */
 		}
 
-		xmms_middleman_xform_set_prev (outputChainBegin, inputChain);
-		xmms_middleman_xform_set_next_song_args (outputChainBegin, inputChain, output, outputChainBegin, outputChainEnd);
+		xmms_middleman_xform_set_prev (outputChainBegin, *inputChain);
+		xmms_middleman_xform_set_next_song_args (outputChainBegin, *inputChain, output, outputChainBegin, outputChainEnd);
 
 		arg = g_new0 (xmms_output_song_changed_arg_t, 1);
 		arg->output = output;
@@ -555,7 +555,7 @@ xmms_output_filler (void *arg)
 			xmms_ringbuf_hotspot_set (output->filler_buffer, song_changed, song_changed_arg_free, arg);
 		} */
 
-		if (!xmms_start_next_song (inputChain, output, outputChainBegin, outputChainEnd))
+		if (!xmms_start_next_song (&inputChain, output, outputChainBegin, outputChainEnd))
 		{
 			continue;
 		}
