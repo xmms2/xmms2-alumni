@@ -420,6 +420,14 @@ xmms_ringbuf_iseos (const xmms_ringbuf_t *ringbuf)
 	return !xmms_ringbuf_bytes_used (ringbuf) && ringbuf->eos;
 }
 
+gboolean
+xmms_ringbuf_geteos (const xmms_ringbuf_t *ringbuf)
+{
+    g_return_val_if_fail (ringbuf, TRUE);
+
+    return ringbuf->eos;
+}
+
 /**
  * Set EOS flag on ringbuffer.
  */

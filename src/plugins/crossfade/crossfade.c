@@ -243,14 +243,17 @@ fill (xmms_xform_t *xform, xmms_crossfade_data_t *priv)
 	char buf[4096];
 	int res;
 
-	res = xmms_xform_read (xform, buf, sizeof (buf), &err);
-	if (res > 0) {
-		xmms_ringbuf_write_wait (priv->buffer, buf, res, priv->buffer_lock);
-	} else if (res == -1) {
-		/* XXX copy error */
-	} else {
-		xmms_ringbuf_set_eos (priv->buffer, TRUE);
-	}
+    while (!xmms_ringbuf_geteos (priv->buffer) && xmms_ringbuf_bytes_free (priv->buffer) > 0)
+    {
+        res = xmms_xform_read (xform, buf, sizeof (buf) < xmms_ringbuf_bytes_free (priv->buffer) ? sizeof (buf) : xmms_ringbuf_bytes_free (priv->buffer), &err);
+        if (res > 0) {
+            xmms_ringbuf_write_wait (priv->buffer, buf, res, priv->buffer_lock);
+        } else if (res == -1) {
+            /* XXX copy error */
+        } else {
+            xmms_ringbuf_set_eos (priv->buffer, TRUE);
+        }
+    }
 }
 
 static gint
@@ -259,6 +262,10 @@ xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 {
 	xmms_crossfade_data_t *priv;
 	gint read, chan, i;
+	xmms_sample_t *originalBuf;
+	gint originalLen = len;
+	//GMutex *wait_mutex = g_mutex_new();
+	//g_mutex_unlock (wait_mutex);
 
 	g_return_val_if_fail (xform, -1);
 
@@ -267,16 +274,67 @@ xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 
 	chan = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
 
-	read = xmms_ringbuf_read (priv->buffer, buf, len);
-	fill (xform, priv);
+    read = 0;
 
-	if (xmms_ringbuf_iseos (priv->buffer)) {
+    if (len > 4096)
+    {
+        len = 4096;
+    }
+
+    //if (!xmms_ringbuf_iseos (priv->buffer))
+        fill (xform, priv);
+
+    gint usedBytes = xmms_ringbuf_bytes_used (priv->buffer);
+    //if (usedBytes < 32768)
+    //    usedBytes = 4096;
+
+    // I want at least 3 seconds in the buffer
+    while ((int)(xmms_ringbuf_bytes_used (priv->buffer) - len) < 12288 && !xmms_ringbuf_geteos (priv->buffer))
+    {
+        if (usedBytes < 32768)
+            fill (xform, priv);
+        usedBytes = xmms_ringbuf_bytes_used (priv->buffer);
+        read += xmms_ringbuf_read (priv->buffer, buf, len);
+        buf += read;
+        len -= read;
+    }
+
+    if (len != 0)
+    {
+        read += xmms_ringbuf_read (priv->buffer, buf, len);
+    }
+
+	//read = xmms_ringbuf_read (priv->buffer, buf, len);
+	//while (!xmms_ringbuf_iseos (priv->buffer) && xmms_ringbuf_bytes_used (priv->buffer) < 4096*3)
+	//{
+	if (!xmms_ringbuf_geteos (priv->buffer))
+        fill (xform, priv);
+	//}
+
+	if (xmms_ringbuf_bytes_used (priv->buffer) < 32768)
+	{
+        //TODO: This is just for testing
+        //originalBuf = read + originalBuf;
+        for (i = 0; i < originalLen; i++)
+        {
+            *(gint*)originalBuf = 0;
+            originalBuf++;
+        }
+	}
+
+	//TODO: Just wait for duration to be queued
+	//xmms_ringbuf_wait_used (priv->buffer, 4096*3, wait_mutex);
+
+	//g_mutex_free (wait_mutex);
+
+	//if (xmms_ringbuf_iseos (priv->buffer)) {
 		/* TODO_xforms: Check for the duration, if we hit duration left in buffer then start crossfade */
 		/* For now, mute to cert things work so far */
-		for (i = 0; i < read; i++) {
-			((gint8*)buf)[i] = 0;
-		}
-	}
+		//for (i = 0; i < read; i++) {
+		  //  gint8 * castedBuffer = (gint8*)buf;
+			//castedBuffer = 0;
+	//	}
+	//}
 
 	return read;
 }
