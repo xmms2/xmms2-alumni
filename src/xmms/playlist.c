@@ -904,10 +904,8 @@ xmms_playlist_client_insert_url (xmms_playlist_t *playlist, const gchar *plname,
                                  gint32 pos, const gchar *url, xmms_error_t *err)
 {
 	xmms_medialib_entry_t entry = 0;
-	xmms_medialib_session_t *session = xmms_medialib_begin_write ();
 
-	entry = xmms_medialib_entry_new_encoded (session, url, err);
-	xmms_medialib_end (session);
+	entry = xmms_medialib_entry_new_encoded (url, err);
 
 	if (!entry) {
 		return;
@@ -1047,10 +1045,8 @@ xmms_playlist_client_add_url (xmms_playlist_t *playlist, const gchar *plname,
                               const gchar *nurl, xmms_error_t *err)
 {
 	xmms_medialib_entry_t entry = 0;
-	xmms_medialib_session_t *session = xmms_medialib_begin_write ();
 
-	entry = xmms_medialib_entry_new_encoded (session, nurl, err);
-	xmms_medialib_end (session);
+	entry = xmms_medialib_entry_new_encoded (nurl, err);
 
 	if (entry) {
 		xmms_playlist_add_entry (playlist, plname, entry, err);
@@ -1460,6 +1456,7 @@ xmms_playlist_destroy (xmms_object_t *object)
 
 	xmms_object_unref (playlist->colldag);
 	xmms_object_unref (playlist->mediainfordr);
+	xmms_object_unref (playlist->medialib);
 
 	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_PLAYLIST_CHANGED);
 	xmms_ipc_broadcast_unregister (XMMS_IPC_SIGNAL_PLAYLIST_CURRENT_POS);

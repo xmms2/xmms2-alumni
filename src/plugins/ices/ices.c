@@ -266,7 +266,6 @@ xmms_ices_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 	gint rate;
 	gint channels;
 	xmms_medialib_entry_t entry;
-	xmms_medialib_session_t *session;
 
 	static const struct {
 		gchar *prop;
@@ -290,19 +289,16 @@ xmms_ices_format_set (xmms_output_t *output, const xmms_stream_type_t *format)
 	vorbis_comment_init (&data->vc);
 
 	entry = xmms_output_current_id (output, NULL);
-	session = xmms_medialib_begin ();
 
 	for (pptr = props; pptr && pptr->prop; pptr++) {
 		const gchar *tmp;
 
-		tmp = xmms_medialib_entry_property_get_str (session, entry, pptr->prop);
+		tmp = xmms_medialib_entry_property_get_str (entry, pptr->prop);
 		if (tmp) {
 			vorbis_comment_add_tag (&data->vc,
 			                        pptr->key, (gchar *) tmp);
 		}
 	}
-
-	xmms_medialib_end (session);
 
 	/* If there is no encoder around, we need to build one. */
 	if (!data->encoder) {
