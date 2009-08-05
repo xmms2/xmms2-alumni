@@ -43,7 +43,7 @@ static inline xmmsv_type_t
 XMMSV_TYPE_UINT32_IS_DEPRECATED (void)
 {
 	return XMMSV_TYPE_INT32;
-}
+};
 #define XMMSV_TYPE_UINT32 XMMSV_TYPE_UINT32_IS_DEPRECATED()
 
 
