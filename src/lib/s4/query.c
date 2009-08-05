@@ -128,6 +128,7 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 				s4_set_free (sb);
 				s4_entry_free (entry);
 
+				free (list->data);
 				list = g_list_next (list);
 			}
 
@@ -163,7 +164,8 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 				ret = s4_entry_contained (s4, entry);
 				s4_entry_free (entry);
 			} else {
-				c = xmms_collection_get_pointer (dag, key, val);
+				c = xmms_collection_get_pointer (dag, key,
+						xmms_collection_get_namespace_id (val));
 				ret = s4_query (s4, dag, c);
 			}
 			break;
