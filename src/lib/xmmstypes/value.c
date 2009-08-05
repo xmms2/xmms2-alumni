@@ -131,7 +131,7 @@ xmmsv_new_none (void)
 
 /**
  * Allocates a new error #xmmsv_t.
- * @param s The error message to store in the #xmmsv_t. The
+ * @param errstr The error message to store in the #xmmsv_t. The
  * string is copied in the value.
  * @return The new #xmmsv_t. Must be unreferenced with
  * #xmmsv_unref.
@@ -191,7 +191,7 @@ xmmsv_new_string (const char *s)
 
 /**
  * Allocates a new collection #xmmsv_t.
- * @param s The value to store in the #xmmsv_t.
+ * @param c The value to store in the #xmmsv_t.
  * @return The new #xmmsv_t. Must be unreferenced with
  * #xmmsv_unref.
  */
@@ -1169,7 +1169,7 @@ xmmsv_list_clear (xmmsv_t *listv)
  * Apply a function to each element in the list, in sequential order.
  *
  * @param listv A #xmmsv_t containing a list.
- * @param function The function to apply to each element.
+ * @param func The function to apply to each element.
  * @param user_data User data passed to the foreach function.
  * @return 1 upon success otherwise 0
  */
@@ -1332,7 +1332,7 @@ xmmsv_list_iter_first (xmmsv_list_iter_t *it)
 /**
  * Move the iterator to end of the list.
  *
- * @param listv A #xmmsv_list_iter_t.
+ * @param it A #xmmsv_list_iter_t.
  */
 void
 xmmsv_list_iter_last (xmmsv_list_iter_t *it)
@@ -1364,7 +1364,7 @@ xmmsv_list_iter_next (xmmsv_list_iter_t *it)
 /**
  * Move the iterator to the previous element in the list.
  *
- * @param listv A #xmmsv_list_iter_t.
+ * @param it A #xmmsv_list_iter_t.
  */
 void
 xmmsv_list_iter_prev (xmmsv_list_iter_t *it)
@@ -1648,7 +1648,7 @@ xmmsv_dict_clear (xmmsv_t *dictv)
  * particular order is assumed.
  *
  * @param dictv A #xmmsv_t containing a dict.
- * @param function The function to apply to each key-element pair.
+ * @param func The function to apply to each key-element pair.
  * @param user_data User data passed to the foreach function.
  * @return 1 upon success otherwise 0
  */
@@ -1962,7 +1962,7 @@ xmmsv_dict_iter_remove (xmmsv_dict_iter_t *it)
  * NOT BE DISPLAYED does not stop you from open the file if it is a
  * local file (if it starts with "file://").
  *
- * @param url the #xmmsv_t containing a url-encoded string
+ * @param inv the #xmmsv_t containing a url-encoded string
  * @return a new #xmmsv_t containing the decoded string as a XMMSV_BIN or NULL on failure
  *
  */
