@@ -1,0 +1,23 @@
+# encoding: utf-8
+#
+# WAF build scripts for XMMS2
+# Copyright (C) 2006-2009 XMMS2 Team
+#
+
+
+def build(bld):
+    bld.add_subdirs("src")
+    obj = bld.new_task_gen('cc', 'staticlib')
+    obj.source = "query.c".split()
+    obj.includes = '. ../../.. ../../include ../../includepriv'
+    obj.target = 's4_query'
+    obj.install_path = 0
+    obj.export_incdirs = '.'
+    obj.uselib_local = 's4 xmmstypes'
+
+def configure(conf):
+    conf.sub_config ("src")
+    return True
+
+def set_options(opt):
+    opt.sub_options ("src")
