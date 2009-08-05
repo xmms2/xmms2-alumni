@@ -36,6 +36,7 @@ source = """
     bindata.c
     sample.genpy
     utils.c
+    sort.c
     visualization/format.c
     visualization/object.c
     visualization/udp.c
