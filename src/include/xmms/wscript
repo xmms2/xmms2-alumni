@@ -53,6 +53,10 @@ def configure(conf):
     if Options.platform == 'win32':
         defs['PKGLIBDIR'] = 'Plugins/'
 
+    # Define minimum required glib version
+    defs['XMMS_GLIB_REQUIRED_MAJOR'] = 2
+    defs['XMMS_GLIB_REQUIRED_MINOR'] = 14
+
     for i in defs:
         conf.define(i, defs[i])
 

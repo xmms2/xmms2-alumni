@@ -448,12 +448,13 @@ main (int argc, char **argv)
 	};
 
 	/** Check that we are running against the correct glib version */
-	if (glib_major_version != GLIB_MAJOR_VERSION ||
-	    glib_minor_version < GLIB_MINOR_VERSION) {
-		g_print ("xmms2d is build against version %d.%d,\n"
-		         "but is (runtime) linked against %d.%d.\n"
+	if ((glib_major_version == XMMS_GLIB_REQUIRED_MAJOR &&
+	     glib_minor_version < XMMS_GLIB_REQUIRED_MINOR) ||
+	    (glib_major_version < XMMS_GLIB_REQUIRED_MAJOR)) {
+		g_print ("xmms2d requires at least glib %d.%d\n"
+		         "The glib on this system is %d.%d\n"
 		         "Refusing to start.\n",
-		         GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION,
+		         XMMS_GLIB_REQUIRED_MAJOR, XMMS_GLIB_REQUIRED_MINOR,
 		         glib_major_version, glib_minor_version);
 		exit (EXIT_FAILURE);
 	}
@@ -468,13 +469,13 @@ main (int argc, char **argv)
 		exit (EXIT_FAILURE);
 	}
 	if (showhelp) {
-#if GLIB_CHECK_VERSION(2,14,0)
-		g_print ("%s", g_option_context_get_help (context, TRUE, NULL));
+		gchar *help;
+
+		help = g_option_context_get_help (context, TRUE, NULL);
+		g_print ("%s", help);
+		g_free (help);
+
 		exit (EXIT_SUCCESS);
-#else
-		g_print ("Please use --help or -? for help\n");
-		exit (EXIT_FAILURE);
-#endif
 	}
 	g_option_context_free (context);
 
