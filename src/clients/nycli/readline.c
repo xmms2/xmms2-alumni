@@ -20,9 +20,14 @@
 #include "utils.h"
 #include "status.h"
 #include "cli_infos.h"
+#include "cmdnames.h"
 
 static gchar *readline_keymap;
 static cli_infos_t *readline_cli_infos;
+/* a list made from a non-deep copy of infos->cmdnames
+   and infos->aliasnames for tab completion
+*/
+static GList *readline_tab_comp_list = NULL;
 
 static void
 readline_callback (gchar *input)
@@ -83,6 +88,53 @@ filename_dequoting (char *text, int quote_char)
 	return unquoted;
 }
 
+static gchar *
+command_tab_completion (const gchar *text, gint state)
+{
+	static gint curcmd, textlen;
+	GList *node;
+
+	if (!readline_tab_comp_list) {
+		readline_tab_comp_list =
+			g_list_concat (g_list_copy (readline_cli_infos->cmdnames),
+			               g_list_copy (readline_cli_infos->aliasnames));
+	}
+
+	if (!state) {
+		curcmd = 0;
+		textlen = strlen (text);
+	}
+
+	for (node = g_list_nth (readline_tab_comp_list, curcmd);
+		 node; node = g_list_next (node)) {
+		command_name_t *cmdname;
+
+		curcmd++;
+
+		cmdname = node->data;
+		if (!strncmp (cmdname->name, text, textlen)) {
+			return g_strdup (cmdname->name);
+		}
+	}
+
+	return NULL;
+}
+
+/* If we're at the beginning of the line, call the command
+   completer, otherwise use readline's filename completer
+*/
+static gchar **
+tab_completion (const gchar *text, gint start, gint end)
+{
+	gchar **matches = NULL;
+
+	if (start == 0) {
+		matches = rl_completion_matches (text, command_tab_completion);
+	}
+
+	return matches;
+}
+
 void
 readline_init (cli_infos_t *infos)
 {
@@ -98,6 +150,7 @@ readline_init (cli_infos_t *infos)
 	rl_completer_quote_characters = "\"'";
 	rl_completer_word_break_characters = " \t\n\"\'";
 	rl_char_is_quoted_p = char_is_quoted;
+	rl_attempted_completion_function = tab_completion;
 }
 
 void
@@ -163,4 +216,5 @@ void
 readline_free ()
 {
 	rl_callback_handler_remove ();
+	g_list_free (readline_tab_comp_list);
 }
