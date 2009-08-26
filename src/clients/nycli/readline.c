@@ -91,8 +91,8 @@ filename_dequoting (char *text, int quote_char)
 static gchar *
 command_tab_completion (const gchar *text, gint state)
 {
-	static gint curcmd, textlen;
-	GList *node;
+	static gint textlen;
+	static GList *node;
 
 	if (!readline_tab_comp_list) {
 		readline_tab_comp_list =
@@ -101,19 +101,16 @@ command_tab_completion (const gchar *text, gint state)
 	}
 
 	if (!state) {
-		curcmd = 0;
+		node = readline_tab_comp_list;
 		textlen = strlen (text);
 	}
 
-	for (node = g_list_nth (readline_tab_comp_list, curcmd);
-		 node; node = g_list_next (node)) {
-		command_name_t *cmdname;
-
-		curcmd++;
-
-		cmdname = node->data;
+	while (node) {
+		command_name_t *cmdname = node->data;
+		node = g_list_next (node);
 		if (!strncmp (cmdname->name, text, textlen)) {
-			return g_strdup (cmdname->name);
+			/* don't use glib, as the string must be malloc'ated */
+			return strdup (cmdname->name);
 		}
 	}
 
