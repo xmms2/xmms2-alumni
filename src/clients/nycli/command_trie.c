@@ -276,6 +276,11 @@ command_trie_find_leaf (command_trie_t *trie)
 	return leaf;
 }
 
+/* Given a trie node, try to find a path to a match leaf using the
+ * given input string.
+ * If auto_complete is TRUE, the input string only needs to be a prefix
+ * to a unique path to a match leaf.
+ */
 static command_trie_t *
 command_trie_find_node (command_trie_t *trie, gchar *input,
                         gboolean auto_complete)
@@ -332,6 +337,102 @@ command_trie_find (command_trie_t *trie, gchar ***input, gint *num,
 			} else {
 				retval = command_trie_find (node->match.subtrie, input, num,
 				                            auto_complete, action);
+			}
+		}
+	}
+
+	return retval;
+}
+
+
+/* FIXME: Should definitely merge all that stuff with the find
+ * commands above, but making the creation of completion list
+ * optional. */
+
+static GList *
+command_trie_find_completions_recurs (command_trie_t *trie, gchar *buf, gint offset, GList *res)
+{
+	GList *l;
+
+	/* add valid match to the list */
+	if (trie->match.type != COMMAND_TRIE_MATCH_NONE) {
+		buf[offset] = '\0';
+		res = g_list_prepend (res, g_strdup (buf));
+	}
+
+	/* recurse in all children nodes */
+	for (l = trie->next; l; l = g_list_next (l)) {
+		command_trie_t *t = (command_trie_t *) l->data;
+		buf[offset] = t->c;
+		res = command_trie_find_completions_recurs (t, buf, offset + 1, res);
+	}
+
+	return res;
+}
+
+static GList *
+command_trie_find_completions (command_trie_t *trie)
+{
+	gchar buf[256];
+	GList *res;
+	res = command_trie_find_completions_recurs (trie, buf, 0, NULL);
+	return g_list_reverse (res);
+}
+
+static command_trie_t *
+command_trie_complete_node (command_trie_t *trie, gchar *input,
+                            gboolean auto_complete, GList **completions)
+{
+	command_trie_t *node = NULL;
+	GList *l;
+
+	/* FIXME: If this happens when a parent command is given, make it nice! */
+	if (input == NULL) {
+		*completions = command_trie_find_completions (trie);
+		return NULL;
+	}
+
+	if (*input == 0) {
+		/* End of token, return current action, or unique completion */
+		if (command_trie_valid_match (trie)) {
+			node = trie;
+		} else if (auto_complete) {
+			node = command_trie_find_leaf (trie);
+		}
+		*completions = command_trie_find_completions (trie);
+	} else {
+		/* Recurse in next trie node */
+		l = g_list_find_custom (trie->next, input, command_trie_elem_cmp);
+		if (l != NULL) {
+			node = command_trie_complete_node ((command_trie_t *) l->data, input + 1,
+			                                   auto_complete, completions);
+		}
+	}
+
+	return node;
+}
+
+command_trie_match_type_t
+command_trie_complete (command_trie_t *trie, gchar ***input, gint *num,
+                       gboolean auto_complete,
+                       command_action_t **action, GList **completions)
+{
+	command_trie_t *node;
+	command_trie_match_type_t retval = COMMAND_TRIE_MATCH_NONE;
+
+	if ((node = command_trie_complete_node (trie, **input, auto_complete, completions))) {
+		(*input) ++;
+		(*num) --;
+		if (node->match.type == COMMAND_TRIE_MATCH_ACTION) {
+			*action = node->match.action;
+			retval = COMMAND_TRIE_MATCH_ACTION;
+		} else if (node->match.type == COMMAND_TRIE_MATCH_SUBTRIE) {
+			if (*num == 0) {
+				*action = node->match.action;
+				retval = COMMAND_TRIE_MATCH_SUBTRIE;
+			} else {
+				retval = command_trie_complete (node->match.subtrie, input, num,
+				                                auto_complete, action, completions);
 			}
 		}
 	}

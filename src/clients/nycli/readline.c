@@ -22,6 +22,8 @@
 #include "cli_infos.h"
 #include "cmdnames.h"
 
+#include "command_trie.h"
+
 static gchar *readline_keymap;
 static cli_infos_t *readline_cli_infos;
 /* a list made from a non-deep copy of infos->cmdnames
@@ -88,48 +90,74 @@ filename_dequoting (char *text, int quote_char)
 	return unquoted;
 }
 
+
+/* Wanted behaviour (no auto-complete):
+ * x<TAB> => 
+ * <TAB> => [] / add, clear, pause, play, playlist, ...
+ *  <TAB> => [ ] / add, clear, pause, play, playlist, ...
+ * a<TAB> => [add ]
+ * p<TAB> => [p] / pause, play, playlist, etc
+ * pa<TAB> => [pause]
+ * pla<TAB> => [play] / play, playlist
+ * pla <TAB> => [pla ]
+ * play<TAB> => [play] / play, playlist
+ * playl<TAB> => [playlist ]
+ * playlist<TAB> => [playlist ]
+ * playlist <TAB> => [playlist ] / clear, config, list, sort, ...
+ * playlist c<TAB> => [playlist c] / clear, config
+ * playlist clear<TAB> => [playlist clear ]
+ * playlist clear <TAB> => [playlist clear ] / <args>
+ * add <TAB> => [add ] / <args>
+ * play <TAB> => [play ] / <args>
+ * play more<TAB> => [play more] / <args>
+ * play more <TAB> => [play more ] / <args>
+ */
+
 static gchar *
 command_tab_completion (const gchar *text, gint state)
 {
-	static gint textlen;
-	static GList *node;
+	static GList *suffixes;
+	static gint count;
+	static command_trie_match_type_t match;
 
-	if (!readline_tab_comp_list) {
-		readline_tab_comp_list =
-			g_list_concat (g_list_copy (readline_cli_infos->cmdnames),
-			               g_list_copy (readline_cli_infos->aliasnames));
-	}
-
+	/* The first time, compute the list of valid suffixes for the input */
 	if (!state) {
-		node = readline_tab_comp_list;
-		textlen = strlen (text);
+		command_action_t *action;
+		gchar **args, **tokens;
+		gboolean auto_complete;
+		gchar *buffer = rl_line_buffer;
+
+		auto_complete = configuration_get_boolean (readline_cli_infos->config,
+		                                           "AUTO_UNIQUE_COMPLETE");
+		suffixes = NULL;
+		while (*buffer == ' ' && *buffer != '\0') ++buffer; /* skip initial spaces */
+		args = tokens = g_strsplit (buffer, " ", 0);
+		for (count = 0; tokens[count]; count++);
+		match = command_trie_complete (readline_cli_infos->commands, &args, &count,
+		                               auto_complete, &action, &suffixes);
+		g_strfreev (tokens);
 	}
 
-	while (node) {
-		command_name_t *cmdname = node->data;
-		node = g_list_next (node);
-		if (!strncmp (cmdname->name, text, textlen)) {
-			/* don't use glib, as the string must be malloc'ated */
-			return strdup (cmdname->name);
+	/* Return each valid suffix, one by one, on subsequent calls */
+	while (suffixes) {
+		gchar *suffix, *s;
+		gint len;
+
+		s = (gchar *) suffixes->data;
+		len = strlen (text) + strlen (s);
+
+		if (len > 0 && (count == 0 || (match == COMMAND_TRIE_MATCH_NONE && count <= 1))) {
+			suffix = (gchar *) malloc (len + 1);
+			snprintf (suffix, len + 1, "%s%s", text, s);
 		}
+
+		g_free (s);
+		suffixes = g_list_delete_link (suffixes, suffixes);
+
+		if (suffix != NULL) return suffix;
 	}
 
 	return NULL;
-}
-
-/* If we're at the beginning of the line, call the command
-   completer, otherwise use readline's filename completer
-*/
-static gchar **
-tab_completion (const gchar *text, gint start, gint end)
-{
-	gchar **matches = NULL;
-
-	if (start == 0) {
-		matches = rl_completion_matches (text, command_tab_completion);
-	}
-
-	return matches;
 }
 
 void
@@ -147,7 +175,7 @@ readline_init (cli_infos_t *infos)
 	rl_completer_quote_characters = "\"'";
 	rl_completer_word_break_characters = " \t\n\"\'";
 	rl_char_is_quoted_p = char_is_quoted;
-	rl_attempted_completion_function = tab_completion;
+	rl_completion_entry_function = command_tab_completion;
 }
 
 void
