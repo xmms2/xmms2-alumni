@@ -26,10 +26,6 @@
 
 static gchar *readline_keymap;
 static cli_infos_t *readline_cli_infos;
-/* a list made from a non-deep copy of infos->cmdnames
-   and infos->aliasnames for tab completion
-*/
-static GList *readline_tab_comp_list = NULL;
 
 static void
 readline_callback (gchar *input)
@@ -92,7 +88,7 @@ filename_dequoting (char *text, int quote_char)
 
 
 /* Wanted behaviour (no auto-complete):
- * x<TAB> => 
+ * x<TAB> =>
  * <TAB> => [] / add, clear, pause, play, playlist, ...
  *  <TAB> => [ ] / add, clear, pause, play, playlist, ...
  * a<TAB> => [add ]
@@ -104,6 +100,8 @@ filename_dequoting (char *text, int quote_char)
  * playl<TAB> => [playlist ]
  * playlist<TAB> => [playlist ]
  * playlist <TAB> => [playlist ] / clear, config, list, sort, ...
+   playlist  <TAB> => [playlist  ] / clear, config, list, sort, ...
+ FIXME: ^^^ FAILS currently, need deeper fix in command_trie.c I think
  * playlist c<TAB> => [playlist c] / clear, config
  * playlist clear<TAB> => [playlist clear ]
  * playlist clear <TAB> => [playlist clear ] / <args>
@@ -133,8 +131,8 @@ command_tab_completion (const gchar *text, gint state)
 		while (*buffer == ' ' && *buffer != '\0') ++buffer; /* skip initial spaces */
 		args = tokens = g_strsplit (buffer, " ", 0);
 		for (count = 0; tokens[count]; count++);
-		match = command_trie_complete (readline_cli_infos->commands, &args, &count,
-		                               auto_complete, &action, &suffixes);
+		match = command_trie_find (readline_cli_infos->commands, &args, &count,
+		                           auto_complete, &action, &suffixes);
 		g_strfreev (tokens);
 	}
 
@@ -154,7 +152,9 @@ command_tab_completion (const gchar *text, gint state)
 		g_free (s);
 		suffixes = g_list_delete_link (suffixes, suffixes);
 
-		if (suffix != NULL) return suffix;
+		if (suffix != NULL) {
+			return suffix;
+		}
 	}
 
 	return NULL;
@@ -241,5 +241,4 @@ void
 readline_free ()
 {
 	rl_callback_handler_remove ();
-	g_list_free (readline_tab_comp_list);
 }
