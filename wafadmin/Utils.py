@@ -9,8 +9,9 @@ Utilities, the stable ones are the following:
   the module fnv if it is installed (see waf/utils/fnv & http://code.google.com/p/waf/wiki/FAQ)
   else, md5 (see the python docs)
 
-  For large projects (projects with more than 15000 files) it is possible to use
-  a hashing based on the path and the size (may give broken cache results)
+  For large projects (projects with more than 15000 files) or slow hard disks and filesystems (HFS)
+  it is possible to use a hashing based on the path and the size (may give broken cache results)
+  The method h_file MUST raise an OSError if the file is a folder
 
 	import stat
 	def h_file(filename):
@@ -22,7 +23,7 @@ Utilities, the stable ones are the following:
 		m.update(filename)
 		return m.digest()
 
-    To replace the function in your project, use something like this:
+	To replace the function in your project, use something like this:
 	import Utils
 	Utils.h_file = h_file
 
@@ -33,15 +34,35 @@ Utilities, the stable ones are the following:
 
 """
 
-import os, sys, imp, types, string, errno, traceback, inspect, re
+import os, sys, imp, string, errno, traceback, inspect, re, shutil, datetime, gc
+
+# In python 3.0 we can get rid of all this
 try: from UserDict import UserDict
 except ImportError: from collections import UserDict
-try: import pproc
-except: import subprocess as pproc
+if sys.hexversion >= 0x2060000 or os.name == 'java':
+	import subprocess as pproc
+else:
+	import pproc
 import Logs
 from Constants import *
 
 is_win32 = sys.platform == 'win32'
+
+try:
+	# defaultdict in python 2.5
+	from collections import defaultdict as DefaultDict
+except ImportError:
+	class DefaultDict(dict):
+		def __init__(self, default_factory):
+			super(DefaultDict, self).__init__()
+			self.default_factory = default_factory
+		def __getitem__(self, key):
+			try:
+				return super(DefaultDict, self).__getitem__(key)
+			except KeyError:
+				value = self.default_factory()
+				self[key] = value
+				return value
 
 class WafError(Exception):
 	def __init__(self, *args):
@@ -101,13 +122,12 @@ except ImportError:
 		from md5 import md5
 
 	def h_file(filename):
-		f = file(filename,'rb')
+		f = open(filename, 'rb')
 		m = md5()
 		readBytes = 100000
-		while (readBytes):
-			readString = f.read(readBytes)
-			m.update(readString)
-			readBytes = len(readString)
+		while (filename):
+			filename = f.read(100000)
+			m.update(filename)
 		f.close()
 		return m.digest()
 
@@ -124,25 +144,47 @@ class ordered_dict(UserDict):
 		if key not in self.allkeys: self.allkeys.append(key)
 		UserDict.__setitem__(self, key, item)
 
-def exec_command(s, shell=1, log=None, cwd=None):
-	proc = pproc.Popen(s, shell=shell, stdout=log, stderr=log, cwd=cwd)
-	return proc.wait()
+def exec_command(s, **kw):
+	if 'log' in kw:
+		kw['stdout'] = kw['stderr'] = kw['log']
+		del(kw['log'])
+	kw['shell'] = isinstance(s, str)
+
+	try:
+		proc = pproc.Popen(s, **kw)
+		return proc.wait()
+	except OSError:
+		return -1
 
 if is_win32:
-	old_log = exec_command
-	def exec_command(s, shell=1, log=None, cwd=None):
-		# TODO very long command-lines are unlikely to be used in the configuration
-		if len(s) < 2000: return old_log(s, shell=shell, log=log)
+	def exec_command(s, **kw):
+		if 'log' in kw:
+			kw['stdout'] = kw['stderr'] = kw['log']
+			del(kw['log'])
+		kw['shell'] = isinstance(s, str)
 
-		startupinfo = pproc.STARTUPINFO()
-		startupinfo.dwFlags |= pproc.STARTF_USESHOWWINDOW
-		proc = pproc.Popen(s, shell=False, startupinfo=startupinfo, cwd=cwd)
-		return proc.wait()
+		if len(s) > 2000:
+			startupinfo = pproc.STARTUPINFO()
+			startupinfo.dwFlags |= pproc.STARTF_USESHOWWINDOW
+			kw['startupinfo'] = startupinfo
+
+		try:
+			if 'stdout' not in kw:
+				kw['stdout'] = pproc.PIPE
+				kw['stderr'] = pproc.STDOUT
+				proc = pproc.Popen(s,**kw)
+				(stdout, _) = proc.communicate()
+				Logs.info(stdout)
+			else:
+				proc = pproc.Popen(s,**kw)
+				return proc.wait()
+		except OSError:
+			return -1
 
 listdir = os.listdir
 if is_win32:
 	def listdir_win32(s):
-		if re.match('^[A-Z]:$', s):
+		if re.match('^[A-Za-z]:$', s):
 			# os.path.isdir fails if s contains only the drive name... (x:)
 			s += os.sep
 		if not os.path.isdir(s):
@@ -179,10 +221,10 @@ def ex_stack():
 	return ''.join(exc_lines)
 
 def to_list(sth):
-	if type(sth) is type([]):
-		return sth
-	else:
+	if isinstance(sth, str):
 		return sth.split()
+	else:
+		return sth
 
 g_loaded_modules = {}
 "index modules by absolute path"
@@ -200,17 +242,19 @@ def load_module(file_path, name=WSCRIPT_FILE):
 	module = imp.new_module(name)
 
 	try:
-		file = open(file_path, 'r')
+		code = readf(file_path, m='rU')
 	except (IOError, OSError):
-		raise WscriptError('The file %s could not be opened!' % file_path)
+		raise WscriptError('Could not read the file %r' % file_path)
+
+	module.waf_hash_val = code
 
 	module_dir = os.path.dirname(file_path)
 	sys.path.insert(0, module_dir)
-	# Python 3.0 will be a pain to support
-	# exec(file.read(), module.__dict__)
-	exec file in module.__dict__
+	try:
+		exec(code, module.__dict__)
+	except Exception:
+		raise WscriptError(traceback.format_exc(), file_path)
 	sys.path.remove(module_dir)
-	if file: file.close()
 
 	g_loaded_modules[file_path] = module
 
@@ -220,6 +264,7 @@ def set_main_module(file_path):
 	"Load custom options, if defined"
 	global g_module
 	g_module = load_module(file_path, 'wscript_main')
+	g_module.root_path = file_path
 
 	# note: to register the module globally, use the following:
 	# sys.modules['wscript_main'] = g_module
@@ -242,10 +287,10 @@ try:
 except ImportError:
 	pass
 else:
-	if sys.stdout.isatty():
+	if Logs.got_tty:
 		def myfun():
 			dummy_lines, cols = struct.unpack("HHHH", \
-			fcntl.ioctl(sys.stdout.fileno(),termios.TIOCGWINSZ , \
+			fcntl.ioctl(sys.stderr.fileno(),termios.TIOCGWINSZ , \
 			struct.pack("HHHH", 0, 0, 0, 0)))[:2]
 			return cols
 		# we actually try the function once to see if it is suitable
@@ -260,22 +305,29 @@ rot_idx = 0
 rot_chr = ['\\', '|', '/', '-']
 "the rotation character in the progress bar"
 
+
 def split_path(path):
-	if not path: return ['']
 	return path.split('/')
 
-if is_win32:
-	def split_path(path):
-		h,t = os.path.splitunc(path)
-		if not h: return __split_dirs(t)
-		return [h] + __split_dirs(t)[1:]
+def split_path_cygwin(path):
+	if path.startswith('//'):
+		ret = path.split('/')[2:]
+		ret[0] = '/' + ret[0]
+		return ret
+	return path.split('/')
 
-	def __split_dirs(path):
-		h,t = os.path.split(path)
-		if not h: return [t]
-		if h == path: return [h.replace('\\', '')]
-		if not t: return __split_dirs(h)
-		else: return __split_dirs(h) + [t]
+re_sp = re.compile('[/\\\\]')
+def split_path_win32(path):
+	if path.startswith('\\\\'):
+		ret = re.split(re_sp, path)[2:]
+		ret[0] = '\\' + ret[0]
+		return ret
+	return re.split(re_sp, path)
+
+if sys.platform == 'cygwin':
+	split_path = split_path_cygwin
+elif is_win32:
+	split_path = split_path_win32
 
 def copy_attrs(orig, dest, names, only_if_set=False):
 	for a in to_list(names):
@@ -332,41 +384,9 @@ def h_fun(fun):
 			pass
 		return h
 
-_hash_blacklist_types = (
-	types.BuiltinFunctionType,
-	types.ModuleType,
-	type(h_fun),
-	type(ordered_dict),
-	type(None),
-	)
-
-def hash_function_with_globals(prevhash, func):
-	"""
-	hash a function (object) and the global vars needed from outside
-	ignore unhashable global variables (lists)
-
-	prevhash: previous hash value to be combined with this one;
-	if there is no previous value, zero should be used here
-
-	func: a Python function object.
-	"""
-	assert type(func) is types.FunctionType
-	for name, value in func.func_globals.iteritems():
-		if type(value) in _hash_blacklist_types:
-			continue
-		if isinstance(value, type):
-			continue
-		try:
-			prevhash = hash( (prevhash, name, value) )
-		except TypeError: # raised for unhashable elements
-			pass
-		#else:
-		#	print "hashed: ", name, " => ", value, " => ", hash(value)
-	return hash( (prevhash, inspect.getsource(func)) )
-
 def pprint(col, str, label='', sep=os.linesep):
 	"print messages in color"
-	sys.stdout.write("%s%s%s %s%s" % (Logs.colors(col), str, Logs.colors.NORMAL, label, sep))
+	sys.stderr.write("%s%s%s %s%s" % (Logs.colors(col), str, Logs.colors.NORMAL, label, sep))
 
 def check_dir(dir):
 	"""If a folder doesn't exists, create it."""
@@ -378,9 +398,29 @@ def check_dir(dir):
 		except OSError, e:
 			raise WafError("Cannot create folder '%s' (original error: %s)" % (dir, e))
 
-def cmd_output(cmd, e=None, silent=False, cwd=None):
-	p = pproc.Popen(cmd, stdout=pproc.PIPE, shell=True, env=e, cwd=cwd)
-	output = p.communicate()[0]
+def cmd_output(cmd, **kw):
+
+	silent = False
+	if 'silent' in kw:
+		silent = kw['silent']
+		del(kw['silent'])
+
+	if 'e' in kw:
+		tmp = kw['e']
+		del(kw['e'])
+		kw['env'] = tmp
+
+	kw['shell'] = isinstance(cmd, str)
+	kw['stdout'] = pproc.PIPE
+	if silent:
+		kw['stderr'] = pproc.PIPE
+
+	try:
+		p = pproc.Popen(cmd, **kw)
+		output = p.communicate()[0]
+	except OSError, e:
+		raise ValueError(str(e))
+
 	if p.returncode:
 		if not silent:
 			msg = "command execution failed: %s -> %r" % (cmd, str(output))
@@ -388,7 +428,7 @@ def cmd_output(cmd, e=None, silent=False, cwd=None):
 		output = ''
 	return output
 
-reg_subst = re.compile(r"(\\\\)|(\\\$)|\$\{([^}]+)\}")
+reg_subst = re.compile(r"(\\\\)|(\$\$)|\$\{([^}]+)\}")
 def subst_vars(expr, params):
 	"substitute ${PREFIX}/bin in /usr/local/bin"
 	def repl_var(m):
@@ -396,10 +436,64 @@ def subst_vars(expr, params):
 			return '\\'
 		if m.group(2):
 			return '$'
-		return params[m.group(3)]
+		try:
+			# environments may contain lists
+			return params.get_flat(m.group(3))
+		except AttributeError:
+			return params[m.group(3)]
 	return reg_subst.sub(repl_var, expr)
 
+def unversioned_sys_platform_to_binary_format(unversioned_sys_platform):
+	"infers the binary format from the unversioned_sys_platform name."
+
+	if unversioned_sys_platform in ('linux', 'freebsd', 'netbsd', 'openbsd', 'sunos'):
+		return 'elf'
+	elif unversioned_sys_platform == 'darwin':
+		return 'mac-o'
+	elif unversioned_sys_platform in ('win32', 'cygwin', 'uwin', 'msys'):
+		return 'pe'
+	# TODO we assume all other operating systems are elf, which is not true.
+	# we may set this to 'unknown' and have ccroot and other tools handle the case "gracefully" (whatever that means).
+	return 'elf'
+
+def unversioned_sys_platform():
+	"""returns an unversioned name from sys.platform.
+	sys.plaform is not very well defined and depends directly on the python source tree.
+	The version appended to the names is unreliable as it's taken from the build environment at the time python was built,
+	i.e., it's possible to get freebsd7 on a freebsd8 system.
+	So we remove the version from the name, except for special cases where the os has a stupid name like os2 or win32.
+	Some possible values of sys.platform are, amongst others:
+		aix3 aix4 atheos beos5 darwin freebsd2 freebsd3 freebsd4 freebsd5 freebsd6 freebsd7
+		generic irix5 irix6 linux2 mac netbsd1 next3 os2emx riscos sunos5 unixware7
+	Investigating the python source tree may reveal more values.
+	"""
+	s = sys.platform
+	if s == 'java':
+		# The real OS is hidden under the JVM.
+		from java.lang import System
+		s = System.getProperty('os.name')
+		# see http://lopica.sourceforge.net/os.html for a list of possible values
+		if s == 'Mac OS X':
+			return 'darwin'
+		elif s.startswith('Windows '):
+			return 'win32'
+		elif s == 'OS/2':
+			return 'os2'
+		elif s == 'HP-UX':
+			return 'hpux'
+		elif s in ('SunOS', 'Solaris'):
+			return 'sunos'
+		else: s = s.lower()
+	if s == 'win32' or s.endswith('os2') and s != 'sunos2': return s
+	return re.split('\d+$', s)[0]
+
+#@deprecated('use unversioned_sys_platform instead')
 def detect_platform():
+	"""this function has been in the Utils module for some time.
+	It's hard to guess what people have used it for.
+	It seems its goal is to return an unversionned sys.platform, but it's not handling all platforms.
+	For example, the version is not removed on freebsd and netbsd, amongst others.
+	"""
 	s = sys.platform
 
 	# known POSIX
@@ -414,6 +508,145 @@ def detect_platform():
 
 	return s
 
-def nada():
+def load_tool(tool, tooldir=None):
+	if tooldir:
+		assert isinstance(tooldir, list)
+		sys.path = tooldir + sys.path
+	try:
+		try:
+			return __import__(tool)
+		except ImportError, e:
+			raise WscriptError('Could not load the tool %r in %r' % (tool, sys.path))
+	finally:
+		if tooldir:
+			for d in tooldir:
+				sys.path.remove(d)
+
+def readf(fname, m='r'):
+	"get the contents of a file, it is not used anywhere for the moment"
+	f = None
+	try:
+		f = open(fname, m)
+		txt = f.read()
+	finally:
+		if f: f.close()
+	return txt
+
+def nada(*k, **kw):
+	"""A function that does nothing"""
 	pass
+
+def diff_path(top, subdir):
+	"""difference between two absolute paths"""
+	top = os.path.normpath(top).replace('\\', '/').split('/')
+	subdir = os.path.normpath(subdir).replace('\\', '/').split('/')
+	if len(top) == len(subdir): return ''
+	diff = subdir[len(top) - len(subdir):]
+	return os.path.join(*diff)
+
+class Context(object):
+	"""A base class for commands to be executed from Waf scripts"""
+
+	def set_curdir(self, dir):
+		self.curdir_ = dir
+
+	def get_curdir(self):
+		try:
+			return self.curdir_
+		except AttributeError:
+			self.curdir_ = os.getcwd()
+			return self.get_curdir()
+
+	curdir = property(get_curdir, set_curdir)
+
+	def recurse(self, dirs, name=''):
+		"""The function for calling scripts from folders, it tries to call wscript + function_name
+		and if that file does not exist, it will call the method 'function_name' from a file named wscript
+		the dirs can be a list of folders or a string containing space-separated folder paths
+		"""
+		if not name:
+			name = inspect.stack()[1][3]
+
+		if isinstance(dirs, str):
+			dirs = to_list(dirs)
+
+		for x in dirs:
+			if os.path.isabs(x):
+				nexdir = x
+			else:
+				nexdir = os.path.join(self.curdir, x)
+
+			base = os.path.join(nexdir, WSCRIPT_FILE)
+
+			try:
+				txt = readf(base + '_' + name, m='rU')
+			except (OSError, IOError):
+				try:
+					module = load_module(base)
+				except OSError:
+					raise WscriptError('No such script %s' % base)
+
+				try:
+					f = module.__dict__[name]
+				except KeyError:
+					raise WscriptError('No function %s defined in %s' % (name, base))
+
+				if getattr(self.__class__, 'pre_recurse', None):
+					self.pre_recurse(f, base, nexdir)
+				old = self.curdir
+				self.curdir = nexdir
+				try:
+					f(self)
+				finally:
+					self.curdir = old
+				if getattr(self.__class__, 'post_recurse', None):
+					self.post_recurse(module, base, nexdir)
+			else:
+				dc = {'ctx': self}
+				if getattr(self.__class__, 'pre_recurse', None):
+					dc = self.pre_recurse(txt, base + '_' + name, nexdir)
+				old = self.curdir
+				self.curdir = nexdir
+				try:
+					try:
+						exec(txt, dc)
+					except Exception:
+						raise WscriptError(traceback.format_exc(), base)
+				finally:
+					self.curdir = old
+				if getattr(self.__class__, 'post_recurse', None):
+					self.post_recurse(txt, base + '_' + name, nexdir)
+
+if is_win32:
+	old = shutil.copy2
+	def copy2(src, dst):
+		old(src, dst)
+		shutil.copystat(src, src)
+	setattr(shutil, 'copy2', copy2)
+
+def get_elapsed_time(start):
+	"Format a time delta (datetime.timedelta) using the format DdHhMmS.MSs"
+	delta = datetime.datetime.now() - start
+	# cast to int necessary for python 3.0
+	days = int(delta.days)
+	hours = int(delta.seconds / 3600)
+	minutes = int((delta.seconds - hours * 3600) / 60)
+	seconds = delta.seconds - hours * 3600 - minutes * 60 \
+		+ float(delta.microseconds) / 1000 / 1000
+	result = ''
+	if days:
+		result += '%dd' % days
+	if days or hours:
+		result += '%dh' % hours
+	if days or hours or minutes:
+		result += '%dm' % minutes
+	return '%s%.3fs' % (result, seconds)
+
+if os.name == 'java':
+	# For Jython (they should really fix the inconsistency)
+	try:
+		gc.disable()
+		gc.enable()
+	except NotImplementedError:
+		gc.disable = gc.enable
 
