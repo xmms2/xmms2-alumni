@@ -147,6 +147,7 @@ cmd_seek (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	xmmsc_result_t *res;
 	xmmsv_t *val;
+	xmms_playback_seek_mode_t whence;
 	const char *errmsg;
 	long arg;
 	gchar *endptr = NULL;
@@ -170,10 +171,13 @@ cmd_seek (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		if (!arg) {
 			return;
 		}
-		res = xmmsc_playback_seek_ms_rel (conn, arg);
+
+		whence = XMMS_PLAYBACK_SEEK_CUR;
 	} else {
-		res = xmmsc_playback_seek_ms (conn, arg);
+		whence = XMMS_PLAYBACK_SEEK_SET;
 	}
+
+	res = xmmsc_playback_seek_ms (conn, arg, whence);
 
 	xmmsc_result_wait (res);
 	val = xmmsc_result_get_value (res);
