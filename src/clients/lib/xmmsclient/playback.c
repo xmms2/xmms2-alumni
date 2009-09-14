@@ -88,15 +88,19 @@ xmmsc_playback_start (xmmsc_connection_t *c)
 
 
 /**
- * Seek to a absolute time in the current playback.
+ * Seek to a position given in milliseconds in the current playback.
  *
  * @param c The connection structure.
- * @param milliseconds The total number of ms where
- * playback should continue.
+ * @param milliseconds
+ * @param whence Specifies how the absolute position in milliseconds is
+ * determined. If whence is XMMS_PLAYBACK_SEEK_SET, @milliseconds is treated
+ * as an absolute value. If whence is XMMS_PLAYBACK_SEEK_CUR, the new
+ * position is computed by adding @milliseconds to the current position.
  */
 
 xmmsc_result_t *
-xmmsc_playback_seek_ms (xmmsc_connection_t *c, int milliseconds)
+xmmsc_playback_seek_ms (xmmsc_connection_t *c, int milliseconds,
+                        xmms_playback_seek_mode_t whence)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -104,7 +108,7 @@ xmmsc_playback_seek_ms (xmmsc_connection_t *c, int milliseconds)
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_PLAYBACK, XMMS_IPC_CMD_SEEKMS);
 	xmms_ipc_msg_put_int32 (msg, milliseconds);
-	xmms_ipc_msg_put_int32 (msg, XMMS_PLAYBACK_SEEK_SET);
+	xmms_ipc_msg_put_int32 (msg, whence);
 
 	return xmmsc_send_msg (c, msg);
 }
@@ -116,6 +120,7 @@ xmmsc_playback_seek_ms (xmmsc_connection_t *c, int milliseconds)
  * @param c The connection structure.
  * @param milliseconds The offset in ms from the current position to
  * where playback should continue.
+ * @deprecated
  */
 
 xmmsc_result_t *
@@ -133,15 +138,19 @@ xmmsc_playback_seek_ms_rel (xmmsc_connection_t *c, int milliseconds)
 }
 
 /**
- * Seek to a absoulte number of samples in the current playback.
+ * Seek to a position given in samples in the current playback.
  *
  * @param c The connection structure.
- * @param samples the total number of samples where playback
- * should continue.
+ * @param samples
+ * @param whence Specifies how the absolute position in samples is
+ * determined. If whence is XMMS_PLAYBACK_SEEK_SET, @samples is treated
+ * as an absolute value. If whence is XMMS_PLAYBACK_SEEK_CUR, the new
+ * position is computed by adding @samples to the current position.
  */
 
 xmmsc_result_t *
-xmmsc_playback_seek_samples (xmmsc_connection_t *c, int samples)
+xmmsc_playback_seek_samples (xmmsc_connection_t *c, int samples,
+                             xmms_playback_seek_mode_t whence)
 {
 	xmms_ipc_msg_t *msg;
 
@@ -149,7 +158,7 @@ xmmsc_playback_seek_samples (xmmsc_connection_t *c, int samples)
 
 	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_PLAYBACK, XMMS_IPC_CMD_SEEKSAMPLES);
 	xmms_ipc_msg_put_int32 (msg, samples);
-	xmms_ipc_msg_put_int32 (msg, XMMS_PLAYBACK_SEEK_SET);
+	xmms_ipc_msg_put_int32 (msg, whence);
 
 	return xmmsc_send_msg (c, msg);
 }
@@ -161,6 +170,7 @@ xmmsc_playback_seek_samples (xmmsc_connection_t *c, int samples)
  * @param c The connection structure.
  * @param samples The offset in number of samples from the current
  * position to where playback should continue.
+ * @deprecated
  */
 
 xmmsc_result_t *

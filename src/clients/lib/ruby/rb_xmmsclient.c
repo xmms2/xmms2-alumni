@@ -543,9 +543,20 @@ c_broadcast_config_value_changed (VALUE self)
  * Seek to the song position given in _ms_.
  */
 static VALUE
-c_playback_seek_ms (VALUE self, VALUE ms)
+c_playback_seek_ms (VALUE self, VALUE ms, VALUE whence)
 {
-	METHOD_ADD_HANDLER_UINT (playback_seek_ms, ms);
+	RbXmmsClient *xmms = NULL;
+	xmmsc_result_t *res;
+
+	Data_Get_Struct (self, RbXmmsClient, xmms);
+
+	CHECK_DELETED (xmms);
+
+	res = xmmsc_playback_seek_ms (xmms->real,
+	                              NUM2INT (ms),
+	                              NUM2INT (whence));
+
+	return TO_XMMS_CLIENT_RESULT (self, res);
 }
 
 /*
@@ -557,6 +568,9 @@ c_playback_seek_ms (VALUE self, VALUE ms)
 static VALUE
 c_playback_seek_ms_rel (VALUE self, VALUE ms)
 {
+	rb_warn ("Xmms::Client#seek_ms_rel is deprecated. "
+	         "Use Xmms::Client#seek_ms instead.");
+
 	METHOD_ADD_HANDLER_INT (playback_seek_ms_rel, ms);
 }
 
@@ -567,9 +581,20 @@ c_playback_seek_ms_rel (VALUE self, VALUE ms)
  * Seek to the song position given in _samples_.
  */
 static VALUE
-c_playback_seek_samples (VALUE self, VALUE samples)
+c_playback_seek_samples (VALUE self, VALUE samples, VALUE whence)
 {
-	METHOD_ADD_HANDLER_UINT (playback_seek_samples, samples);
+	RbXmmsClient *xmms = NULL;
+	xmmsc_result_t *res;
+
+	Data_Get_Struct (self, RbXmmsClient, xmms);
+
+	CHECK_DELETED (xmms);
+
+	res = xmmsc_playback_seek_samples (xmms->real,
+	                                   NUM2INT (samples),
+	                                   NUM2INT (whence));
+
+	return TO_XMMS_CLIENT_RESULT (self, res);
 }
 
  /*
@@ -581,6 +606,9 @@ c_playback_seek_samples (VALUE self, VALUE samples)
 static VALUE
 c_playback_seek_samples_rel (VALUE self, VALUE samples)
 {
+	rb_warn ("Xmms::Client#seek_samples_rel is deprecated. "
+	         "Use Xmms::Client#seek_samples instead.");
+
 	METHOD_ADD_HANDLER_INT (playback_seek_samples_rel, samples);
 }
 
@@ -1602,6 +1630,9 @@ Init_Client (VALUE mXmms)
 	rb_define_const (c, "ENTRY_STATUS_RESOLVING", INT2FIX (XMMS_MEDIALIB_ENTRY_STATUS_RESOLVING));
 	rb_define_const (c, "ENTRY_STATUS_NOT_AVAILABLE", INT2FIX (XMMS_MEDIALIB_ENTRY_STATUS_NOT_AVAILABLE));
 	rb_define_const (c, "ENTRY_STATUS_REHASH", INT2FIX (XMMS_MEDIALIB_ENTRY_STATUS_REHASH));
+
+	rb_define_const (c, "SEEK_SET", INT2FIX (XMMS_PLAYBACK_SEEK_SET));
+	rb_define_const (c, "SEEK_CUR", INT2FIX (XMMS_PLAYBACK_SEEK_CUR));
 
 	eClientError = rb_define_class_under (c, "ClientError",
 	                                      rb_eStandardError);

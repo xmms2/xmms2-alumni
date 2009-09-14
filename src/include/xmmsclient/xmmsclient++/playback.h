@@ -43,6 +43,11 @@ namespace Xmms
 			static const Status PLAYING = XMMS_PLAYBACK_STATUS_PLAY;
 			static const Status PAUSED  = XMMS_PLAYBACK_STATUS_PAUSE;
 
+			typedef xmms_playback_seek_mode_t SeekMode;
+
+			static const SeekMode CUR = XMMS_PLAYBACK_SEEK_CUR;
+			static const SeekMode SET = XMMS_PLAYBACK_SEEK_SET;
+
 			/** Destructor.
 			 */
 			virtual ~Playback();
@@ -98,10 +103,16 @@ namespace Xmms
 			 */
 			VoidResult start() const;
 
-			/** Seek to a absolute time in the current playback.
+			/** Seek to a time given in milliseconds in the current playback.
 			 *
 			 *  @param milliseconds The total number of ms where
 			 *                      playback should continue.
+			 *  @param whence Specifies how the absolute position in
+			 *                milliseconds is determined.
+			 *                If whence is SET, milliseconds is treated as an
+			 *                absolute value.
+			 *                If whence is CUR, milliseconds is added to the
+			 *                current value
 			 *
 			 *  @throw connection_error If the client isn't connected.
 			 *  @throw mainloop_running_error If a mainloop is running -
@@ -110,11 +121,12 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult seekMs(int milliseconds) const;
+			VoidResult seekMs(int milliseconds, SeekMode whence = SET) const;
 
-			/** Seek to a time relative to the current position 
+			/** Seek to a time relative to the current position
 			 *  in the current playback.
 			 *
+			 *  @deprecated use seekMs with whence = CUR instead
 			 *  @param milliseconds The offset in ms from the current
 			 *                      position to where playback should continue.
 			 *
@@ -125,12 +137,18 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult seekMsRel(int milliseconds) const;
+			VoidResult seekMsRel(int milliseconds) const XMMS_DEPRECATED;
 
-			/** Seek to a absolute number of samples in the current playback.
+			/** Seek to a position given in samples in the current playback.
 			 *
 			 *  @param samples The total number of samples where
 			 *                 playback should continue.
+			 *  @param whence Specifies how the absolute position in
+			 *                samples is determined.
+			 *                If whence is SET, samples is treated as an
+			 *                absolute value.
+			 *                If whence is CUR, samples is added to the
+			 *                current value
 			 *
 			 *  @throw connection_error If the client isn't connected.
 			 *  @throw mainloop_running_error If a mainloop is running -
@@ -139,11 +157,12 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult seekSamples(int samples) const;
+			VoidResult seekSamples(int samples, SeekMode whence = SET) const;
 
 			/** Seek to a number of samples relative to the current
 			 *  position in the current playback.
 			 *
+			 *  @deprecated use seekSamples with whence = CUR instead
 			 *  @param samples The offset in number of samples from the current
 			 *                 position to where playback should continue.
 			 *
@@ -154,7 +173,7 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult seekSamplesRel(int samples) const;
+			VoidResult seekSamplesRel(int samples) const XMMS_DEPRECATED;
 
 			/** Make server emit the current id.
 			 *

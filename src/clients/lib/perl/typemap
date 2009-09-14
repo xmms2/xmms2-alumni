@@ -8,6 +8,7 @@ xmmsc_result_propdict_t*	XMMSC_RESULT_PROPDICT_T
 xmms_plugin_type_t			XMMS_PLUGIN_TYPE_T
 xmmsc_result_type_t			XMMS_RESULT_TYPE_T
 xmmsv_type_t                XMMSV_TYPE_T
+xmms_playback_seek_mode_t	XMMS_PLAYBACK_SEEK_MODE_T
 uint32_t					T_UV
 int32_t						T_IV
 perl_xmmsclient_collection_order_t	PERL_XMMSCLIENT_COLLECTION_ORDER_T
@@ -196,5 +197,18 @@ XMMSV_COLL_TYPE_T
 		}
 		else {
 			croak (\"unknown XMMSV_COLL_TYPE_T: %s\", coll_type);
+		}
+	}
+
+XMMS_PLAYBACK_SEEK_MODE_T
+	{
+		char *seek_mode = SvPV_nolen ($arg);
+
+		if (strEQ (seek_mode, \"set\")) {
+			$var = XMMS_PLAYBACK_SEEK_SET;
+		} else if (strEQ (seek_mode, \"cur\")) {
+			$var = XMMS_PLAYBACK_SEEK_CUR;
+		} else {
+			croak (\"unknown XMMS_PLAYBACK_SEEK_MODE_T: %s\", seek_mode);
 		}
 	}

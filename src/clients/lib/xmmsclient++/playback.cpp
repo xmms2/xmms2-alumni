@@ -63,11 +63,12 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Playback::seekMs(int milliseconds) const
+	VoidResult Playback::seekMs(int milliseconds, SeekMode whence) const
 	{
 		xmmsc_result_t* res =
 			call( connected_,
-			      boost::bind( xmmsc_playback_seek_ms, conn_, milliseconds ) );
+			      boost::bind( xmmsc_playback_seek_ms, conn_, milliseconds,
+				               whence ) );
 		return VoidResult( res, ml_ );
 	}
 
@@ -80,11 +81,12 @@ namespace Xmms
 		return VoidResult( res, ml_ );
 	}
 
-	VoidResult Playback::seekSamples(int samples) const
+	VoidResult Playback::seekSamples(int samples, SeekMode whence) const
 	{
 		xmmsc_result_t* res =
 			call( connected_,
-			      boost::bind( xmmsc_playback_seek_samples, conn_, samples ) );
+			      boost::bind( xmmsc_playback_seek_samples, conn_, samples,
+				               whence ) );
 		return VoidResult( res, ml_ );
 	}
 

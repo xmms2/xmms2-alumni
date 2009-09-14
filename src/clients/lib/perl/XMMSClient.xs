@@ -1503,7 +1503,7 @@ xmmsc_playback_start (c)
 
 =over 4
 
-=item Arguments: $milliseconds
+=item Arguments: $milliseconds, $whence?
 
 =item Return Value: $result
 
@@ -1511,43 +1511,25 @@ xmmsc_playback_start (c)
 
   my $result = $conn->playback_seek_ms(1000);
 
-Seek to a absolute time in the current playback. The time is specified in
-C<$milliseconds>.
+Seek to a time position in the current file or stream in playback. The time is
+specified in C<$milliseconds>. C<$whence> specifies how the absolute position
+in milliseconds is determined. If C<$whence> is C<set>, C<$milliseconds> is
+treated as an absolute value. If C<$whence> is C<cur>, the new position is
+computed by adding C<$milliseconds> to the current position.
 
 =cut
 
 xmmsc_result_t *
-xmmsc_playback_seek_ms (c, milliseconds)
+xmmsc_playback_seek_ms (c, milliseconds, whence=XMMS_PLAYBACK_SEEK_SET)
 		xmmsc_connection_t *c
 		uint32_t milliseconds
-
-=head2 playback_seek_ms_rel
-
-=over 4
-
-=item Arguments: $milliseconds
-
-=item Return Value: $result
-
-=back
-
-  my $result = $conn->playback_seek_ms_rel(-1000);
-
-Seek to a time relative to the current position in the current playback. Time
-is specified in C<$milliseconds>.
-
-=cut
-
-xmmsc_result_t *
-xmmsc_playback_seek_ms_rel (c, milliseconds)
-		xmmsc_connection_t *c
-		int milliseconds
+		xmms_playback_seek_mode_t whence
 
 =head2 playback_seek_samples
 
 =over 4
 
-=item Arguments: $samples
+=item Arguments: $samples, $whence?
 
 =item Return Value: $result
 
@@ -1555,36 +1537,19 @@ xmmsc_playback_seek_ms_rel (c, milliseconds)
 
   my $result = $conn->playback_seek_samples(5000);
 
-Seek to a absoulte number of C<$samples> in the current playback.
+Seek to a number of samples in the current file or stream in playback.
+C<$whence> specifies how the absolute position in samples is determined. If
+C<$whence> is C<set>, C<$samples> is treated as an absolute value. If
+C<$whence> is C<cur>, the new position is computed by adding C<$samples> to the
+current position.
 
 =cut
 
 xmmsc_result_t *
-xmmsc_playback_seek_samples (c, samples)
+xmmsc_playback_seek_samples (c, samples, whence=XMMS_PLAYBACK_SEEK_SET)
 		xmmsc_connection_t *c
 		uint32_t samples
-
-=head2 playback_seek_samples_rel
-
-=over 4
-
-=item Arguments: $samples
-
-=item Return Value: $result
-
-=back
-
-  my $result = $conn->playback_seek_samples_rel(-5000);
-
-Seek to a number of C<$samples> relative to the current position in the current
-playback.
-
-=cut
-
-xmmsc_result_t *
-xmmsc_playback_seek_samples_rel (c, samples)
-		xmmsc_connection_t *c
-		int samples
+		xmms_playback_seek_mode_t whence
 
 =head2 broadcast_playback_status
 
