@@ -65,6 +65,7 @@ optional_subdirs = ["src/clients/cli",
                     "src/clients/lib/perl",
                     "src/clients/lib/ruby",
                     "src/clients/lib/ruby2",
+                    "src/clients/lib/dotnet",
                     "tests",
                     "pixmaps"]
 
@@ -258,6 +259,7 @@ def configure(conf):
     conf.check_tool('misc')
     conf.check_tool('gcc')
     conf.check_tool('g++')
+    conf.check_tool('cs')
 
     try:
         conf.check_tool('winres')
