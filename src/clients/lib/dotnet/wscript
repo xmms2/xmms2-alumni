@@ -1,0 +1,15 @@
+def build(bld):
+    obj = bld.new_task_gen(features='cs')
+    obj.target = 'Xmms.Client.dll'
+    obj.source = """
+                 Client.cs
+                 Message.cs
+                 Result.cs
+                 Value.cs
+                 """.split()
+
+def configure(conf):
+    return True
+
+def set_options(opt):
+    opt.add_option('--with-csc-binary', type='string', dest='cscbinary')
