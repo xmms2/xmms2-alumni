@@ -69,7 +69,7 @@ namespace Xmms.Client {
 		) : base(client, cookie) {
 		}
 
-		public IntegerValue Value {
+		public Value.Integer Value {
 			get {
 				checkHasValue();
 
@@ -78,12 +78,12 @@ namespace Xmms.Client {
 		}
 
 		protected override void getValue(Message message) {
-			value = new IntegerValue();
+			value = new Value.Integer();
 
 			value.Deserialize(message);
 		}
 
-		private IntegerValue value;
+		private Value.Integer value;
 	}
 
 	public class StringResult : Result {
@@ -92,7 +92,7 @@ namespace Xmms.Client {
 		) : base(client, cookie) {
 		}
 
-		public StringValue Value {
+		public Value.String Value {
 			get {
 				checkHasValue();
 
@@ -101,12 +101,12 @@ namespace Xmms.Client {
 		}
 
 		protected override void getValue(Message message) {
-			value = new StringValue();
+			value = new Value.String();
 
 			value.Deserialize(message);
 		}
 
-		private StringValue value;
+		private Value.String value;
 	}
 
 	public class IntegerListResult : Result {
@@ -115,7 +115,7 @@ namespace Xmms.Client {
 		) : base(client, cookie) {
 		}
 
-		public ListValue<IntegerValue> Value {
+		public Value.List<Value.Integer> Value {
 			get {
 				checkHasValue();
 
@@ -124,11 +124,13 @@ namespace Xmms.Client {
 		}
 
 		protected override void getValue(Message message) {
-			value = new ListValue<IntegerValue>();
+		Console.Error.WriteLine("before ctor");
+			value = new Value.List<Value.Integer>();
+		Console.Error.WriteLine("after ctor");
 
 			value.Deserialize(message);
 		}
 
-		private ListValue<IntegerValue> value;
+		private Value.List<Value.Integer> value;
 	}
 }
