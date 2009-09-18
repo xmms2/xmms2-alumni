@@ -9,7 +9,7 @@ from xmmstypes import *
 from generated import *
 
 SOCKET = '/tmp/xmms-ipc-alex'
-PROTOCOL_VERSION=12
+PROTOCOL_VERSION=16
 # object, cmd, cookie, length
 HEADER = '>IIII'
 
