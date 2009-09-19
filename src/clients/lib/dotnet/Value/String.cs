@@ -20,8 +20,9 @@ namespace Xmms.Client.Value {
 			return stringValue.value;
 		}
 
-		public override void Deserialize(Message message) {
-			CheckIsType(message, ValueType.Integer);
+		public override void Deserialize(Message message, bool readType) {
+			if (readType)
+				CheckIsType(message, ValueType.Integer);
 
 			value = message.ReadString();
 		}

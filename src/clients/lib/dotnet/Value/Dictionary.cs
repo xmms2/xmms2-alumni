@@ -18,25 +18,23 @@ using System.Collections;
 using System.Collections.Generic;
 
 namespace Xmms.Client.Value {
-	public class Dictionary<T> : Value, IDictionary<string, T>
-		where T : Value, new()
+	public abstract class DictionaryBase<T> : Value, IDictionary<string, T>
+		where T : Value
 	{
-		public Dictionary() {
+		protected DictionaryBase() {
 			this.items = new Dictionary<string, T>();
 		}
 
-		public override void Deserialize(Message message) {
-			CheckIsType(message, ValueType.Integer);
+		public override void Deserialize(Message message, bool readType) {
+			if (readType)
+				CheckIsType(message, ValueType.Integer);
 
-			int length = message.ReadInteger();
+			uint length = message.ReadUnsignedInteger();
 
-			while (length-- > 0) {
+			for (uint i = 0; i < length; i++) {
 				string key = message.ReadString();
 
-				T item = new T();
-				item.Deserialize(message);
-
-				items[key] = item;
+				items[key] = DeserializeValue(message);
 			}
 		}
 
@@ -105,6 +103,26 @@ namespace Xmms.Client.Value {
 			return items.GetEnumerator();
 		}
 
+		protected abstract T DeserializeValue(Message message);
+
 		private readonly IDictionary<string, T> items;
+	}
+
+	public class Dictionary<T> : DictionaryBase<T>
+		where T : Value, new()
+	{
+		protected override T DeserializeValue(Message message) {
+			T item = new T();
+			item.Deserialize(message, true);
+
+			return item;
+		}
+	}
+
+	public class UnknownDictionary : DictionaryBase<Value>
+	{
+		protected override Value DeserializeValue(Message message) {
+			return Value.Deserialize(message);
+		}
 	}
 }

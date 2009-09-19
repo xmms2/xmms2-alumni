@@ -14,37 +14,23 @@
 //  Lesser General Public License for more details.
 //
 
-using System;
-
 namespace Xmms.Client {
-	public class Result {
-		public Result(Client client, uint cookie) {
-			this.client = client;
-			this.cookie = cookie;
+	public abstract class MethodGroup {
+		protected MethodGroup(Client client, uint id) {
+			Client = client;
+			ID = id;
 		}
 
-		public uint Cookie {
-			get { return cookie; }
+		protected Message CreateMessage() {
+			Message message = new Message();
+
+			message.Cookie = Client.GetNextCookie();
+			message.PrepareForReadWrite();
+
+			return message;
 		}
 
- 		public void Wait() {
-			client.WaitFor(this);
-		}
-
-		internal void ProcessReply(Message message) {
-			if (message.CommandID == 0) {
-				// reply
-				GetValue(message);
-			} else if (message.CommandID == 1) {
-				// error
-				//isError = true;
-			}
-		}
-
-		protected virtual void GetValue(Message message) {
-		}
-
-		private readonly Client client;
-		private readonly uint cookie;
+		protected readonly Client Client;
+		protected readonly uint ID;
 	}
 }

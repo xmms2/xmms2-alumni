@@ -17,34 +17,30 @@
 using System;
 
 namespace Xmms.Client {
-	public class Result {
-		public Result(Client client, uint cookie) {
-			this.client = client;
-			this.cookie = cookie;
+	public class ValueResult<T> : Result where T : Value.Value, new() {
+		public ValueResult(
+			Client client, uint cookie
+		) : base(client, cookie) {
 		}
 
-		public uint Cookie {
-			get { return cookie; }
-		}
+		public T Value {
+			get {
+				if (!hasValue)
+					throw new InvalidOperationException();
 
- 		public void Wait() {
-			client.WaitFor(this);
-		}
-
-		internal void ProcessReply(Message message) {
-			if (message.CommandID == 0) {
-				// reply
-				GetValue(message);
-			} else if (message.CommandID == 1) {
-				// error
-				//isError = true;
+				return value;
 			}
 		}
 
-		protected virtual void GetValue(Message message) {
+		protected override void GetValue(Message message) {
+			value = new T();
+
+			value.Deserialize(message, true);
+
+			hasValue = true;
 		}
 
-		private readonly Client client;
-		private readonly uint cookie;
+		private T value;
+		private bool hasValue;
 	}
 }

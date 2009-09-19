@@ -14,6 +14,8 @@
 //  Lesser General Public License for more details.
 //
 
+using System;
+
 namespace Xmms.Client.Value {
 	public abstract class Value {
 		public enum ValueType {
@@ -27,12 +29,46 @@ namespace Xmms.Client.Value {
 			Dictionary = 7,
 		}
 
-		public abstract void Deserialize(Message message);
+		public static Value Deserialize(Message message) {
+			ValueType type = (ValueType)message.ReadUnsignedInteger();
+			Value value;
+
+			switch (type) {
+			case ValueType.None:
+				throw new NotImplementedException();
+			case ValueType.Error:
+				throw new NotImplementedException();
+			case ValueType.Integer:
+				value = new Integer();
+				break;
+			case ValueType.String:
+				value = new String();
+				break;
+			case ValueType.Collection:
+				throw new NotImplementedException();
+			case ValueType.Binary:
+				throw new NotImplementedException();
+			case ValueType.List:
+				value = new UnknownList();
+				break;
+			case ValueType.Dictionary:
+				value = new UnknownDictionary();
+				break;
+			default:
+				throw new NotImplementedException();
+			}
+
+			value.Deserialize(message, false);
+
+			return value;
+		}
+
+		public abstract void Deserialize(Message message, bool readType);
 
 		internal static void CheckIsType(
 			Message message, ValueType expectedType
 		) {
-			ValueType actualType = (ValueType)message.ReadInteger();
+			ValueType actualType = (ValueType)message.ReadUnsignedInteger();
 
 			System.Diagnostics.Debug.Assert(
 				expectedType == actualType

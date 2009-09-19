@@ -18,24 +18,21 @@ using System.Collections;
 using System.Collections.Generic;
 
 namespace Xmms.Client.Value {
-	public class List<T> : Value, IList<T>
-		where T : Value, new()
+	public abstract class AbstractList<T> : Value, IList<T>
+		where T : Value
 	{
-		public List() {
-			this.items = new List<T>();
+		protected AbstractList() {
+			this.items = new System.Collections.Generic.List<T>();
 		}
 
-		public override void Deserialize(Message message) {
-			CheckIsType(message, ValueType.Integer);
+		public override void Deserialize(Message message, bool readType) {
+			if (readType)
+				CheckIsType(message, ValueType.List);
 
-			int length = message.ReadInteger();
+			uint length = message.ReadUnsignedInteger();
 
-			while (length-- > 0) {
-				T item = new T();
-				item.Deserialize(message);
-
-				items.Add(item);
-			}
+			for (uint i = 0; i < length; i++)
+				items.Add(DeserializeValue(message));
 		}
 
 		public T this[int position] {
@@ -91,6 +88,26 @@ namespace Xmms.Client.Value {
 			return items.GetEnumerator();
 		}
 
+		protected abstract T DeserializeValue(Message message);
+
 		private readonly IList<T> items;
+	}
+
+	public class List<T> : AbstractList<T>
+		where T : Value, new()
+	{
+		protected override T DeserializeValue(Message message) {
+			T item = new T();
+			item.Deserialize(message, true);
+
+			return item;
+		}
+	}
+
+	public class UnknownList : AbstractList<Value>
+	{
+		protected override Value DeserializeValue(Message message) {
+			return Value.Deserialize(message);
+		}
 	}
 }

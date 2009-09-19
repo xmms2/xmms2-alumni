@@ -20,10 +20,11 @@ namespace Xmms.Client.Value {
 			return integerValue.value;
 		}
 
-		public override void Deserialize(Message message) {
-			CheckIsType(message, ValueType.Integer);
+		public override void Deserialize(Message message, bool readType) {
+			if (readType)
+				CheckIsType(message, ValueType.Integer);
 
-			value = message.ReadInteger();
+			value = message.ReadSignedInteger();
 		}
 
 		private int value;

@@ -1,3 +1,19 @@
+//
+//  .NET bindings for the XMMS2 client library
+//
+//  Copyright (C) 2008 Tilman Sauerbeck, <tilman@xmms.org>
+//
+//  This library is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU Lesser General Public
+//  License as published by the Free Software Foundation; either
+//  version 2.1 of the License, or (at your option) any later version.
+//
+//  This library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//  Lesser General Public License for more details.
+//
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,27 +22,66 @@ using System.Net.Sockets;
 
 namespace Xmms.Client {
 	public class Client {
-		public Client() {
+		public Client(string name) {
+			this.name = name;
+
 			sendQueue = new Queue<Message>();
 			results = new List<Result>();
+
+			mainObject = new Generated.Main(this);
+			playbackObject = new Generated.Playback(this);
+			playlistObject = new Generated.Playlist(this);
+			medialibObject = new Generated.Medialib(this);
+		}
+
+		public Generated.Playback Playback {
+			get { return playbackObject; }
+		}
+
+		public Generated.Playlist Playlist {
+			get { return playlistObject; }
+		}
+
+		public Generated.Medialib Medialib {
+			get { return medialibObject; }
 		}
 
 		public void Connect() {
-			//connection = new TcpClient("brimstone", 9667);
-			socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-			socket.Connect("brimstone", 9667);
+			Connect(
+				System.Environment.GetEnvironmentVariable("XMMS_PATH")
+			);
+		}
 
-			VoidResult result = hello();
-			result.Wait();
+		public void Connect(string ipc_path) {
+			System.Text.RegularExpressions.Regex re =
+				new System.Text.RegularExpressions.Regex(
+					@"^(\w+):\/\/([^:]+)(:(\d+))?$"
+				);
 
-			IntegerListResult result2 = listPlaylistEntries();
-			result2.Wait();
+			System.Text.RegularExpressions.Match match =
+				re.Match(ipc_path);
 
-			Console.WriteLine("playlist contents:");
+			string protocol = match.Groups[1].Value;
 
-			foreach (var id in result2.Value) {
-				Console.WriteLine(id);
+			switch (protocol) {
+			case "tcp":
+				string host = match.Groups[2].Value;
+				int port = int.Parse(match.Groups[4].Value);
+
+				socket = new Socket(
+					AddressFamily.InterNetwork, SocketType.Stream,
+					ProtocolType.Tcp
+				);
+
+				socket.Connect(host, port);
+
+				break;
+			default:
+				throw new NotImplementedException();
 			}
+
+			Result result = mainObject.Hello(protocolVersion, name);
+			result.Wait();
 		}
 
 		internal void SendMessage(Message message, Result result) {
@@ -55,6 +110,17 @@ namespace Xmms.Client {
 			} while (!foundMessage);
 		}
 
+		internal uint GetNextCookie() {
+			uint cookie = nextCookie;
+
+			if (nextCookie == uint.MaxValue)
+				nextCookie = 0;
+			else
+				nextCookie++;
+
+			return cookie;
+		}
+
 		private void flushSendQueue() {
 			while (ioWantOut())
 				ioOutHandle();
@@ -74,46 +140,6 @@ namespace Xmms.Client {
 
 		private bool ioWantOut() {
 			return sendQueue.Count > 0;
-		}
-
-		private VoidResult hello() {
-			Message message = createMessage();
-
-			message.ObjectID = 1;
-			message.CommandID = 32;
-			message.Write((int)15); // protocol version
-			message.Write("foobar"); // client name
-
-			VoidResult result = new VoidResult(this, message.Cookie);
-
-			SendMessage(message, result);
-
-			return result;
-		}
-
-		private IntegerListResult listPlaylistEntries() {
-			Message message = createMessage();
-
-			message.ObjectID = 2;
-			message.CommandID = 43;
-			message.Write("_active");
-
-			IntegerListResult result = new IntegerListResult(
-				this, message.Cookie
-			);
-
-			SendMessage(message, result);
-
-			return result;
-		}
-
-		internal Message createMessage() {
-			Message message = new Message();
-
-			message.Cookie = getNextCookie();
-			message.PrepareForReadWrite();
-
-			return message;
 		}
 
 		private void processMessage(Message message) {
@@ -140,20 +166,25 @@ namespace Xmms.Client {
 			results.RemoveAt(foundIndex);
 		}
 
-		private int getNextCookie() {
-			int cookie = nextCookie;
+		private static readonly int protocolVersion = 16;
 
-			if (nextCookie == int.MaxValue)
-				nextCookie = 0;
-			else
-				nextCookie++;
-
-			return cookie;
-		}
-
-		private Socket socket;
+		/// <summary>
+		/// The client's name.
+		/// </summary>
+		private readonly string name;
 		private readonly Queue<Message> sendQueue;
 		private readonly List<Result> results;
-		private int nextCookie;
+
+		private readonly Generated.Main mainObject;
+		private readonly Generated.Playback playbackObject;
+		private readonly Generated.Playlist playlistObject;
+		private readonly Generated.Medialib medialibObject;
+
+		private Socket socket;
+		private uint nextCookie;
+	}
+
+	// FIXME: Kill me.
+	public class collection {
 	}
 }

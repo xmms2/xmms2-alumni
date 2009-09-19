@@ -16,35 +16,13 @@
 
 using System;
 
-namespace Xmms.Client {
-	public class Result {
-		public Result(Client client, uint cookie) {
-			this.client = client;
-			this.cookie = cookie;
-		}
+namespace Xmms.Client.Value {
+	public class Collection : Value {
+		public override void Deserialize(Message message, bool readType) {
+			if (readType)
+				CheckIsType(message, ValueType.Collection);
 
-		public uint Cookie {
-			get { return cookie; }
+			throw new NotImplementedException();
 		}
-
- 		public void Wait() {
-			client.WaitFor(this);
-		}
-
-		internal void ProcessReply(Message message) {
-			if (message.CommandID == 0) {
-				// reply
-				GetValue(message);
-			} else if (message.CommandID == 1) {
-				// error
-				//isError = true;
-			}
-		}
-
-		protected virtual void GetValue(Message message) {
-		}
-
-		private readonly Client client;
-		private readonly uint cookie;
 	}
 }

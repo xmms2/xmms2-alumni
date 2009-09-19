@@ -19,8 +19,9 @@ namespace Xmms.Client.Value {
 		private Error() {
 		}
 
-		public override void Deserialize(Message message) {
-			CheckIsType(message, ValueType.Error);
+		public override void Deserialize(Message message, bool readType) {
+			if (readType)
+				CheckIsType(message, ValueType.Error);
 
 			errorString = message.ReadString();
 		}

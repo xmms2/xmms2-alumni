@@ -1,4 +1,21 @@
+//
+//  .NET bindings for the XMMS2 client library
+//
+//  Copyright (C) 2008 Tilman Sauerbeck, <tilman@xmms.org>
+//
+//  This library is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU Lesser General Public
+//  License as published by the Free Software Foundation; either
+//  version 2.1 of the License, or (at your option) any later version.
+//
+//  This library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//  Lesser General Public License for more details.
+//
+
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 
@@ -8,17 +25,17 @@ namespace Xmms.Client {
 			memoryStream = new MemoryStream();
 		}
 
-		public int ObjectID {
+		public uint ObjectID {
 			get { return objectID; }
 			set { objectID = value; }
 		}
 
-		public int CommandID {
+		public uint CommandID {
 			get { return commandID; }
 			set { commandID = value; }
 		}
 
-		public int Cookie {
+		public uint Cookie {
 			get { return cookie; }
 			set { cookie = value; }
 		}
@@ -69,14 +86,14 @@ namespace Xmms.Client {
 				if (memoryStream.Length == headerLength) {
 					memoryStream.Position = 0;
 
-					objectID = readInteger();
-					commandID = readInteger();
-					cookie = readInteger();
-					payloadLength = readInteger();
+					objectID = ReadUnsignedInteger();
+					commandID = ReadUnsignedInteger();
+					cookie = ReadUnsignedInteger();
+					payloadLength = ReadUnsignedInteger();
 				}
 			}
 
-			int totalLength = headerLength + payloadLength;
+			uint totalLength = headerLength + payloadLength;
 
 			buffer = new byte[totalLength - memoryStream.Length];
 			read = socket.Receive(buffer);
@@ -94,7 +111,7 @@ namespace Xmms.Client {
 		public void Write(string s) {
 			byte[] bytes = System.Text.ASCIIEncoding.Default.GetBytes(s);
 
-			int zLength = bytes.Length + 1;
+			uint zLength = (uint)bytes.Length + 1;
 
 			writeInteger(zLength);
 			payloadLength += 4;
@@ -105,12 +122,48 @@ namespace Xmms.Client {
 			payloadLength += zLength;
 		}
 
-		public int ReadInteger() {
-			return readInteger();
+		public void Write(byte[] data) {
+			Write(data.Length);
+
+			memoryStream.Write(data, 0, data.Length);
+		}
+
+		public void Write(collection c) {
+			//throw new NotImplementedException();
+
+			// type:uint32
+			// num_attrs:uint32
+			// foreach attr:
+			//      key:string
+			//      value:string
+			//
+			// num_ids:uint32
+			// foreach ids:
+			//      id:uint32
+			//
+			// num_references:uint32
+			// foreach reference:
+			//      referenced_coll:collection
+		}
+
+		public void Write(IList<string> strings) {
+			throw new NotImplementedException();
+		}
+
+		public void Write(IDictionary<string, string> strings) {
+			throw new NotImplementedException();
+		}
+
+		public int ReadSignedInteger() {
+			return readSignedInteger();
+		}
+
+		public uint ReadUnsignedInteger() {
+			return unchecked((uint)readSignedInteger());
 		}
 
 		public string ReadString() {
-			int length = readInteger();
+			uint length = ReadUnsignedInteger();
 
 			if (length == 0)
 				return string.Empty;
@@ -123,29 +176,39 @@ namespace Xmms.Client {
 			return System.Text.Encoding.ASCII.GetString(raw);
 		}
 
-		private void writeInteger(int n) {
-			memoryStream.WriteByte ((byte)(n >> 24));
-			memoryStream.WriteByte ((byte)(n >> 16));
-			memoryStream.WriteByte ((byte)(n >> 8));
-			memoryStream.WriteByte ((byte)n);
+		public void Read(byte[] buffer) {
+			memoryStream.Read(buffer, 0, buffer.Length);
 		}
 
-		public int readInteger() {
+		private void writeInteger(int n) {
+			memoryStream.WriteByte((byte)((n >> 24) & 0xff));
+			memoryStream.WriteByte((byte)((n >> 16) & 0xff));
+			memoryStream.WriteByte((byte)((n >> 8) & 0xff));
+			memoryStream.WriteByte((byte)(n & 0xff));
+		}
+
+		private void writeInteger(uint n) {
+			writeInteger(unchecked((int)n));
+		}
+
+		private int readSignedInteger() {
+			byte[] buffer = new byte[4];
+			memoryStream.Read(buffer, 0, buffer.Length);
+
 			int n = 0;
 
-			n |= memoryStream.ReadByte() << 24;
-			n |= memoryStream.ReadByte() << 16;
-			n |= memoryStream.ReadByte() << 8;
-			n |= memoryStream.ReadByte();
+			n |= buffer[0] << 24;
+			n |= buffer[1] << 16;
+			n |= buffer[2] << 8;
+			n |= buffer[3];
 
 			return n;
 		}
 
-		private int objectID;
-		private int commandID;
-		private int cookie;
-		private int payloadLength;
-		private int transferred;
+		private uint objectID;
+		private uint commandID;
+		private uint cookie;
+		private uint payloadLength;
 		private readonly MemoryStream memoryStream;
 		private const int headerLength = 16;
 	}
