@@ -12,21 +12,10 @@ hello client protocolVersion clientName = do
     let (betterClient, cookie) = methodPrelude client
     let h = clientSocket client
 
-    -- object id
-    messageWriteInt h 1
+    let payloadLength = (4 + 4 + 1 + (length clientName))
+    messageWriteHeader h (1, 32, fromIntegral cookie, fromIntegral payloadLength)
 
-    -- command id
-    messageWriteInt h 32
-
-    -- cookie
-    messageWriteInt h (fromIntegral cookie)
-
-    -- payload length
-    messageWriteInt h (4 + 4 + 1 + (length clientName))
-
-    -- protocol
     messageWriteInt h protocolVersion
-
     messageWriteString h clientName
 
     return (betterClient, VoidResult cookie)
@@ -36,17 +25,8 @@ listPlaylistEntries client playlistName = do
     let (betterClient, cookie) = methodPrelude client
     let h = clientSocket client
 
-    -- object id
-    messageWriteInt h 2
-
-    -- command id
-    messageWriteInt h 43
-
-    -- cookie
-    messageWriteInt h (fromIntegral cookie)
-
-    -- payload length
-    messageWriteInt h (5 + (length playlistName))
+    let payloadLength = (5 + (length playlistName))
+    messageWriteHeader h (2, 43, fromIntegral cookie, fromIntegral payloadLength)
 
     messageWriteString h playlistName
 
@@ -57,17 +37,7 @@ medialibGetInfo client id = do
     let (betterClient, cookie) = methodPrelude client
     let h = clientSocket client
 
-    -- object id
-    messageWriteInt h 5
-
-    -- command id
-    messageWriteInt h 32
-
-    -- cookie
-    messageWriteInt h (fromIntegral cookie)
-
-    -- payload length
-    messageWriteInt h 4
+    messageWriteHeader h (5, 32, fromIntegral cookie, 4)
 
     messageWriteInt h id
 

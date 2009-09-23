@@ -1,6 +1,7 @@
 module Xmms.Client.Message (
       messageWriteInt
     , messageWriteString
+    , messageWriteHeader
     , messageReadHeader
 ) where
 
@@ -44,6 +45,9 @@ messageWriteString :: Socket -> String -> IO ()
 messageWriteString h s = do
     let x = runPut (myPutRawStr s)
     sendMany h (BL.toChunks x)
+
+messageWriteHeader :: Socket -> (Int32, Int32, Int32, Int32) -> IO ()
+messageWriteHeader h t = sendMany h (BL.toChunks (encode t))
 
 -- Read an IPC Message's header (16 bytes).
 -- Returns the length in bytes of the message's payload.
