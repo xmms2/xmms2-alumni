@@ -1,10 +1,11 @@
 import Data.Binary
-import qualified Data.ByteString.Lazy.Char8 as B
+import qualified Data.ByteString.Lazy as BL
 import Data.ByteString (hGet)
-import Data.List
-import Network
+
+import Network.Socket hiding (recv)
+import Network.Socket.ByteString (recv)
+
 import System (getArgs)
-import System.IO
 import System.Environment (getEnv)
 
 import Xmms.Client
@@ -16,35 +17,35 @@ main = withSocketsDo $ do
     args <- getArgs
 
     let host = args !! 0
-    let port = PortNumber (fromIntegral (read (args !! 1)))
+    let port = args !! 1
 
-    h <- connectTo host port
+    addrinfos <- getAddrInfo Nothing (Just host) (Just port)
+    let serveraddr = head addrinfos
+    h <- socket (addrFamily serveraddr) Stream defaultProtocol
+    connect h (addrAddress serveraddr)
 
     let firstClient = (Client "Haskell!" h [] 0)
     (betterClient, hResult) <- hello firstClient 16 (clientName firstClient)
     --putStrLn (show (fromIntegral(clientNextCookie betterClient)))
 
-    hFlush h
     pll <- messageReadHeader h
-    byteString <- hGet h pll
-    let helloResultValue = (decode (B.fromChunks [byteString]) :: Value)
+    byteString <- recv h pll
+    let helloResultValue = (decode (BL.fromChunks [byteString]) :: Value)
 
     (betterClient, lpResult) <- listPlaylistEntries betterClient "_active"
     --putStrLn (show (fromIntegral(clientNextCookie betterClient)))
-    hFlush h
 
     pll <- messageReadHeader h
-    byteString <- hGet h pll
+    byteString <- recv h pll
 
     --putStrLn "playlist entry IDs:"
-    --return (decode (B.fromChunks [byteString]) :: Value)
+    --return (decode (BL.fromChunks [byteString]) :: Value)
 
     (betterClient, mgiResult) <- medialibGetInfo betterClient 1
     --putStrLn (show (fromIntegral(clientNextCookie betterClient)))
-    hFlush h
 
     pll <- messageReadHeader h
-    byteString <- hGet h pll
+    byteString <- recv h pll
 
-    return (decode (B.fromChunks [byteString]) :: Value)
+    return (decode (BL.fromChunks [byteString]) :: Value)
 

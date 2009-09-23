@@ -1,49 +1,53 @@
-module Xmms.Client.Message where
+module Xmms.Client.Message (
+      messageWriteInt
+    , messageWriteString
+    , messageReadHeader
+) where
 
-import Data.Bits (shiftR, shiftL, (.&.), (.|.))
 import Data.Word
-import Foreign.Storable
-import Foreign.Marshal.Alloc
-import Foreign.Ptr
-import System.IO
+import Network (Socket)
+import Network.Socket.ByteString (recv, sendMany)
 
-pokeByte :: Ptr Word8 -> Int -> Word8 -> IO ()
-pokeByte = pokeElemOff
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 
-peekByte :: Ptr Word8 -> Int -> IO (Word8)
-peekByte = peekElemOff
+import Data.Int
+import Data.Binary
+import Data.Binary.Put
 
-messageWriteInt :: Handle -> Int -> IO ()
+putWord32 :: Word32 -> Put
+putWord32 = put
+
+putInt32 :: Int32 -> Put
+putInt32 = put
+
+-- Write a raw string (ie without the type tag)
+myPutRawStr :: String -> Put
+myPutRawStr s = putWord32 (fromIntegral (succ (length s))) >> mapM_ put s >> put '\0'
+
+-- Write a raw int (ie without the type tag)
+myPutRawInt = putInt32
+
+messageWriteInt :: Socket -> Int -> IO ()
 messageWriteInt h i = do
-    allocaBytes 4 $ \buffer -> do
-        pokeByte buffer 0 (fromIntegral((i `shiftR` 24) .&. 0xff))
-        pokeByte buffer 1 (fromIntegral((i `shiftR` 16) .&. 0xff))
-        pokeByte buffer 2 (fromIntegral((i `shiftR` 8) .&. 0xff))
-        pokeByte buffer 3 (fromIntegral(i .&. 0xff))
+    let x = runPut (myPutRawInt (fromIntegral i))
+    sendMany h (BL.toChunks x)
 
-        hPutBuf h buffer 4
+messageReadInt :: Socket -> IO Int
+messageReadInt sock = do
+    msg <- recv sock 4
 
-messageReadInt :: Handle -> IO Int
-messageReadInt handle = do
-    allocaBytes 4 $ \buffer -> do
-        readBytes <- hGetBuf handle buffer 4
+    let i = (decode (BL.fromChunks [msg]) :: Int32)
+    return (fromIntegral i)
 
-        a <- peekByte buffer 0
-        b <- peekByte buffer 1
-        c <- peekByte buffer 2
-        d <- peekByte buffer 3
-
-        return (( (fromIntegral a) `shiftL` 24) .|. (  (fromIntegral b) `shiftL` 16) .|. ( (fromIntegral c) `shiftL` 8) .|. (fromIntegral d))
-
-messageWriteString :: Handle -> String -> IO ()
+messageWriteString :: Socket -> String -> IO ()
 messageWriteString h s = do
-    messageWriteInt h (succ (length s))
-    hPutStr h s
-    hPutChar h '\0'
+    let x = runPut (myPutRawStr s)
+    sendMany h (BL.toChunks x)
 
 -- Read an IPC Message's header (16 bytes).
 -- Returns the length in bytes of the message's payload.
-messageReadHeader :: Handle -> IO (Int)
+messageReadHeader :: Socket -> IO (Int)
 messageReadHeader handle = do
     object <- messageReadInt handle
     command <- messageReadInt handle

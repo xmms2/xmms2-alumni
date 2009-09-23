@@ -1,7 +1,7 @@
 module Xmms.Client where
 
 import Data.Word
-import System.IO
+import Network (Socket)
 
 -- cookies are unsigned 32 bit integers
 type Cookie = Word32
@@ -16,7 +16,7 @@ data Result = VoidResult {
 
 data Client = Client {
       clientName       :: String
-    , clientSocket     :: Handle
+    , clientSocket     :: Socket
     , clientResults    :: [Result]
     , clientNextCookie :: Cookie
 }
