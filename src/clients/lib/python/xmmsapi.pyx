@@ -303,6 +303,8 @@ cdef extern from "xmmsclient/xmmsclient.h":
 	xmmsc_result_t *xmmsc_medialib_get_info(xmmsc_connection_t *, unsigned int id)
 	xmmsc_result_t *xmmsc_medialib_path_import (xmmsc_connection_t *c, char *path)
 	xmmsc_result_t *xmmsc_medialib_path_import_encoded (xmmsc_connection_t *c, char *path)
+	xmmsc_result_t *xmmsc_medialib_import_path (xmmsc_connection_t *c, char *path)
+	xmmsc_result_t *xmmsc_medialib_import_path_encoded (xmmsc_connection_t *c, char *path)
 	xmmsc_result_t *xmmsc_medialib_rehash(xmmsc_connection_t *c, unsigned int)
 	xmmsc_result_t *xmmsc_medialib_get_id (xmmsc_connection_t *c, char *url)
 	xmmsc_result_t *xmmsc_medialib_entry_property_set_int (xmmsc_connection_t *c, unsigned int id, char *key, int value)
@@ -2095,6 +2097,7 @@ cdef class XMMS:
 		passed as argument.
 		@rtype: L{XMMSResult}
 		@return: The result of the operation.
+		@deprecated
 		"""
 		c = from_unicode(path)
 		return self.create_result(cb, xmmsc_medialib_path_import(self.conn, c))
@@ -2107,10 +2110,34 @@ cdef class XMMS:
 		passed as argument. The 'path' argument has to be medialib encoded.
 		@rtype: L{XMMSResult}
 		@return: The result of the operation.
+		@deprecated
 		"""
 		c = from_unicode(path)
 		return self.create_result(cb, xmmsc_medialib_path_import_encoded(self.conn, c))
 
+	def medialib_import_path(self, path, cb = None):
+		"""
+		medialib_import_path(path, cb=None) -> XMMSResult
+
+		Import metadata from all files recursively from the directory
+		passed as argument.
+		@rtype: L{XMMSResult}
+		@return: The result of the operation.
+		"""
+		c = from_unicode(path)
+		return self.create_result(cb, xmmsc_medialib_import_path(self.conn, c))
+
+	def medialib_import_path_encoded(self, path, cb = None):
+		"""
+		medialib_import_path_encoded(path, cb=None) -> XMMSResult
+
+		Import metadata from all files recursively from the directory
+		passed as argument. The 'path' argument has to be medialib encoded.
+		@rtype: L{XMMSResult}
+		@return: The result of the operation.
+		"""
+		c = from_unicode(path)
+		return self.create_result(cb, xmmsc_medialib_import_path_encoded(self.conn, c))
 
 	def medialib_property_set(self, id, key, value, source=None, cb=None):
 		"""
