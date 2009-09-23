@@ -48,6 +48,13 @@ namespace Xmms
 		return DictListResult( res, ml_ );
 	}
 
+	DictListResult Stats::mainListPlugins(Plugins::Type type) const
+	{
+		xmmsc_result_t* res =
+		    call( connected_, boost::bind( xmmsc_main_list_plugins, conn_, type ) );
+		return DictListResult( res, ml_ );
+	}
+
 	ReaderStatusSignal
 	Stats::broadcastMediainfoReaderStatus() const
 	{

@@ -96,7 +96,26 @@ namespace Xmms
 			 *          @e type as <code>Plugins::Type</code>
 			 */
 			DictListResult
-			pluginList(Plugins::Type type = Plugins::ALL) const;
+			pluginList(Plugins::Type type = Plugins::ALL) const XMMS_DEPRECATED;
+
+			/** Get a list of loaded plugins from the server.
+			 *
+			 *  @param type Type of plugins to get a list of. (<b>optional</b>)
+			 *
+			 *  @throw connection_error If the client isn't connected.
+			 *  @throw mainloop_running_error If a mainloop is running -
+			 *  sync functions can't be called when mainloop is running. This
+			 *  is only thrown if the programmer is careless or doesn't know
+			 *  what he/she's doing. (logic_error)
+			 *  @throw result_error If the operation failed.
+			 *
+			 *  @return List of @link Dict Dicts@endlink containing
+			 *          @e name @c string, @e shortname @c string,
+			 *          @e version @c string, @e description @c string and
+			 *          @e type as <code>Plugins::Type</code>
+			 */
+			DictListResult
+			mainListPlugins(Plugins::Type type = Plugins::ALL) const;
 
 			/** Request status for the mediainfo reader.
 			 *
