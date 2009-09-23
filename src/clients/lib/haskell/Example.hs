@@ -28,15 +28,15 @@ main = withSocketsDo $ do
     (betterClient, hResult) <- hello firstClient 16 (clientName firstClient)
     --putStrLn (show (fromIntegral(clientNextCookie betterClient)))
 
-    pll <- messageReadHeader h
-    byteString <- recv h pll
+    (_, _, _, pll) <- messageReadHeader h
+    byteString <- recv h (fromIntegral pll)
     let helloResultValue = (decode (BL.fromChunks [byteString]) :: Value)
 
     (betterClient, lpResult) <- listPlaylistEntries betterClient "_active"
     --putStrLn (show (fromIntegral(clientNextCookie betterClient)))
 
-    pll <- messageReadHeader h
-    byteString <- recv h pll
+    (_, _, _, pll) <- messageReadHeader h
+    byteString <- recv h (fromIntegral pll)
 
     --putStrLn "playlist entry IDs:"
     --return (decode (BL.fromChunks [byteString]) :: Value)
@@ -44,8 +44,8 @@ main = withSocketsDo $ do
     (betterClient, mgiResult) <- medialibGetInfo betterClient 1
     --putStrLn (show (fromIntegral(clientNextCookie betterClient)))
 
-    pll <- messageReadHeader h
-    byteString <- recv h pll
+    (_, _, _, pll) <- messageReadHeader h
+    byteString <- recv h (fromIntegral pll)
 
     return (decode (BL.fromChunks [byteString]) :: Value)
 

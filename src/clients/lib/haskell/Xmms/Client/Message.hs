@@ -49,12 +49,9 @@ messageWriteString h s = do
 messageWriteHeader :: Socket -> (Int32, Int32, Int32, Int32) -> IO ()
 messageWriteHeader h t = sendMany h (BL.toChunks (encode t))
 
--- Read an IPC Message's header (16 bytes).
--- Returns the length in bytes of the message's payload.
-messageReadHeader :: Socket -> IO (Int)
+messageReadHeader :: Socket -> IO (Int32, Int32, Int32, Int32)
 messageReadHeader handle = do
     msg <- recv handle 16
 
-    let (_, _, _, pll) = (decode (BL.fromChunks [msg]) :: (Int32, Int32, Int32, Int32))
-    return (fromIntegral pll)
+    return (decode (BL.fromChunks [msg]) :: (Int32, Int32, Int32, Int32))
 
