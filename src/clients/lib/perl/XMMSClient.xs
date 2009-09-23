@@ -369,7 +369,7 @@ xmmsc_medialib_remove_entry (c, entry)
   my $result = $conn->medialib_add_entry;
 
 Add a C<$url> to the medialib. If you want to add mutiple files you should call
-L</medialib_path_import>.
+L</medialib_import_path>.
 
 =cut
 
@@ -486,6 +486,8 @@ xmmsc_result_t *
 xmmsc_medialib_path_import (c, path)
 		xmmsc_connection_t *c
 		const char *path
+	INIT:
+		warn("medialib_path_import is deprecated. Use medialib_import_path instead.");
 
 =head2 medialib_path_import_encoded
 
@@ -507,6 +509,53 @@ that comes as a result from the daemon, such as from C</xform_media_browse>.
 
 xmmsc_result_t *
 xmmsc_medialib_path_import_encoded (c, path)
+		xmmsc_connection_t *c
+		const char *path
+	INIT:
+		warn("medialib_path_import_encoded is deprecated. Use medialib_import_path_encoded instead.");
+
+=head2 medialib_import_path
+
+=over 4
+
+=item Arguments: $path
+
+=item Return Value: $result
+
+=back
+
+  my $result = $conn->medialib_import_path('file:///media/music/');
+
+Import a all files recursivly from C<$path>. C<$path> must include the
+protocol, i.e. file://.
+
+=cut
+
+xmmsc_result_t *
+xmmsc_medialib_import_path (c, path)
+		xmmsc_connection_t *c
+		const char *path
+
+=head2 medialib_import_path_encoded
+
+=over 4
+
+=item Arguments: $path
+
+=item Return Value: $result
+
+=back
+
+  my $result = $conn->medialib_import_path_encoded($path);
+
+Same as L</medialib_import_path> except it expects C<$path> to be url encoded.
+You probably want to use L</medialib_import_path> unless you want to add a path
+that comes as a result from the daemon, such as from C</xform_media_browse>.
+
+=cut
+
+xmmsc_result_t *
+xmmsc_medialib_import_path_encoded (c, path)
 		xmmsc_connection_t *c
 		const char *path
 
