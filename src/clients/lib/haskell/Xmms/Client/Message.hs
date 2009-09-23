@@ -13,7 +13,7 @@ import qualified Data.ByteString.Lazy as BL
 
 import Data.Int
 import Data.Binary
-import Data.Binary.Put
+import Data.Binary.Put (runPut)
 
 putWord32 :: Word32 -> Put
 putWord32 = put
@@ -49,8 +49,8 @@ messageWriteString h s = do
 -- Returns the length in bytes of the message's payload.
 messageReadHeader :: Socket -> IO (Int)
 messageReadHeader handle = do
-    object <- messageReadInt handle
-    command <- messageReadInt handle
-    cookie <- messageReadInt handle
-    messageReadInt handle
+    msg <- recv handle 16
+
+    let (_, _, _, pll) = (decode (BL.fromChunks [msg]) :: (Int32, Int32, Int32, Int32))
+    return (fromIntegral pll)
 
