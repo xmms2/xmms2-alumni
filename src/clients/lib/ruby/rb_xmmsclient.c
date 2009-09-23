@@ -1025,12 +1025,34 @@ c_plugin_list (int argc, VALUE *argv, VALUE self)
 {
 	VALUE type = Qnil;
 
+	rb_warn ("Xmms::Client#plugin_list is deprecated. "
+	         "Use Xmms::Client#main_list_plugins instead.");
+
 	rb_scan_args (argc, argv, "01", &type);
 
 	if (NIL_P (type))
 		type = INT2FIX (XMMS_PLUGIN_TYPE_ALL);
 
 	METHOD_ADD_HANDLER_UINT (plugin_list, type);
+}
+
+/*
+ * call-seq:
+ *  xc.main_list_plugins -> result
+ *
+ * Retrieves an array containing a hash of information for each plugin.
+ */
+static VALUE
+c_main_list_plugins (int argc, VALUE *argv, VALUE self)
+{
+	VALUE type = Qnil;
+
+	rb_scan_args (argc, argv, "01", &type);
+
+	if (NIL_P (type))
+		type = INT2FIX (XMMS_PLUGIN_TYPE_ALL);
+
+	METHOD_ADD_HANDLER_UINT (main_list_plugins, type);
 }
 
 /*
@@ -1583,6 +1605,7 @@ Init_Client (VALUE mXmms)
 	                  c_signal_mediainfo_reader_unindexed, 0);
 
 	rb_define_method (c, "plugin_list", c_plugin_list, -1);
+	rb_define_method (c, "main_list_plugins", c_main_list_plugins, -1);
 	rb_define_method (c, "main_stats", c_main_stats, 0);
 
 	rb_define_method (c, "config_list_values", c_config_list_values, 0);
