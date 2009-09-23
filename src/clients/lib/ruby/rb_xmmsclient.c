@@ -948,7 +948,22 @@ c_playlist_current_active (VALUE self)
 static VALUE
 c_medialib_path_import (VALUE self, VALUE path)
 {
+	rb_warn ("Xmms::Client#path_import is deprecated. "
+	         "Use Xmms::Client#import_path instead.");
+
 	METHOD_ADD_HANDLER_STR (medialib_path_import, path);
+}
+
+/*
+ * call-seq:
+ *  xc.medialib_import_path(path) -> result
+ *
+ * Recursively imports all media files under _path_ to the medialib.
+ */
+static VALUE
+c_medialib_import_path (VALUE self, VALUE path)
+{
+	METHOD_ADD_HANDLER_STR (medialib_import_path, path);
 }
 
 /*
@@ -1557,6 +1572,7 @@ Init_Client (VALUE mXmms)
 	rb_define_method (c, "medialib_entry_remove", c_medialib_entry_remove, 1);
 	rb_define_method (c, "medialib_entry_move", c_medialib_entry_move, 2);
 	rb_define_method (c, "medialib_path_import", c_medialib_path_import, 1);
+	rb_define_method (c, "medialib_import_path", c_medialib_import_path, 1);
 	rb_define_method (c, "medialib_rehash", c_medialib_rehash, 1);
 
 	rb_define_method (c, "xform_media_browse", c_xform_media_browse, 1);
