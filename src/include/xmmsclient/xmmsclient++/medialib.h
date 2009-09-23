@@ -185,7 +185,8 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult pathImport( const std::string& path ) const;
+			VoidResult pathImport( const std::string& path ) const XMMS_DEPRECATED;
+
 
 			/** Import all files recursively from the 
 			 *  directory passed as argument.
@@ -201,7 +202,38 @@ namespace Xmms
 			 *  what he/she's doing. (logic_error)
 			 *  @throw result_error If the operation failed.
 			 */
-			VoidResult pathImportEncoded( const std::string& path ) const;
+			VoidResult pathImportEncoded( const std::string& path ) const XMMS_DEPRECATED;
+
+			/** Import all files recursively from the
+			 *  directory passed as argument.
+			 *
+			 *  @param path Directory to import.
+			 *
+			 *  @throw connection_error If the client isn't connected.
+			 *  @throw mainloop_running_error If a mainloop is running -
+			 *  sync functions can't be called when mainloop is running. This
+			 *  is only thrown if the programmer is careless or doesn't know
+			 *  what he/she's doing. (logic_error)
+			 *  @throw result_error If the operation failed.
+			 */
+			VoidResult importPath( const std::string& path ) const;
+
+
+			/** Import all files recursively from the
+			 *  directory passed as argument.
+			 *
+			 *  same as #importPath but takes a encoded path instead.
+			 *
+			 *  @param path Directory to import.
+			 *
+			 *  @throw connection_error If the client isn't connected.
+			 *  @throw mainloop_running_error If a mainloop is running -
+			 *  sync functions can't be called when mainloop is running. This
+			 *  is only thrown if the programmer is careless or doesn't know
+			 *  what he/she's doing. (logic_error)
+			 *  @throw result_error If the operation failed.
+			 */
+			VoidResult importPathEncoded( const std::string& path ) const;
 
 			/** Rehash the medialib. 
 			 *  This will check data in the medialib still 
