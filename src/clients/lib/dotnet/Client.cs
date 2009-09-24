@@ -34,6 +34,10 @@ namespace Xmms.Client {
 			medialibObject = new Generated.Medialib(this);
 		}
 
+		public Socket Socket {
+			get { return socket; }
+		}
+
 		public Generated.Playback Playback {
 			get { return playbackObject; }
 		}
@@ -84,6 +88,34 @@ namespace Xmms.Client {
 			result.Wait();
 		}
 
+		public bool IOWantOut() {
+			return sendQueue.Count > 0;
+		}
+
+		public void IOOutHandle() {
+			Message message = sendQueue.Peek();
+
+			// write the next chunk of the message.
+			bool done = message.WriteChunk(socket);
+
+			// if this message was written completely,
+			// we remove it from the queue.
+			if (done)
+				sendQueue.Dequeue();
+		}
+
+		public void IOInHandle() {
+			if (readMessage == null)
+				readMessage = new Message();
+
+			bool readAllChunks = readMessage.ReadChunk(socket);
+
+			if (readAllChunks) {
+				processMessage(readMessage);
+				readMessage = null;
+			}
+		}
+
 		internal void SendMessage(Message message, Result result) {
 			message.Assemble();
 
@@ -122,24 +154,8 @@ namespace Xmms.Client {
 		}
 
 		private void flushSendQueue() {
-			while (ioWantOut())
-				ioOutHandle();
-		}
-
-		private void ioOutHandle() {
-			Message message = sendQueue.Peek();
-
-			// write the next chunk of the message.
-			bool done = message.WriteChunk(socket);
-
-			// if this message was written completely,
-			// we remove it from the queue.
-			if (done)
-				sendQueue.Dequeue();
-		}
-
-		private bool ioWantOut() {
-			return sendQueue.Count > 0;
+			while (IOWantOut())
+				IOOutHandle();
 		}
 
 		private void processMessage(Message message) {
@@ -182,6 +198,7 @@ namespace Xmms.Client {
 
 		private Socket socket;
 		private uint nextCookie;
+		private Message readMessage;
 	}
 
 	// FIXME: Kill me.

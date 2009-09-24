@@ -18,6 +18,8 @@ using System;
 
 namespace Xmms.Client {
 	public class VoidResult : Result {
+		public event EventHandler Processed;
+
 		public VoidResult(
 			Client client, uint cookie
 		) : base(client, cookie) {
@@ -25,6 +27,15 @@ namespace Xmms.Client {
 
 		protected override void GetValue(Message message) {
 			// Nothing
+		}
+
+		protected override void OnProcessed() {
+			OnProcessed(EventArgs.Empty);
+		}
+
+		protected void OnProcessed(EventArgs e) {
+			if (Processed != null)
+				Processed(this, e);
 		}
 	}
 }

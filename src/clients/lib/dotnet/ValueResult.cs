@@ -17,7 +17,21 @@
 using System;
 
 namespace Xmms.Client {
+	public class ProcessedEventArgs<T> : EventArgs where T : Value.Value {
+		internal ProcessedEventArgs(T value) {
+			this.value = value;
+		}
+
+		public T Value {
+			get { return value; }
+		}
+
+		private readonly T value;
+	}
+
 	public class ValueResult<T> : Result where T : Value.Value, new() {
+		public event EventHandler<ProcessedEventArgs<T>> Processed;
+
 		public ValueResult(
 			Client client, uint cookie
 		) : base(client, cookie) {
@@ -38,6 +52,15 @@ namespace Xmms.Client {
 			value.Deserialize(message, true);
 
 			hasValue = true;
+		}
+
+		protected override void OnProcessed() {
+			OnProcessed(new ProcessedEventArgs<T>(Value));
+		}
+
+		protected void OnProcessed(ProcessedEventArgs<T> e) {
+			if (Processed != null)
+				Processed(this, e);
 		}
 
 		private T value;

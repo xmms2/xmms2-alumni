@@ -39,9 +39,12 @@ namespace Xmms.Client {
 				// error
 				//isError = true;
 			}
+
+			OnProcessed();
 		}
 
 		protected abstract void GetValue(Message message);
+		protected abstract void OnProcessed();
 
 		private readonly Client client;
 		private readonly uint cookie;
