@@ -59,7 +59,7 @@ def build(ipc):
 def emit_method_code(object, method):
 	method_name = camel_case(method.name)
 
-	result_type = 'Result'
+	result_type = 'VoidResult'
 
 	if method.return_value:
 		result_type = 'ValueResult<' + result_value_type_map[tuple(method.return_value.type)] + '>'

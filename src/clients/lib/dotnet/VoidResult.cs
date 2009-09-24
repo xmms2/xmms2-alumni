@@ -1,7 +1,7 @@
 //
 //  .NET bindings for the XMMS2 client library
 //
-//  Copyright (C) 2008 Tilman Sauerbeck, <tilman@xmms.org>
+//  Copyright (C) 2009 Tilman Sauerbeck, <tilman@xmms.org>
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -17,33 +17,14 @@
 using System;
 
 namespace Xmms.Client {
-	public abstract class Result {
-		public Result(Client client, uint cookie) {
-			this.client = client;
-			this.cookie = cookie;
+	public class VoidResult : Result {
+		public VoidResult(
+			Client client, uint cookie
+		) : base(client, cookie) {
 		}
 
-		public uint Cookie {
-			get { return cookie; }
+		protected override void GetValue(Message message) {
+			// Nothing
 		}
-
- 		public void Wait() {
-			client.WaitFor(this);
-		}
-
-		internal void ProcessReply(Message message) {
-			if (message.CommandID == 0) {
-				// reply
-				GetValue(message);
-			} else if (message.CommandID == 1) {
-				// error
-				//isError = true;
-			}
-		}
-
-		protected abstract void GetValue(Message message);
-
-		private readonly Client client;
-		private readonly uint cookie;
 	}
 }

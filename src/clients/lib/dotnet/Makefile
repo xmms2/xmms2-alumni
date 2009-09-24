@@ -2,6 +2,7 @@ SOURCES := \
 	Client.cs \
 	Message.cs \
 	Result.cs \
+	VoidResult.cs \
 	ValueResult.cs \
 	Value/Value.cs \
 	Value/Error.cs \
