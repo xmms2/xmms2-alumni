@@ -49,13 +49,6 @@ messageWriteInt h i = do
     let x = runPut (myPutRawInt (fromIntegral i))
     sendMany h (BL.toChunks x)
 
-messageReadInt :: Socket -> IO Int
-messageReadInt sock = do
-    msg <- recv sock 4
-
-    let i = (decode (BL.fromChunks [msg]) :: Int32)
-    return (fromIntegral i)
-
 messageWriteString :: Socket -> String -> IO ()
 messageWriteString h s = do
     let x = runPut (myPutRawStr s)
