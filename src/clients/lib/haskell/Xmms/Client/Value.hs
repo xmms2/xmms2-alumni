@@ -42,7 +42,7 @@ myGetRawStr :: Get String
 myGetRawStr = do
     length <- getWord32
 
-    chars <- replicateM (fromIntegral length :: Int) get
+    chars <- replicateM (fromIntegral length) get
     return (init chars)
 
 -- Write a dictionary tuple (raw string and value)
@@ -53,7 +53,7 @@ myPutDictTuple (key, value) = myPutRawStr key >> put value
 myGetDictTuple :: Get (String, Value)
 myGetDictTuple = do
     key <- myGetRawStr
-    value <- get :: Get Value
+    value <- get
     return (key, value)
 
 instance Binary Value where
@@ -72,12 +72,12 @@ instance Binary Value where
             6 -> do
                 length <- getWord32
 
-                items <- replicateM (fromIntegral length :: Int) get
+                items <- replicateM (fromIntegral length) get
                 return (ListValue items)
             7 -> do
                 length <- getWord32
 
-                tuples <- replicateM (fromIntegral length :: Int) myGetDictTuple
+                tuples <- replicateM (fromIntegral length) myGetDictTuple
                 return (DictValue tuples)
 
             otherwise -> error "unhandled Value type"
