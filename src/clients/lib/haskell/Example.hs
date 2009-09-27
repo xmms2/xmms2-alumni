@@ -40,7 +40,7 @@ main = withSocketsDo $ do
     connect h (addrAddress serveraddr)
 
     let firstClient = (Client "Haskell!" h [] 0)
-    (betterClient, hResult) <- hello firstClient 16 (clientName firstClient)
+    (betterClient, hResult) <- mainHello firstClient 16 (clientName firstClient)
     --putStrLn (show (fromIntegral(clientNextCookie betterClient)))
 
     (_, _, _, pll) <- messageReadHeader h

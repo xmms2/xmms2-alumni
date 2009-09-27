@@ -44,16 +44,29 @@ def build(ipc):
 	Indenter.printline()
 	Indenter.printline('module Xmms.Client.Generated where')
 	Indenter.printline()
+	Indenter.printline('import qualified Data.ByteString.Lazy as BL')
+	Indenter.printline('import Network.Socket.ByteString (sendMany)')
+	Indenter.printline()
 	Indenter.printline('import Xmms.Client')
 	Indenter.printline('import Xmms.Client.Message')
 	Indenter.printline()
+	Indenter.printline('crap x y = x + (BL.length y)')
+	Indenter.printline()
+	Indenter.printline('flatten :: [[a]] -> [a]')
+	Indenter.printline('flatten = foldl (++) []')
+	Indenter.printline()
 
 	for object in ipc.objects:
-		if object.name == "main" or object.name == "playlist":
+		#if object.name == "main" or object.name == "playlist":
+		if object.name == 'main':
 			for method in object.methods:
 				emit_method_code(object, method, '')
 
 		Indenter.printline()
+
+def blah(a):
+	f = argument_write_function_map[tuple(a.type)]
+	return '%s %s' % (f, a.name)
 
 # FIXME: i'm going to hell for the name_prefix stuff
 def emit_method_code(object, method, name_prefix):
@@ -89,16 +102,20 @@ def emit_method_code(object, method, name_prefix):
 	Indenter.printline('let h = clientSocket c')
 	Indenter.printline()
 
-	Indenter.printline('messageWriteHeader h (%i, %i, fromIntegral cookie, fromIntegral payloadLength)'% (object.id, method.id))
+	Indenter.printx('let bls = [')
 
 	if arguments:
-		print
+		print ', '.join(map(blah, arguments)),
 
-	for a in arguments:
-		f = argument_write_function_map[tuple(a.type)]
+	print ']'
 
-		Indenter.printline('%s h %s' % (f, a.name))
+	Indenter.printline()
+	Indenter.printline('let payloadLength = foldl (+) 0 (map BL.length bls)')
 
+	Indenter.printline('messageWriteHeader h (%i, %i, fromIntegral cookie, fromIntegral payloadLength)'% (object.id, method.id))
+
+	Indenter.printline('let bs = map (BL.toChunks) bls')
+	Indenter.printline('sendMany h (flatten bs)')
 	Indenter.printline()
 	Indenter.printline('return (betterClient, %s cookie)' % result_type)
 	Indenter.leave(None)

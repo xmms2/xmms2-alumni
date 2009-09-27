@@ -24,7 +24,6 @@ import Data.Word
 import Network (Socket)
 import Network.Socket.ByteString (recv, sendMany)
 
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 
 import Data.Int
@@ -44,15 +43,11 @@ myPutRawStr s = putWord32 (fromIntegral (succ (length s))) >> mapM_ put s >> put
 -- Write a raw int (ie without the type tag)
 myPutRawInt = putInt32
 
-messageWriteInt :: Socket -> Int -> IO ()
-messageWriteInt h i = do
-    let x = runPut (myPutRawInt (fromIntegral i))
-    sendMany h (BL.toChunks x)
+messageWriteInt :: Int -> BL
+messageWriteInt i = runPut (myPutRawInt (fromIntegral i))
 
-messageWriteString :: Socket -> String -> IO ()
-messageWriteString h s = do
-    let x = runPut (myPutRawStr s)
-    sendMany h (BL.toChunks x)
+messageWriteString :: String -> BL
+messageWriteString s = runPut (myPutRawStr s)
 
 messageWriteHeader :: Socket -> (Int32, Int32, Int32, Int32) -> IO ()
 messageWriteHeader h t = sendMany h (BL.toChunks (encode t))
