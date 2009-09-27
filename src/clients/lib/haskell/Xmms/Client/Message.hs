@@ -43,10 +43,10 @@ myPutRawStr s = putWord32 (fromIntegral (succ (length s))) >> mapM_ put s >> put
 -- Write a raw int (ie without the type tag)
 myPutRawInt = putInt32
 
-messageWriteInt :: Int -> BL
+messageWriteInt :: Int -> BL.ByteString
 messageWriteInt i = runPut (myPutRawInt (fromIntegral i))
 
-messageWriteString :: String -> BL
+messageWriteString :: String -> BL.ByteString
 messageWriteString s = runPut (myPutRawStr s)
 
 messageWriteHeader :: Socket -> (Int32, Int32, Int32, Int32) -> IO ()
