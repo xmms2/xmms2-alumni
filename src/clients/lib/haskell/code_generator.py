@@ -50,8 +50,6 @@ def build(ipc):
 	Indenter.printline('import Xmms.Client')
 	Indenter.printline('import Xmms.Client.Message')
 	Indenter.printline()
-	Indenter.printline('crap x y = x + (BL.length y)')
-	Indenter.printline()
 	Indenter.printline('flatten :: [[a]] -> [a]')
 	Indenter.printline('flatten = foldl (++) []')
 	Indenter.printline()
