@@ -1,0 +1,18 @@
+def build(bld):
+    bld.new_task_gen(
+        source=['../../../ipc.xml', 'header_generator.py'],
+        target='xmmsclient_qt_gen.h',
+        rule='${PYTHON} ${SRC[1].abspath()} > ${TGT}',
+    )
+    bld.new_task_gen(
+        source=['../../../ipc.xml', 'code_generator.py'],
+        target='xmmsclient_qt_gen.cpp',
+        rule='${PYTHON} ${SRC[1].abspath()} > ${TGT}',
+    )
+
+
+def configure(conf):
+    return True
+
+def set_options(opt):
+    pass
