@@ -155,7 +155,7 @@ class Node(object):
 
 	def find_resource(self, lst):
 		"Find an existing input file: either a build node declared previously or a source node"
-		if isinstance(lst, str):
+		if isinstance(lst, str) or isinstance(lst, unicode):
 			lst = Utils.split_path(lst)
 
 		if len(lst) == 1:

@@ -1,11 +1,20 @@
 import os
 
 def build(bld):
-    paths = ['xmms', 'xmmsc', 'xmmsclient', 'xmmsclient/xmmsclient++']
+    paths = ['xmms', 'xmmsc', 'xmmsclient', 'xmmsclient/xmmsclient++', 'xmmsclient/xmmsclientqt4']
     for p in paths:
         bld.add_subdirs(p)
-        f = [os.path.join(p, a) for a in os.listdir(os.path.join('src','include',p)) if a.endswith('.h')]
-        bld.install_files(os.path.join(bld.env.INCLUDEDIR, 'xmms2', p), " ".join(f))
+        dirnode = bld.path.find_dir(p.split('/'))
+
+        sfiles = dirnode.files()
+        bfiles = dirnode.ant_glob("*.h", src=0, bld=1)
+
+        for file in sfiles:
+            bld.install_files(os.path.join(bld.env.INCLUDEDIR, 'xmms2', p), file)
+        # Install generated header files too.
+        for file in bfiles.split(): 
+            bld.install_files(os.path.join(bld.env.INCLUDEDIR, 'xmms2', p), dirnode.find_or_declare([file]))
+
 
 def configure(conf):
     conf.sub_config("xmms")

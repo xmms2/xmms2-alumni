@@ -1,0 +1,23 @@
+import os
+
+def build(bld):
+    bld.new_task_gen(
+        features = 'cxx cshlib gen_qt4 qt4',
+		includes = '../../../include .',
+		uselib = 'QTCORE QTNETWORK',
+        include_dest = '../../../include/xmmsclient',
+		ipcfile = '../../../ipc.xml',
+        source=['client.cpp', 'propdict.cpp', 'message.cpp', 'coll.cpp', 'result.cpp', 'object.cpp'],
+		target = 'xmmsclientqt4'
+    )
+
+
+def configure(conf):
+    conf.check_tool('gen_qt4', tooldir=conf.curdir)
+    conf.check_tool('qt4')
+
+    conf.env.append_value('XMMS_PKGCONF_FILES', ('xmms2-client-qt4', '-lxmmsclientqt4'))
+    return True
+
+def set_options(opt):
+    pass
