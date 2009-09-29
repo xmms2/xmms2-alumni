@@ -588,8 +588,9 @@ def apply_vnum(self):
 	else:
 		name3 = libname + '.' + self.vnum
 		name2 = libname + '.' + nums[0]
-
-	self.env.append_value('LINKFLAGS', (self.env['SONAME_ST'] % name2).split())
+	
+	if not self.env['SONAME_ST'] is '':
+		self.env.append_value('LINKFLAGS', (self.env['SONAME_ST'] % name2).split())
 
 	bld = self.bld
 	nums = self.vnum.split('.')
