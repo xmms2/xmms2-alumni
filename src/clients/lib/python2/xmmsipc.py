@@ -6,6 +6,7 @@ import socket
 import os
 
 from xmmstypes import *
+from message import PROTOCOL_VERSION, HEADER
 import generated
 
 SOCKET = '/tmp/xmms-ipc-alex'
@@ -23,8 +24,8 @@ class XMMSClient(asyncore.dispatcher, object):
     def __getattr__(self, attr):
         if attr in self.__dict__:
             return self.__dict__[attr]
-        elif 'XMMSObject'+attr in dir(gen):
-            return getattr(gen, 'XMMSObject'+attr)(self)
+        elif 'XMMSObject'+attr in dir(generated):
+            return getattr(generated, 'XMMSObject'+attr)(self)
         else:
             return None
 
@@ -37,8 +38,7 @@ class XMMSClient(asyncore.dispatcher, object):
     def connect(self, sock, cb=None):
         self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
         super(XMMSClient, self).connect(sock)
-        self._send_message(XMMSObjectMain.hello, cb, PROTOCOL_VERSION, 
-            self.clientname)
+        self.Main.hello(cb, PROTOCOL_VERSION, self.clientname);
 
     def handle_connect(self):
         pass
