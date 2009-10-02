@@ -38,7 +38,7 @@ class XMMSClient(asyncore.dispatcher, object):
     def connect(self, sock, cb=None):
         self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
         super(XMMSClient, self).connect(sock)
-        self.Main.hello(cb, PROTOCOL_VERSION, self.clientname);
+        self.Main.hello(PROTOCOL_VERSION, self.clientname, cb=cb)
 
     def handle_connect(self):
         pass

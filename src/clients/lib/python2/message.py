@@ -16,7 +16,11 @@ class msg(object):
             self.obj = obj
         return self
 
-    def __call__(self, cb, *args):
+    def __call__(self, *args, **kwargs):
+        cb = kwargs.get('cb', None)
+        if not cb and callable(args[-1]):
+            cb = args[-1]
+            args = args[:-1]
         self.obj.client._send_message(self, cb, *args)
 
     def response(self, instream):
