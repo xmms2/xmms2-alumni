@@ -42,7 +42,7 @@ class NONE(XMMSType):
 
 
 class INT32(XMMSType):
-    ID = 3
+    ID = 2
     STRUCT = '>i'
 
 class FLOAT(XMMSType):
@@ -54,7 +54,7 @@ class CHAR(XMMSType):
     STRUCT = '>c'
 
 class STRING(XMMSType):
-    ID = 4
+    ID = 3
     STRUCT = '>%dc'
 
     @valuedmethod
@@ -77,13 +77,13 @@ class ERROR(STRING):
     ID = 1
 
 class COLL(XMMSType):
-    ID = 5
+    ID = 4
 
 class BIN(STRING):
-    ID = 6
+    ID = 5
 
 class LIST(XMMSType):
-    ID = 7
+    ID = 6
 
     @valuedmethod
     def pack(self, array):
@@ -103,7 +103,7 @@ class LIST(XMMSType):
         return (out, offset)
 
 class DICT(XMMSType):
-    ID = 8
+    ID = 7
     @valuedmethod
     def pack(self, hashmap):
         payload = INT32.pack(len(hashmap))
