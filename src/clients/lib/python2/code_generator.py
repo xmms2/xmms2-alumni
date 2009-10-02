@@ -67,7 +67,7 @@ def emit_method_code(object, method, name_prefix):
 		print 'returns=NONE',
 	else:
 		s = 'returns=%s' % py_map[method.return_value.type]
-		print s,
+		print s
 
 	if not arguments:
 		print ')'
