@@ -21,10 +21,13 @@ def camel_case(s):
 def build(ipc):
 	Indenter.printline('# This code is automatically generated from foobar. Do not edit.')
 	Indenter.printline()
+        Indenter.printline('from message import XMMSMessenger, msg')
+        Indenter.printline('from xmmstypes import *')
+	Indenter.printline()
 
 	for object in ipc.objects:
 		Indenter.enter('class XMMSObject%s(XMMSMessenger):' % camel_case(object.name))
-		Indenter.printline('ID = %s' % object.id)
+		Indenter.printline('ID = %d' % (object.id+1))
 		Indenter.printline()
 
 		for method in object.methods:
@@ -73,7 +76,7 @@ def emit_method_code(object, method, name_prefix):
 		print ', args=[%s])' % s
 
 	if method.documentation != None:
-		Indenter.printline('%s.__doc__ = \'%s\'' % (method_name, method.documentation))
+		Indenter.printline('%s.__doc__ = %s' % (method_name, repr(method.documentation)))
 
 	Indenter.printline()
 
