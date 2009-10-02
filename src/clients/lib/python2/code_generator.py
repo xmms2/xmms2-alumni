@@ -72,7 +72,8 @@ def emit_method_code(object, method, name_prefix):
 	if not arguments:
 		print ')'
 	else:
-		s = ', '.join(py_map[a.type] for a in arguments)
+		s = ', '.join('(%s, %s)' % (repr(a.name), py_map[a.type])
+                              for a in arguments)
 		print ', args=[%s])' % s
 
 	if method.documentation != None:

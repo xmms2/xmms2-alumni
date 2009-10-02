@@ -29,7 +29,7 @@ class msg(object):
     def request(self, *args):
         body = ''
         for packer, arg in zip(self.args, args):
-            body += packer.pack(arg)
+            body += packer[1].pack(arg)
         leng = len(body)
         cookie = XMMSMessenger.COOKIE
         header = struct.pack(HEADER, self.obj.ID, self.ipc_cmd, cookie, leng)
