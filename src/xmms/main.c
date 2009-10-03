@@ -433,11 +433,13 @@ main (int argc, char **argv)
 	};
 
 	/** Check that we are running against the correct glib version */
-	if (glib_major_version != GLIB_MAJOR_VERSION ||
-	    glib_minor_version < GLIB_MINOR_VERSION) {
-		g_print ("xmms2d is build against version %d.%d,\n"
+	if (glib_major_version != XMMS_COMPILETIME_REQUIRED_GLIB_MAJOR ||
+	    glib_minor_version < XMMS_COMPILETIME_REQUIRED_GLIB_MINOR) {
+		g_print ("xmms2d is built to require glib version %d.%d\n"
+		         "and compiled against version %d.%d headers,\n"
 		         "but is (runtime) linked against %d.%d.\n"
 		         "Refusing to start.\n",
+		         XMMS_COMPILETIME_REQUIRED_GLIB_MAJOR, XMMS_COMPILETIME_REQUIRED_GLIB_MINOR,
 		         GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION,
 		         glib_major_version, glib_minor_version);
 		exit (EXIT_FAILURE);
@@ -453,7 +455,7 @@ main (int argc, char **argv)
 		exit (EXIT_FAILURE);
 	}
 	if (showhelp) {
-#if GLIB_CHECK_VERSION(2,14,0)
+#ifdef XMMS_HAS_GLIB_2_14
 		g_print ("%s", g_option_context_get_help (context, TRUE, NULL));
 		exit (EXIT_SUCCESS);
 #else

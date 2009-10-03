@@ -413,7 +413,21 @@ def configure(conf):
 
     # Glib is required by everyone, so check for it here and let them
     # assume its presence.
-    conf.check_cfg(package='glib-2.0', atleast_version='2.8.0', uselib_store='glib2', args='--cflags --libs', mandatory=1)
+    # Check against different versions so different features can be enabled,
+    # (list must be sorted)
+    INTERESTING_GLIB_VERSIONS=[(2,14), (2,8)]
+    found = False
+    for v in INTERESTING_GLIB_VERSIONS:
+        if not found:
+            if conf.check_cfg(package='glib-2.0', atleast_version='%d.%d.0' % v, uselib_store='glib2', args='--cflags --libs'):
+                conf.define('XMMS_COMPILETIME_REQUIRED_GLIB_MAJOR', v[0])
+                conf.define('XMMS_COMPILETIME_REQUIRED_GLIB_MINOR', v[1])
+                found = True
+        if found:
+            conf.define('XMMS_HAS_GLIB_%d_%d' % v, 1)
+    if not found:
+        fatal("Couldn't find glib (at least version %d.%d" % INTERESTING_GLIB_VERSIONS[-1])
+        raise SystemExit(1)
 
     enabled_plugins, disabled_plugins = _configure_plugins(conf)
     enabled_optionals, disabled_optionals = _configure_optionals(conf)
