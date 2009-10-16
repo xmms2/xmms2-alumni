@@ -79,7 +79,7 @@ log_handler (cdio_log_level_t level, const char *message)
 static gboolean
 xmms_cdda_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 {
-	const gchar *device;
+	gchar *device;
 	xmms_xform_methods_t methods;
 
 	XMMS_XFORM_METHODS_INIT (methods);
@@ -108,6 +108,10 @@ xmms_cdda_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	xmms_xform_plugin_config_property_register (xform_plugin, "accessmode",
 	                                            "default", NULL, NULL);
 
+	/* cdio_get_default_device internally calls strdup(), so device
+	 * must be freed with free()
+	 */
+	free (device);
 	return TRUE;
 }
 
