@@ -16,6 +16,10 @@
 module Xmms.Client.Message (
       messageWriteInt
     , messageWriteString
+    , messageWriteCollection
+    , messageWriteBinary
+    , messageWriteStringList
+    , messageWriteStringDictionary
     , messageWriteHeader
     , messageReadHeader
 ) where
@@ -48,6 +52,11 @@ messageWriteInt i = runPut (myPutRawInt (fromIntegral i))
 
 messageWriteString :: String -> BL.ByteString
 messageWriteString s = runPut (myPutRawStr s)
+
+messageWriteCollection = undefined
+messageWriteBinary = undefined
+messageWriteStringList = undefined
+messageWriteStringDictionary = undefined
 
 messageWriteHeader :: Socket -> (Int32, Int32, Int32, Int32) -> IO ()
 messageWriteHeader h t = sendMany h (BL.toChunks (encode t))
