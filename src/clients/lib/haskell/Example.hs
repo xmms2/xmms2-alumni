@@ -47,7 +47,7 @@ main = withSocketsDo $ do
     byteString <- recv h (fromIntegral pll)
     let helloResultValue = (decode (BL.fromChunks [byteString]) :: Value)
 
-    (betterClient, lpResult) <- listPlaylistEntries betterClient "_active"
+    (betterClient, lpResult) <- playlistListEntries betterClient "_active"
     --putStrLn (show (fromIntegral(clientNextCookie betterClient)))
 
     (_, _, _, pll) <- messageReadHeader h

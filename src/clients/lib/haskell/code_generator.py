@@ -10,7 +10,7 @@ argument_type_map = {
 	('int',): 'Int',
 	('string',): 'String',
 	('collection',): 'Collection',
-	('binary',): '[Char8]',
+	('binary',): '[Word8]',
 	('list', 'string'): '[String]',
 	('dictionary', 'string'): '[(String, String)]',
 }
@@ -46,8 +46,10 @@ def build(ipc):
 	Indenter.printline()
 	Indenter.printline('import qualified Data.ByteString.Lazy as BL')
 	Indenter.printline('import Network.Socket.ByteString (sendMany)')
+	Indenter.printline('import Data.Word (Word8)')
 	Indenter.printline()
 	Indenter.printline('import Xmms.Client')
+	Indenter.printline('import Xmms.Client.Collection')
 	Indenter.printline('import Xmms.Client.Message')
 	Indenter.printline()
 	Indenter.printline('flatten :: [[a]] -> [a]')
@@ -55,10 +57,8 @@ def build(ipc):
 	Indenter.printline()
 
 	for object in ipc.objects:
-		#if object.name == "main" or object.name == "playlist":
-		if object.name == 'main':
-			for method in object.methods:
-				emit_method_code(object, method, '')
+		for method in object.methods:
+			emit_method_code(object, method, '')
 
 		Indenter.printline()
 
