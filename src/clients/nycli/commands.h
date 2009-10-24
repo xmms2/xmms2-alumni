@@ -65,6 +65,9 @@ gboolean cli_server_rehash (cli_infos_t *infos, command_context_t *ctx);
 gboolean cli_server_config (cli_infos_t *infos, command_context_t *ctx);
 gboolean cli_server_property (cli_infos_t *infos, command_context_t *ctx);
 gboolean cli_server_plugins (cli_infos_t *infos, command_context_t *ctx);
+gboolean cli_server_plugin_load (cli_infos_t *infos, command_context_t *ctx);
+gboolean cli_server_plugin_unload (cli_infos_t *infos, command_context_t *ctx);
+gboolean cli_server_plugin_reload (cli_infos_t *infos, command_context_t *ctx);
 gboolean cli_server_volume (cli_infos_t *infos, command_context_t *ctx);
 gboolean cli_server_stats (cli_infos_t *infos, command_context_t *ctx);
 gboolean cli_server_sync (cli_infos_t *infos, command_context_t *ctx);
@@ -108,6 +111,9 @@ void cli_server_rehash_setup (command_action_t *action);
 void cli_server_config_setup (command_action_t *action);
 void cli_server_property_setup (command_action_t *action);
 void cli_server_plugins_setup (command_action_t *action);
+void cli_server_plugin_load_setup (command_action_t *action);
+void cli_server_plugin_unload_setup (command_action_t *action);
+void cli_server_plugin_reload_setup (command_action_t *action);
 void cli_server_volume_setup (command_action_t *action);
 void cli_server_stats_setup (command_action_t *action);
 void cli_server_sync_setup (command_action_t *action);
@@ -155,6 +161,9 @@ static const command_setup_func commandlist[] =
 	cli_server_config_setup,
 	cli_server_property_setup,
 	cli_server_plugins_setup,
+	cli_server_plugin_load_setup,
+	cli_server_plugin_unload_setup,
+	cli_server_plugin_reload_setup,
 	cli_server_volume_setup,
 	cli_server_stats_setup,
 	cli_server_sync_setup,

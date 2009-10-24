@@ -264,7 +264,7 @@ xmms_plugin_find_by_path (const gchar *path)
 
 		mod_path = g_module_name (plugin->module);
 
-		if (strcmp (path, mod_path)) {
+		if (g_str_equal (path, mod_path)) {
 			return plugin;
 		}
 	}

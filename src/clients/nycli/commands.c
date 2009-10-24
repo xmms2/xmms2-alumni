@@ -143,6 +143,18 @@ CLI_SIMPLE_SETUP("server plugins", cli_server_plugins,
                  COMMAND_REQ_CONNECTION,
                  NULL,
                  _("List the plugins loaded in the server."))
+CLI_SIMPLE_SETUP("server plugin load", cli_server_plugin_load,
+                 COMMAND_REQ_CONNECTION,
+                 _("<name>"),
+                 _("Load a plugin into the server."))
+CLI_SIMPLE_SETUP("server plugin unload", cli_server_plugin_unload,
+                 COMMAND_REQ_CONNECTION,
+                 _("<name>"),
+                 _("Unload a plugin from the server."))
+CLI_SIMPLE_SETUP("server plugin reload", cli_server_plugin_reload,
+                 COMMAND_REQ_CONNECTION,
+                 _("<name>"),
+                 _("Reload a plugin on the server."))
 CLI_SIMPLE_SETUP("server stats", cli_server_stats,
                  COMMAND_REQ_CONNECTION,
                  NULL,
@@ -2131,6 +2143,103 @@ cli_server_plugins (cli_infos_t *infos, command_context_t *ctx)
 	res = xmmsc_plugin_list (infos->sync, XMMS_PLUGIN_TYPE_ALL);
 	xmmsc_result_wait (res);
 	list_plugins (infos, res);
+
+	return TRUE;
+}
+
+gboolean
+cli_server_plugin_load (cli_infos_t *infos, command_context_t *ctx)
+{
+	xmmsv_t *val;
+	gchar *name;
+	const gchar *path;
+	xmmsc_result_t *res;
+
+	if (command_arg_count (ctx) < 1) {
+		g_printf (_("Error: you must provide a plugin to load!\n"));
+		return FALSE;
+	}
+
+	command_arg_string_get (ctx, 0, &name);
+	res = xmmsc_plugin_load (infos->sync, name);
+	xmmsc_result_wait (res);
+
+	val = xmmsc_result_get_value (res);
+	if (xmmsv_is_error (val)) {
+		const gchar *err;
+		xmmsv_get_error (val, &err);
+		g_printf (_("Failed to load plugin: %s\n"), err);
+		return FALSE;
+	}
+
+	xmmsv_get_string (val, &path);
+	g_printf (_("Loaded plugin %s from %s\n"), name, path);
+
+	xmmsc_result_unref (res);
+
+	return TRUE;
+}
+
+gboolean
+cli_server_plugin_unload (cli_infos_t *infos, command_context_t *ctx)
+{
+	xmmsc_result_t *res;
+	xmmsv_t *val;
+	gchar *name;
+
+	if (command_arg_count (ctx) < 1) {
+		g_printf (_("Error: you must provide a plugin to unload!\n"));
+		return FALSE;
+	}
+
+	command_arg_string_get (ctx, 0, &name);
+	res = xmmsc_plugin_unload (infos->sync, name);
+	xmmsc_result_wait (res);
+
+	val = xmmsc_result_get_value (res);
+	if (xmmsv_is_error (val)) {
+		const gchar *err;
+		xmmsv_get_error (val, &err);
+		g_printf (_("Failed to unload plugin: %s"), err);
+		return FALSE;
+	}
+
+	g_printf (_("Unloaded plugin %s"), name);
+
+	xmmsc_result_unref (res);
+
+	return TRUE;
+}
+
+gboolean
+cli_server_plugin_reload (cli_infos_t *infos, command_context_t *ctx)
+{
+	gchar *name;
+	const gchar *path;
+	xmmsc_result_t *res;
+	xmmsv_t *val;
+
+	if (command_arg_count (ctx) < 1) {
+		g_printf (_("Error: you must provide a plugin to reload!\n"));
+		return FALSE;
+	}
+
+	command_arg_string_get (ctx, 0, &name);
+	res = xmmsc_plugin_reload (infos->sync, name);
+	xmmsc_result_wait (res);
+
+	val = xmmsc_result_get_value (res);
+	if (xmmsv_is_error (val)) {
+		const gchar *err;
+		xmmsv_get_error (val, &err);
+		g_printf (_("Failed to reload plugin %s: %s"), name, err);
+		return FALSE;
+	}
+
+	xmmsv_get_string (val, &path);
+	g_printf (_("Reloaded plugin %s from %s"), name, path);
+
+	xmmsc_result_unref (res);
 
 	return TRUE;
 }

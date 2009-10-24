@@ -165,16 +165,16 @@ xmms_main_client_plugin_load (xmms_object_t *main, const gchar *path, xmms_error
 
 	abs_path = xmms_plugin_get_path (path);
 	plugin = xmms_plugin_find_by_path (abs_path);
-	g_free (abs_path);
 
 	if (plugin) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "plugin is already loaded");
+		g_free (abs_path);
 		return NULL;
 	}
 
 	if (!xmms_plugin_load_file (abs_path)) {
-		g_free (abs_path);
 		xmms_error_set (err, XMMS_ERROR_NOENT, "failed to load plugin");
+		g_free (abs_path);
 		return NULL;
 	}
 
