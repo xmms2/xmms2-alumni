@@ -42,6 +42,11 @@ typedef struct xmms_plugin_St {
  */
 
 gboolean xmms_plugin_init (const gchar *path);
+gchar *xmms_plugin_get_path (const gchar *path);
+xmms_plugin_t *xmms_plugin_find_by_path (const gchar *path);
+xmms_plugin_t *xmms_plugin_find_by_name (const gchar *name);
+gboolean xmms_plugin_load_file (const gchar *path);
+gboolean xmms_plugin_unload (xmms_plugin_t *plugin, xmms_error_t *err);
 void xmms_plugin_shutdown (void);
 void xmms_plugin_destroy (xmms_plugin_t *plugin);
 

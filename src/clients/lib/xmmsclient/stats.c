@@ -49,6 +49,54 @@ xmmsc_plugin_list (xmmsc_connection_t *c, xmms_plugin_type_t type)
 }
 
 /**
+ * Load a plugin into the server
+ */
+xmmsc_result_t *
+xmmsc_plugin_load (xmmsc_connection_t *c, const char *path)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (c, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_PLUGIN_LOAD);
+	xmms_ipc_msg_put_string (msg, path);
+
+	return xmmsc_send_msg (c, msg);
+}
+
+/**
+ * Unload a plugin from the server
+ */
+xmmsc_result_t *
+xmmsc_plugin_unload (xmmsc_connection_t *c, const char *name)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (c, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_PLUGIN_UNLOAD);
+	xmms_ipc_msg_put_string (msg, name);
+
+	return xmmsc_send_msg (c, msg);
+}
+
+/**
+ * Reload a plugin on the server
+ */
+xmmsc_result_t *
+xmmsc_plugin_reload (xmmsc_connection_t *c, const char *name)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (c, NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_MAIN, XMMS_IPC_CMD_PLUGIN_RELOAD);
+	xmms_ipc_msg_put_string (msg, name);
+
+	return xmmsc_send_msg (c, msg);
+}
+
+/**
  * Get a list of statistics from the server
  */
 xmmsc_result_t *

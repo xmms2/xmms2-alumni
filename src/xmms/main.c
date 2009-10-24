@@ -59,6 +59,9 @@
 static void xmms_main_client_quit (xmms_object_t *object, xmms_error_t *error);
 static GTree *xmms_main_client_stats (xmms_object_t *object, xmms_error_t *error);
 static GList *xmms_main_client_plugin_list (xmms_object_t *main, gint32 type, xmms_error_t *err);
+static gchar *xmms_plugin_client_load (xmms_object_t *main, const gchar *path, xmms_error_t *err);
+static gchar *xmms_plugin_client_unload (xmms_object_t *main, const gchar *name, xmms_error_t *err);
+static gchar *xmms_plugin_client_reload (xmms_object_t *main, const gchar *name, xmms_error_t *err);
 static void xmms_main_client_hello (xmms_object_t *object, gint protocolver, const gchar *client, xmms_error_t *error);
 static void install_scripts (const gchar *into_dir);
 static xmms_xform_object_t *xform_obj;
@@ -68,6 +71,9 @@ XMMS_CMD_DEFINE (quit, xmms_main_client_quit, xmms_object_t*, NONE, NONE, NONE);
 XMMS_CMD_DEFINE (hello, xmms_main_client_hello, xmms_object_t *, NONE, INT32, STRING);
 XMMS_CMD_DEFINE (stats, xmms_main_client_stats, xmms_object_t *, DICT, NONE, NONE);
 XMMS_CMD_DEFINE (plugin_list, xmms_main_client_plugin_list, xmms_object_t *, LIST, INT32, NONE);
+XMMS_CMD_DEFINE (plugin_load, xmms_main_client_plugin_load, xmms_object_t *, STRING, STRING, NONE);
+XMMS_CMD_DEFINE (plugin_unload, xmms_main_client_plugin_unload, xmms_object_t *, STRING, STRING, NONE);
+XMMS_CMD_DEFINE (plugin_reload, xmms_main_client_plugin_reload, xmms_object_t *, STRING, STRING, NONE);
 
 /** @defgroup XMMSServer XMMSServer
   * @brief look at this if you want to code inside the server.
@@ -150,6 +156,84 @@ xmms_main_client_plugin_list (xmms_object_t *main, gint32 type, xmms_error_t *er
 	return list;
 }
 
+static gchar *
+xmms_main_client_plugin_load (xmms_object_t *main, const gchar *path, xmms_error_t *err)
+{
+	gchar *abs_path;
+	GList *n;
+	xmms_plugin_t *plugin;
+
+	abs_path = xmms_plugin_get_path (path);
+	plugin = xmms_plugin_find_by_path (abs_path);
+	g_free (abs_path);
+
+	if (plugin) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "plugin is already loaded");
+		return NULL;
+	}
+
+	if (!xmms_plugin_load_file (abs_path)) {
+		g_free (abs_path);
+		xmms_error_set (err, XMMS_ERROR_NOENT, "failed to load plugin");
+		return NULL;
+	}
+
+	return abs_path;
+}
+
+static gchar *
+xmms_main_client_plugin_unload (xmms_object_t *main, const gchar *name, xmms_error_t *err)
+{
+	gchar *ret;
+	GList *l;
+	xmms_plugin_t *plugin;
+
+	g_return_val_if_fail (name, NULL);
+
+	plugin = xmms_plugin_find_by_name (name);
+	if (!plugin) {
+		xmms_error_set (err, XMMS_ERROR_NOENT, "plugin isn't loaded");
+		return NULL;
+	}
+
+	if (!plugin->module) {
+		xmms_error_set (err, XMMS_ERROR_INVAL, "plugin is builtin - can't unload");
+		return NULL;
+	}
+
+	ret = g_strdup (g_module_name (plugin->module));
+
+	if (!xmms_plugin_unload (plugin, err)) {
+		g_free (ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+static gchar *
+xmms_main_client_plugin_reload (xmms_object_t *main, const gchar *name, xmms_error_t *err)
+{
+	gchar *path, *new_path;
+
+	path = xmms_main_client_plugin_unload (main, name, err);
+	if (!path) {
+		return NULL;
+	}
+
+	new_path = xmms_main_client_plugin_load (main, name, err);
+	if (!new_path) {
+		return NULL;
+	}
+
+	if (!g_str_equal (path, new_path)) {
+		xmms_log_error ("module %s has been reloaded from %s", path, new_path);
+	}
+
+	g_free (path);
+
+	return new_path;
+}
 
 /**
  * @internal Execute all programs or scripts in a directory. Used when starting
@@ -581,6 +665,15 @@ main (int argc, char **argv)
 	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
 	                     XMMS_IPC_CMD_PLUGIN_LIST,
 	                     XMMS_CMD_FUNC (plugin_list));
+	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
+	                     XMMS_IPC_CMD_PLUGIN_LOAD,
+	                     XMMS_CMD_FUNC (plugin_load));
+	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
+	                     XMMS_IPC_CMD_PLUGIN_UNLOAD,
+	                     XMMS_CMD_FUNC (plugin_unload));
+	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
+	                     XMMS_IPC_CMD_PLUGIN_RELOAD,
+	                     XMMS_CMD_FUNC (plugin_reload));
 	xmms_object_cmd_add (XMMS_OBJECT (mainobj),
 	                     XMMS_IPC_CMD_STATS,
 	                     XMMS_CMD_FUNC (stats));
