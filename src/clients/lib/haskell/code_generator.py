@@ -110,9 +110,9 @@ def emit_method_code(object, method, name_prefix):
 	Indenter.printline()
 	Indenter.printline('let payloadLength = foldl (+) 0 (map BL.length bls)')
 
-	Indenter.printline('messageWriteHeader h (%i, %i, fromIntegral cookie, fromIntegral payloadLength)'% (object.id, method.id))
+	Indenter.printline('let header = messageBuildHeader (%i, %i, fromIntegral cookie, fromIntegral payloadLength)'% (object.id, method.id))
 
-	Indenter.printline('let bs = map (BL.toChunks) bls')
+	Indenter.printline('let bs = map (BL.toChunks) (header : bls)')
 	Indenter.printline('sendMany h (flatten bs)')
 	Indenter.printline()
 	Indenter.printline('return (betterClient, %s cookie)' % result_type)

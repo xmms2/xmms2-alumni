@@ -20,7 +20,7 @@ module Xmms.Client.Message (
     , messageWriteBinary
     , messageWriteStringList
     , messageWriteStringDictionary
-    , messageWriteHeader
+    , messageBuildHeader
     , messageReadHeader
 ) where
 
@@ -58,8 +58,8 @@ messageWriteBinary = undefined
 messageWriteStringList = undefined
 messageWriteStringDictionary = undefined
 
-messageWriteHeader :: Socket -> (Int32, Int32, Int32, Int32) -> IO ()
-messageWriteHeader h t = sendMany h (BL.toChunks (encode t))
+messageBuildHeader :: (Int32, Int32, Int32, Int32) -> BL.ByteString
+messageBuildHeader t = encode t
 
 messageReadHeader :: Socket -> IO (Int32, Int32, Int32, Int32)
 messageReadHeader handle = do
