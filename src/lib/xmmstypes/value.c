@@ -405,6 +405,153 @@ xmmsv_is_type (const xmmsv_t *val, xmmsv_type_t t)
 }
 
 
+int
+xmmsv_list_equals (xmmsv_t *val1, xmmsv_t *val2)
+{
+	// For each elem in the list, cmp value
+	xmmsv_list_iter_t *iter1, *iter2;
+	int size1 = xmmsv_list_get_size (val1);
+	if (size1 != xmmsv_list_get_size (val2)) return 0;
+
+	xmmsv_get_list_iter (val1, &iter1);
+	xmmsv_get_list_iter (val2, &iter2);
+	while (xmmsv_list_iter_valid (iter1) && xmmsv_list_iter_valid (iter2)) {
+		xmmsv_t *v1, *v2;
+		xmmsv_list_iter_entry (iter1, &v1);
+		xmmsv_list_iter_entry (iter2, &v2);
+		if (!xmmsv_equals (v1, v2)) {
+			return 0;
+		}
+		xmmsv_list_iter_next (iter1);
+		xmmsv_list_iter_next (iter2);
+	}
+
+	return 1;
+}
+
+int
+xmmsv_dict_equals (xmmsv_t *val1, xmmsv_t *val2)
+{
+	// compare key and value sets
+	xmmsv_dict_iter_t *iter1;
+	int size1 = xmmsv_dict_get_size (val1);
+	if (size1 != xmmsv_dict_get_size (val2)) return 0;
+
+	xmmsv_get_dict_iter (val1, &iter1);
+	while (xmmsv_dict_iter_valid (iter1)) {
+		const char *key1;
+		xmmsv_t *v1, *v2;
+		xmmsv_dict_iter_pair (iter1, &key1, &v1);
+		if (!xmmsv_dict_get (val2, key1, &v2) || !xmmsv_equals (v1, v2)) {
+			return 0;
+		}
+		xmmsv_dict_iter_next (iter1);
+	}
+
+	return 1;
+}
+
+int
+xmmsv_equals (xmmsv_t *val1, xmmsv_t *val2)
+{
+	int eq;
+
+	xmmsv_type_t type1 = xmmsv_get_type (val1);
+	if (type1 != xmmsv_get_type (val2)) return 0;
+
+	switch (type1) {
+	case XMMSV_TYPE_ERROR: {
+		const char *s1, *s2;
+		xmmsv_get_error (val1, &s1);
+		xmmsv_get_error (val2, &s2);
+		eq = (strcmp (s1, s2) == 0);
+		break;
+	}
+	case XMMSV_TYPE_INT32: {
+		int32_t i1, i2;
+		xmmsv_get_int (val1, &i1);
+		xmmsv_get_int (val2, &i2);
+		eq = (i1 == i2);
+		break;
+	}
+	case XMMSV_TYPE_STRING: {
+		const char *s1, *s2;
+		xmmsv_get_string (val1, &s1);
+		xmmsv_get_string (val2, &s2);
+		eq = (strcmp (s1, s2) == 0);
+		break;
+	}
+	case XMMSV_TYPE_COLL: {
+		xmmsv_coll_t *coll1, *coll2;
+		xmmsv_get_coll (val1, &coll1);
+		xmmsv_get_coll (val2, &coll2);
+		eq = xmmsv_coll_equals (coll1, coll2);
+		break;
+	}
+	case XMMSV_TYPE_BIN: {
+		const unsigned char *d1, *d2;
+		unsigned int l1, l2, i;
+		xmmsv_get_bin (val1, &d1, &l1);
+		xmmsv_get_bin (val2, &d2, &l2);
+		eq = (l1 == l2);
+		for (i = 0; eq && i < l1; i++) {
+			if (d1[i] != d2[i]) eq = 0;
+		}
+		break;
+	}
+	case XMMSV_TYPE_LIST: {
+		eq = xmmsv_list_equals (val1, val2);
+		break;
+	}
+	case XMMSV_TYPE_DICT: {
+		eq = xmmsv_dict_equals (val1, val2);
+		break;
+	}
+	case XMMSV_TYPE_NONE:
+	default: {
+		eq = 1;
+		break;
+	}
+	}
+	
+	return eq;
+}
+
+int
+xmmsv_coll_equals (xmmsv_coll_t *coll1, xmmsv_coll_t *coll2)
+{
+	// compare types
+	xmmsv_coll_type_t type1 = xmmsv_coll_get_type (coll1);
+	if (type1 != xmmsv_coll_get_type (coll2)) return 0;
+
+	// if idlist, compare idlists
+	if (type1 == XMMS_COLLECTION_TYPE_IDLIST) {
+		size_t i, size1 = xmmsv_coll_idlist_get_size (coll1);
+		if (size1 != xmmsv_coll_idlist_get_size (coll2)) return 0;
+		for (i = 0; i < size1; i++) {
+			uint32_t val1, val2;
+			xmmsv_coll_idlist_get_index (coll1, i, &val1);
+			xmmsv_coll_idlist_get_index (coll2, i, &val2);
+			if (val1 != val2) return 0;
+		}
+	}
+
+	// for each attribute, compare them
+	xmmsv_t *attrs1, *attrs2;
+	attrs1 = xmmsv_coll_attributes_get (coll1);
+	attrs2 = xmmsv_coll_attributes_get (coll2);
+	if (!xmmsv_equals (attrs1, attrs2)) return 0;
+
+	// for each operand, compare them
+	xmmsv_t *ops1, *ops2;
+	ops1 = xmmsv_coll_operands_get (coll1);
+	ops2 = xmmsv_coll_operands_get (coll2);
+	if (!xmmsv_equals (ops1, ops2)) return 0;
+
+	return 1;
+}
+
+
 /* Merely legacy aliases */
 
 /**

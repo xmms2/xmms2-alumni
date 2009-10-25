@@ -68,6 +68,11 @@ void xmmsv_unref (xmmsv_t *val);
 xmmsv_type_t xmmsv_get_type (const xmmsv_t *val);
 int xmmsv_is_type (const xmmsv_t *val, xmmsv_type_t t);
 
+int xmmsv_equals (xmmsv_t *val1, xmmsv_t *val2);
+int xmmsv_list_equals (xmmsv_t *val1, xmmsv_t *val2);
+int xmmsv_dict_equals (xmmsv_t *val1, xmmsv_t *val2);
+int xmmsv_coll_equals (xmmsv_coll_t *coll1, xmmsv_coll_t *coll2);
+
 /* legacy aliases */
 int xmmsv_is_error (const xmmsv_t *val);
 int xmmsv_is_list (const xmmsv_t *val) XMMS_DEPRECATED;
