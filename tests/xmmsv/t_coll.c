@@ -22,6 +22,7 @@
 #include <string.h>
 #include <xmmsc/xmmsv_coll.h>
 #include <xmmsc/xmmsv.h>
+#include <xmmsclient/xmmsclient.h>
 
 SETUP (coll) {
 	return 0;
@@ -286,5 +287,45 @@ CASE (test_coll_idlist)
 	CU_ASSERT_TRUE (xmmsv_coll_idlist_clear (c));
 	CU_ASSERT_FALSE (xmmsv_coll_idlist_get_index (c, 0, &v));
 
+	xmmsv_coll_unref (c);
+}
+
+CASE (test_collparser_trailing_backslash)
+{
+	xmmsv_coll_t *c = NULL, *universe, *correct;
+	const char *pattern = "artist:Foo\\";
+
+	universe = xmmsv_coll_universe ();
+	correct = xmmsv_coll_new (XMMS_COLLECTION_TYPE_EQUALS);
+	xmmsv_coll_attribute_set (correct, "field", "artist");
+	xmmsv_coll_attribute_set (correct, "value", "Foo\\");
+	xmmsv_coll_add_operand (correct, universe);
+
+	CU_ASSERT_TRUE (xmmsv_coll_parse (pattern, &c));
+	CU_ASSERT_TRUE (xmmsv_coll_equals (c, correct));
+	
+	xmmsv_coll_unref (c);
+	xmmsv_coll_unref (correct);
+	xmmsv_coll_unref (universe);
+}
+
+CASE (test_collparser_double_trailing_backslash)
+{
+	xmmsv_coll_t *c = NULL;
+	const char *pattern = "Foo\\ Bar\\";
+
+	CU_ASSERT_TRUE (xmmsv_coll_parse (pattern, &c));
+	
+	xmmsv_coll_unref (c);
+}
+
+/* yes, weird, it needs to be here twice to corrupt memory */
+CASE (test_double_backslash)
+{
+	xmmsv_coll_t *c = NULL;
+	const char *pattern = "Foo\\ Bar\\";
+
+	CU_ASSERT_TRUE (xmmsv_coll_parse (pattern, &c));
+	
 	xmmsv_coll_unref (c);
 }

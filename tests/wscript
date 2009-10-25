@@ -24,7 +24,7 @@ def build(bld):
     obj.target = "test_xmmstypes"
     obj.source = ['runner/main.c', 'runner/valgrind.c'] + types_suite
     obj.includes = '. runner/ ../src ../src/include'
-    obj.uselib_local = 'xmmstypes'
+    obj.uselib_local = 'xmmstypes xmmsclient'
     obj.uselib = 'cunit valgrind'
     obj.install_path = None
 
