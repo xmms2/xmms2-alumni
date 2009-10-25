@@ -97,7 +97,6 @@ def emit_method_code(object, method, name_prefix):
 	Indenter.enter()
 
 	Indenter.printline('let (betterClient, cookie) = methodPrelude c')
-	Indenter.printline('let h = clientSocket c')
 	Indenter.printline()
 
 	Indenter.printx('let bls = [')
@@ -113,7 +112,7 @@ def emit_method_code(object, method, name_prefix):
 	Indenter.printline('let header = messageBuildHeader (%i, %i, fromIntegral cookie, fromIntegral payloadLength)'% (object.id, method.id))
 
 	Indenter.printline('let bs = map (BL.toChunks) (header : bls)')
-	Indenter.printline('sendMany h (flatten bs)')
+	Indenter.printline('sendMany (clientSocket c) (flatten bs)')
 	Indenter.printline()
 	Indenter.printline('return (betterClient, %s cookie)' % result_type)
 	Indenter.leave(None)
