@@ -231,9 +231,9 @@ yt_get_vidparams (xmms_xform_t *xform)
 	/* as far as I know the channel name is the same
 	 * as the username that uploaded the video.
 	 */
-	cloc = strstr (ytdata->miscstr->str, "var watchUsername = '");
+	cloc = strstr (ytdata->miscstr->str, "'VIDEO_USERNAME': '");
 	if (cloc) {
-		cloc += 21;
+		cloc += 19;
 		vt = strcspn (cloc, "'");
 		ytdata->channel = g_strndup (cloc, vt);
 	}
@@ -245,7 +245,7 @@ yt_get_vidparams (xmms_xform_t *xform)
 		ytdata->title = yt_deentisize (g_strndup (cloc, vt));
 	}
 
-	flashargs = strstr (ytdata->miscstr->str, "swfArgs");
+	flashargs = strstr (ytdata->miscstr->str, "SWF_ARGS");
 	if (!flashargs) {
 		return FALSE;
 	}
