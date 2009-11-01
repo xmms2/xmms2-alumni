@@ -114,7 +114,12 @@ def emit_method_code(object, method, name_prefix):
 		Indenter.printline(s % (a.type[0], a.name))
 
 	Indenter.printline()
-	Indenter.printline('@client.send_message message')
+
+	if name_prefix == 'signal_':
+		Indenter.printline('@client.send_signal_message message, %i' % method.id)
+	else:
+		Indenter.printline('@client.send_message message')
+
 	Indenter.leave('end')
 
 	Indenter.printline()

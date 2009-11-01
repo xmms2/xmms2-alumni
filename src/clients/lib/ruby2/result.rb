@@ -66,7 +66,13 @@ module Xmms::Client
 				x = @notifier.call @value
 
 				if is_signal && x == true
-					# FIXME: restart
+					m = Message.new
+					m.object_id = message.object_id
+					m.command_id = message.command_id
+					m.write_int signal_id
+
+					@client.send_restart_message m, self
+
 					can_be_invoked_again = true
 				end
 			end
@@ -78,6 +84,20 @@ module Xmms::Client
 			@client.wait_for self
 
 			self
+		end
+	end
+
+	class SignalResult < Result
+		attr_reader :signal_id
+
+		def initialize(client, cookie, signal_id)
+			super(client, cookie)
+
+			@signal_id = signal_id
+		end
+
+		def cookie=(c)
+			@cookie = c
 		end
 	end
 end

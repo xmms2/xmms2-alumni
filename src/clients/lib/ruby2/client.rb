@@ -101,6 +101,7 @@ module Xmms::Client
 			@main.plugin_list 0
 		end
 
+		# FIXME: code duplication
 		def send_message(message)
 			message.assemble get_next_cookie
 
@@ -108,6 +109,29 @@ module Xmms::Client
 
 			result = Result.new(self, message.cookie)
 			@results << result
+			result
+		end
+
+		# FIXME: code duplication
+		def send_signal_message(message, signal_id)
+			message.assemble get_next_cookie
+
+			@send_queue << message
+
+			result = SignalResult.new(self, message.cookie, signal_id)
+			@results << result
+			result
+		end
+
+		# FIXME: code duplication
+		def send_restart_message(message, result)
+			cookie = get_next_cookie
+
+			message.assemble cookie
+
+			@send_queue << message
+
+			result.cookie = cookie
 			result
 		end
 
