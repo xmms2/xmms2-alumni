@@ -54,7 +54,6 @@ typedef struct {
 	gchar curlerror[CURL_ERROR_SIZE];
 } xmms_youtube_data_t;
 
-static const gchar *metatitle = "<title>YouTube - ";
 static const gchar *baseurl = "http://www.youtube.com/watch?v=";
 static const gchar *nextstr = "next_url=%2Fwatch%3Fv%3D";
 static const gchar *fmtstr = "http://www.youtube.com/get_video?video_id=%s&t=%s";
@@ -238,10 +237,10 @@ yt_get_vidparams (xmms_xform_t *xform)
 		ytdata->channel = g_strndup (cloc, vt);
 	}
 
-	cloc = strstr (ytdata->miscstr->str, metatitle);
+	cloc = strstr (ytdata->miscstr->str, "'VIDEO_TITLE': '");
 	if (cloc) {
-		cloc += strlen (metatitle);
-		vt = strcspn (cloc, "<");
+		cloc += 16;
+		vt = strcspn (cloc, "'");
 		ytdata->title = yt_deentisize (g_strndup (cloc, vt));
 	}
 
