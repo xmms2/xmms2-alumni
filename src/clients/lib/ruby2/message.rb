@@ -128,12 +128,6 @@ module Xmms::Client
 			end
 		end
 
-		def write_list(list)
-			Value.serialize(list, self)
-
-			self
-		end
-
 		def read_int
 			value = @raw_data[@payload_offset, 4].unpack("N").first
 			@payload_offset += 4

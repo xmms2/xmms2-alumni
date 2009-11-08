@@ -81,7 +81,7 @@ module Xmms::Client
 				message.write_int ID_STRING
 				message.write_string value
 			when Array
-				# FIXME: in some situations we need to put ID_LIST here
+				message.write_int ID_LIST
 				message.write_int value.length
 
 				value.each do |item|

@@ -110,8 +110,7 @@ def emit_method_code(object, method, name_prefix):
 		print
 
 	for a in arguments:
-		s = 'message.write_%s %s'
-		Indenter.printline(s % (a.type[0], a.name))
+		Indenter.printline('Value.serialize(%s, message)' % a.name)
 
 	Indenter.printline()
 
