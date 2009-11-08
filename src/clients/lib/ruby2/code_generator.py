@@ -23,6 +23,7 @@ def build(ipc):
 	Indenter.printline()
 
 	Indenter.enter('module Xmms::Client')
+	Indenter.enter('module Generated')
 
 	for object in ipc.objects:
 		Indenter.enter('class %s < MethodGroup' % camel_case(object.name))
@@ -45,6 +46,7 @@ def build(ipc):
 		Indenter.leave('end')
 		Indenter.printline()
 
+	Indenter.leave('end')
 	Indenter.leave('end')
 
 # FIXME: i'm going to hell for the name_prefix stuff

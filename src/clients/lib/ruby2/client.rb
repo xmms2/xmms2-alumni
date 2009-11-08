@@ -34,16 +34,16 @@ module Xmms::Client
 		def initialize(name)
 			@name = name
 
-			@main = Main.new self
-			@playlist = Playlist.new self
-			@config = Config.new self
-			@playback = Playback.new self
-			@medialib = Medialib.new self
-			@collection = Collection.new self
-			@mediainfo_reader = MediainfoReader.new self
-			@visualization = Visualization.new self
-			@xform = Xform.new self
-			@bindata = Bindata.new self
+			@main = Generated::Main.new self
+			@playlist = Generated::Playlist.new self
+			@config = Generated::Config.new self
+			@playback = Generated::Playback.new self
+			@medialib = Generated::Medialib.new self
+			@collection = Generated::Collection.new self
+			@mediainfo_reader = Generated::MediainfoReader.new self
+			@visualization = Generated::Visualization.new self
+			@xform = Generated::Xform.new self
+			@bindata = Generated::Bindata.new self
 
 			@socket = nil
 			@next_cookie = 0
