@@ -72,6 +72,14 @@ myGetStringDictTuple = do
     value <- myGetRawStr
     return (key, value)
 
+putInt i =
+       putWord32 2
+    >> put i
+
+putString s =
+       putWord32 3
+    >> myPutRawStr s
+
 -- Write a collection's operands (unless it's a reference).
 putCollectionOperands :: Collection -> Put
 putCollectionOperands (Collection Reference _ _ _) = putWord32 0
@@ -112,12 +120,24 @@ getCollection = do
 
     return (CollValue (Collection (toEnum (fromIntegral ttype)) attributes idlist (map unpackColl operands)))
 
+putList :: [Value] -> Put
+putList items =
+       putWord32 6
+    >> putWord32 (fromIntegral (length items))
+    >> mapM_ put items
+
+putDictionary :: [(String, Value)] -> Put
+putDictionary tuples =
+       putWord32 7
+    >> putWord32 (fromIntegral (length tuples))
+    >> mapM_ myPutDictTuple tuples
+
 instance Binary Value where
-    put (IntValue i) = putWord32 2 >> put i
-    put (StringValue s) = putWord32 3 >> myPutRawStr s
+    put (IntValue i) = putInt i
+    put (StringValue s) = putString s
     put (CollValue c) = putCollection c
-    put (ListValue items) = putWord32 6 >> putWord32 (fromIntegral (length items)) >> mapM_ put items
-    put (DictValue tuples) = putWord32 7 >> putWord32 (fromIntegral (length tuples)) >> mapM_ myPutDictTuple tuples
+    put (ListValue items) = putList items
+    put (DictValue tuples) = putDictionary tuples
 
     get = do
         t <- getWord32
