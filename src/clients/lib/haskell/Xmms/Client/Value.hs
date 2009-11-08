@@ -21,12 +21,15 @@ import Control.Monad (replicateM, liftM)
 import Data.Binary
 import Data.Word
 import Data.Int
+
+import Xmms.Client.Collection
  
 data Value = NoneValue
            | IntValue Int32
            | StringValue String
            | ListValue [Value]
            | DictValue [(String, Value)]
+           | CollValue Collection
            deriving (Show)
 
 putWord32 :: Word32 -> Put
@@ -58,9 +61,29 @@ myGetDictTuple = do
     value <- get
     return (key, value)
 
+-- Write a string dictionary tuple (raw string key and raw string value)
+myPutStringDictTuple :: (String, String) -> Put
+myPutStringDictTuple (key, value) = myPutRawStr key >> myPutRawStr value
+
+putCollectionAttributes attributes =
+       putWord32 (fromIntegral (length attributes))
+    >> mapM_ myPutStringDictTuple attributes
+
+putCollectionIdlist idlist =
+       putWord32 (fromIntegral (length idlist))
+    >> mapM_ putWord32 idlist
+
+putCollection c =
+       putWord32 4
+    >> putWord32 (collectionType c)
+    >> putCollectionAttributes (collectionAttributes c)
+    >> putCollectionIdlist (collectionIdList c)
+    >> putWord32 0
+
 instance Binary Value where
     put (IntValue i) = putWord32 2 >> put i
     put (StringValue s) = putWord32 3 >> myPutRawStr s
+    put (CollValue c) = putCollection c
     put (ListValue items) = putWord32 6 >> putWord32 (fromIntegral (length items)) >> mapM_ put items
     put (DictValue tuples) = putWord32 7 >> putWord32 (fromIntegral (length tuples)) >> mapM_ myPutDictTuple tuples
 

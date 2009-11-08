@@ -34,6 +34,7 @@ import Data.Int
 import Data.Binary
 import Data.Binary.Put (runPut)
 
+import Xmms.Client.Collection
 import Xmms.Client.Value
 
 messageWriteInt :: Int -> BL.ByteString
@@ -42,7 +43,9 @@ messageWriteInt i = encode (IntValue (fromIntegral i))
 messageWriteString :: String -> BL.ByteString
 messageWriteString s = encode (StringValue s)
 
-messageWriteCollection = undefined
+messageWriteCollection :: Collection -> BL.ByteString
+messageWriteCollection coll = encode (CollValue coll)
+
 messageWriteBinary = undefined
 
 messageWriteStringList :: [String] -> BL.ByteString

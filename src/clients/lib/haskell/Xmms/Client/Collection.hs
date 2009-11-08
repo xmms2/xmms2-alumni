@@ -15,4 +15,11 @@
 
 module Xmms.Client.Collection where
 
-data Collection = Collection
+import Data.Word
+
+data Collection = Collection {
+      collectionType :: Word32
+    , collectionAttributes :: [(String, String)]
+    , collectionIdList :: [Word32]
+    , collectionOperands :: [Collection]
+} deriving (Show)
