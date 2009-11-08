@@ -34,28 +34,20 @@ import Data.Int
 import Data.Binary
 import Data.Binary.Put (runPut)
 
-putWord32 :: Word32 -> Put
-putWord32 = put
-
-putInt32 :: Int32 -> Put
-putInt32 = put
-
--- Write a raw string (ie without the type tag)
-myPutRawStr :: String -> Put
-myPutRawStr s = putWord32 (fromIntegral (succ (length s))) >> mapM_ put s >> put '\0'
-
--- Write a raw int (ie without the type tag)
-myPutRawInt = putInt32
+import Xmms.Client.Value
 
 messageWriteInt :: Int -> BL.ByteString
-messageWriteInt i = runPut (myPutRawInt (fromIntegral i))
+messageWriteInt i = encode (IntValue (fromIntegral i))
 
 messageWriteString :: String -> BL.ByteString
-messageWriteString s = runPut (myPutRawStr s)
+messageWriteString s = encode (StringValue s)
 
 messageWriteCollection = undefined
 messageWriteBinary = undefined
-messageWriteStringList = undefined
+
+messageWriteStringList :: [String] -> BL.ByteString
+messageWriteStringList ss = encode (ListValue (map StringValue ss))
+
 messageWriteStringDictionary = undefined
 
 messageBuildHeader :: (Int32, Int32, Int32, Int32) -> BL.ByteString
