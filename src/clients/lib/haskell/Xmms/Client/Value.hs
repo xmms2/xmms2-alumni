@@ -124,8 +124,7 @@ instance Binary Value where
         case t of
             0 -> return NoneValue
             2 -> liftM IntValue get
-            3 -> do
-                liftM StringValue myGetRawStr
+            3 -> liftM StringValue myGetRawStr
             4 -> getCollection
             6 -> do
                 length <- getWord32
