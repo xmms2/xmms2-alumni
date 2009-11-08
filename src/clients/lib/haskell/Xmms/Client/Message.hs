@@ -46,7 +46,8 @@ messageWriteString s = encode (StringValue s)
 messageWriteCollection :: Collection -> BL.ByteString
 messageWriteCollection coll = encode (CollValue coll)
 
-messageWriteBinary = undefined
+messageWriteBinary :: [Word8] -> BL.ByteString
+messageWriteBinary bin = encode (BinValue bin)
 
 messageWriteStringList :: [String] -> BL.ByteString
 messageWriteStringList ss = encode (ListValue (map StringValue ss))

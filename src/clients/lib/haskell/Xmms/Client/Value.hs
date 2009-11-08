@@ -30,6 +30,7 @@ data Value = NoneValue
            | ListValue [Value]
            | DictValue [(String, Value)]
            | CollValue Collection
+           | BinValue [Word8]
            deriving (Show)
 
 putWord32 :: Word32 -> Put
@@ -120,6 +121,11 @@ getCollection = do
 
     return (CollValue (Collection (toEnum (fromIntegral ttype)) attributes idlist (map unpackColl operands)))
 
+putBinary :: [Word8] -> Put
+putBinary items = putWord32 5
+    >> putWord32 (fromIntegral (length items))
+    >> mapM_ put items
+
 putList :: [Value] -> Put
 putList items =
        putWord32 6
@@ -136,6 +142,7 @@ instance Binary Value where
     put (IntValue i) = putInt i
     put (StringValue s) = putString s
     put (CollValue c) = putCollection c
+    put (BinValue b) = putBinary b
     put (ListValue items) = putList items
     put (DictValue tuples) = putDictionary tuples
 
