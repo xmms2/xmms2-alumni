@@ -13,7 +13,9 @@
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 --  Lesser General Public License for more details.
 
-module Xmms.Client.Value where
+module Xmms.Client.Value (
+      Value(..)
+) where
 
 import Control.Monad (replicateM, liftM)
 import Data.Binary
