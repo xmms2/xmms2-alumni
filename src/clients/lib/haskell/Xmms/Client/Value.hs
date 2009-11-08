@@ -65,19 +65,12 @@ myGetDictTuple = do
 myPutStringDictTuple :: (String, String) -> Put
 myPutStringDictTuple (key, value) = myPutRawStr key >> myPutRawStr value
 
-putCollectionType :: Collection -> Put
-putCollectionType (Collection ttype _ _ _) =
-    putWord32 (fromIntegral (fromEnum ttype))
-
-putCollectionAttributes :: Collection -> Put
-putCollectionAttributes (Collection _ attributes _ _)  =
-       putWord32 (fromIntegral (length attributes))
-    >> mapM_ myPutStringDictTuple attributes
-
-putCollectionIdlist :: Collection -> Put
-putCollectionIdlist (Collection _ _ idlist _) =
-       putWord32 (fromIntegral (length idlist))
-    >> mapM_ putWord32 idlist
+-- Read a string dictionary tuple (raw string key and raw string value)
+myGetStringDictTuple :: Get (String, String)
+myGetStringDictTuple = do
+    key <- myGetRawStr
+    value <- myGetRawStr
+    return (key, value)
 
 -- Write a collection's operands (unless it's a reference).
 putCollectionOperands :: Collection -> Put
@@ -90,10 +83,34 @@ putCollectionOperands (Collection _ _ _ operands) =
 putCollection :: Collection -> Put
 putCollection c =
        putWord32 4
-    >> putCollectionType c
-    >> putCollectionAttributes c
-    >> putCollectionIdlist c
+    >> putWord32 (fromIntegral (fromEnum ttype))
+
+    >> putWord32 (fromIntegral (length attributes))
+    >> mapM_ myPutStringDictTuple attributes
+
+    >> putWord32 (fromIntegral (length idlist))
+    >> mapM_ putWord32 idlist
+
     >> putCollectionOperands c
+    where ttype = collectionType c
+          attributes = collectionAttributes c
+          idlist = collectionIdlist c
+
+unpackColl :: Value -> Collection
+unpackColl (CollValue col) = col
+
+-- Read a collection.
+getCollection :: Get Value
+getCollection = do
+    ttype <- getWord32
+    length <- getWord32
+    attributes <- replicateM (fromIntegral length) myGetStringDictTuple
+    length <- getWord32
+    idlist <- replicateM (fromIntegral length) getWord32
+    length <- getWord32
+    operands <- replicateM (fromIntegral length) get
+
+    return (CollValue (Collection (toEnum (fromIntegral ttype)) attributes idlist (map unpackColl operands)))
 
 instance Binary Value where
     put (IntValue i) = putWord32 2 >> put i
@@ -109,6 +126,7 @@ instance Binary Value where
             2 -> liftM IntValue get
             3 -> do
                 liftM StringValue myGetRawStr
+            4 -> getCollection
             6 -> do
                 length <- getWord32
 
