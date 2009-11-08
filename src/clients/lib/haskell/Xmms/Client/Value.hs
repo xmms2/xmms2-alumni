@@ -65,20 +65,35 @@ myGetDictTuple = do
 myPutStringDictTuple :: (String, String) -> Put
 myPutStringDictTuple (key, value) = myPutRawStr key >> myPutRawStr value
 
-putCollectionAttributes attributes =
+putCollectionType :: Collection -> Put
+putCollectionType (Collection ttype _ _ _) =
+    putWord32 (fromIntegral (fromEnum ttype))
+
+putCollectionAttributes :: Collection -> Put
+putCollectionAttributes (Collection _ attributes _ _)  =
        putWord32 (fromIntegral (length attributes))
     >> mapM_ myPutStringDictTuple attributes
 
-putCollectionIdlist idlist =
+putCollectionIdlist :: Collection -> Put
+putCollectionIdlist (Collection _ _ idlist _) =
        putWord32 (fromIntegral (length idlist))
     >> mapM_ putWord32 idlist
 
+-- Write a collection's operands (unless it's a reference).
+putCollectionOperands :: Collection -> Put
+putCollectionOperands (Collection Reference _ _ _) = putWord32 0
+putCollectionOperands (Collection _ _ _ operands) =
+       putWord32 (fromIntegral (length operands))
+    >> mapM_ putCollection operands
+
+-- Write a collection.
+putCollection :: Collection -> Put
 putCollection c =
        putWord32 4
-    >> putWord32 (collectionType c)
-    >> putCollectionAttributes (collectionAttributes c)
-    >> putCollectionIdlist (collectionIdList c)
-    >> putWord32 0
+    >> putCollectionType c
+    >> putCollectionAttributes c
+    >> putCollectionIdlist c
+    >> putCollectionOperands c
 
 instance Binary Value where
     put (IntValue i) = putWord32 2 >> put i

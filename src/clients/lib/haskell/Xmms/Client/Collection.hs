@@ -17,9 +17,23 @@ module Xmms.Client.Collection where
 
 import Data.Word
 
+data CollectionType = Reference
+                    | Union
+                    | Intersection
+                    | Complement
+                    | Has
+                    | Equals
+                    | Match
+                    | Smaller
+                    | Greater
+                    | Idlist
+                    | Queue
+                    | Partyshuffle
+                    deriving (Enum, Eq, Show)
+
 data Collection = Collection {
-      collectionType :: Word32
+      collectionType :: CollectionType
     , collectionAttributes :: [(String, String)]
-    , collectionIdList :: [Word32]
+    , collectionIdlist :: [Word32]
     , collectionOperands :: [Collection]
 } deriving (Show)
