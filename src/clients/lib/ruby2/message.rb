@@ -133,6 +133,8 @@ module Xmms::Client
 				raise TypeError,
 				      "expected Collection but got #{coll.class}"
 			end
+
+			coll
 		end
 
 		def read_int
