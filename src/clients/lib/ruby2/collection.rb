@@ -13,15 +13,15 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 #  Lesser General Public License for more details.
 
-module Xmms
-	module Client
+module Xmms::Client
+	class Collection
+		attr_reader :type, :attributes, :idlist, :operands
+
+		def initialize(type)
+			@type = type
+			@attributes = {}
+			@idlist = []
+			@operands = []
+		end
 	end
 end
-
-require 'xmmsclient2/message'
-require 'xmmsclient2/client'
-require 'xmmsclient2/collection'
-require 'xmmsclient2/value'
-require 'xmmsclient2/result'
-require 'xmmsclient2/propdicttransformer'
-require 'xmmsclient2/generated'

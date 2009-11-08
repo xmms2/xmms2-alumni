@@ -87,6 +87,37 @@ module Xmms::Client
 				value.each do |item|
 					serialize(item, message)
 				end
+			when Collection
+				message.write_int ID_COLLECTION
+
+				if value.type == :reference
+					message.write_int 0
+				else
+					raise NotImplementedError
+				end
+
+				message.write_int value.attributes.length
+
+				value.attributes.each do |key, attr_value|
+					message.write_string key
+					message.write_string attr_value
+				end
+
+				message.write_int value.idlist.length
+
+				value.idlist.each do |id|
+					message.write_int id
+				end
+
+				if value.type == :reference
+					message.write_int 0
+				else
+					message.write_int value.operands.length
+
+					value.operands.each do |operand|
+						Value.serialize operand, message
+					end
+				end
 			end
 		end
 	end

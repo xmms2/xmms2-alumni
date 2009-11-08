@@ -128,6 +128,13 @@ module Xmms::Client
 			end
 		end
 
+		def self.check_collection(coll)
+			unless coll.is_a? Collection
+				raise TypeError,
+				      "expected Collection but got #{coll.class}"
+			end
+		end
+
 		def read_int
 			value = @raw_data[@payload_offset, 4].unpack("N").first
 			@payload_offset += 4
