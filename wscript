@@ -492,6 +492,8 @@ def set_options(opt):
                    dest='ldconfig', help="Run ldconfig after install even if not root")
     opt.add_option('--without-ldconfig', action='store_false',
                    dest='ldconfig', help="Don't run ldconfig after install")
+    opt.add_option('--static-plugins', action='store_true',
+                   dest='static_plugins', help="Make plugins static")
 
     opt.sub_options("src/xmms")
     for o in optional_subdirs + subdirs:

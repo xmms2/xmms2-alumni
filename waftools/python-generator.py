@@ -2,7 +2,7 @@ import Task
 from TaskGen import extension
 import sys
 
-Task.simple_task_type('genpy', '${PYTHON} ${SRC} > ${TGT}', color='BLUE', before='cc')
+Task.simple_task_type('genpy', '${PYTHON} ${SRC} ${GENPY_ARGS} > ${TGT}', color='BLUE', before='cc')
 
 @extension(".genpy")
 def genpy_file(self, node):
@@ -15,4 +15,5 @@ def genpy_file(self, node):
 def detect(conf):
     conf.env['PYTHON'] = sys.executable
     conf.env['GENPY_EXT'] = ['.genpy']
+    conf.env["GENPY_ARGS"] = "'"+";".join(conf.env["XMMS_PLUGINS_STATIC"])+"'"
     return 1

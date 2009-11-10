@@ -191,11 +191,14 @@ xmms_plugin_description_get (const xmms_plugin_t *plugin)
 /*
  * Private functions
  */
-
+ 
+extern xmms_plugin_desc_t *xmms_static_plugins[];
 
 static void
 xmms_plugin_add_builtin_plugins (void)
 {
+	int i = 0;
+    
 	extern const xmms_plugin_desc_t xmms_builtin_ringbuf;
 	extern const xmms_plugin_desc_t xmms_builtin_magic;
 	extern const xmms_plugin_desc_t xmms_builtin_converter;
@@ -207,6 +210,12 @@ xmms_plugin_add_builtin_plugins (void)
 	xmms_plugin_load (&xmms_builtin_converter, NULL);
 	xmms_plugin_load (&xmms_builtin_segment, NULL);
 	xmms_plugin_load (&xmms_builtin_visualization, NULL);
+	
+	/* load static plugins */
+	while (xmms_static_plugins[i]) {
+        	xmms_plugin_load (xmms_static_plugins[i], NULL);
+        	i ++;
+    	}
 }
 
 
