@@ -41,7 +41,10 @@ getWord32 = get
 
 -- Write a raw string (ie without the type tag)
 myPutRawStr :: String -> Put
-myPutRawStr s = putWord32 (fromIntegral (succ (length s))) >> mapM_ put s >> put '\0'
+myPutRawStr s =
+       putWord32 (fromIntegral (succ (length s)))
+    >> mapM_ put s
+    >> put '\0'
 
 -- Read a raw string (ie without the type tag)
 myGetRawStr :: Get String
@@ -64,7 +67,9 @@ myGetDictTuple = do
 
 -- Write a string dictionary tuple (raw string key and raw string value)
 myPutStringDictTuple :: (String, String) -> Put
-myPutStringDictTuple (key, value) = myPutRawStr key >> myPutRawStr value
+myPutStringDictTuple (key, value) =
+       myPutRawStr key
+    >> myPutRawStr value
 
 -- Read a string dictionary tuple (raw string key and raw string value)
 myGetStringDictTuple :: Get (String, String)
