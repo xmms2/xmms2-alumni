@@ -24,10 +24,12 @@ module Xmms.Client.Message (
     , messageReadHeader
 ) where
 
+import Control.Monad (liftM)
 import Data.Word
 import Network (Socket)
 import Network.Socket.ByteString (recv, sendMany)
 
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 
 import Data.Int
@@ -54,12 +56,13 @@ messageWriteStringList ss = encode (ListValue (map StringValue ss))
 
 messageWriteStringDictionary = undefined
 
-messageBuildHeader :: (Int32, Int32, Int32, Int32) -> BL.ByteString
-messageBuildHeader t = encode t
+messageBuildHeader = messageEncodeHeader
+
+messageEncodeHeader :: (Int32, Int32, Int32, Int32) -> BL.ByteString
+messageEncodeHeader t = encode t
+
+messageDecodeHeader :: B.ByteString -> (Int32, Int32, Int32, Int32)
+messageDecodeHeader msg = decode (BL.fromChunks [msg])
 
 messageReadHeader :: Socket -> IO (Int32, Int32, Int32, Int32)
-messageReadHeader handle = do
-    msg <- recv handle 16
-
-    return (decode (BL.fromChunks [msg]) :: (Int32, Int32, Int32, Int32))
-
+messageReadHeader handle = liftM messageDecodeHeader (recv handle 16)
