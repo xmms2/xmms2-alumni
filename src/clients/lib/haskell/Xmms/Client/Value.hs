@@ -17,7 +17,7 @@ module Xmms.Client.Value (
       Value(..)
 ) where
 
-import Control.Monad (replicateM, liftM)
+import Control.Monad (replicateM, liftM, liftM2)
 import Data.Binary
 import Data.Word
 import Data.Int
@@ -60,10 +60,7 @@ myPutDictTuple (key, value) = myPutRawStr key >> put value
 
 -- Read a dictionary tuple (raw string and value)
 myGetDictTuple :: Get (String, Value)
-myGetDictTuple = do
-    key <- myGetRawStr
-    value <- get
-    return (key, value)
+myGetDictTuple = liftM2 (,) myGetRawStr get
 
 -- Write a string dictionary tuple (raw string key and raw string value)
 myPutStringDictTuple :: (String, String) -> Put
@@ -73,10 +70,7 @@ myPutStringDictTuple (key, value) =
 
 -- Read a string dictionary tuple (raw string key and raw string value)
 myGetStringDictTuple :: Get (String, String)
-myGetStringDictTuple = do
-    key <- myGetRawStr
-    value <- myGetRawStr
-    return (key, value)
+myGetStringDictTuple = liftM2 (,) myGetRawStr myGetRawStr
 
 putInt i =
        putWord32 2
@@ -139,10 +133,7 @@ putList items =
     >> mapM_ put items
 
 getList :: Get Value
-getList = do
-    length <- getWord32
-    items <- replicateM (fromIntegral length) get
-    return (ListValue items)
+getList = liftM ListValue (getWord32 >>= flip replicateM get . fromIntegral)
 
 putDictionary :: [(String, Value)] -> Put
 putDictionary tuples =
@@ -151,11 +142,7 @@ putDictionary tuples =
     >> mapM_ myPutDictTuple tuples
 
 getDictionary :: Get Value
-getDictionary = do
-    length <- getWord32
-
-    tuples <- replicateM (fromIntegral length) myGetDictTuple
-    return (DictValue tuples)
+getDictionary = liftM DictValue (getWord32 >>= flip replicateM myGetDictTuple . fromIntegral)
 
 instance Binary Value where
     put (IntValue i) = putInt i
