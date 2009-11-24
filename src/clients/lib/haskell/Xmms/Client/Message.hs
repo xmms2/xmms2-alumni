@@ -20,7 +20,7 @@ module Xmms.Client.Message (
     , messageWriteBinary
     , messageWriteStringList
     , messageWriteStringDictionary
-    , messageBuildHeader
+    , messageEncodeHeader
     , messageReadHeader
 ) where
 
@@ -55,8 +55,6 @@ messageWriteStringList :: [String] -> BL.ByteString
 messageWriteStringList ss = encode (ListValue (map StringValue ss))
 
 messageWriteStringDictionary = undefined
-
-messageBuildHeader = messageEncodeHeader
 
 messageEncodeHeader :: (Int32, Int32, Int32, Int32) -> BL.ByteString
 messageEncodeHeader t = encode t

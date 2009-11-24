@@ -109,7 +109,7 @@ def emit_method_code(object, method, name_prefix):
 	Indenter.printline()
 	Indenter.printline('let payloadLength = foldl (+) 0 (map BL.length bls)')
 
-	Indenter.printline('let header = messageBuildHeader (%i, %i, fromIntegral cookie, fromIntegral payloadLength)'% (object.id, method.id))
+	Indenter.printline('let header = messageEncodeHeader (%i, %i, fromIntegral cookie, fromIntegral payloadLength)'% (object.id, method.id))
 
 	Indenter.printline('let bs = map (BL.toChunks) (header : bls)')
 	Indenter.printline('sendMany (clientSocket c) (flatten bs)')
