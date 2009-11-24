@@ -132,11 +132,24 @@ putList items =
     >> putWord32 (fromIntegral (length items))
     >> mapM_ put items
 
+getList :: Get Value
+getList = do
+    length <- getWord32
+    items <- replicateM (fromIntegral length) get
+    return (ListValue items)
+
 putDictionary :: [(String, Value)] -> Put
 putDictionary tuples =
        putWord32 7
     >> putWord32 (fromIntegral (length tuples))
     >> mapM_ myPutDictTuple tuples
+
+getDictionary :: Get Value
+getDictionary = do
+    length <- getWord32
+
+    tuples <- replicateM (fromIntegral length) myGetDictTuple
+    return (DictValue tuples)
 
 instance Binary Value where
     put (IntValue i) = putInt i
@@ -153,17 +166,6 @@ instance Binary Value where
             2 -> liftM IntValue get
             3 -> liftM StringValue myGetRawStr
             4 -> getCollection
-            6 -> do
-                length <- getWord32
-
-                items <- replicateM (fromIntegral length) get
-                return (ListValue items)
-            7 -> do
-                length <- getWord32
-
-                tuples <- replicateM (fromIntegral length) myGetDictTuple
-                return (DictValue tuples)
-
+            6 -> getList
+            7 -> getDictionary
             otherwise -> error "unhandled Value type"
-
-
