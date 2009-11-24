@@ -122,7 +122,8 @@ getCollection = do
     return (CollValue (Collection (toEnum (fromIntegral ttype)) attributes idlist (map unpackColl operands)))
 
 putBinary :: [Word8] -> Put
-putBinary items = putWord32 5
+putBinary items =
+       putWord32 5
     >> putWord32 (fromIntegral (length items))
     >> mapM_ put items
 
