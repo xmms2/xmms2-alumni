@@ -48,11 +48,7 @@ myPutRawStr s =
 
 -- Read a raw string (ie without the type tag)
 myGetRawStr :: Get String
-myGetRawStr = do
-    length <- getWord32
-
-    chars <- replicateM (fromIntegral length) get
-    return (init chars)
+myGetRawStr = liftM init (getWord32 >>= flip replicateM get . fromIntegral)
 
 -- Write a dictionary tuple (raw string and value)
 myPutDictTuple :: (String, Value) -> Put
