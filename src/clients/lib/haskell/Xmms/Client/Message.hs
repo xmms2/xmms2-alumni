@@ -40,27 +40,27 @@ import Xmms.Client.Collection
 import Xmms.Client.Value
 
 messageWriteInt :: Int -> BL.ByteString
-messageWriteInt i = encode (IntValue (fromIntegral i))
+messageWriteInt = encode . IntValue . fromIntegral
 
 messageWriteString :: String -> BL.ByteString
-messageWriteString s = encode (StringValue s)
+messageWriteString = encode . StringValue
 
 messageWriteCollection :: Collection -> BL.ByteString
-messageWriteCollection coll = encode (CollValue coll)
+messageWriteCollection = encode . CollValue
 
 messageWriteBinary :: [Word8] -> BL.ByteString
-messageWriteBinary bin = encode (BinValue bin)
+messageWriteBinary = encode . BinValue
 
 messageWriteStringList :: [String] -> BL.ByteString
-messageWriteStringList ss = encode (ListValue (map StringValue ss))
+messageWriteStringList = encode . ListValue . map StringValue
 
 messageWriteStringDictionary = undefined
 
 messageEncodeHeader :: (Int32, Int32, Int32, Int32) -> BL.ByteString
-messageEncodeHeader t = encode t
+messageEncodeHeader = encode
 
 messageDecodeHeader :: B.ByteString -> (Int32, Int32, Int32, Int32)
-messageDecodeHeader msg = decode (BL.fromChunks [msg])
+messageDecodeHeader = decode . BL.fromChunks . (:[])
 
 messageReadHeader :: Socket -> IO (Int32, Int32, Int32, Int32)
-messageReadHeader handle = liftM messageDecodeHeader (recv handle 16)
+messageReadHeader = liftM messageDecodeHeader . flip recv 16
