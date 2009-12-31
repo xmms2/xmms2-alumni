@@ -17,7 +17,9 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
+#include "xmmsc/xmmsc_stdbool.h"
 #include "xmmsc/xmmsc_sockets.h"
 #include "xmmsc/xmmsc_stdint.h"
 #include "xmmsc/xmmsc_util.h"
@@ -32,6 +34,11 @@ typedef struct xmmsv_serializer_St {
 	uint32_t length;
 } xmmsv_serializer_t;
 
+typedef struct xmmsv_deserializer_St {
+	const unsigned char *data;
+	unsigned int left;
+} xmmsv_deserializer_t;
+
 static void xmmsv_serializer_put_bin (xmmsv_serializer_t *serializer, const unsigned char *data, unsigned int len);
 static void xmmsv_serializer_put_uint32 (xmmsv_serializer_t *serializer, uint32_t v);
 static void xmmsv_serializer_put_int32 (xmmsv_serializer_t *serializer, int32_t v);
@@ -43,6 +50,12 @@ static void xmmsv_serializer_put_value (xmmsv_serializer_t *serializer, xmmsv_t 
 
 static void xmmsv_serializer_add_list_item (xmmsv_t *value, void *udata);
 static void xmmsv_serializer_add_dict_item (const char *key, xmmsv_t *value, void *udata);
+
+static bool xmmsv_deserializer_get_data (xmmsv_deserializer_t *deserializer, void *buf, size_t length);
+static bool xmmsv_deserializer_get_uint32 (xmmsv_deserializer_t *deserializer, uint32_t *v);
+static bool xmmsv_deserializer_get_int32 (xmmsv_deserializer_t *deserializer, int32_t *v);
+static bool xmmsv_deserializer_get_collection (xmmsv_deserializer_t *deserializer, xmmsv_coll_t **coll);
+static bool xmmsv_deserializer_get_value (xmmsv_deserializer_t *d, xmmsv_t **value);
 
 static void
 xmmsv_serializer_put_data (xmmsv_serializer_t *serializer,
@@ -325,4 +338,420 @@ xmmsv_serialize (xmmsv_t *v)
 	free (s.data);
 
 	return result;
+}
+
+static bool
+xmmsv_deserializer_get_data (xmmsv_deserializer_t *deserializer,
+                             void *buf, size_t length)
+{
+	if (length > deserializer->left)
+		return false;
+
+	if (buf) {
+		memcpy (buf, deserializer->data, length);
+	}
+
+	deserializer->data += length;
+	deserializer->left -= length;
+
+	return true;
+}
+
+static bool
+xmmsv_deserializer_get_uint32 (xmmsv_deserializer_t *deserializer,
+                               uint32_t *v)
+{
+	bool ret;
+
+	ret = xmmsv_deserializer_get_data (deserializer, v, sizeof (*v));
+
+	if (v) {
+		*v = ntohl (*v);
+	}
+
+	return ret;
+}
+
+static bool
+xmmsv_deserializer_get_int32 (xmmsv_deserializer_t *deserializer,
+                              int32_t *v)
+{
+	bool ret;
+
+	ret = xmmsv_deserializer_get_data (deserializer, v, sizeof (*v));
+
+	if (v) {
+		*v = ntohl (*v);
+	}
+
+	return ret;
+}
+
+static bool
+xmmsv_deserializer_get_string (xmmsv_deserializer_t *deserializer,
+                               char **s)
+{
+	uint32_t length;
+	bool ret;
+
+	assert (s);
+
+	ret = xmmsv_deserializer_get_uint32 (deserializer, &length);
+
+	if (ret) {
+		if (length > deserializer->left) {
+			ret = false;
+		} else {
+			*s = malloc (length + 1);
+
+			ret = xmmsv_deserializer_get_data (deserializer, *s, length);
+
+			if (ret) {
+				(*s)[length] = 0;
+			} else {
+				free (*s);
+				*s = NULL;
+			}
+		}
+	}
+
+	return ret;
+}
+
+static bool
+xmmsv_deserializer_get_dict (xmmsv_deserializer_t *d, xmmsv_t **dict)
+{
+	char *key;
+	uint32_t length;
+	bool ret;
+
+	assert (dict);
+
+	*dict = NULL;
+
+	ret = xmmsv_deserializer_get_uint32 (d, &length);
+
+	if (!ret) {
+		goto err;
+	}
+
+	*dict = xmmsv_new_dict ();
+
+	while (length--) {
+		xmmsv_t *value;
+
+		ret = xmmsv_deserializer_get_string (d, &key);
+
+		if (!ret) {
+			goto err;
+		}
+
+		ret = xmmsv_deserializer_get_value (d, &value);
+
+		if (!ret) {
+			free (key);
+			goto err;
+		}
+
+		xmmsv_dict_set (*dict, key, value);
+
+		free (key);
+		xmmsv_unref (value);
+	}
+
+	return true;
+
+err:
+	if (*dict) {
+		xmmsv_unref (*dict);
+		*dict = NULL;
+	}
+
+	return false;
+}
+
+static bool
+xmmsv_deserializer_get_list (xmmsv_deserializer_t *d, xmmsv_t **list)
+{
+	uint32_t length;
+	bool ret;
+
+	assert (list);
+
+	*list = NULL;
+
+	ret = xmmsv_deserializer_get_uint32 (d, &length);
+
+	if (!ret) {
+		goto err;
+	}
+
+	*list = xmmsv_new_list ();
+
+	while (length--) {
+		xmmsv_t *value;
+
+		ret = xmmsv_deserializer_get_value (d, &value);
+
+		if (!ret) {
+			goto err;
+		}
+
+		xmmsv_list_append (*list, value);
+		xmmsv_unref (value);
+	}
+
+	return true;
+
+err:
+	if (*list) {
+		xmmsv_unref (*list);
+		*list = NULL;
+	}
+
+	return false;
+}
+
+static bool
+xmmsv_deserializer_get_collection (xmmsv_deserializer_t *deserializer,
+                                   xmmsv_coll_t **coll)
+{
+	uint32_t *idlist = NULL, type, n_items, id, i;
+	bool ret;
+
+	assert (coll);
+
+	*coll = NULL;
+
+	ret = xmmsv_deserializer_get_uint32 (deserializer, &type);
+
+	if (!ret) {
+		goto err;
+	}
+
+	*coll = xmmsv_coll_new (type);
+
+	/* Get the list of attributes */
+	ret = xmmsv_deserializer_get_uint32 (deserializer, &n_items);
+
+	if (!ret) {
+		goto err;
+	}
+
+	for (i = 0; i < n_items; i++) {
+		char *key, *value;
+
+		ret = xmmsv_deserializer_get_string (deserializer, &key);
+
+		if (!ret) {
+			goto err;
+		}
+
+		ret = xmmsv_deserializer_get_string (deserializer, &value);
+
+		if (!ret) {
+			free (key);
+			goto err;
+		}
+
+		xmmsv_coll_attribute_set (*coll, key, value);
+
+		free (key);
+		free (value);
+	}
+
+	/* Get the idlist */
+	ret = xmmsv_deserializer_get_uint32 (deserializer, &n_items);
+
+	if (!ret) {
+		goto err;
+	}
+
+	idlist = x_new (uint32_t, n_items + 1);
+
+	if (!idlist) {
+		goto err;
+	}
+
+	for (i = 0; i < n_items; i++) {
+		ret = xmmsv_deserializer_get_uint32 (deserializer, &id);
+
+		if (!ret) {
+			goto err;
+		}
+
+		idlist[i] = id;
+	}
+
+	idlist[i] = 0;
+	xmmsv_coll_set_idlist (*coll, idlist);
+	free (idlist);
+	idlist = NULL;
+
+	/* Get the operands */
+	ret = xmmsv_deserializer_get_uint32 (deserializer, &n_items);
+
+	if (!ret) {
+		goto err;
+	}
+
+	for (i = 0; i < n_items; i++) {
+		xmmsv_coll_t *operand;
+		xmmsv_type_t type;
+
+		ret = xmmsv_deserializer_get_uint32 (deserializer, &type);
+
+		if (!ret || type != XMMSV_TYPE_COLL) {
+			goto err;
+		}
+
+		ret = xmmsv_deserializer_get_collection (deserializer, &operand);
+
+		if (!ret) {
+			goto err;
+		}
+
+		xmmsv_coll_add_operand (*coll, operand);
+		xmmsv_coll_unref (operand);
+	}
+
+	return true;
+
+err:
+	if (*coll) {
+		xmmsv_coll_unref (*coll);
+		*coll = NULL;
+	}
+
+	return false;
+}
+
+static bool
+xmmsv_deserializer_get_bin (xmmsv_deserializer_t *deserializer,
+                            xmmsv_t **value)
+{
+	unsigned char *buf;
+	uint32_t length;
+	bool ret;
+
+	assert (value);
+
+	*value = NULL;
+
+	ret = xmmsv_deserializer_get_uint32 (deserializer, &length);
+
+	if (ret) {
+		if (length > deserializer->left) {
+			ret = false;
+		} else {
+			buf = malloc (length);
+			ret = xmmsv_deserializer_get_data (deserializer, buf, length);
+
+			if (ret) {
+				*value = xmmsv_new_bin (buf, length);
+			}
+
+			free (buf);
+		}
+	}
+
+	return ret;
+}
+
+static bool
+xmmsv_deserializer_get_value (xmmsv_deserializer_t *d, xmmsv_t **value)
+{
+	xmmsv_coll_t *coll;
+	char *s;
+	uint32_t type;
+	int32_t i;
+	bool ret;
+
+	assert (value);
+
+	*value = NULL;
+
+	ret = xmmsv_deserializer_get_uint32 (d, &type);
+
+	if (!ret) {
+		goto out;
+	}
+
+	switch (type) {
+		case XMMSV_TYPE_ERROR:
+			ret = xmmsv_deserializer_get_string (d, &s);
+
+			if (ret) {
+				*value = xmmsv_new_error (s);
+				free (s);
+			}
+
+			break;
+		case XMMSV_TYPE_INT32:
+			ret = xmmsv_deserializer_get_int32 (d, &i);
+
+			if (ret) {
+				*value = xmmsv_new_int (i);
+			}
+
+			break;
+		case XMMSV_TYPE_STRING:
+			ret = xmmsv_deserializer_get_string (d, &s);
+
+			if (ret) {
+				*value = xmmsv_new_string (s);
+				free (s);
+			}
+
+			break;
+		case XMMSV_TYPE_DICT:
+			ret = xmmsv_deserializer_get_dict (d, value);
+			break;
+		case XMMSV_TYPE_LIST:
+			ret = xmmsv_deserializer_get_list (d, value);
+			break;
+		case XMMSV_TYPE_COLL:
+			ret = xmmsv_deserializer_get_collection (d, &coll);
+
+			if (ret) {
+				*value = xmmsv_new_coll (coll);
+				xmmsv_coll_unref (coll);
+			}
+
+			break;
+		case XMMSV_TYPE_BIN:
+			ret = xmmsv_deserializer_get_bin (d, value);
+			break;
+		case XMMSV_TYPE_NONE:
+			*value = xmmsv_new_none ();
+			break;
+		default:
+			ret = false;
+			break;
+	}
+
+out:
+	return ret;
+}
+
+/**
+ * Deserializes an arbitrary xmmsv_t from a binary xmmsv_t.
+ */
+xmmsv_t *
+xmmsv_deserialize (xmmsv_t *bin)
+{
+	xmmsv_deserializer_t d;
+	xmmsv_t *result;
+	bool ret = false;
+	int r;
+
+	x_return_val_if_fail (bin, NULL);
+
+	r = xmmsv_get_bin (bin, &d.data, &d.left);
+
+	if (r) {
+		ret = xmmsv_deserializer_get_value (&d, &result);
+	}
+
+	return ret ? result : NULL;
 }

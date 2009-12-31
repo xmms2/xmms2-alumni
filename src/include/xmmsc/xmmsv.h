@@ -212,6 +212,7 @@ xmmsv_t *xmmsv_build_list (xmmsv_t *first_entry, ...);
 xmmsv_t *xmmsv_build_list_va (xmmsv_t *first_entry, va_list ap);
 
 xmmsv_t *xmmsv_serialize (xmmsv_t *v);
+xmmsv_t *xmmsv_deserialize (xmmsv_t *v);
 
 #ifdef __cplusplus
 }
