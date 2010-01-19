@@ -11,7 +11,7 @@
  * ID3v2 stuff
  */
 
-
+#include "xmms_configuration.h"
 #include "xmms/xmms_xformplugin.h"
 #include "xmms/xmms_log.h"
 #include "id3.h"

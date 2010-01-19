@@ -14,6 +14,7 @@
  * @file Output plugin to stream Ogg Vorbis to an Icecast2 server.
  */
 
+#include "xmms_configuration.h"
 #include "xmms/xmms_outputplugin.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_medialib.h"

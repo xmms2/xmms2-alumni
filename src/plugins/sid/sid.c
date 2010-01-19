@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  */
 
-
+#include "xmms_configuration.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_xformplugin.h"
 

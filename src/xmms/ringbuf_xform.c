@@ -1,4 +1,5 @@
 
+#include "xmms_configuration.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_medialib.h"
 #include "xmmspriv/xmms_ringbuf.h"

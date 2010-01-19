@@ -22,7 +22,6 @@
 
 #include <glib.h>
 #include <xmmsc/xmmsc_idnumbers.h>
-#include "xmms_configuration.h"
 
 #define XMMS_PLUGIN_SHORTNAME_MAX_LEN 32
 

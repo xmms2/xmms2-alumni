@@ -14,6 +14,7 @@
  *  Lesser General Public License for more details.
  */
 
+#include "xmms_configuration.h"
 #include "xmms/xmms_xformplugin.h"
 #include "xmmsc/xmmsc_util.h"
 #include "xmms/xmms_util.h"

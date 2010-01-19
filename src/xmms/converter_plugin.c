@@ -16,6 +16,7 @@
 
 #include <glib.h>
 
+#include "xmms_configuration.h"
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_streamtype.h"
 #include "xmmspriv/xmms_sample.h"

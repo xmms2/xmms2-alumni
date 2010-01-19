@@ -20,6 +20,7 @@
  * http://wiki.hydrogenaudio.org/index.php?title=APEv2_specification
  */
 
+#include "xmms_configuration.h"
 #include "xmms/xmms_xformplugin.h"
 #include "xmms/xmms_sample.h"
 #include "xmms/xmms_log.h"

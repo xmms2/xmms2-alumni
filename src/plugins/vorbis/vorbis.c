@@ -18,6 +18,7 @@
 #include <vorbis/codec.h>
 #include <vorbis/vorbisfile.h>
 
+#include "xmms_configuration.h"
 #include "xmms/xmms_xformplugin.h"
 
 #include "../vorbis_common/common.c"

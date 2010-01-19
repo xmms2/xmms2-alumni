@@ -16,6 +16,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+
+#include "xmms_configuration.h"
 #include "xmms/xmms_sample.h"
 #include "xmmspriv/xmms_xform.h"
 #include "xmms/xmms_log.h"

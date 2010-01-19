@@ -19,6 +19,7 @@
  * Replaygain
  */
 
+#include "xmms_configuration.h"
 #include "xmms/xmms_xformplugin.h"
 #include "xmms/xmms_config.h"
 #include "xmms/xmms_log.h"

@@ -19,6 +19,7 @@
  * http://true-audio.com/TTA_Lossless_Audio_Codec_-_Format_Description
  */
 
+#include "xmms_configuration.h"
 #include "xmms/xmms_xformplugin.h"
 #include "xmms/xmms_sample.h"
 #include "xmms/xmms_log.h"

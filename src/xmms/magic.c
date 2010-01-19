@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "xmms_configuration.h"
 #include "xmms/xmms_log.h"
 #include "xmmspriv/xmms_xform.h"
 

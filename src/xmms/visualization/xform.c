@@ -19,6 +19,7 @@
  *
  */
 
+#include "xmms_configuration.h"
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_output.h"
 #include "xmmspriv/xmms_visualization.h"

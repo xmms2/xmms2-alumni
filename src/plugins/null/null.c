@@ -14,6 +14,7 @@
  *  Lesser General Public License for more details.
  */
 
+#include "xmms_configuration.h"
 #include "xmms/xmms_outputplugin.h"
 
 #include <glib.h>

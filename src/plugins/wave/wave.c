@@ -22,7 +22,7 @@
   * @url http://msdn.microsoft.com/library/en-us/dnnetcomp/html/WaveInOut.asp?frame=true#waveinout_topic_003
   */
 
-
+#include "xmms_configuration.h"
 #include "xmms/xmms_xformplugin.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_medialib.h"
