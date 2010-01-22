@@ -958,7 +958,22 @@ xmms_ipc_msg_get_value_of_type_alloc (xmms_ipc_msg_t *msg, xmmsv_type_t type,
 }
 
 bool
-xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmmsv_t **val)
+xmms_ipc_msg_get_value (xmms_ipc_msg_t *msg, xmmsv_t **value)
 {
-	return xmms_ipc_msg_get_value_alloc (msg, val);
+	xmmsv_t *bin;
+	unsigned int length;
+
+	length = xmms_ipc_msg_get_length (msg) - msg->get_pos;
+
+	if (!length) {
+		*value = NULL;
+	} else {
+		bin = xmmsv_new_bin (&msg->data->header.data[msg->get_pos], length);
+		msg->get_pos += length;
+
+		*value = xmmsv_deserialize (bin);
+		xmmsv_unref (bin);
+	}
+
+	return !!*value;
 }
