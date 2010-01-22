@@ -469,71 +469,35 @@ internal_ipc_msg_put_collection (xmms_ipc_msg_t *msg, xmmsv_coll_t *coll)
 uint32_t
 xmms_ipc_msg_put_value (xmms_ipc_msg_t *msg, xmmsv_t *v)
 {
-	uint32_t ret;
-	int32_t i;
-	const char *s;
-	xmmsv_coll_t *c;
-	const unsigned char *bc;
-	unsigned int bl;
-	xmmsv_type_t type;
+	xmmsv_t *bin;
+	char error_msg[64];
+	uint32_t offset = -1;
 
-	type = xmmsv_get_type (v);
-	internal_ipc_msg_put_int32 (msg, type);
+	bin = xmmsv_serialize (v);
 
-	/* FIXME: what to do if value fetching fails? */
-	/* FIXME: return -1 unsigned int?? */
+	if (!bin) {
+		snprintf (error_msg, sizeof (error_msg),
+		          "Failed to serialize value of type 0x%x",
+		          xmmsv_get_type (v));
 
-	switch (type) {
-	case XMMSV_TYPE_ERROR:
-		if (!xmmsv_get_error (v, &s)) {
-			return -1;
-		}
-		ret = internal_ipc_msg_put_error (msg, s);
-		break;
-	case XMMSV_TYPE_INT32:
-		if (!xmmsv_get_int (v, &i)) {
-			return -1;
-		}
-		ret = internal_ipc_msg_put_int32 (msg, i);
-		break;
-	case XMMSV_TYPE_STRING:
-		if (!xmmsv_get_string (v, &s)) {
-			return -1;
-		}
-		ret = internal_ipc_msg_put_string (msg, s);
-		break;
-	case XMMSV_TYPE_COLL:
-		if (!xmmsv_get_coll (v, &c)) {
-			return -1;
-		}
-		ret = internal_ipc_msg_put_collection (msg, c);
-		break;
-	case XMMSV_TYPE_BIN:
-		if (!xmmsv_get_bin (v, &bc, &bl)) {
-			return -1;
-		}
-		ret = internal_ipc_msg_put_bin (msg, bc, bl);
-		break;
-	case XMMSV_TYPE_LIST:
-		ret = internal_ipc_msg_put_value_list (msg, v);
-		break;
-	case XMMSV_TYPE_DICT:
-		ret = internal_ipc_msg_put_value_dict (msg, v);
-		break;
+		x_internal_error (error_msg);
+	} else {
+		const unsigned char *data;
+		unsigned int length;
+		bool b;
 
-	case XMMSV_TYPE_NONE:
-		/* just like the other _put_* functions, we
-		 * return the offset that which we placed this value.
-		 * See xmms_ipc_msg_put_data().
-		 */
-		ret = xmms_ipc_msg_get_length (msg);
-		break;
-	default:
-		x_internal_error ("Tried to serialize value of unsupported type");
-		return -1;
+		b = xmmsv_get_bin (bin, &data, &length);
+
+		if (!b) {
+			x_internal_error ("Failed to extract serialized value");
+		} else {
+			offset = xmms_ipc_msg_put_data (msg, data, length);
+		}
+
+		xmmsv_unref (bin);
 	}
 
-	return ret;
+	return offset;
 }
 
 static uint32_t
