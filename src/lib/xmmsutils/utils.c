@@ -45,3 +45,19 @@ xmms_default_ipcpath_get (char *buf, int len)
 
 	return buf;
 }
+
+/**
+ * Return a boolean value for a string.
+ *
+ * @param value the value to interpret
+ */
+bool
+xmms_string_to_bool (const char *value)
+{
+    if (value) {
+        return ((atoi (value) != 0) ||
+                (strcmp (value, "true") == 0));
+    }
+
+	return false;
+}

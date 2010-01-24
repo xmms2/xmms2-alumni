@@ -29,6 +29,7 @@ xmms_config_property_t *xmms_config_lookup (const gchar *path);
 
 const gchar *xmms_config_property_get_string (const xmms_config_property_t *prop);
 gint xmms_config_property_get_int (const xmms_config_property_t *prop);
+gboolean xmms_config_property_get_bool (const xmms_config_property_t *prop);
 gfloat xmms_config_property_get_float (const xmms_config_property_t *prop);
 const gchar *xmms_config_property_get_name (const xmms_config_property_t *prop);
 

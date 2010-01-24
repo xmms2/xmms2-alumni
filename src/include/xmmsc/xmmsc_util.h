@@ -49,5 +49,6 @@ const char *xmms_usercachedir_get (char *buf, int len);
 const char *xmms_default_ipcpath_get (char *buf, int len);
 const char *xmms_fallback_ipcpath_get (char *buf, int len);
 bool xmms_sleep_ms (int n);
+bool xmms_string_to_bool (const char *value);
 
 #endif /* __XMMS_UTILS_H__ */

@@ -265,6 +265,18 @@ xmms_config_property_get_int (const xmms_config_property_t *prop)
 }
 
 /**
+ * Return the valuse of a config property as a float
+ * @param prop The config property
+ * @return value as float
+ */
+gboolean
+xmms_config_property_get_bool (const xmms_config_property_t *prop)
+{
+	g_return_val_if_fail (prop, 0);
+	return xmms_string_to_bool (prop->value);
+}
+
+/**
  * Return the value of a config property as a float
  * @param prop The config property
  * @return value as float
