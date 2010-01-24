@@ -157,7 +157,7 @@ xmms_replaygain_init (xmms_xform_t *xform)
 	                                   xmms_replaygain_config_changed,
 	                                   xform);
 
-	data->use_anticlip = !!xmms_config_property_get_int (cfgv);
+	data->use_anticlip = xmms_config_property_get_bool (cfgv);
 
 	cfgv = xmms_xform_config_lookup (xform, "preamp");
 	xmms_config_property_callback_set (cfgv,
@@ -171,7 +171,7 @@ xmms_replaygain_init (xmms_xform_t *xform)
 	                                   xmms_replaygain_config_changed,
 	                                   xform);
 
-	data->enabled = !!xmms_config_property_get_int (cfgv);
+	data->enabled = xmms_config_property_get_bool (cfgv);
 
 	xmms_xform_outdata_type_copy (xform);
 
@@ -295,14 +295,14 @@ xmms_replaygain_config_changed (xmms_object_t *obj, xmmsv_t *_val, gpointer udat
 		dirty = TRUE;
 	} else if (!g_ascii_strcasecmp (name,
 	                                "replaygain.use_anticlip")) {
-		data->use_anticlip = !!atoi (value);
+		data->use_anticlip = xmms_string_to_bool (value);
 		dirty = TRUE;
 	} else if (!g_ascii_strcasecmp (name,
 	                                "replaygain.preamp")) {
 		data->preamp = pow (10.0, atof (value) / 20.0);
 		dirty = TRUE;
 	} else if (!g_ascii_strcasecmp (name, "replaygain.enabled")) {
-		data->enabled = !!atoi (value);
+		data->enabled = xmms_string_to_bool (value);
 	}
 
 	if (dirty) {

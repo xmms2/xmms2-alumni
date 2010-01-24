@@ -116,7 +116,7 @@ xmms_karaoke_init (xmms_xform_t *xform)
 	config = xmms_xform_config_lookup (xform, "enabled");
 	g_return_val_if_fail (config, FALSE);
 	xmms_config_property_callback_set (config, xmms_karaoke_config_changed, priv);
-	priv->enabled = !!xmms_config_property_get_int (config);
+	priv->enabled = xmms_config_property_get_bool (config);
 
 	config = xmms_xform_config_lookup (xform, "level");
 	g_return_val_if_fail (config, FALSE);
@@ -139,7 +139,7 @@ xmms_karaoke_init (xmms_xform_t *xform)
 	priv->width = xmms_config_property_get_float (config);
 
 	priv->srate = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_SAMPLERATE);
-	priv->channels = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
+	priv->channels = xmms_xform_indata_boolget_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
 
 	xmms_karaoke_update_coeffs (priv);
 	xmms_xform_outdata_type_copy (xform);
@@ -199,7 +199,7 @@ xmms_karaoke_config_changed (xmms_object_t *object, xmmsv_t *_val, gpointer user
 	name = strrchr (name, '.') + 1;
 
 	if (!strcmp (name, "enabled")) {
-		data->enabled = !!xmms_config_property_get_int (val);
+		data->enabled = xmms_config_property_get_bool (val);
 	} else if (!strcmp (name, "level")) {
 		data->level = xmms_config_property_get_int (val);
 		data->level = CLAMP (data->level, 0, 32);
