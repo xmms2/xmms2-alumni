@@ -27,6 +27,8 @@
 
 G_BEGIN_DECLS
 
+typedef gboolean (*xmms_plugin_shutdown_func)(void);
+
 typedef struct xmms_plugin_desc_St {
 	xmms_plugin_type_t type;
 	gint api_version;
@@ -35,19 +37,22 @@ typedef struct xmms_plugin_desc_St {
 	const gchar *version;
 	const gchar *description;
 	gboolean (*setup_func)(gpointer);
+	xmms_plugin_shutdown_func shutdown_func;
 } xmms_plugin_desc_t;
 
-#define XMMS_PLUGIN(type, api_ver, shname, name, ver, desc, setupfunc)	\
-	xmms_plugin_desc_t XMMS_PLUGIN_DESC = {				\
+#define XMMS_PLUGIN(type, api_ver, shname, name, ver, desc, setupfunc,	\
+                    shutdownfunc)										\
+	xmms_plugin_desc_t XMMS_PLUGIN_DESC = {								\
 		type,							\
 		api_ver,						\
 		shname,							\
 		name,							\
 		ver,							\
 		desc,							\
-		setupfunc						\
+		setupfunc,						\
+		shutdownfunc					\
 	};
-		
+
 G_END_DECLS
 
 #endif /* __XMMS_PLUGIN_H__ */

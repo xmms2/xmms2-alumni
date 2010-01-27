@@ -35,6 +35,7 @@ typedef struct xmms_plugin_St {
 	const gchar *shortname;
 	const gchar *description;
 	const gchar *version;
+	xmms_plugin_shutdown_func shutdown_func;
 } xmms_plugin_t;
 
 /*

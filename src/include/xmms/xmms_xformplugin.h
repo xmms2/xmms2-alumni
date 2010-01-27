@@ -49,7 +49,7 @@
 
 
 
-#define XMMS_XFORM_API_VERSION 7
+#define XMMS_XFORM_API_VERSION 8
 
 #include "xmms/xmms_error.h"
 #include "xmms/xmms_plugin.h"
@@ -87,7 +87,7 @@ typedef struct xmms_xform_plugin_St xmms_xform_plugin_t;
  *                   xmms_example_setup);
  *
  */
-#define XMMS_XFORM_PLUGIN(shname, name, ver, desc, setupfunc) XMMS_PLUGIN(XMMS_PLUGIN_TYPE_XFORM, XMMS_XFORM_API_VERSION, shname, name, ver, desc, (gboolean (*)(gpointer))setupfunc)
+#define XMMS_XFORM_PLUGIN(shname, name, ver, desc, setupfunc) XMMS_PLUGIN(XMMS_PLUGIN_TYPE_XFORM, XMMS_XFORM_API_VERSION, shname, name, ver, desc, (gboolean (*)(gpointer))setupfunc, NULL)
 
 /* */
 

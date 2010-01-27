@@ -45,7 +45,7 @@ typedef struct xmms_output_St xmms_output_t;
 /**
  * The current API version.
  */
-#define XMMS_OUTPUT_API_VERSION 8
+#define XMMS_OUTPUT_API_VERSION 9
 
 struct xmms_output_plugin_St;
 typedef struct xmms_output_plugin_St xmms_output_plugin_t;
@@ -223,7 +223,7 @@ typedef struct xmms_output_methods_St {
  * @param desc a description of the plugin
  * @param setupfunc the function that sets up the plugin functions
  */
-#define XMMS_OUTPUT_PLUGIN(shname, name, ver, desc, setupfunc) XMMS_PLUGIN(XMMS_PLUGIN_TYPE_OUTPUT, XMMS_OUTPUT_API_VERSION, shname, name, ver, desc, (gboolean (*)(gpointer))setupfunc)
+#define XMMS_OUTPUT_PLUGIN(shname, name, ver, desc, setupfunc) XMMS_PLUGIN(XMMS_PLUGIN_TYPE_OUTPUT, XMMS_OUTPUT_API_VERSION, shname, name, ver, desc, (gboolean (*)(gpointer))setupfunc, NULL)
 
 /**
  * Initialize the #xmms_output_methods_t struct.

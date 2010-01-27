@@ -257,7 +257,17 @@ xmms_plugin_shutdown ()
 			          p->name, p->object.ref);
 		}
 
-		xmms_object_unref (p);
+		if (!p->shutdown_func || p->shutdown_func ()) {
+			xmms_object_unref (p);
+		} else {
+			/* shutdown function exists, but returned FALSE, something is
+			 * broken so don't unload it, but remove it from the plugin list
+			 *  anyway. Perhaps this should mark the plugin as broken
+			 */
+			xmms_log_error ("Could not unload plugin %s: " \
+			                "shutdown function returned FALSE", p->name);
+			// FIXME: perhaps add a force_unload parameter
+		}
 
 		xmms_plugin_list = g_list_delete_link (xmms_plugin_list,
 		                                       xmms_plugin_list);
@@ -458,6 +468,7 @@ xmms_plugin_setup (xmms_plugin_t *plugin, const xmms_plugin_desc_t *desc)
 	plugin->name = desc->name;
 	plugin->version = desc->version;
 	plugin->description = desc->description;
+	plugin->shutdown_func = desc->shutdown_func;
 
 	return TRUE;
 }
