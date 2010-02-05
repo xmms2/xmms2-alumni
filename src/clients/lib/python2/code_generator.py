@@ -73,7 +73,7 @@ def emit_method_code(object, method, name_prefix):
 		print ', args=[%s])' % s
 
 	if method.documentation != None:
-		Indenter.printline('%s.__doc__ = \'%s\'' % (method_name, method.documentation))
+		Indenter.printline('%s.__doc__ = \"\"\"%s\"\"\"' % (method_name, method.documentation))
 
 	Indenter.printline()
 
