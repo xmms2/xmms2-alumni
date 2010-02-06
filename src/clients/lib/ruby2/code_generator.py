@@ -108,12 +108,11 @@ def emit_method_code(object, method, name_prefix):
 		Indenter.printline('message.command_id = 33')
 		Indenter.printline('message.write_int %i' % method.id)
 
-	if arguments:
-		print
-
-	for a in arguments:
-		Indenter.printline('Value.serialize(%s, message)' % a.name)
-
+	Indenter.printline()
+	s = ', '.join(a.name for a in arguments)
+	Indenter.printline('args = [%s]' % s)
+	Indenter.printline()
+	Indenter.printline('Value.serialize(args, message)')
 	Indenter.printline()
 
 	if name_prefix == 'signal_':
