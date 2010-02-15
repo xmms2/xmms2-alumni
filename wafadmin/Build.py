@@ -62,7 +62,8 @@ def group_method(fun):
 			m = k[0].task_manager
 			if not m.groups: m.add_group()
 			m.groups[m.current_group].post_funs.append((fun, k, kw))
-			kw['cwd'] = k[0].path
+			if not 'cwd' in kw:
+				kw['cwd'] = k[0].path
 		else:
 			fun(*k, **kw)
 	return f
@@ -316,6 +317,9 @@ class BuildContext(Utils.Context):
 				except OSError: pass
 
 	def new_task_gen(self, *k, **kw):
+		if self.task_gen_cache_names:
+			self.task_gen_cache_names = {}
+
 		kw['bld'] = self
 		if len(k) == 0:
 			ret = TaskGen.task_gen(*k, **kw)
@@ -329,6 +333,9 @@ class BuildContext(Utils.Context):
 		return ret
 
 	def __call__(self, *k, **kw):
+		if self.task_gen_cache_names:
+			self.task_gen_cache_names = {}
+
 		kw['bld'] = self
 		return TaskGen.task_gen(*k, **kw)
 
@@ -388,7 +395,7 @@ class BuildContext(Utils.Context):
 				lstvariants.append(env.variant())
 		self.lst_variants = lstvariants
 
-		debug('build: list of variants is %r' % lstvariants)
+		debug('build: list of variants is %r', lstvariants)
 
 		for name in lstvariants+[0]:
 			for v in 'node_sigs cache_node_abspath'.split():
@@ -422,7 +429,7 @@ class BuildContext(Utils.Context):
 
 		if not self.srcnode:
 			self.srcnode = self.root.ensure_dir_node_from_path(srcdir)
-		debug('build: srcnode is %s and srcdir %s' % (self.srcnode.name, srcdir))
+		debug('build: srcnode is %s and srcdir %s', self.srcnode.name, srcdir)
 
 		self.path = self.srcnode
 
@@ -502,24 +509,30 @@ class BuildContext(Utils.Context):
 		lst.reverse()
 
 		# list the files in the build dirs
-		# remove the existing timestamps if the build files are removed
-		for variant in self.lst_variants:
-			sub_path = os.path.join(self.bldnode.abspath(), variant , *lst)
-			try:
+		try:
+			for variant in self.lst_variants:
+				sub_path = os.path.join(self.bldnode.abspath(), variant , *lst)
 				self.listdir_bld(src_dir_node, sub_path, variant)
-			except OSError:
-				#debug('build: osError on ' + sub_path)
-				# listdir failed, remove all sigs of nodes
-				# TODO more things to remove?
-				dict = self.node_sigs[variant]
-				for node in src_dir_node.childs.values():
-					if node.id in dict:
+		except OSError:
+
+			# listdir failed, remove the build node signatures for all variants
+			for node in src_dir_node.childs.values():
+				if node.id & 3 != Node.BUILD:
+					continue
+
+				for dct in self.node_sigs:
+					if node.id in dct:
 						dict.__delitem__(node.id)
 
-					# avoid deleting the build dir node
-					if node.id != self.bldnode.id:
-						src_dir_node.childs.__delitem__(node.name)
-				os.makedirs(sub_path)
+				# the policy is to avoid removing nodes representing directories
+				src_dir_node.childs.__delitem__(node.name)
+
+			for variant in self.lst_variants:
+				sub_path = os.path.join(self.bldnode.abspath(), variant , *lst)
+				try:
+					os.makedirs(sub_path)
+				except OSError:
+					pass
 
 	# ======================================= #
 	def listdir_src(self, parent_node):
@@ -603,7 +616,7 @@ class BuildContext(Utils.Context):
 
 		lst = [str(env[a]) for a in vars_lst]
 		ret = Utils.h_list(lst)
-		debug("envhash: %r %r" % (ret, lst))
+		debug('envhash: %r %r', ret, lst)
 
 		# next time
 		self.cache_sig_vars[idx] = ret
@@ -773,6 +786,7 @@ class BuildContext(Utils.Context):
 						Logs.warn('could not remove %s (error code %r)' % (e.filename, e.errno))
 			return True
 
+	red = re.compile(r"^([A-Za-z]:)?[/\\\\]*")
 	def get_install_path(self, path, env=None):
 		"installation path prefixed by the destdir, the variables like in '${PREFIX}/bin' are substituted"
 		if not env: env = self.env
@@ -780,7 +794,7 @@ class BuildContext(Utils.Context):
 		path = path.replace('/', os.sep)
 		destpath = Utils.subst_vars(path, env)
 		if destdir:
-			destpath = os.path.join(destdir, destpath.lstrip(os.sep))
+			destpath = os.path.join(destdir, self.red.sub('', destpath))
 		return destpath
 
 	def install_files(self, path, files, env=None, chmod=O644, relative_trick=False, cwd=None):
@@ -914,7 +928,7 @@ class BuildContext(Utils.Context):
 
 	def exec_command(self, cmd, **kw):
 		# 'runner' zone is printed out for waf -v, see wafadmin/Options.py
-		debug('runner: system command -> %s' % cmd)
+		debug('runner: system command -> %s', cmd)
 		if self.log:
 			self.log.write('%s\n' % cmd)
 			kw['log'] = self.log

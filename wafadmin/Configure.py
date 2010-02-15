@@ -157,6 +157,7 @@ class ConfigurationContext(Utils.Context):
 		for tool in tools:
 			tool = tool.replace('++', 'xx')
 			if tool == 'java': tool = 'javaw'
+			if tool.lower() == 'unittest': tool = 'unittestw'
 			# avoid loading the same tool more than once with the same functions
 			# used by composite projects
 
@@ -246,7 +247,7 @@ class ConfigurationContext(Utils.Context):
 		sr = 'Checking for %s %s' % (th, msg)
 		self.check_message_1(sr)
 		p = self.check_message_2
-		if state: p('ok ' + option)
+		if state: p('ok ' + str(option))
 		else: p('not found', 'YELLOW')
 
 	# FIXME remove in waf 1.6

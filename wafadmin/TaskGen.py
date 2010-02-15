@@ -196,13 +196,13 @@ class task_gen(object):
 		self.meths = out
 
 		# then we run the methods in order
-		debug('task_gen: posting %s %d' % (self, id(self)))
+		debug('task_gen: posting %s %d', self, id(self))
 		for x in out:
 			try:
 				v = getattr(self, x)
 			except AttributeError:
 				raise Utils.WafError("tried to retrieve %s which is not a valid method" % x)
-			debug('task_gen: -> %s (%d)' % (x, id(self)))
+			debug('task_gen: -> %s (%d)', x, id(self))
 			v()
 
 	def post(self):
@@ -217,7 +217,7 @@ class task_gen(object):
 			#error("OBJECT ALREADY POSTED" + str( self))
 			return
 		self.apply()
-		debug('task_gen: posted %s' % self.name)
+		debug('task_gen: posted %s', self.name)
 		self.posted = True
 
 	def get_hook(self, ext):
@@ -342,7 +342,7 @@ def declare_order(*k):
 		if not f1 in task_gen.prec[f2]:
 			task_gen.prec[f2].append(f1)
 
-def declare_chain(name='', action='', ext_in='', ext_out='', reentrant=1, color='BLUE',
+def declare_chain(name='', action='', ext_in='', ext_out='', reentrant=True, color='BLUE',
 	install=0, before=[], after=[], decider=None, rule=None, scan=None):
 	"""
 	see Tools/flex.py for an example
@@ -363,7 +363,7 @@ def declare_chain(name='', action='', ext_in='', ext_out='', reentrant=1, color=
 	def x_file(self, node):
 		if decider:
 			ext = decider(self, node)
-		elif isinstance(ext_out, str):
+		else:
 			ext = ext_out
 
 		if isinstance(ext, str):
@@ -373,7 +373,7 @@ def declare_chain(name='', action='', ext_in='', ext_out='', reentrant=1, color=
 		elif isinstance(ext, list):
 			out_source = [node.change_ext(x) for x in ext]
 			if reentrant:
-				for i in xrange(reentrant):
+				for i in xrange((reentrant is True) and len(out_source) or reentrant):
 					self.allnodes.append(out_source[i])
 		else:
 			# XXX: useless: it will fail on Utils.to_list above...
@@ -503,6 +503,8 @@ def exec_rule(self):
 
 	# create the task class
 	name = getattr(self, 'name', None) or self.target or self.rule
+	if not isinstance(name, str):
+		name = str(self.idx)
 	cls = Task.task_type_from_func(name, func, vars)
 
 	# now create one instance
