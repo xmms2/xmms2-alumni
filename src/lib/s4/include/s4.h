@@ -69,6 +69,7 @@ void s4_set_free (s4_set_t *set);
 int s4_set_size (s4_set_t *set);
 s4_set_t *s4_set_intersection (s4_set_t *a, s4_set_t *b);
 s4_set_t *s4_set_union (s4_set_t *a, s4_set_t *b);
+s4_set_t *s4_set_complement (s4_set_t *a, s4_set_t *b);
 s4_entry_t *s4_set_get (s4_set_t *set, int index);
 s4_entry_t *s4_set_next (s4_set_t *set);
 void s4_set_reset (s4_set_t *set);
