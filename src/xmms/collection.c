@@ -716,7 +716,7 @@ xmms_collection_client_rename (xmms_coll_dag_t *dag, const gchar *from_name,
 /* Helper function for the xmms_collection_query_* functions.
  * Returns a list with lim_len entries starting at lim_start.
  */
-GList*
+static GList*
 limit_list (GList *list, guint lim_start, guint lim_len)
 {
 	GList *ret = list, *tmp;
