@@ -16,6 +16,13 @@
  * @{
  */
 
+static s4_set_t *universe (s4_t *s4) {
+	s4_entry_t *entry = s4_entry_get_s (s4, "type", "song");
+	s4_set_t *ret = s4_entry_contained (s4, entry);
+	s4_entry_free (entry);
+	return ret;
+}
+
 static int is_int (const char *str, int *val)
 {
 	int ret = 0;
@@ -87,6 +94,20 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			}
 			break;
 
+		case XMMS_COLLECTION_TYPE_COMPLEMENT:
+			if (xmmsv_list_iter_valid (it)) {
+				xmmsv_list_iter_entry (it, &v);
+				xmmsv_get_coll (v, &c);
+				sa = s4_query (s4, dag, c);
+			} else {
+				sa = NULL;
+			}
+			sb = universe (s4);
+			ret = s4_set_complement (sa, sb);
+			s4_set_free (sa);
+			s4_set_free (sb);
+			break;
+
 		case XMMS_COLLECTION_TYPE_EQUALS:
 			xmmsv_coll_attribute_get (coll, "field", &key);
 			xmmsv_coll_attribute_get (coll, "value", &val);
@@ -155,9 +176,7 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			xmmsv_coll_attribute_get (coll, "namespace", &val);
 
 			if (key != NULL && strcmp (key, "All Media") == 0) {
-				entry = s4_entry_get_s (s4, "type", "song");
-				ret = s4_entry_contained (s4, entry);
-				s4_entry_free (entry);
+				ret = universe (s4);
 			} else {
 				c = xmms_collection_get_pointer (dag, key,
 						xmms_collection_get_namespace_id (val));
@@ -182,6 +201,29 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 
 				s4_set_insert (ret, &entry);
 			}
+			break;
+
+		case XMMS_COLLECTION_TYPE_HAS:
+			xmmsv_coll_attribute_get (coll, "field", &key);
+			entry = s4_entry_get_i (s4, key, INT32_MIN);
+			s4_entry_fillin (s4, entry);
+
+			/* Find all integer entries with key=key and values greater
+			 * than INT32_MIN.
+			 */
+			sa = s4_entry_greater (s4, entry);
+
+			/* Integer entries has a negative key_i, we make it positive
+			 * and search for all string entries with key=key and values
+			 * greater than INT32_MIN.
+			 */
+			entry->key_i = -entry->key_i;
+			sb = s4_entry_greater (s4, entry);
+
+			ret = s4_set_union (sa, sb);
+			s4_set_free (sa);
+			s4_set_free (sb);
+
 			break;
 
 		default:
