@@ -79,22 +79,22 @@ typedef void (*xmms_object_cmd_func_t) (xmms_object_t *object, xmms_object_cmd_a
 
 void xmms_object_cleanup (xmms_object_t *object);
 
-void xmms_object_connect (xmms_object_t *object, guint32 signalid,
+void xmms_object_connect (xmms_object_t *object, const char *signal_name,
 			  xmms_object_handler_t handler, gpointer userdata);
 
-void xmms_object_disconnect (xmms_object_t *object, guint32 signalid,
+void xmms_object_disconnect (xmms_object_t *object, const char *signal_name,
 			     xmms_object_handler_t handler, gpointer userdata);
 
-void xmms_object_emit (xmms_object_t *object, guint32 signalid, xmmsv_t *data);
+void xmms_object_emit (xmms_object_t *object, const char *signal_name, xmmsv_t *data);
 
-void xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
+void xmms_object_emit_f (xmms_object_t *object, const char *signal_name,
 			 xmmsv_type_t type, ...);
 
 void xmms_object_cmd_arg_init (xmms_object_cmd_arg_t *arg);
 
-void xmms_object_cmd_add (xmms_object_t *object, guint cmdid, const xmms_object_cmd_func_t desc);
+void xmms_object_cmd_add (xmms_object_t *object, const char *command_name, const xmms_object_cmd_func_t desc);
 
-void xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_arg_t *arg);
+void xmms_object_cmd_call (xmms_object_t *object, const char *command_name, xmms_object_cmd_arg_t *arg);
 
 
 void __int_xmms_object_unref (xmms_object_t *object);

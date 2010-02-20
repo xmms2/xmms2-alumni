@@ -10,6 +10,6 @@ void xmms_ipc_shutdown (void);
 void on_config_ipcsocket_change (xmms_object_t *object, xmmsv_t *data, gpointer udata);
 gboolean xmms_ipc_setup_server (const gchar *path);
 
-gboolean xmms_ipc_has_pending (guint signalid);
+gboolean xmms_ipc_has_pending (const gchar *signal_name);
 
 #endif

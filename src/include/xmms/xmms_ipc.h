@@ -22,12 +22,12 @@
 
 G_BEGIN_DECLS
 
-void xmms_ipc_object_register (xmms_ipc_objects_t objectid, xmms_object_t *object);
-void xmms_ipc_object_unregister (xmms_ipc_objects_t objectid);
-void xmms_ipc_broadcast_register (xmms_object_t *object, xmms_ipc_signals_t signalid);
-void xmms_ipc_broadcast_unregister (xmms_ipc_signals_t signalid);
-void xmms_ipc_signal_register (xmms_object_t *object, xmms_ipc_signals_t signalid);
-void xmms_ipc_signal_unregister (xmms_ipc_signals_t signalid);
+void xmms_ipc_object_register (const char *object_name, xmms_object_t *object);
+void xmms_ipc_object_unregister (const char *object_name);
+void xmms_ipc_broadcast_register (xmms_object_t *object, const gchar *signal_name);
+void xmms_ipc_broadcast_unregister (const char *broadcast_name);
+void xmms_ipc_signal_register (xmms_object_t *object, const char *signal_name);
+void xmms_ipc_signal_unregister (const char *signal_name);
 
 G_END_DECLS
 

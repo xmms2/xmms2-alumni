@@ -39,7 +39,7 @@ void xmms_ipc_msg_set_cookie (xmms_ipc_msg_t *msg, uint32_t cookie);
 void xmms_ipc_msg_set_cmd (xmms_ipc_msg_t *msg, uint32_t cmd);
 void xmms_ipc_msg_set_object (xmms_ipc_msg_t *msg, uint32_t object);
 
-xmms_ipc_msg_t *xmms_ipc_msg_new (uint32_t object, uint32_t cmd);
+xmms_ipc_msg_t *xmms_ipc_msg_new (void);
 xmms_ipc_msg_t * xmms_ipc_msg_alloc (void);
 void xmms_ipc_msg_destroy (xmms_ipc_msg_t *msg);
 

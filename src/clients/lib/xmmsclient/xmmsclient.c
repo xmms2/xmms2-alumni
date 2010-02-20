@@ -38,6 +38,11 @@
 
 static void xmmsc_deinit (xmmsc_connection_t *c);
 
+static xmms_ipc_msg_t *xmmsc_build_message (const char *object_name, const char *method_name, xmmsv_t *first_arg, va_list ap);
+static xmmsc_result_t *xmmsc_send_msg (xmmsc_connection_t *c, xmms_ipc_msg_t *msg, xmmsc_result_type_t type);
+static xmmsc_result_t *xmmsc_send_signal_cmd (xmmsc_connection_t *c, xmmsv_t *first_arg, ...);
+static xmmsc_result_t *xmmsc_send_broadcast_cmd (xmmsc_connection_t *c, xmmsv_t *first_arg, ...);
+
 /*
  * Public methods
  */
@@ -348,25 +353,31 @@ xmmsc_write_msg_to_ipc (xmmsc_connection_t *c, xmms_ipc_msg_t *msg)
 }
 
 xmmsc_result_t *
-xmmsc_send_broadcast_msg (xmmsc_connection_t *c, int signalid)
+xmmsc_send_broadcast_msg (xmmsc_connection_t *c, const char *broadcast_name)
 {
-	return xmmsc_send_cmd (c, XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_BROADCAST,
-	                       XMMSV_LIST_ENTRY_INT (signalid),
-	                       XMMSV_LIST_END);
+	return xmmsc_send_broadcast_cmd (c, XMMSV_LIST_ENTRY_STR (broadcast_name),
+	                                 XMMSV_LIST_END);
 }
 
 
 uint32_t
-xmmsc_write_signal_msg (xmmsc_connection_t *c, int signalid)
+xmmsc_write_signal_msg (xmmsc_connection_t *c, const char *signal_name)
 {
 	xmms_ipc_msg_t *msg;
-	xmmsv_t *args;
+	xmmsv_t *args, *extra;
 	uint32_t cookie;
 
-	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_SIGNAL);
+	msg = xmms_ipc_msg_new ();
 
-	args = xmmsv_build_list (XMMSV_LIST_ENTRY_INT (signalid),
-	                         XMMSV_LIST_END);
+	extra = xmmsv_build_list (XMMSV_LIST_ENTRY_STR (signal_name),
+	                          XMMSV_LIST_END);
+
+	args = xmmsv_new_dict ();
+
+	xmmsv_dict_set_string (args, XMMS_IPC_OBJECT_KEY, XMMS_IPC_OBJECT_SIGNAL);
+	xmmsv_dict_set_string (args, XMMS_IPC_METHOD_KEY, XMMS_IPC_CMD_SIGNAL);
+	xmmsv_dict_set (args, XMMS_IPC_ARGUMENTS_KEY, extra);
+	xmmsv_unref (extra);
 
 	xmms_ipc_msg_put_value (msg, args);
 	xmmsv_unref (args);
@@ -377,28 +388,37 @@ xmmsc_write_signal_msg (xmmsc_connection_t *c, int signalid)
 }
 
 xmmsc_result_t *
-xmmsc_send_signal_msg (xmmsc_connection_t *c, int signalid)
+xmmsc_send_signal_msg (xmmsc_connection_t *c, const char *signal_name)
 {
 	xmmsc_result_t *res;
 
-	res = xmmsc_send_cmd (c, XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_SIGNAL,
-	                      XMMSV_LIST_ENTRY_INT (signalid), XMMSV_LIST_END);
+	res = xmmsc_send_signal_cmd (c, XMMSV_LIST_ENTRY_STR (signal_name),
+	                             XMMSV_LIST_END);
 
-	xmmsc_result_restartable (res, signalid);
+	xmmsc_result_restartable (res, signal_name);
 
 	return res;
 }
 
 xmmsc_result_t *
-xmmsc_send_msg_no_arg (xmmsc_connection_t *c, int object, int method)
+xmmsc_send_msg_no_arg (xmmsc_connection_t *c, const char *object_name,
+                       const char *method_name)
 {
 	uint32_t cookie;
 	xmms_ipc_msg_t *msg;
-	xmmsv_t *args;
+	xmmsv_t *args, *extra;
 
-	msg = xmms_ipc_msg_new (object, method);
+	msg = xmms_ipc_msg_new ();
 
-	args = xmmsv_new_list ();
+	extra = xmmsv_new_list ();
+
+	args = xmmsv_new_dict ();
+
+	xmmsv_dict_set_string (args, XMMS_IPC_OBJECT_KEY, object_name);
+	xmmsv_dict_set_string (args, XMMS_IPC_METHOD_KEY, method_name);
+	xmmsv_dict_set (args, XMMS_IPC_ARGUMENTS_KEY, extra);
+	xmmsv_unref (extra);
+
 	xmms_ipc_msg_put_value (msg, args);
 	xmmsv_unref (args);
 
@@ -407,44 +427,84 @@ xmmsc_send_msg_no_arg (xmmsc_connection_t *c, int object, int method)
 	return xmmsc_result_new (c, XMMSC_RESULT_CLASS_DEFAULT, cookie);
 }
 
-xmmsc_result_t *
-xmmsc_send_msg (xmmsc_connection_t *c, xmms_ipc_msg_t *msg)
+static xmmsc_result_t *
+xmmsc_send_msg (xmmsc_connection_t *c, xmms_ipc_msg_t *msg,
+                xmmsc_result_type_t type)
 {
 	uint32_t cookie;
-	xmmsc_result_type_t type;
 
 	cookie = xmmsc_write_msg_to_ipc (c, msg);
-
-	type = XMMSC_RESULT_CLASS_DEFAULT;
-	if (xmms_ipc_msg_get_object (msg) == XMMS_IPC_OBJECT_SIGNAL) {
-		if (xmms_ipc_msg_get_cmd (msg) == XMMS_IPC_CMD_SIGNAL) {
-			type = XMMSC_RESULT_CLASS_SIGNAL;
-		} else if (xmms_ipc_msg_get_cmd (msg) == XMMS_IPC_CMD_BROADCAST) {
-			type = XMMSC_RESULT_CLASS_BROADCAST;
-		}
-	}
 
 	return xmmsc_result_new (c, type, cookie);
 }
 
-xmmsc_result_t *
-xmmsc_send_cmd (xmmsc_connection_t *c, int obj, int cmd,
-                xmmsv_t *first_arg, ...)
+static xmms_ipc_msg_t *
+xmmsc_build_message (const char *object_name, const char *method_name,
+                     xmmsv_t *first_arg, va_list ap)
 {
 	xmms_ipc_msg_t *msg;
-	xmmsv_t *args;
-	va_list ap;
+	xmmsv_t *args, *extra;
 
-	msg = xmms_ipc_msg_new (obj, cmd);
+	msg = xmms_ipc_msg_new ();
 
-	va_start (ap, first_arg);
-	args = xmmsv_build_list_va (first_arg, ap);
-	va_end (ap);
+	args = xmmsv_new_dict ();
+
+	xmmsv_dict_set_string (args, XMMS_IPC_OBJECT_KEY, object_name);
+	xmmsv_dict_set_string (args, XMMS_IPC_METHOD_KEY, method_name);
+
+	extra = xmmsv_build_list_va (first_arg, ap);
+	xmmsv_dict_set (args, XMMS_IPC_ARGUMENTS_KEY, extra);
+	xmmsv_unref (extra);
 
 	xmms_ipc_msg_put_value (msg, args);
 	xmmsv_unref (args);
 
-	return xmmsc_send_msg (c, msg);
+	return msg;
+}
+
+xmmsc_result_t *
+xmmsc_send_cmd (xmmsc_connection_t *c, const char *object_name,
+                const char *method_name, xmmsv_t *first_arg, ...)
+{
+	xmms_ipc_msg_t *msg;
+	va_list ap;
+
+	va_start (ap, first_arg);
+	msg = xmmsc_build_message (object_name, method_name, first_arg, ap);
+	va_end (ap);
+
+	return xmmsc_send_msg (c, msg, XMMSC_RESULT_CLASS_DEFAULT);
+}
+
+static xmmsc_result_t *
+xmmsc_send_signal_cmd (xmmsc_connection_t *c, xmmsv_t *first_arg, ...)
+{
+	xmms_ipc_msg_t *msg;
+	xmmsv_t *args, *extra;
+	va_list ap;
+
+	va_start (ap, first_arg);
+	msg = xmmsc_build_message (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_SIGNAL,
+	                           first_arg, ap);
+	va_end (ap);
+
+	return xmmsc_send_msg (c, msg, XMMSC_RESULT_CLASS_SIGNAL);
+}
+
+
+static xmmsc_result_t *
+xmmsc_send_broadcast_cmd (xmmsc_connection_t *c, xmmsv_t *first_arg, ...)
+{
+	xmms_ipc_msg_t *msg;
+	xmmsv_t *args, *extra;
+	va_list ap;
+
+	va_start (ap, first_arg);
+	msg = xmmsc_build_message (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_BROADCAST,
+	                           first_arg, ap);
+	va_end (ap);
+
+	return xmmsc_send_msg (c, msg, XMMSC_RESULT_CLASS_BROADCAST);
 }
 
 /**

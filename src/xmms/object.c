@@ -88,15 +88,7 @@ xmms_object_cleanup (xmms_object_t *object)
 static gint
 compare_signal_key (gconstpointer a, gconstpointer b)
 {
-	gint aa = GPOINTER_TO_INT (a);
-	gint bb = GPOINTER_TO_INT (b);
-
-	if (aa < bb)
-		return -1;
-	else if (aa > bb)
-		return 1;
-	else
-		return 0;
+	return strcmp (a, b);
 }
 
 /**
@@ -107,16 +99,17 @@ compare_signal_key (gconstpointer a, gconstpointer b)
   * @todo fix the need for a unique handler adress?
   *
   * @param object the object that will emit the signal
-  * @param signalid the signalid to connect to @sa signal_xmms.h
+  * @param signal_name the signal to connect to @sa signal_xmms.h
   * @param handler the Callback function to be called when signal is emited.
   * @param userdata data to the callback function
   */
 
 void
-xmms_object_connect (xmms_object_t *object, guint32 signalid,
+xmms_object_connect (xmms_object_t *object, const char *signal_name,
                      xmms_object_handler_t handler, gpointer userdata)
 {
 	GList *list = NULL;
+
 	xmms_object_handler_entry_t *entry;
 
 	g_return_if_fail (object);
@@ -130,13 +123,12 @@ xmms_object_connect (xmms_object_t *object, guint32 signalid,
 	if (!object->signals)
 		object->signals = g_tree_new (compare_signal_key);
 	else
-		list = g_tree_lookup (object->signals,
-		                      GINT_TO_POINTER (signalid));
+		list = g_tree_lookup (object->signals, signal_name);
 
 	list = g_list_prepend (list, entry);
 
 	/* store the list's new head in the tree */
-	g_tree_insert (object->signals, GINT_TO_POINTER (signalid), list);
+	g_tree_insert (object->signals, (gpointer) signal_name, list);
 }
 
 /**
@@ -144,7 +136,7 @@ xmms_object_connect (xmms_object_t *object, guint32 signalid,
   */
 
 void
-xmms_object_disconnect (xmms_object_t *object, guint32 signalid,
+xmms_object_disconnect (xmms_object_t *object, const char *signal_name,
                         xmms_object_handler_t handler, gpointer userdata)
 {
 	GList *list, *node = NULL;
@@ -157,8 +149,7 @@ xmms_object_disconnect (xmms_object_t *object, guint32 signalid,
 	g_mutex_lock (object->mutex);
 
 	if (object->signals) {
-		list = g_tree_lookup (object->signals,
-		                      GINT_TO_POINTER (signalid));
+		list = g_tree_lookup (object->signals, signal_name);
 
 		for (node = list; node; node = g_list_next (node)) {
 			entry = node->data;
@@ -171,8 +162,7 @@ xmms_object_disconnect (xmms_object_t *object, guint32 signalid,
 			list = g_list_remove_link (list, node);
 
 			/* store the list's new head in the tree */
-			g_tree_insert (object->signals,
-			               GINT_TO_POINTER (signalid), list);
+			g_tree_insert (object->signals, (gpointer) signal_name, list);
 		}
 	}
 
@@ -188,12 +178,13 @@ xmms_object_disconnect (xmms_object_t *object, guint32 signalid,
   * Emit a signal and thus call all the handlers that are connected.
   *
   * @param object the object to signal on.
-  * @param signalid the signalid to emit
+  * @param signal_name the signal to emit
   * @param data the data that should be sent to the handler.
   */
 
 void
-xmms_object_emit (xmms_object_t *object, guint32 signalid, xmmsv_t *data)
+xmms_object_emit (xmms_object_t *object, const char *signal_name,
+                  xmmsv_t *data)
 {
 	GList *list, *node, *list2 = NULL;
 	xmms_object_handler_entry_t *entry;
@@ -204,8 +195,7 @@ xmms_object_emit (xmms_object_t *object, guint32 signalid, xmmsv_t *data)
 	g_mutex_lock (object->mutex);
 
 	if (object->signals) {
-		list = g_tree_lookup (object->signals,
-		                      GINT_TO_POINTER (signalid));
+		list = g_tree_lookup (object->signals, signal_name);
 
 		for (node = list; node; node = g_list_next (node)) {
 			entry = node->data;
@@ -248,13 +238,13 @@ xmms_object_cmd_arg_init (xmms_object_cmd_arg_t *arg)
  * Use this when you creating non-complex signal arguments.
  *
  * @param object Object to signal on.
- * @param signalid Signal to emit.
+ * @param signal_name Signal to emit.
  * @param type the argument type to emit followed by the argument data.
  *
  */
 
 void
-xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
+xmms_object_emit_f (xmms_object_t *object, const char *signal_name,
                     xmmsv_type_t type, ...)
 {
 	va_list ap;
@@ -283,7 +273,7 @@ xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
 	}
 	va_end (ap);
 
-	xmms_object_emit (object, signalid, arg);
+	xmms_object_emit (object, signal_name, arg);
 
 	/* In all cases above, we created a new xmmsv_t, which we
 	 * now destroy.
@@ -299,26 +289,18 @@ xmms_object_emit_f (xmms_object_t *object, guint32 signalid,
 static gint
 compare_cmd_key (gconstpointer a, gconstpointer b)
 {
-	guint aa = GPOINTER_TO_INT (a);
-	guint bb = GPOINTER_TO_INT (b);
-
-	if (aa < bb)
-		return -1;
-	else if (aa > bb)
-		return 1;
-	else
-		return 0;
+	return strcmp (a, b);
 }
 
 /**
   * Add a command that could be called from the client API to a object.
   *
   * @param object The object that should have the method.
-  * @param cmdid A command id.
+  * @param command_name The command's name.
   * @param desc A command description.
   */
 void
-xmms_object_cmd_add (xmms_object_t *object, guint cmdid,
+xmms_object_cmd_add (xmms_object_t *object, const char *command_name,
                      const xmms_object_cmd_func_t func)
 {
 	g_return_if_fail (object);
@@ -327,8 +309,7 @@ xmms_object_cmd_add (xmms_object_t *object, guint cmdid,
 	if (!object->cmds)
 		object->cmds = g_tree_new (compare_cmd_key);
 
-	g_tree_insert (object->cmds, GUINT_TO_POINTER (cmdid),
-	               (gpointer) func);
+	g_tree_insert (object->cmds, command_name, (gpointer) func);
 }
 
 /**
@@ -336,14 +317,15 @@ xmms_object_cmd_add (xmms_object_t *object, guint cmdid,
   */
 
 void
-xmms_object_cmd_call (xmms_object_t *object, guint cmdid, xmms_object_cmd_arg_t *arg)
+xmms_object_cmd_call (xmms_object_t *object, const char *command_name,
+                      xmms_object_cmd_arg_t *arg)
 {
 	xmms_object_cmd_func_t func;
 
 	g_return_if_fail (object);
 
 	if (object->cmds) {
-		func = g_tree_lookup (object->cmds, GUINT_TO_POINTER (cmdid));
+		func = g_tree_lookup (object->cmds, command_name);
 
 		if (func)
 			func (object, arg);

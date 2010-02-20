@@ -58,7 +58,7 @@ def build(object_name, c_type):
 			Indenter.printline('xmms_%s_register_ipc_commands (xmms_object_t *%s_object)' % (object.name, object.name))
 			Indenter.enter('{')
 
-			Indenter.printline('xmms_ipc_object_register (%i, %s_object);' % (object.id, object.name))
+			Indenter.printline('xmms_ipc_object_register ("%s", %s_object);' % (object.name, object.name))
 			Indenter.printline()
 
 			for method in object.methods:
@@ -67,12 +67,12 @@ def build(object_name, c_type):
 			Indenter.printline()
 
 			for broadcast in object.broadcasts:
-				Indenter.printline('xmms_ipc_broadcast_register (%s_object, %i);' % (object.name, broadcast.id))
+				Indenter.printline('xmms_ipc_broadcast_register (%s_object, "%s");' % (object.name, broadcast.name))
 
 			Indenter.printline()
 
 			for signal in object.signals:
-				Indenter.printline('xmms_ipc_signal_register (%s_object, %i);' % (object.name, signal.id))
+				Indenter.printline('xmms_ipc_signal_register (%s_object, "%s");' % (object.name, signal.name))
 
 			Indenter.leave('}')
 
@@ -82,15 +82,15 @@ def build(object_name, c_type):
 			Indenter.enter('{')
 
 			for broadcast in object.broadcasts:
-				Indenter.printline('xmms_ipc_broadcast_unregister (%i);' % broadcast.id)
+				Indenter.printline('xmms_ipc_broadcast_unregister ("%s");' % broadcast.name)
 
 			Indenter.printline()
 
 			for signal in object.signals:
-				Indenter.printline('xmms_ipc_signal_unregister (%i);' % signal.id)
+				Indenter.printline('xmms_ipc_signal_unregister ("%s");' % signal.name)
 
 			Indenter.printline()
-			Indenter.printline('xmms_ipc_object_unregister (%i);' % object.id)
+			Indenter.printline('xmms_ipc_object_unregister ("%s");' % object.name)
 			Indenter.leave('}')
 
 def method_name_to_cname(n):
@@ -161,4 +161,4 @@ def emit_method_define_code(object, method, c_type):
 
 
 def emit_method_add_code(object, method):
-	Indenter.printline('xmms_object_cmd_add (%s_object, %i, %s);' % (object.name, method.id, method_name_to_cname (method.name)))
+	Indenter.printline('xmms_object_cmd_add (%s_object, "%s", %s);' % (object.name, method.name, method_name_to_cname (method.name)))

@@ -106,16 +106,9 @@ xmms_ipc_msg_alloc (void)
 }
 
 xmms_ipc_msg_t *
-xmms_ipc_msg_new (uint32_t object, uint32_t cmd)
+xmms_ipc_msg_new (void)
 {
-	xmms_ipc_msg_t *msg;
-
-	msg = xmms_ipc_msg_alloc ();
-
-	xmms_ipc_msg_set_cmd (msg, cmd);
-	xmms_ipc_msg_set_object (msg, object);
-
-	return msg;
+	return xmms_ipc_msg_alloc ();
 }
 
 void

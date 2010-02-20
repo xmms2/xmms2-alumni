@@ -277,7 +277,7 @@ xmms_main_destroy (xmms_object_t *object)
 	xmms_object_cmd_arg_init (&arg);
 	arg.args = xmmsv_new_list ();
 	xmms_object_cmd_call (XMMS_OBJECT (mainobj->output),
-	                      XMMS_IPC_CMD_STOP, &arg);
+	                      "stop", &arg);
 	xmmsv_unref (arg.args);
 
 	g_usleep (G_USEC_PER_SEC); /* wait for the output thread to end */

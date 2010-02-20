@@ -58,7 +58,7 @@ struct xmmsc_result_St {
 	bool parsed;
 
 	uint32_t cookie;
-	uint32_t restart_signal;
+	const char *restart_signal;
 
 	xmmsv_t *data;
 
@@ -209,33 +209,46 @@ xmmsc_result_restart (xmmsc_result_t *res)
 static bool
 xmmsc_result_parse_msg (xmmsc_result_t *res, xmms_ipc_msg_t *msg)
 {
-	if (xmms_ipc_msg_get_cmd (msg) == XMMS_IPC_CMD_ERROR) {
+	xmmsv_t *payload;
+	const char *method_name = NULL;
+	bool success;
+
+	if (!xmms_ipc_msg_get_value (msg, &payload)) {
+		xmmsc_result_seterror (res, "No value?");
+		return false;
+	}
+
+	xmmsv_dict_entry_get_string (payload, XMMS_IPC_METHOD_KEY, &method_name);
+
+	if (!strcmp (method_name, XMMS_IPC_ERROR_KEY)) {
 		/* If special error msg, extract the error and save in result */
 		char *errstr;
 		xmmsv_t *error;
 
-		if (!xmms_ipc_msg_get_value (msg, &error)) {
+		if (!xmmsv_dict_get (payload, XMMS_IPC_RESULT_KEY, &error)) {
 			xmmsc_result_seterror (res, "No error value!");
+		} else if (!xmmsv_get_error (error, &errstr)) {
+			xmmsc_result_seterror (res, "No error message!");
 		} else {
-			if (!xmmsv_get_error (error, &errstr)) {
-				xmmsc_result_seterror (res, "No error message!");
-			} else {
-				xmmsc_result_seterror (res, errstr);
-			}
-
-			xmmsv_unref (error);
+			xmmsc_result_seterror (res, errstr);
 		}
 
 		res->parsed = true;
-		return true;
-	} else if (xmms_ipc_msg_get_value (msg, &res->data)) {
+		success = true;
+	} else if (xmmsv_dict_get (payload, XMMS_IPC_RESULT_KEY, &res->data)) {
+		xmmsv_ref (res->data);
+
 		/* Expected message data retrieved! */
 		res->parsed = true;
-		return true;
+		success = true;
 	} else {
 		/* FIXME: shouldn't parsed be false then? */
-		return false;
+		success = false;
 	}
+
+	xmmsv_unref (payload);
+
+	return success;
 }
 
 
@@ -398,11 +411,11 @@ xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr)
 }
 
 void
-xmmsc_result_restartable (xmmsc_result_t *res, uint32_t signalid)
+xmmsc_result_restartable (xmmsc_result_t *res, const char *signal_name)
 {
 	x_return_if_fail (res);
 
-	res->restart_signal = signalid;
+	res->restart_signal = signal_name;
 }
 
 /**

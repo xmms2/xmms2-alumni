@@ -65,18 +65,17 @@ xmmsc_result_t *xmmsc_result_new (xmmsc_connection_t *c, xmmsc_result_type_t typ
 uint32_t xmmsc_result_cookie_get (xmmsc_result_t *result);
 void xmmsc_result_run (xmmsc_result_t *res, xmms_ipc_msg_t *msg);
 
-xmmsc_result_t *xmmsc_send_cmd (xmmsc_connection_t *c, int obj, int cmd,  xmmsv_t *first_arg, ...);
-xmmsc_result_t *xmmsc_send_msg_no_arg (xmmsc_connection_t *c, int object, int cmd);
-xmmsc_result_t *xmmsc_send_msg (xmmsc_connection_t *c, xmms_ipc_msg_t *msg);
+xmmsc_result_t *xmmsc_send_cmd (xmmsc_connection_t *c, const char *object_name, const char *method_name,  xmmsv_t *first_arg, ...);
+xmmsc_result_t *xmmsc_send_msg_no_arg (xmmsc_connection_t *c, const char *object_name, const char *method_name);
 xmmsc_result_t *xmmsc_send_msg_flush (xmmsc_connection_t *c, xmms_ipc_msg_t *msg);
-xmmsc_result_t *xmmsc_send_broadcast_msg (xmmsc_connection_t *c, int signalid);
-xmmsc_result_t *xmmsc_send_signal_msg (xmmsc_connection_t *c, int signalid);
-uint32_t xmmsc_write_signal_msg (xmmsc_connection_t *c, int signalid);
+xmmsc_result_t *xmmsc_send_broadcast_msg (xmmsc_connection_t *c, const char *broadcast_name);
+xmmsc_result_t *xmmsc_send_signal_msg (xmmsc_connection_t *c, const char *signal_name);
+uint32_t xmmsc_write_signal_msg (xmmsc_connection_t *c, const char *signal_name);
 char *_xmmsc_medialib_encode_url_old (const char *url, int narg, const char **args);
 char *_xmmsc_medialib_encode_url (const char *url, xmmsv_t *args);
 int _xmmsc_medialib_verify_url (const char *url);
 
-void xmmsc_result_restartable (xmmsc_result_t *res, uint32_t signalid);
+void xmmsc_result_restartable (xmmsc_result_t *res, const char *signal_name);
 void xmmsc_result_seterror (xmmsc_result_t *res, const char *errstr);
 
 void xmmsc_result_visc_set (xmmsc_result_t *res, xmmsc_visualization_t *visc);
