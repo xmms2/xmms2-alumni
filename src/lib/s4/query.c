@@ -111,13 +111,8 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			xmmsv_coll_attribute_get (coll, "field", &key);
 			xmmsv_coll_attribute_get (coll, "value", &val);
 
-			/* Get rid of prefix and suffix *, they break the regexp */
-			char *pat = strdup (val + 1);
-			pat[strlen (pat) - 1] = '\0';
-
-			GList *tmp, *list = s4be_st_regexp (s4->be, pat);
+			GList *tmp, *list = s4be_st_regexp (s4->be, val);
 			tmp = list;
-			free (pat);
 
 			while (list != NULL) {
 				entry = s4_entry_get_s (s4, key, list->data);
