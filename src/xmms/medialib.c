@@ -106,6 +106,8 @@ xmms_medialib_destroy (xmms_object_t *object)
 	xmms_medialib_t *mlib = (xmms_medialib_t *)object;
 
 	s4_close (mlib->s4);
+
+	xmms_medialib_unregister_ipc_commands ();
 }
 
 #define XMMS_MEDIALIB_SOURCE_SERVER "server"
@@ -724,7 +726,7 @@ xmms_medialib_entry_new_encoded (const char *url, xmms_error_t *error)
 
 	g_return_val_if_fail (url, 0);
 
-	ret = xmms_medialib_client_entry_get_id (medialib, url, error);
+	ret = xmms_medialib_client_get_id (medialib, url, error);
 
 	if (ret == 0) {
 		ret = xmms_medialib_get_new_id();
