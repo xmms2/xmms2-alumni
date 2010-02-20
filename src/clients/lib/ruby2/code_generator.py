@@ -55,7 +55,7 @@ def emit_method_code(object, method, name_prefix):
 
 	# first, write documentation for this method
 	Indenter.printline('# :call-seq:')
-	Indenter.printx('#  client.%s -> result' % method_name)
+	Indenter.printx('#  client.%s.%s -> result' % (object.name, method_name))
 
 	if method.return_value:
 		print ' (payload: %s)' % method.return_value.type[0]
