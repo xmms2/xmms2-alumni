@@ -349,8 +349,6 @@ xmms_ices_write (xmms_output_t *output, gpointer buffer,
 static void
 xmms_ices_update_comment (xmms_medialib_entry_t entry, vorbis_comment *vc)
 {
-	xmms_medialib_session_t *session;
-
 	static const struct {
 		const gchar *prop;
 		const gchar *key;
