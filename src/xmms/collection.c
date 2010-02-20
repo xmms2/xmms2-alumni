@@ -851,6 +851,31 @@ combine_lists (xmmsv_t *fetch, xmmsv_t *order)
 	return values;
 }
 
+static gboolean
+identical_values (xmmsv_t *keys, xmmsv_t *dict1, xmmsv_t *dict2)
+{
+	gboolean identical = TRUE;
+	xmmsv_list_iter_t *keys_it = NULL;
+	xmmsv_t *keyval, *val1, *val2;
+	const gchar *key;
+
+	for (xmmsv_get_list_iter (keys, &keys_it);
+	     identical && xmmsv_list_iter_entry (keys_it, &keyval);
+	     xmmsv_list_iter_next (keys_it)) {
+
+		if (xmmsv_get_string (keyval, &key)) {
+			val1 = val2 = NULL;
+			xmmsv_dict_get (dict1, key, &val1);
+			xmmsv_dict_get (dict2, key, &val2);
+			if (xmms_sort_compare_values (val1, val2) != 0) {
+				identical = FALSE;
+			}
+		}
+	}
+
+	return identical;
+}
+
 GList *
 xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
                                   gint32 lim_start, gint32 lim_len, xmmsv_t *order,
@@ -909,6 +934,20 @@ xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 	values = combine_lists (fetch, order);
 	res = xmms_medialib_query_infos (dag, coll, values);
 	xmmsv_unref (values);
+
+	if (xmmsv_list_get_size (group) > 0) {
+		GList *n, *last = NULL;
+		/* the following clustering algorithm requires sorted entries */
+		res = xmms_sort_list (res, group);
+		for (n = res; n; n = n->next) {
+			/* if current clusterable with last, drop last */
+			if (last && identical_values (group, (xmmsv_t *) n->data,
+			                              (xmmsv_t *) last->data)) {
+				res = g_list_delete_link (res, last);
+			}
+			last = n;
+		}
+	}
 
 	return limit_list (xmms_sort_list (res, order), lim_start, lim_len);
 }
