@@ -230,6 +230,7 @@ int xmmsv_bitbuffer_serialize_value (xmmsv_t *bb, xmmsv_t *v);
 int xmmsv_bitbuffer_deserialize_value (xmmsv_t *bb, xmmsv_t **val);
 
 xmmsv_t *xmmsv_serialize (xmmsv_t *v);
+xmmsv_t *xmmsv_deserialize (xmmsv_t *v);
 
 #ifdef __cplusplus
 }
