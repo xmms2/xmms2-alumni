@@ -132,7 +132,7 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			xmmsv_coll_attribute_get (coll, "field", &key);
 			xmmsv_coll_attribute_get (coll, "value", &val);
 
-			GList *tmp, *list = s4be_st_regexp (s4->be, val);
+			GList *tmp, *list = s4be_st_match (s4->be, val);
 			tmp = list;
 
 			while (list != NULL) {

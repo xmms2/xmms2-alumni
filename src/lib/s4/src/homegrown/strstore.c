@@ -35,10 +35,10 @@ typedef struct str_info_St {
 	int32_t refs;
 } str_info_t;
 
-static char *collate_key (const char *key)
+static char *normalize_key (const char *key)
 {
 	char *tmp = g_utf8_casefold (key, -1);
-	char *ret = g_utf8_collate_key (tmp, -1);
+	char *ret = g_utf8_normalize (tmp, -1, G_NORMALIZE_DEFAULT);
 
 	g_free (tmp);
 
@@ -68,7 +68,7 @@ int32_t s4be_st_lookup (s4be_t *s4, const char *str)
 	int32_t ret;
 	pat_key_t key;
 
-	key.data = collate_key (str);
+	key.data = normalize_key (str);
 	key.key_len = (strlen(key.data) + 1) * 8;
 
 	be_rlock (s4);
@@ -168,6 +168,12 @@ static char *s4be_st_get_str (s4be_t *s4, int32_t node)
 
 	return ret;
 }
+static char *s4be_st_get_normalized_str (s4be_t *s4, int32_t node)
+{
+	char *ret = S4_PNT (s4, pat_node_to_key (s4, node), char);
+
+	return ret;
+}
 
 /**
  * Remove the string
@@ -182,7 +188,7 @@ int s4be_st_remove (s4be_t *s4, const char *str)
 	pat_key_t key;
 	int ret;
 
-	key.data = collate_key (str);
+	key.data = normalize_key (str);
 	key.key_len = strlen (key.data) * 8;
 
 	ret = !pat_remove (s4, S4_STRING_STORE, &key);
@@ -226,7 +232,7 @@ int s4be_st_ref (s4be_t *s4, const char *str)
 	int lena = strlen (str) + 1;
 	int lenb;
 	str_info_t *info;
-	char *data, *cstr = collate_key(str);
+	char *data, *cstr = normalize_key(str);
 
 	lenb = strlen (cstr) + 1;
 
@@ -284,7 +290,7 @@ int s4be_st_unref (s4be_t * s4, const char *str)
 
 	be_wlock (s4);
 
-	key.data = collate_key (str);
+	key.data = normalize_key (str);
 	lenb = strlen (key.data) + 1;
 	key.key_len = lenb * 8;
 	node = pat_lookup (s4, S4_STRING_STORE, &key);
@@ -382,32 +388,32 @@ int _st_verify (s4be_t *be)
 	return pat_verify (be, S4_STRING_STORE);
 }
 
+
 /**
- * Return a list with all strings matching the regexp.
+ * Return a list with all strings matching the pattern
  *
  * @param be The database handle
- * @param pat The regexp
+ * @param pat The pattern to match
  * @return A list with all the strings that matched
  */
-GList *s4be_st_regexp (s4be_t *be, const char *pat)
+GList *s4be_st_match (s4be_t *be, const char *pat)
 {
 	GError *error = NULL;
-	GRegex *regex = g_regex_new (pat,
-			G_REGEX_CASELESS | G_REGEX_OPTIMIZE, 0, &error);
+	GPatternSpec *spec;
 	int32_t node = pat_first (be, S4_STRING_STORE);
 	char *str;
 	GList *ret = NULL;
 
-	if (regex == NULL) {
-		S4_ERROR ("Regex error: %s\n", error->message);
-		return NULL;
-	}
+	str = normalize_key (pat);
+	spec = g_pattern_spec_new (str);
+	g_free (str);
+
 
 	be_rlock (be);
 
 	while (node != -1) {
-		str = s4be_st_get_str (be, node);
-		if (g_regex_match (regex, str, 0, NULL)) {
+		str = s4be_st_get_normalized_str (be, node);
+		if (g_pattern_match_string (spec, str)) {
 			ret = g_list_prepend (ret, strdup (str));
 		}
 
@@ -415,7 +421,7 @@ GList *s4be_st_regexp (s4be_t *be, const char *pat)
 	}
 
 	be_runlock (be);
-	g_regex_unref (regex);
+	g_pattern_spec_free(spec);
 
 	return ret;
 }
