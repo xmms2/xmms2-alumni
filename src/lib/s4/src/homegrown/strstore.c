@@ -40,7 +40,11 @@ static char *normalize_key (const char *key)
 	char *tmp = g_utf8_casefold (key, -1);
 	char *ret = g_utf8_normalize (tmp, -1, G_NORMALIZE_DEFAULT);
 
-	g_free (tmp);
+	if (ret == NULL) {
+		ret = tmp;
+	} else {
+		g_free (tmp);
+	}
 
 	return ret;
 }
