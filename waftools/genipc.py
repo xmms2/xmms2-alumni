@@ -36,13 +36,9 @@ class IpcFoo:
 		self.objects = []
 
 		object_elements = xml_element.getElementsByTagName('object')
-		object_id = 1 # ID 0 is reserved for signal voodoo
 
 		for object_element in object_elements:
 			object = IpcObject(object_element)
-
-			object.id = object_id
-			object_id += 1
 
 			self.objects.append(object)
 
@@ -50,19 +46,14 @@ class IpcObject(NamedElement):
 	def __init__(self, xml_element):
 		NamedElement.__init__(self, xml_element)
 
-		self.id = 0
 		self.methods = []
 		self.broadcasts = []
 		self.signals = []
 
 		method_elements = xml_element.getElementsByTagName('method')
-		method_id = 32 # IDs 0..31 are reserved for voodoo use
 
 		for method_element in method_elements:
 			method = IpcMethod(method_element)
-
-			method.id = method_id
-			method_id += 1
 
 			self.methods.append(method)
 
@@ -81,7 +72,6 @@ class IpcMethod(NamedElement, DocumentedElement):
 		NamedElement.__init__(self, xml_element)
 		DocumentedElement.__init__(self, xml_element)
 
-		self.id = 0
 		self.arguments = []
 		self.return_value = None
 
@@ -110,11 +100,7 @@ class IpcSignalOrBroadcast(NamedElement, DocumentedElement):
 		NamedElement.__init__(self, xml_element)
 		DocumentedElement.__init__(self, xml_element)
 
-		self.id = 0
 		self.return_value = None
-
-		id_element = xml_element.getElementsByTagName('id')[0]
-		self.id = int(id_element.firstChild.data.strip())
 
 		return_value_elements = xml_element.getElementsByTagName('return_value')
 		self.return_value = IpcReturnValue(return_value_elements[0])
