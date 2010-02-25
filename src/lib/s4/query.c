@@ -140,7 +140,9 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 
 			/* Find all entries matching val */
 			ret = s4_entry_match (s4, sa, val);
+
 			s4_set_free (sa);
+			s4_entry_free (entry);
 
 			break;
 
@@ -213,8 +215,10 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			sb = s4_entry_greater (s4, entry, 0);
 
 			ret = s4_set_union (sa, sb);
+
 			s4_set_free (sa);
 			s4_set_free (sb);
+			s4_entry_free (entry);
 
 			break;
 
