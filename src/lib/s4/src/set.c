@@ -367,11 +367,10 @@ int s4_set_insert (s4_set_t *set, s4_entry_t *entry)
 		expand (set);
 	}
 
-	for (i = set->size; i > index; i--) {
-		set->entries[i] = set->entries[i - 1];
-	}
+	memmove (set->entries + index + 1, set->entries + index,
+			(set->size - index) * sizeof (s4_entry_t));
 
-	set->entries[i] = *entry;
+	set->entries[index] = *entry;
 	set->size++;
 
 	return 1;

@@ -137,11 +137,15 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 
 			while (list != NULL) {
 				entry = s4_entry_get_s (s4, key, list->data);
-				sa = ret;
-				sb = s4_entry_contained (s4, entry);
-				ret = s4_set_union (sa, sb);
-				s4_set_free (sa);
-				s4_set_free (sb);
+				sa = s4_entry_contained (s4, entry);
+				if (ret == NULL) {
+					ret = sa;
+				} else {
+					for (i = 0; i < s4_set_size (sa); i++) {
+						s4_set_insert (ret, s4_set_get (sa, i));
+					}
+				}
+
 				s4_entry_free (entry);
 
 				free (list->data);
