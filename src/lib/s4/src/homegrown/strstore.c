@@ -17,7 +17,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <glib.h>
 
 
 #define STR_MAGIC 0xafa7beef
@@ -411,43 +410,6 @@ int _st_verify (s4be_t *be)
 	return pat_verify (be, S4_STRING_STORE);
 }
 
-
-/**
- * Return a list with all strings matching the pattern
- *
- * @param be The database handle
- * @param pat The pattern to match
- * @return A list with all the strings that matched
- */
-GList *s4be_st_match (s4be_t *be, const char *pat)
-{
-	GError *error = NULL;
-	GPatternSpec *spec;
-	int32_t node = pat_first (be, S4_STRING_STORE);
-	char *str;
-	GList *ret = NULL;
-
-	str = s4be_st_normalize (pat);
-	spec = g_pattern_spec_new (str);
-	g_free (str);
-
-
-	be_rlock (be);
-
-	while (node != -1) {
-		str = s4be_st_get_normalized_str (be, node);
-		if (g_pattern_match_string (spec, str)) {
-			ret = g_list_prepend (ret, strdup (str));
-		}
-
-		node = pat_next (be, S4_STRING_STORE, node);
-	}
-
-	be_runlock (be);
-	g_pattern_spec_free(spec);
-
-	return ret;
-}
 
 void s4be_st_foreach (s4be_t *be,
 		void (*func) (int32_t node, void *userdata),
