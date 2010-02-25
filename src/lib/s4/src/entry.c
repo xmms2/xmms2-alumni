@@ -388,12 +388,15 @@ s4_set_t *s4_entry_match (s4_t *s4, s4_set_t *set, const char *pattern)
 				for (j = 0; j < s4_set_size (tmp); j++) {
 					s4_set_insert (ret, s4_set_get (tmp, j));
 				}
+
+				s4_set_free (tmp);
 			}
 		}
 
 		free (str);
 	}
 
+	g_pattern_spec_free (spec);
 	return ret;
 }
 
