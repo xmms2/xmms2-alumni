@@ -35,7 +35,7 @@ typedef struct str_info_St {
 	int32_t refs;
 } str_info_t;
 
-static char *normalize_key (const char *key)
+char *s4be_st_normalize (const char *key)
 {
 	char *tmp = g_utf8_casefold (key, -1);
 	char *ret = g_utf8_normalize (tmp, -1, G_NORMALIZE_DEFAULT);
@@ -72,7 +72,7 @@ int32_t s4be_st_lookup (s4be_t *s4, const char *str)
 	int32_t ret;
 	pat_key_t key;
 
-	key.data = normalize_key (str);
+	key.data = s4be_st_normalize (str);
 	key.key_len = (strlen(key.data) + 1) * 8;
 
 	be_rlock (s4);
@@ -192,7 +192,7 @@ int s4be_st_remove (s4be_t *s4, const char *str)
 	pat_key_t key;
 	int ret;
 
-	key.data = normalize_key (str);
+	key.data = s4be_st_normalize (str);
 	key.key_len = strlen (key.data) * 8;
 
 	ret = !pat_remove (s4, S4_STRING_STORE, &key);
@@ -221,6 +221,25 @@ char *s4be_st_reverse (s4be_t *s4, int32_t node)
 	return ret;
 }
 
+/**
+ * Find the normalized string associated with the int
+ *
+ * @param s4 The database handle
+ * @param node The int
+ * @return The normalized string
+ */
+char *s4be_st_reverse_normalized (s4be_t *s4, int32_t node)
+{
+	char *ret;
+	be_rlock (s4);
+
+	ret = s4be_st_get_normalized_str (s4, node);
+	ret = strdup (ret);
+
+	be_runlock (s4);
+	return ret;
+}
+
 
 /**
  * Add a reference to the string
@@ -236,7 +255,7 @@ int s4be_st_ref (s4be_t *s4, const char *str)
 	int lena = strlen (str) + 1;
 	int lenb;
 	str_info_t *info;
-	char *data, *cstr = normalize_key(str);
+	char *data, *cstr = s4be_st_normalize(str);
 
 	lenb = strlen (cstr) + 1;
 
@@ -294,7 +313,7 @@ int s4be_st_unref (s4be_t * s4, const char *str)
 
 	be_wlock (s4);
 
-	key.data = normalize_key (str);
+	key.data = s4be_st_normalize (str);
 	lenb = strlen (key.data) + 1;
 	key.key_len = lenb * 8;
 	node = pat_lookup (s4, S4_STRING_STORE, &key);
@@ -408,7 +427,7 @@ GList *s4be_st_match (s4be_t *be, const char *pat)
 	char *str;
 	GList *ret = NULL;
 
-	str = normalize_key (pat);
+	str = s4be_st_normalize (pat);
 	spec = g_pattern_spec_new (str);
 	g_free (str);
 
