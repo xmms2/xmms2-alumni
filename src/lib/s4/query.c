@@ -132,27 +132,15 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			xmmsv_coll_attribute_get (coll, "field", &key);
 			xmmsv_coll_attribute_get (coll, "value", &val);
 
-			GList *tmp, *list = s4be_st_match (s4->be, val);
-			tmp = list;
+			/* Get all string entries with key=key */
+			entry = s4_entry_get_i (s4, key, INT32_MIN);
+			s4_entry_fillin (s4, entry);
+			entry->key_i = -entry->key_i;
+			sa = s4_entry_greater (s4, entry, 1);
 
-			while (list != NULL) {
-				entry = s4_entry_get_s (s4, key, list->data);
-				sa = s4_entry_contained (s4, entry);
-				if (ret == NULL) {
-					ret = sa;
-				} else {
-					for (i = 0; i < s4_set_size (sa); i++) {
-						s4_set_insert (ret, s4_set_get (sa, i));
-					}
-				}
-
-				s4_entry_free (entry);
-
-				free (list->data);
-				list = g_list_next (list);
-			}
-
-			g_list_free (tmp);
+			/* Find all entries matching val */
+			ret = s4_entry_match (s4, sa, val);
+			s4_set_free (sa);
 
 			break;
 
