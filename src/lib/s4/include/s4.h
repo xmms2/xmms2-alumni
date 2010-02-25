@@ -85,8 +85,8 @@ s4_set_t *s4_entry_contained(s4_t *s4, s4_entry_t *entry);
 int s4_entry_add (s4_t *s4, s4_entry_t *entry, s4_entry_t *prop, const char *src);
 int s4_entry_del (s4_t *s4, s4_entry_t *entry, s4_entry_t *prop, const char *src);
 void s4_entry_fillin (s4_t *s4, s4_entry_t *entry);
-s4_set_t *s4_entry_smaller (s4_t *s4, s4_entry_t *entry);
-s4_set_t *s4_entry_greater (s4_t *s4, s4_entry_t *entry);
+s4_set_t *s4_entry_smaller (s4_t *s4, s4_entry_t *entry, int key);
+s4_set_t *s4_entry_greater (s4_t *s4, s4_entry_t *entry, int key);
 s4_set_t *s4_entry_get_property (s4_t *s4, s4_entry_t *entry, const char *prop);
 
 /* query.c */

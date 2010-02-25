@@ -161,7 +161,7 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			xmmsv_coll_attribute_get (coll, "value", &val);
 
 			entry = s4_entry_get_i (s4, key, atoi(val));
-			ret = s4_entry_smaller (s4, entry);
+			ret = s4_entry_smaller (s4, entry, 0);
 			s4_entry_free (entry);
 
 			break;
@@ -170,7 +170,7 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			xmmsv_coll_attribute_get (coll, "value", &val);
 
 			entry = s4_entry_get_i (s4, key, atoi(val));
-			ret = s4_entry_greater (s4, entry);
+			ret = s4_entry_greater (s4, entry, 0);
 			s4_entry_free (entry);
 
 			break;
@@ -215,14 +215,14 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			/* Find all integer entries with key=key and values greater
 			 * than INT32_MIN.
 			 */
-			sa = s4_entry_greater (s4, entry);
+			sa = s4_entry_greater (s4, entry, 0);
 
 			/* Integer entries has a negative key_i, we make it positive
 			 * and search for all string entries with key=key and values
 			 * greater than INT32_MIN.
 			 */
 			entry->key_i = -entry->key_i;
-			sb = s4_entry_greater (s4, entry);
+			sb = s4_entry_greater (s4, entry, 0);
 
 			ret = s4_set_union (sa, sb);
 			s4_set_free (sa);

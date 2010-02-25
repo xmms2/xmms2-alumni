@@ -323,10 +323,10 @@ s4_set_t *s4_entry_contained(s4_t *s4, s4_entry_t *entry)
  * @return A set will all the entries that is contained in an entry
  * that has a smaller value than this one (but same key).
  */
-s4_set_t *s4_entry_smaller (s4_t *s4, s4_entry_t *entry)
+s4_set_t *s4_entry_smaller (s4_t *s4, s4_entry_t *entry, int key)
 {
 	s4_entry_fillin (s4, entry);
-	return s4be_ip_smaller (s4->be, entry);
+	return s4be_ip_smaller (s4->be, entry, key);
 }
 
 
@@ -338,10 +338,10 @@ s4_set_t *s4_entry_smaller (s4_t *s4, s4_entry_t *entry)
  * @return A set will all the entries that is contained in an entry
  * that has a greater value than this one (but same key).
  */
-s4_set_t *s4_entry_greater (s4_t *s4, s4_entry_t *entry)
+s4_set_t *s4_entry_greater (s4_t *s4, s4_entry_t *entry, int key)
 {
 	s4_entry_fillin (s4, entry);
-	return s4be_ip_greater (s4->be, entry);
+	return s4be_ip_greater (s4->be, entry, key);
 }
 
 s4_set_t *s4_entry_get_property (s4_t *s4, s4_entry_t *entry, const char *prop)
