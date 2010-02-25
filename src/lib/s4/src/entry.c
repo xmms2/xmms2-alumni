@@ -352,5 +352,51 @@ s4_set_t *s4_entry_get_property (s4_t *s4, s4_entry_t *entry, const char *prop)
 }
 
 /**
+ * Get all entries that has a property in the set where the value
+ * matches pattern.
+ *
+ * @param s4 The database handle
+ * @param set The set of properties to check
+ * @param pattern The pattern to match against
+ * @return A set with all the entries that has one of the properties
+ * in set that matches pattern.
+ */
+s4_set_t *s4_entry_match (s4_t *s4, s4_set_t *set, const char *pattern)
+{
+	GPatternSpec *spec;
+	char *str;
+	s4_entry_t *entry;
+	s4_set_t *ret, *tmp;
+	int i, j;
+
+	str = s4be_st_normalize (pattern);
+	spec = g_pattern_spec_new (str);
+	g_free (str);
+
+	entry = s4_set_get (set, 0);
+	ret = NULL;
+
+	for (i = 0; i < s4_set_size (set); i++, entry++) {
+		str = s4be_st_reverse_normalized (s4->be, entry->val_i);
+
+		if (g_pattern_match_string (spec, str)) {
+			tmp = s4_entry_contained (s4, entry);
+
+			if (ret == NULL) {
+				ret = tmp;
+			} else {
+				for (j = 0; j < s4_set_size (tmp); j++) {
+					s4_set_insert (ret, s4_set_get (tmp, j));
+				}
+			}
+		}
+
+		free (str);
+	}
+
+	return ret;
+}
+
+/**
  * @}
  */
