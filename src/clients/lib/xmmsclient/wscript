@@ -2,10 +2,19 @@ from waftools import tool
 from logging import warning
 
 def build(bld):
+    bld.new_task_gen(
+        name='xmmsclient-genipc-c',
+        source=['../../../ipc.xml', 'code_generator.py'],
+        target='generated.c',
+        rule='${PYTHON} ${SRC[1].abspath()} > ${TGT}',
+    )
+
     obj = bld.new_task_gen("cc", "shlib")
+    obj.after='xmmsclient-genipc-c'
     obj.target = "xmmsclient"
     obj.includes = "../../../.. ../../../include ../../../includepriv"
     obj.source = """
+        generated.c
         collection.c
         collparser.c
         bindata.c
@@ -35,11 +44,6 @@ def build(bld):
 
     tool.add_install_flag(bld, obj)
 
-    bld.new_task_gen(
-        source=['../../../ipc.xml', 'code_generator.py'],
-        target='generated.c',
-        rule='${PYTHON} ${SRC[1].abspath()} > ${TGT}',
-    )
 
 def configure(conf):
     conf.env.append_value("XMMS_PKGCONF_FILES", ("xmms2-client", "-lxmmsclient"))
