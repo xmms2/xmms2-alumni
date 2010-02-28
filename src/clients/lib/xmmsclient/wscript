@@ -9,8 +9,10 @@ def build(bld):
         rule='${PYTHON} ${SRC[1].abspath()} > ${TGT}',
     )
 
-    obj = bld.new_task_gen("cc", "shlib")
-    obj.after='xmmsclient-genipc-c'
+    obj = bld.new_task_gen(
+        features='cc cshlib',
+        after='xmmsclient-genipc-c'
+    )
     obj.target = "xmmsclient"
     obj.includes = "../../../.. ../../../include ../../../includepriv"
     obj.source = """
