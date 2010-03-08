@@ -1092,27 +1092,7 @@ xmms_collection_find_alias (xmms_coll_dag_t *dag, guint nsid,
 xmms_medialib_entry_t
 xmms_collection_get_random_media (xmms_coll_dag_t *dag, xmmsv_coll_t *source)
 {
-	GList *res;
-	xmms_medialib_entry_t mid = 0;
-	xmmsv_t *rorder = xmmsv_new_list ();
-	xmmsv_t *randval = xmmsv_new_string ("~RANDOM()");
-
-	/* FIXME: Temporary hack to allow custom ordering functions */
-	xmmsv_list_append (rorder, randval);
-
-	res = xmms_collection_query_ids (dag, source, 0, 1, rorder, NULL);
-
-	if (res != NULL) {
-		xmmsv_t *val = (xmmsv_t *) res->data;
-		xmmsv_get_int (val, &mid);
-		xmmsv_unref (val);
-		g_list_free (res);
-	}
-
-	xmmsv_unref (rorder);
-	xmmsv_unref (randval);
-
-	return mid;
+	return xmms_medialib_query_random_id (dag, source);
 }
 
 /** @} */
