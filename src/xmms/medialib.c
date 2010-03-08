@@ -1239,6 +1239,7 @@ xmms_medialib_url_encode (const gchar *path)
 }
 
 
+
 GList*
 xmms_medialib_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 {
@@ -1256,6 +1257,23 @@ xmms_medialib_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 	return g_list_reverse (ret);
 }
 
+gint
+xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
+{
+	s4_set_t *set = s4_query (medialib->s4, dag, coll);
+	gint size = s4_set_size (set);
+	gint ret;
+
+	if (size) {
+		ret = s4_set_get (set, g_random_int_range (0, size))->val_i;
+	} else {
+		ret = 0;
+	}
+
+	s4_set_free (set);
+
+	return ret;
+}
 
 GList*
 xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
