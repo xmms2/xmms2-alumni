@@ -613,11 +613,7 @@ class Task(TaskBase):
 		bld = self.generator.bld
 
 		# first compute the signature
-		try:
-			new_sig = self.signature()
-		except KeyError:
-			debug("task: something is wrong, computing the task %r signature failed", self)
-			return RUN_ME
+		new_sig = self.signature()
 
 		# compare the signature to a signature computed previously
 		key = self.unique_id()
@@ -783,7 +779,10 @@ class Task(TaskBase):
 				bld.rescan(x.parent)
 
 			variant = x.variant(self.env)
-			m.update(bld.node_sigs[variant][x.id])
+			try:
+				m.update(bld.node_sigs[variant][x.id])
+			except KeyError:
+				raise Utils.WafError('Missing node signature for %r (required by %r)' % (x, self))
 
 		# manual dependencies, they can slow down the builds
 		if bld.deps_man:
@@ -800,8 +799,8 @@ class Task(TaskBase):
 						variant = v.variant(self.env)
 						try:
 							v = bld.node_sigs[variant][v.id]
-						except KeyError: # make it fatal?
-							v = ''
+						except KeyError:
+							raise Utils.WafError('Missing node signature for %r (required by %r)' % (v, self))
 					elif hasattr(v, '__call__'):
 						v = v() # dependency is a function, call it
 					m.update(v)
@@ -864,7 +863,14 @@ class Task(TaskBase):
 		bld.raw_deps[key] = names
 
 		# recompute the signature and return it
-		sig = self.compute_sig_implicit_deps()
+		try:
+			sig = self.compute_sig_implicit_deps()
+		except KeyError:
+			try:
+				nodes = bld.node_deps.get(self.unique_id(), [])
+			except:
+				nodes = '?'
+			raise Utils.WafError('Missing node signature for %r (for implicit dependencies %r)' % (nodes, self))
 
 		return sig
 

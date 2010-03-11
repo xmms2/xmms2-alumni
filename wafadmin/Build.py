@@ -33,11 +33,14 @@ class BuildError(Utils.WafError):
 		Utils.WafError.__init__(self, self.format_error())
 
 	def format_error(self):
-		lst = ['Build failed']
+		lst = ['Build failed:']
 		for tsk in self.tasks:
 			txt = tsk.format_error()
 			if txt: lst.append(txt)
-		return '\n'.join(lst)
+		sep = ' '
+		if len(lst) > 2:
+			sep = '\n'
+		return sep.join(lst)
 
 def group_method(fun):
 	"""
@@ -270,7 +273,7 @@ class BuildContext(Utils.Context):
 				self.generator.start()
 			except KeyboardInterrupt:
 				dw()
-				if self.generator.consumers:
+				if Runner.TaskConsumer.consumers:
 					self.save()
 				raise
 			except Exception:
@@ -279,7 +282,7 @@ class BuildContext(Utils.Context):
 				raise
 			else:
 				dw()
-				if self.generator.consumers:
+				if Runner.TaskConsumer.consumers:
 					self.save()
 
 			if self.generator.error:

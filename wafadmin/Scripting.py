@@ -201,19 +201,20 @@ def configure(conf):
 
 	src = getattr(Options.options, SRCDIR, None)
 	if not src: src = getattr(Utils.g_module, SRCDIR, None)
+	if not src: src = getattr(Utils.g_module, 'top', None)
 	if not src:
 		src = '.'
 		incomplete_src = 1
 	src = os.path.abspath(src)
 
 	bld = getattr(Options.options, BLDDIR, None)
-	if not bld:
-		bld = getattr(Utils.g_module, BLDDIR, None)
-		if bld == '.':
-			raise Utils.WafError('Setting blddir="." may cause distclean problems')
+	if not bld: bld = getattr(Utils.g_module, BLDDIR, None)
+	if not bld: bld = getattr(Utils.g_module, 'out', None)
 	if not bld:
 		bld = 'build'
 		incomplete_bld = 1
+	if bld == '.':
+		raise Utils.WafError('Setting blddir="." may cause distclean problems')
 	bld = os.path.abspath(bld)
 
 	try: os.makedirs(bld)

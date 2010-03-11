@@ -232,8 +232,10 @@ def python_24_guard():
 
 def ex_stack():
 	exc_type, exc_value, tb = sys.exc_info()
-	exc_lines = traceback.format_exception(exc_type, exc_value, tb)
-	return ''.join(exc_lines)
+	if Logs.verbose > 1:
+		exc_lines = traceback.format_exception(exc_type, exc_value, tb)
+		return ''.join(exc_lines)
+	return str(exc_value)
 
 def to_list(sth):
 	if isinstance(sth, str):
@@ -263,16 +265,12 @@ def load_module(file_path, name=WSCRIPT_FILE):
 
 	module.waf_hash_val = code
 
-	module_dir = os.path.dirname(file_path)
-	sys.path.insert(0, module_dir)
+	sys.path.insert(0, os.path.dirname(file_path))
 	try:
-		exec(code, module.__dict__)
-	except Exception, e:
-		try:
-			raise WscriptError(traceback.format_exc(), file_path)
-		except:
-			raise e
-	sys.path.remove(module_dir)
+		exec(compile(code, file_path, 'exec'), module.__dict__)
+	except Exception:
+		raise WscriptError(traceback.format_exc(), file_path)
+	sys.path.pop(0)
 
 	g_loaded_modules[file_path] = module
 
@@ -523,6 +521,15 @@ def detect_platform():
 	return s
 
 def load_tool(tool, tooldir=None):
+	'''
+	load_tool: import a Python module, optionally using several directories.
+	@param tool [string]: name of tool to import.
+	@param tooldir [list]: directories to look for the tool.
+	@return: the loaded module.
+
+	Warning: this function is not thread-safe: plays with sys.path,
+					 so must run in sequence.
+	'''
 	if tooldir:
 		assert isinstance(tooldir, list)
 		sys.path = tooldir + sys.path
@@ -530,11 +537,11 @@ def load_tool(tool, tooldir=None):
 		try:
 			return __import__(tool)
 		except ImportError, e:
-			raise WscriptError('Could not load the tool %r in %r' % (tool, sys.path))
+			Logs.error('Could not load the tool %r in %r:\n%s' % (tool, sys.path, e))
+			raise
 	finally:
 		if tooldir:
-			for d in tooldir:
-				sys.path.remove(d)
+			sys.path = sys.path[len(tooldir):]
 
 def readf(fname, m='r'):
 	"get the contents of a file, it is not used anywhere for the moment"
@@ -590,9 +597,10 @@ class Context(object):
 				nexdir = os.path.join(self.curdir, x)
 
 			base = os.path.join(nexdir, WSCRIPT_FILE)
+			file_path = base + '_' + name
 
 			try:
-				txt = readf(base + '_' + name, m='rU')
+				txt = readf(file_path, m='rU')
 			except (OSError, IOError):
 				try:
 					module = load_module(base)
@@ -617,21 +625,18 @@ class Context(object):
 			else:
 				dc = {'ctx': self}
 				if getattr(self.__class__, 'pre_recurse', None):
-					dc = self.pre_recurse(txt, base + '_' + name, nexdir)
+					dc = self.pre_recurse(txt, file_path, nexdir)
 				old = self.curdir
 				self.curdir = nexdir
 				try:
 					try:
-						exec(txt, dc)
-					except Exception, e:
-						try:
-							raise WscriptError(traceback.format_exc(), base)
-						except:
-							raise e
+						exec(compile(txt, file_path, 'exec'), dc)
+					except Exception:
+						raise WscriptError(traceback.format_exc(), base)
 				finally:
 					self.curdir = old
 				if getattr(self.__class__, 'post_recurse', None):
-					self.post_recurse(txt, base + '_' + name, nexdir)
+					self.post_recurse(txt, file_path, nexdir)
 
 if is_win32:
 	old = shutil.copy2
