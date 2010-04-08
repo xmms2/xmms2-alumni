@@ -161,19 +161,33 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			xmmsv_coll_attribute_get (coll, "field", &key);
 			xmmsv_coll_attribute_get (coll, "value", &val);
 
-			entry = s4_entry_get_s (s4, key, val);
-			ret = s4_entry_contained (s4, entry);
-			s4_entry_free (entry);
+			/* id gets special treatment */
+			if (strcmp (key, "id") == 0) {
+				entry = s4_entry_get_i (s4, "song_id", atoi (val));
 
-			/* If it is an int we should search for integer entries too */
-			if (is_int (val, &ival)) {
-				entry = s4_entry_get_i (s4, key, ival);
-				sa = ret;
-				sb = s4_entry_contained (s4, entry);
-				ret = s4_set_union (sa, sb);
+				/* Check if it exists */
+				sa = s4_entry_contains (s4, entry);
+
+				if (s4_set_size (sa) > 0) {
+					ret = s4_set_new (0);
+					s4_set_insert (ret, entry);
+				}
 				s4_set_free (sa);
-				s4_set_free (sb);
+			} else {
+				entry = s4_entry_get_s (s4, key, val);
+				ret = s4_entry_contained (s4, entry);
 				s4_entry_free (entry);
+
+				/* If it is an int we should search for integer entries too */
+				if (is_int (val, &ival)) {
+					entry = s4_entry_get_i (s4, key, ival);
+					sa = ret;
+					sb = s4_entry_contained (s4, entry);
+					ret = s4_set_union (sa, sb);
+					s4_set_free (sa);
+					s4_set_free (sb);
+					s4_entry_free (entry);
+				}
 			}
 			break;
 
