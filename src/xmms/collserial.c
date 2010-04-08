@@ -22,15 +22,22 @@
 #include "xmmspriv/xmms_collserial.h"
 #include "xmmspriv/xmms_collection.h"
 #include "xmmspriv/xmms_utils.h"
+#include "xmms/xmms_log.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 #include <glib.h>
 #include <glib/gstdio.h>
 
 
 #define COLL_DIR "collections"
+
+/* If this is set to 1 xmms_collection_dag_save will NOT save anything.
+ * This is to prevent overwriting anything if we have trouble opening files.
+ */
+int disable_saving = 0;
 
 
 static xmmsv_coll_t *xmms_collection_read_operator (FILE *file);
@@ -93,6 +100,9 @@ xmms_collection_dag_save (xmms_coll_dag_t *dag)
 	FILE *file;
 	xmmsv_coll_t *coll;
 
+	if (disable_saving)
+		return;
+
 	/* Write all collections in all namespaces */
 	for (i = 0; i < XMMS_COLLECTION_NUM_NAMESPACES; ++i) {
 		namespace = xmms_collection_get_namespace_string (i);
@@ -119,8 +129,14 @@ xmms_collection_dag_save (xmms_coll_dag_t *dag)
 	path = XMMS_BUILD_PATH (COLL_DIR, XMMS_COLLECTION_NS_PLAYLISTS,
 			XMMS_ACTIVE_PLAYLIST);
 	file = fopen (path, "w");
-	fprintf (file, "%s", name);
-	fclose (file);
+
+	if (file == NULL) {
+		xmms_log_error ("Could not open %s, %s", path, strerror (errno));
+	} else {
+		fprintf (file, "%s", name);
+		fclose (file);
+	}
+
 	g_free (path);
 }
 
@@ -151,12 +167,20 @@ xmms_collection_dag_restore (xmms_coll_dag_t *dag)
 
 			path = XMMS_BUILD_PATH (COLL_DIR, namespace, label);
 			file = fopen (path, "r");
-			coll = xmms_collection_read_operator (file);
-			fclose (file);
-			g_free (path);
 
-			if (coll != NULL)
-				xmms_collection_dag_replace (dag, i, g_strdup (label), coll);
+			if (file == NULL) {
+				xmms_log_error ("Could not open %s, %s. "
+					   "Collections will not be saved (to prevent overwriting something)",
+						path, strerror (errno));
+				disable_saving = 1;
+			} else {
+				coll = xmms_collection_read_operator (file);
+				fclose (file);
+				if (coll != NULL)
+					xmms_collection_dag_replace (dag, i, g_strdup (label), coll);
+			}
+
+			g_free (path);
 		}
 
 		if (dir != NULL)
@@ -179,12 +203,12 @@ xmms_collection_dag_restore (xmms_coll_dag_t *dag)
 	} else {
 		fgets (buffer, 1024, file);
 		fclose (file);
-		g_free (path);
 
 		coll = xmms_collection_get_pointer (dag, buffer,
 				XMMS_COLLECTION_NSID_PLAYLISTS);
 	}
 
+	g_free (path);
 	xmmsv_coll_ref (coll);
 	xmms_collection_dag_replace (dag, XMMS_COLLECTION_NSID_PLAYLISTS,
 			g_strdup (XMMS_ACTIVE_PLAYLIST), coll);
@@ -345,8 +369,13 @@ write_operator (void *key, void *value, void *udata)
 
 	if (strcmp (key, XMMS_ACTIVE_PLAYLIST) != 0) {
 		file = fopen (path, "w");
-		xmms_collection_write_operator (coll, file);
-		fclose (file);
+
+		if (file == NULL) {
+			xmms_log_error ("Could not open %s, %s.", path, strerror (errno));
+		} else {
+			xmms_collection_write_operator (coll, file);
+			fclose (file);
+		}
 	}
 
 	g_free (path);
