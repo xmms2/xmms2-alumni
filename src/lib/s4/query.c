@@ -199,18 +199,47 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			xmmsv_coll_attribute_get (coll, "field", &key);
 			xmmsv_coll_attribute_get (coll, "value", &val);
 
-			entry = s4_entry_get_i (s4, key, atoi(val));
-			ret = s4_entry_smaller (s4, entry, 0);
-			s4_entry_free (entry);
+			/* We have to treat id a little differently */
+			if (strcmp (key, "id") == 0) {
+				int ival = atoi (val);
+				/* TODO: Make s4_entry_smaller work with the reverse tree too */
+				sa = universe (s4);
+				ret = s4_set_new (0);
 
+				while ((entry = s4_set_next (sa)) != NULL) {
+					if (entry->val_i < ival) {
+						s4_set_insert (ret, entry);
+					} else {
+						break;
+					}
+				}
+			} else {
+				entry = s4_entry_get_i (s4, key, atoi(val));
+				ret = s4_entry_smaller (s4, entry, 0);
+				s4_entry_free (entry);
+			}
 			break;
 		case XMMS_COLLECTION_TYPE_GREATER:
 			xmmsv_coll_attribute_get (coll, "field", &key);
 			xmmsv_coll_attribute_get (coll, "value", &val);
 
-			entry = s4_entry_get_i (s4, key, atoi(val));
-			ret = s4_entry_greater (s4, entry, 0);
-			s4_entry_free (entry);
+			/* We have to treat id a little differently */
+			if (strcmp (key, "id") == 0) {
+				int ival = atoi (val);
+				/* TODO: Make s4_entry_greater work with the reverse tree too */
+				sa = universe (s4);
+				ret = s4_set_new (0);
+
+				while ((entry = s4_set_next (sa)) != NULL) {
+					if (entry->val_i > ival) {
+						s4_set_insert (ret, entry);
+					}
+				}
+			} else {
+				entry = s4_entry_get_i (s4, key, atoi(val));
+				ret = s4_entry_greater (s4, entry, 0);
+				s4_entry_free (entry);
+			}
 
 			break;
 
