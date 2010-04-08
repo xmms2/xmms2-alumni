@@ -37,6 +37,55 @@ static int is_int (const char *str, int *val)
 	return ret;
 }
 
+static int is_universe (xmmsv_coll_t *coll)
+{
+	char *target_name;
+
+	xmmsv_coll_attribute_get (coll, "reference", &target_name);
+
+	return (target_name != NULL && strcmp (target_name, "All Media") == 0);
+}
+
+static s4_set_t *handle_filter_operands (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_list_iter_t *it, s4_set_t *set)
+{
+	xmmsv_t *v;
+	xmmsv_coll_t *coll;
+	s4_set_t *sa, *sb;
+
+	for (; xmmsv_list_iter_valid (it); xmmsv_list_iter_next (it)) {
+		xmmsv_list_iter_entry (it, &v);
+		xmmsv_get_coll (v, &coll);
+
+		if (!is_universe (coll)) {
+			sb = s4_query (s4, dag, coll);
+			sa = set;
+			set = s4_set_intersection (set, sb);
+			s4_set_free (sa);
+			s4_set_free (sb);
+		}
+	}
+
+	return set;
+}
+
+static int is_filter (xmmsv_coll_type_t type)
+{
+	int ret = 0;
+	switch (type) {
+		case XMMS_COLLECTION_TYPE_EQUALS:
+		case XMMS_COLLECTION_TYPE_MATCH:
+		case XMMS_COLLECTION_TYPE_GREATER:
+		case XMMS_COLLECTION_TYPE_SMALLER:
+		case XMMS_COLLECTION_TYPE_HAS:
+			ret = 1;
+			break;
+		default:
+			break;
+	}
+
+	return ret;
+}
+
 
 /**
  * Query the database with the given collection
@@ -166,12 +215,11 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			break;
 
 		case XMMS_COLLECTION_TYPE_REFERENCE:
-			xmmsv_coll_attribute_get (coll, "reference", &key);
-			xmmsv_coll_attribute_get (coll, "namespace", &val);
-
-			if (key != NULL && strcmp (key, "All Media") == 0) {
+			if (is_universe (coll)) {
 				ret = universe (s4);
 			} else {
+				xmmsv_coll_attribute_get (coll, "reference", &key);
+				xmmsv_coll_attribute_get (coll, "namespace", &val);
 				c = xmms_collection_get_pointer (dag, key,
 						xmms_collection_get_namespace_id (val));
 				ret = s4_query (s4, dag, c);
@@ -226,6 +274,11 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			printf ("Do not support %i\n", xmmsv_coll_get_type (coll));
 			break;
 	}
+
+	if (is_filter (xmmsv_coll_get_type (coll))) {
+		ret = handle_filter_operands (s4, dag, it, ret);
+	}
+
 
 	return ret;
 }
