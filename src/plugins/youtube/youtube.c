@@ -19,6 +19,7 @@
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_config.h"
 #include "xmms/xmms_medialib.h"
+#include "xmms/xmms_bindata.h"
 
 typedef struct {
 	CURL *conn;
@@ -35,6 +36,11 @@ typedef struct {
 	/* "channel" the video is part of */
 	gchar *channel;
 
+	/* mime type of the last received data, if any */
+	gchar *last_mime;
+
+	gboolean download_thumbnail;
+
 	/* misc. string, private */
 	GString *miscstr;
 
@@ -49,6 +55,7 @@ static gboolean xmms_youtube_init (xmms_xform_t *xform);
 
 static gboolean yt_get_vidparams (xmms_xform_t *xform);
 static size_t yt_write (void *ptr, size_t size, size_t nmemb, void *stream);
+static size_t yt_header_write (void *ptr, size_t size, size_t nmemb, void *stream);
 static xmms_youtube_data_t *yt_new (xmms_xform_t *xform);
 static void yt_free (xmms_xform_t *xform);
 
@@ -74,6 +81,9 @@ xmms_youtube_setup (xmms_xform_plugin_t *xform)
 	                              "http://*youtube.*/watch*",
 	                              XMMS_STREAM_TYPE_END);
 
+	xmms_xform_plugin_config_property_register (xform, "download_thumbnail",
+	                                            "1", NULL, NULL);
+
 	return TRUE;
 }
 
@@ -83,15 +93,21 @@ xmms_youtube_init (xmms_xform_t *xform)
 	gboolean ret = FALSE;
 	const gchar *property = NULL;
 	xmms_youtube_data_t *ytdata;
+	xmms_config_property_t *conf;
 
 	ytdata = yt_new (xform);
 	xmms_xform_private_data_set (xform, ytdata);
+
+	conf = xmms_xform_config_lookup (xform, "download_thumbnail");
+	ytdata->download_thumbnail = xmms_config_property_get_int (conf);
 
 	curl_easy_setopt (ytdata->conn, CURLOPT_FOLLOWLOCATION, 1);
 	curl_easy_setopt (ytdata->conn, CURLOPT_COOKIEFILE, "");
 	curl_easy_setopt (ytdata->conn, CURLOPT_USERAGENT, "XMMS2/" XMMS_VERSION);
 	curl_easy_setopt (ytdata->conn, CURLOPT_WRITEFUNCTION, yt_write);
 	curl_easy_setopt (ytdata->conn, CURLOPT_WRITEDATA, xform);
+	curl_easy_setopt (ytdata->conn, CURLOPT_HEADERDATA, xform);
+	curl_easy_setopt (ytdata->conn, CURLOPT_HEADERFUNCTION, yt_header_write);
 	curl_easy_setopt (ytdata->conn, CURLOPT_ERRORBUFFER, ytdata->curlerror);
 	/* curl_easy_setopt (ytdata->conn, CURLOPT_VERBOSE, 1); */
 
@@ -141,6 +157,7 @@ yt_get_vidparams (xmms_xform_t *xform)
 		xmms_log_error ("%s\n", ytdata->curlerror);
 	} else {
 		qs_part = g_strsplit (ytdata->miscstr->str, "&", 0);
+		g_string_truncate (ytdata->miscstr, 0);
 
 		for (i = 0; qs_part[i]; i++) {
 			gchar *k = qs_part[i], *v, *uv;
@@ -169,6 +186,33 @@ yt_get_vidparams (xmms_xform_t *xform)
 			} else if (!strcmp (k, "reason")) {
 				xmms_log_error ("%s", uv);
 				ret = FALSE;
+			} else if (!strcmp (k, "thumbnail_url") &&
+			           ytdata->download_thumbnail) {
+				curl_easy_setopt (ytdata->conn, CURLOPT_URL, uv);
+				if (curl_easy_perform (ytdata->conn) != CURLE_OK) {
+					xmms_log_error ("Couldn't retrieve thumbnail image");
+				} else {
+					if (ytdata->last_mime) {
+						gchar thumb_hash[33];
+						const gchar *prop;
+
+						XMMS_DBG ("Thumbnail mime type is `%s'",
+						          ytdata->last_mime);
+
+						xmms_bindata_calculate_md5 ((guchar *)ytdata->miscstr->str,
+						                            ytdata->miscstr->len,
+						                            thumb_hash);
+						xmms_bindata_plugin_add ((guchar *)ytdata->miscstr->str,
+						                         ytdata->miscstr->len,
+						                         thumb_hash);
+
+						prop = XMMS_MEDIALIB_ENTRY_PROPERTY_PICTURE_FRONT;
+						xmms_xform_metadata_set_str (xform, prop, thumb_hash);
+						prop = XMMS_MEDIALIB_ENTRY_PROPERTY_PICTURE_FRONT_MIME;
+						xmms_xform_metadata_set_str (xform, prop, ytdata->last_mime);
+					}
+					g_string_truncate (ytdata->miscstr, 0);
+				}
 			}
 
 			curl_free (uv);
@@ -225,5 +269,24 @@ yt_free (xmms_xform_t *xform)
 	g_free (ytdata->title);
 	g_string_free (ytdata->miscstr, TRUE);
 	g_free (ytdata->channel);
+	g_free (ytdata->last_mime);
 	g_free (ytdata);
+}
+
+static size_t
+yt_header_write (void *ptr, size_t size, size_t nmemb, void *stream)
+{
+	xmms_youtube_data_t *ytdata;
+	gchar *hline = ptr;
+
+	ytdata = xmms_xform_private_data_get ((xmms_xform_t *)stream);
+
+	hline[(size * nmemb) - 2] = '\0';
+
+	if (!g_ascii_strncasecmp ("content-type", hline, 12)) {
+		g_free (ytdata->last_mime);
+		ytdata->last_mime = g_strdup (hline + 14);
+	}
+
+	return size * nmemb;
 }
