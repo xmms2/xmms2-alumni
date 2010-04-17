@@ -62,7 +62,7 @@ typedef struct chunk_St {
 } chunk_t;
 
 
-static inline long pagesize ()
+static inline long pagesize (void)
 {
 	static long ps = 0;
 
@@ -395,6 +395,9 @@ void be_free(s4be_t* s4, int32_t off, int size)
 	int32_t l = log2 (size) - SMALLEST_CHUNK;
 	header_t *header = s4->map;
 	chunk_t *chunk = S4_PNT (s4, off, chunk_t);
+
+	if (l < 0)
+		l = 0;
 
 	chunk->next = header->free_lists[l];
 	header->free_lists[l] = off;
