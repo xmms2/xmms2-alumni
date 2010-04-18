@@ -174,9 +174,22 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 				}
 				s4_set_free (sa);
 			} else {
-				entry = s4_entry_get_s (s4, key, val);
-				ret = s4_entry_contained (s4, entry);
-				s4_entry_free (entry);
+				sa = s4_entry_get_entries (s4, key, val);
+				s4_set_reset (sa);
+
+				while ((entry = s4_set_next (sa)) != NULL) {
+					sb = s4_entry_contained (s4, entry);
+					if (ret != NULL) {
+						s4_set_t *tmp = ret;
+						ret = s4_set_union (tmp, sb);
+						s4_set_free (tmp);
+						s4_set_free (sb);
+					} else {
+						ret = sb;
+					}
+				}
+
+				s4_set_free (sa);
 
 				/* If it is an int we should search for integer entries too */
 				if (is_int (val, &ival)) {
