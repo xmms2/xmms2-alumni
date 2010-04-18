@@ -352,6 +352,43 @@ s4_set_t *s4_entry_get_property (s4_t *s4, s4_entry_t *entry, const char *prop)
 }
 
 /**
+ * Create a set of entries with key=key and value set to all the strings
+ * that match val when compared case insensitively.
+ *
+ * @param s4 The database handle
+ * @param key The key to give the entries
+ * @param val The value we want to find all case insensitively matches for
+ * @return A set with entries where key=key and value matches val (case insensitively)
+ */
+s4_set_t *s4_entry_get_entries (s4_t *s4, const char *key, const char *val)
+{
+	s4_set_t *ret = s4_set_new (0);
+	int32_t *vals = s4be_st_lookup_all (s4->be, val);
+	int i;
+
+	if (vals == NULL)
+		return ret;
+
+	for (i = 0; vals[i] != -1; i++) {
+		s4_entry_t entry;
+
+		entry.key_s = strdup (key);
+		entry.val_s = NULL;
+		entry.key_i = 0;
+		entry.val_i = vals[i];
+		entry.type = ENTRY_STR;
+		entry.src_s = NULL;
+		entry.src_i = 0;
+
+		s4_set_insert (ret, &entry);
+	}
+
+	free (vals);
+
+	return ret;
+}
+
+/**
  * Get all entries that has a property in the set where the value
  * matches pattern.
  *
