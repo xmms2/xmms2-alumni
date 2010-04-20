@@ -39,7 +39,6 @@
 #include "xmmspriv/xmms_output.h"
 #include "xmmspriv/xmms_ipc.h"
 #include "xmmspriv/xmms_log.h"
-#include "xmmspriv/xmms_sqlite.h"
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_bindata.h"
 #include "xmmspriv/xmms_utils.h"
