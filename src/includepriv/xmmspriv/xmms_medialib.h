@@ -23,7 +23,6 @@
 #include "xmms/xmms_medialib.h"
 #include "xmmspriv/xmms_playlist.h"
 #include "xmmspriv/xmms_collection.h"
-#include "xmmspriv/xmms_sqlite.h"
 
 typedef struct xmms_medialib_St xmms_medialib_t;
 
