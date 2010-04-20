@@ -42,7 +42,7 @@ The role of the Task Manager is to give the tasks in order (groups of task that 
 
 """
 
-import os, shutil, sys, re, random, datetime, tempfile
+import os, shutil, sys, re, random, datetime, tempfile, shlex
 from Utils import md5
 import Build, Runner, Utils, Node, Logs, Options
 from Logs import debug, warn, error
@@ -395,6 +395,9 @@ class TaskBase(object):
 
 	def exec_command(self, *k, **kw):
 		"use this for executing commands from tasks"
+		# TODO in waf 1.6, eliminate bld.exec_command, and move the cwd processing to here
+		if self.env['env']:
+			kw['env'] = self.env['env']
 		return self.generator.bld.exec_command(*k, **kw)
 
 	def runnable_status(self):
@@ -578,22 +581,25 @@ class Task(TaskBase):
 		try: return self.cache_sig[0]
 		except AttributeError: pass
 
-		m = md5()
+		self.m = md5()
 
 		# explicit deps
 		exp_sig = self.sig_explicit_deps()
-		m.update(exp_sig)
-
-		# implicit deps
-		imp_sig = self.scan and self.sig_implicit_deps() or SIG_NIL
-		m.update(imp_sig)
 
 		# env vars
 		var_sig = self.sig_vars()
-		m.update(var_sig)
+
+		# implicit deps
+
+		imp_sig = SIG_NIL
+		if self.scan:
+			try:
+				imp_sig = self.sig_implicit_deps()
+			except ValueError:
+				return self.signature()
 
 		# we now have the signature (first element) and the details (for debugging)
-		ret = m.digest()
+		ret = self.m.digest()
 		self.cache_sig = (ret, exp_sig, imp_sig, var_sig)
 		return ret
 
@@ -653,7 +659,7 @@ class Task(TaskBase):
 			try:
 				os.stat(node.abspath(env))
 			except OSError:
-				self.has_run = MISSING
+				self.hasrun = MISSING
 				self.err_msg = '-> missing file: %r' % node.abspath(env)
 				raise Utils.WafError
 
@@ -750,7 +756,8 @@ class Task(TaskBase):
 
 		for node in self.outputs:
 			self.generator.bld.node_sigs[variant][node.id] = sig
-			self.generator.bld.printout('restoring from cache %r\n' % node.bldpath(env))
+			if Options.options.progress_bar < 1:
+				self.generator.bld.printout('restoring from cache %r\n' % node.bldpath(env))
 
 		self.cached = True
 		return 1
@@ -771,7 +778,7 @@ class Task(TaskBase):
 
 	def sig_explicit_deps(self):
 		bld = self.generator.bld
-		m = md5()
+		up = self.m.update
 
 		# the inputs
 		for x in self.inputs + getattr(self, 'dep_nodes', []):
@@ -780,7 +787,7 @@ class Task(TaskBase):
 
 			variant = x.variant(self.env)
 			try:
-				m.update(bld.node_sigs[variant][x.id])
+				up(bld.node_sigs[variant][x.id])
 			except KeyError:
 				raise Utils.WafError('Missing node signature for %r (required by %r)' % (x, self))
 
@@ -803,29 +810,28 @@ class Task(TaskBase):
 							raise Utils.WafError('Missing node signature for %r (required by %r)' % (v, self))
 					elif hasattr(v, '__call__'):
 						v = v() # dependency is a function, call it
-					m.update(v)
+					up(v)
 
 		for x in self.deps_nodes:
 			v = bld.node_sigs[x.variant(self.env)][x.id]
-			m.update(v)
+			up(v)
 
-		return m.digest()
+		return self.m.digest()
 
 	def sig_vars(self):
-		m = md5()
 		bld = self.generator.bld
 		env = self.env
 
 		# dependencies on the environment vars
 		act_sig = bld.hash_env_vars(env, self.__class__.vars)
-		m.update(act_sig)
+		self.m.update(act_sig)
 
 		# additional variable dependencies, if provided
 		dep_vars = getattr(self, 'dep_vars', None)
 		if dep_vars:
-			m.update(bld.hash_env_vars(env, dep_vars))
+			self.m.update(bld.hash_env_vars(env, dep_vars))
 
-		return m.digest()
+		return self.m.digest()
 
 	#def scan(self, node):
 	#	"""this method returns a tuple containing:
@@ -852,6 +858,8 @@ class Task(TaskBase):
 					return prev_sigs[2]
 			except (KeyError, OSError):
 				pass
+			del bld.task_sigs[key]
+			raise ValueError('rescan')
 
 		# no previous run or the signature of the dependencies has changed, rescan the dependencies
 		(nodes, names) = self.scan()
@@ -867,7 +875,14 @@ class Task(TaskBase):
 			sig = self.compute_sig_implicit_deps()
 		except KeyError:
 			try:
-				nodes = bld.node_deps.get(self.unique_id(), [])
+				nodes = []
+				for k in bld.node_deps.get(self.unique_id(), []):
+					if k.id & 3 == 2: # Node.FILE:
+						if not k.id in bld.node_sigs[0]:
+							nodes.append(k)
+					else:
+						if not k.id in bld.node_sigs[self.env.variant()]:
+							nodes.append(k)
 			except:
 				nodes = '?'
 			raise Utils.WafError('Missing node signature for %r (for implicit dependencies %r)' % (nodes, self))
@@ -878,8 +893,7 @@ class Task(TaskBase):
 		"""it is intended for .cpp and inferred .h files
 		there is a single list (no tree traversal)
 		this is the hot spot so ... do not touch"""
-		m = md5()
-		upd = m.update
+		upd = self.m.update
 
 		bld = self.generator.bld
 		tstamp = bld.node_sigs
@@ -897,7 +911,7 @@ class Task(TaskBase):
 			else:
 				upd(tstamp[env.variant()][k.id])
 
-		return m.digest()
+		return self.m.digest()
 
 def funex(c):
 	dc = {}
@@ -977,9 +991,8 @@ def compile_fun_noshell(name, line):
 			app('lst.extend(to_list(env[%r]))' % var)
 			if not var in dvars: dvars.append(var)
 
-	if extr:
-		if params[-1]:
-			app("lst.extend(%r)" % params[-1].split())
+	if params[-1]:
+		app("lst.extend(%r)" % shlex.split(params[-1]))
 
 	fun = COMPILE_TEMPLATE_NOSHELL % "\n\t".join(buf)
 	debug('action: %s', fun)
@@ -1065,6 +1078,9 @@ def update_outputs(cls):
 			new_sig  = self.signature()
 			prev_sig = bld.task_sigs[self.unique_id()][0]
 			if prev_sig == new_sig:
+				for x in self.outputs:
+					if not x.id in bld.node_sigs[self.env.variant()]:
+						return RUN_ME
 				return SKIP_ME
 		except KeyError:
 			pass
@@ -1132,7 +1148,7 @@ def extract_deps(tasks):
 		except: # this is on purpose
 			pass
 
-		variant = x.env.variant()
+		v = x.env.variant()
 		key = x.unique_id()
 		for k in x.generator.bld.node_deps.get(x.unique_id(), []):
 			try: dep_to_task[(v, k.id)].append(x)

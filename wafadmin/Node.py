@@ -129,6 +129,7 @@ class Node(object):
 		return self.id & 3
 
 	def set_type(self, t):
+		"dangerous, you are not supposed to use this"
 		self.id = self.id + t - self.id & 3
 
 	def dirs(self):
@@ -204,7 +205,7 @@ class Node(object):
 		if node:
 			tp = node.id & 3
 			if tp != BUILD:
-				raise Utils.WafError("find_or_declare returns a build node, not a source nor a directory %r" % lst)
+				raise Utils.WafError('find_or_declare cannot return a build node (build files in the source directory %r?)' % lst)
 			return node
 		node = self.__class__(name, parent, BUILD)
 		return node
@@ -461,8 +462,9 @@ class Node(object):
 		"path seen from the build dir default/src/foo.cpp"
 		if self.id & 3 == FILE:
 			return self.relpath_gen(self.__class__.bld.bldnode)
-		if self.path_to_parent(self.__class__.bld.srcnode) is not '':
-			return os.path.join(env.variant(), self.path_to_parent(self.__class__.bld.srcnode))
+		p = self.path_to_parent(self.__class__.bld.srcnode)
+		if p is not '':
+			return env.variant() + os.sep + p
 		return env.variant()
 
 	def srcpath(self, env=None):
