@@ -199,7 +199,8 @@ xmms_avcodec_init (xmms_xform_t *xform)
 		 * demuxer so they will be handled slightly differently... */
 		if (!strcmp (data->codec_id, "shorten") ||
 		    !strcmp (data->codec_id, "adpcm_swf") ||
-		    !strcmp (data->codec_id, "pcm_s16le")) {
+		    !strcmp (data->codec_id, "pcm_s16le") ||
+		    !strcmp (data->codec_id, "nellymoser")) {
 			/* number 1024 taken from libavformat raw.c RAW_PACKET_SIZE */
 			data->extradata = g_malloc0 (1024);
 			data->extradata_size = 1024;
