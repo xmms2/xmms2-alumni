@@ -106,6 +106,10 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 	int32_t ival;
 	uint32_t *idlist;
 	int first, i;
+	int case_sens;
+
+	xmmsv_coll_attribute_get (coll, "case-sensitive", &val);
+	case_sens = (val != NULL && strcmp (val, "true") == 0);
 
 	xmmsv_get_list_iter (xmmsv_coll_operands_get (coll), &it);
 
@@ -174,7 +178,13 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 				}
 				s4_set_free (sa);
 			} else {
-				sa = s4_entry_get_entries (s4, key, val);
+				if (case_sens) {
+					sa = s4_set_new (0);
+					entry = s4_entry_get_s (s4, key, val);
+					s4_set_insert (sa, entry);
+				} else {
+					sa = s4_entry_get_entries (s4, key, val);
+				}
 				s4_set_reset (sa);
 
 				while ((entry = s4_set_next (sa)) != NULL) {
@@ -215,7 +225,7 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			sa = s4_entry_greater (s4, entry, 1);
 
 			/* Find all entries matching val */
-			ret = s4_entry_match (s4, sa, val);
+			ret = s4_entry_match (s4, sa, val, case_sens);
 
 			s4_set_free (sa);
 			s4_entry_free (entry);
