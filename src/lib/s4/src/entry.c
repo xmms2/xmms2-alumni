@@ -395,10 +395,12 @@ s4_set_t *s4_entry_get_entries (s4_t *s4, const char *key, const char *val)
  * @param s4 The database handle
  * @param set The set of properties to check
  * @param pattern The pattern to match against
+ * @param case_sens 1 if you want case sensitive matching,
+ * 0 for case insensitive
  * @return A set with all the entries that has one of the properties
  * in set that matches pattern.
  */
-s4_set_t *s4_entry_match (s4_t *s4, s4_set_t *set, const char *pattern)
+s4_set_t *s4_entry_match (s4_t *s4, s4_set_t *set, const char *pattern, int case_sens)
 {
 	GPatternSpec *spec;
 	char *str;
@@ -406,15 +408,23 @@ s4_set_t *s4_entry_match (s4_t *s4, s4_set_t *set, const char *pattern)
 	s4_set_t *ret, *tmp;
 	int i, j;
 
-	str = s4be_st_normalize (pattern);
-	spec = g_pattern_spec_new (str);
-	g_free (str);
+	if (case_sens) {
+		spec = g_pattern_spec_new (pattern);
+	} else {
+		str = s4be_st_normalize (pattern);
+		spec = g_pattern_spec_new (str);
+		g_free (str);
+	}
 
 	entry = s4_set_get (set, 0);
 	ret = NULL;
 
 	for (i = 0; i < s4_set_size (set); i++, entry++) {
-		str = s4be_st_reverse_normalized (s4->be, entry->val_i);
+		if (case_sens) {
+			str = s4be_st_reverse (s4->be, entry->val_i);
+		} else {
+			str = s4be_st_reverse_normalized (s4->be, entry->val_i);
+		}
 
 		if (g_pattern_match_string (spec, str)) {
 			tmp = s4_entry_contained (s4, entry);
