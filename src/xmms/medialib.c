@@ -1243,16 +1243,31 @@ xmms_medialib_url_encode (const gchar *path)
 GList*
 xmms_medialib_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 {
-	s4_set_t *set = s4_query (medialib->s4, dag, coll);
+	s4_set_t *set;
 	s4_entry_t *e;
 	GList *ret = NULL;
 
-	for (e = s4_set_next (set); e != NULL; e = s4_set_next (set)) {
-		ret = g_list_prepend (ret, xmmsv_new_int (e->val_i));
-		e = s4_set_next (set);
-	}
+	/* If the top collection is an idlist we simply extract the ids
+	 * directly, otherwise S4 will turn our idlist into a set.
+	 * This is only important for top level idlist since otherwise
+	 * they're input to some other collection that outputs a set anyway
+	 */
+	if (xmmsv_coll_get_type (coll) == XMMS_COLLECTION_TYPE_IDLIST) {
+		int i, size = xmmsv_coll_idlist_get_size (coll);
+		uint32_t *ids = xmmsv_coll_get_idlist (coll);
+		for (i = 0; i < size; i++) {
+			ret = g_list_prepend (ret, xmmsv_new_int (ids[i]));
+		}
+	} else {
+		set = s4_query (medialib->s4, dag, coll);
 
-	s4_set_free (set);
+		for (e = s4_set_next (set); e != NULL; e = s4_set_next (set)) {
+			ret = g_list_prepend (ret, xmmsv_new_int (e->val_i));
+			e = s4_set_next (set);
+		}
+
+		s4_set_free (set);
+	}
 
 	return g_list_reverse (ret);
 }
@@ -1278,16 +1293,16 @@ xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 GList*
 xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
 {
-	s4_set_t *set = s4_query (medialib->s4, dag, coll);
-	s4_entry_t *ent;
-	xmmsv_t *dict, *val, *prop;
+	GList *ids = xmms_medialib_query_ids (dag, coll);
 	GList *ret = NULL;
+	xmmsv_t *dict, *val, *prop;
 	int i, size;
+	int32_t id;
 	const char *p;
 
 	size = xmmsv_list_get_size (fetch);
 
-	for (ent = s4_set_next (set); ent != NULL; ent = s4_set_next (set)) {
+	while (ids != NULL) {
 		dict = NULL;
 
 		for (i = 0; i < size; i++) {
@@ -1296,10 +1311,13 @@ xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fe
 			if (!xmmsv_get_string (prop, &p))
 				p = NULL;
 
+			if (!xmmsv_get_int (ids->data, &id))
+				continue;
+
 			if (strcmp ("id", p) == 0) {
-				val = xmmsv_new_int (ent->val_i);
+				val = xmmsv_ref (ids->data);
 			} else if (p != NULL) {
-				val = xmms_medialib_entry_property_get_value (ent->val_i, p);
+				val = xmms_medialib_entry_property_get_value (id, p);
 			} else {
 				val = NULL;
 			}
@@ -1316,8 +1334,10 @@ xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fe
 
 		if (dict != NULL)
 			ret = g_list_prepend (ret, dict);
+
+		xmmsv_unref (ids->data);
+		ids = g_list_delete_link (ids, ids);
 	}
 
-	s4_set_free (set);
 	return g_list_reverse (ret);
 }
