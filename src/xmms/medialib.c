@@ -412,7 +412,7 @@ xmms_medialib_entry_property_set_str_source (xmms_medialib_entry_t id_num,
  * Return a fresh unused medialib id.
  */
 int32_t
-xmms_medialib_get_new_id ()
+xmms_medialib_get_new_id (void)
 {
 	int32_t id = xmms_medialib_entry_property_get_int (0, "new_id");
 
@@ -1102,7 +1102,7 @@ xmms_medialib_check_id (xmms_medialib_entry_t id)
  */
 
 xmms_medialib_entry_t
-xmms_medialib_entry_not_resolved_get ()
+xmms_medialib_entry_not_resolved_get (void)
 {
 	gint32 ret = 0;
 	s4_entry_t *entry;
@@ -1133,7 +1133,7 @@ xmms_medialib_entry_not_resolved_get ()
 }
 
 guint
-xmms_medialib_num_not_resolved ()
+xmms_medialib_num_not_resolved (void)
 {
 	gint ret = 0;
 	s4_entry_t *entry;
