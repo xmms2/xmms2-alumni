@@ -24,7 +24,7 @@
 #include "xmms/xmms_ipc.h"
 #include "xmms/xmms_log.h"
 #include "s4.h"
-#include "s4_query.h"
+#include "xmmspriv/s4_query.h"
 
 #include <string.h>
 #include <stdlib.h>
