@@ -53,7 +53,7 @@ subdirs = """
           src/lib/xmmsipc
           src/lib/xmmsutils
           src/lib/xmmsvisualization
-          src/lib/s4
+          src/lib/s4/src
           src/clients/lib/xmmsclient
           src/clients/lib/xmmsclient-glib
           src/include
