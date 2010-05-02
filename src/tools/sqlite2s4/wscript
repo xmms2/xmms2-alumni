@@ -1,0 +1,17 @@
+def build(bld):
+    obj = bld.new_task_gen('cc', 'program')
+    obj.target = 'sqlite2s4'
+    obj.source = """main.c
+          sqlite.c
+          collsqlite.c
+          colls4.c
+          """.split()
+    obj.includes = '. ../../include ../../includepriv'
+    obj.uselib_local = 's4 xmmstypes'
+    obj.uselib = 'glib2 sqlite3'
+
+def configure(conf):
+    conf.check_cfg(package='sqlite3', atleast_version='3.5', uselib_store='sqlite3', args='--cflags --libs', mandatory=1)
+
+def set_options(opt):
+    pass
