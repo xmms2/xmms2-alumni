@@ -1263,7 +1263,6 @@ xmms_medialib_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 
 		for (e = s4_set_next (set); e != NULL; e = s4_set_next (set)) {
 			ret = g_list_prepend (ret, xmmsv_new_int (e->val_i));
-			e = s4_set_next (set);
 		}
 
 		s4_set_free (set);
