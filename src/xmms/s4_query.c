@@ -307,6 +307,8 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 				entry.src_s = strdup ("server");
 				entry.src_i = 0;
 
+				s4_entry_fillin (s4, &entry);
+
 				s4_set_insert (ret, &entry);
 			}
 			break;
