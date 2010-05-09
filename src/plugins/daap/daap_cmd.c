@@ -18,15 +18,15 @@
 #include "daap_conn.h"
 
 static cc_data_t *
-daap_request_data (GIOChannel *chan, const gchar *path, gchar *host, guint request_id);
+daap_request_data (GIOChannel *chan, const gchar *path, gchar *host, guint request_id, gchar *auth);
 static gboolean
 daap_request_stream (GIOChannel *chan, gchar *path, gchar *host,
-                     guint request_id, guint *size);
+		     guint request_id, gchar *auth, guint *size);
 static gchar *
 daap_url_append_meta (gchar *url, GSList *meta_list);
 
 guint
-daap_command_login (gchar *host, gint port, guint request_id, xmms_error_t *err) {
+daap_command_login (gchar *host, gint port, guint request_id, gchar *auth, xmms_error_t *err) {
 	GIOChannel *chan;
 	cc_data_t *cc_data;
 
@@ -41,7 +41,7 @@ daap_command_login (gchar *host, gint port, guint request_id, xmms_error_t *err)
 		return 0;
 	}
 
-	cc_data = daap_request_data (chan, "/login", host, request_id);
+	cc_data = daap_request_data (chan, "/login", host, request_id, auth);
 	if (cc_data) {
 		session_id = cc_data->session_id;
 		cc_data_free (cc_data);
@@ -54,7 +54,7 @@ daap_command_login (gchar *host, gint port, guint request_id, xmms_error_t *err)
 }
 
 guint
-daap_command_update (gchar *host, gint port, guint session_id, guint request_id)
+daap_command_update (gchar *host, gint port, guint session_id, guint request_id, gchar *auth)
 {
 	GIOChannel *chan;
 	gchar *request;
@@ -68,7 +68,7 @@ daap_command_update (gchar *host, gint port, guint session_id, guint request_id)
 
 	request = g_strdup_printf ("/update?session-id=%d", session_id);
 
-	cc_data = daap_request_data (chan, request, host, request_id);
+	cc_data = daap_request_data (chan, request, host, request_id, auth);
 	if (cc_data) {
 		revision_id = cc_data->revision_id;
 		cc_data_free (cc_data);
@@ -82,7 +82,7 @@ daap_command_update (gchar *host, gint port, guint session_id, guint request_id)
 }
 
 gboolean
-daap_command_logout (gchar *host, gint port, guint session_id, guint request_id)
+daap_command_logout (gchar *host, gint port, guint session_id, guint request_id, gchar *auth)
 {
 	GIOChannel *chan;
 	gchar *request;
@@ -95,7 +95,7 @@ daap_command_logout (gchar *host, gint port, guint session_id, guint request_id)
 	request = g_strdup_printf ("/logout?session-id=%d", session_id);
 
 	/* there is no cc_data generated, so we don't need to store it anywhere */
-	daap_request_data (chan, request, host, request_id);
+	daap_request_data (chan, request, host, request_id, auth);
 
 	g_free (request);
 	g_io_channel_shutdown (chan, TRUE, NULL);
@@ -106,7 +106,7 @@ daap_command_logout (gchar *host, gint port, guint session_id, guint request_id)
 
 GSList *
 daap_command_db_list (gchar *host, gint port, guint session_id,
-                      guint revision_id, guint request_id)
+                      guint revision_id, guint request_id, gchar *auth)
 {
 	GIOChannel *chan;
 	gchar *request;
@@ -121,7 +121,7 @@ daap_command_db_list (gchar *host, gint port, guint session_id,
 	request = g_strdup_printf ("/databases?session-id=%d&revision-id=%d",
 	                           session_id, revision_id);
 
-	cc_data = daap_request_data (chan, request, host, request_id);
+	cc_data = daap_request_data (chan, request, host, request_id, auth);
 	g_free (request);
 	if (cc_data) {
 		db_id_list = cc_record_list_deep_copy (cc_data->record_list);
@@ -136,7 +136,7 @@ daap_command_db_list (gchar *host, gint port, guint session_id,
 
 GSList *
 daap_command_song_list (gchar *host, gint port, guint session_id,
-                        guint revision_id, guint request_id, gint db_id)
+                        guint revision_id, guint request_id, gchar* auth, gint db_id)
 {
 	GIOChannel *chan;
 	gchar *request;
@@ -165,7 +165,7 @@ daap_command_song_list (gchar *host, gint port, guint session_id,
 		request = daap_url_append_meta (request, meta_items);
 	}
 
-	cc_data = daap_request_data (chan, request, host, request_id);
+	cc_data = daap_request_data (chan, request, host, request_id, auth);
 	song_list = cc_record_list_deep_copy (cc_data->record_list);
 
 	g_free (request);
@@ -180,7 +180,7 @@ daap_command_song_list (gchar *host, gint port, guint session_id,
 
 GIOChannel *
 daap_command_init_stream (gchar *host, gint port, guint session_id,
-                          guint revision_id, guint request_id,
+                          guint revision_id, guint request_id, gchar *auth,
                           gint dbid, gchar *song, guint *filesize)
 {
 	GIOChannel *chan;
@@ -196,7 +196,7 @@ daap_command_init_stream (gchar *host, gint port, guint session_id,
 	                           "?session-id=%d",
 	                           dbid, song, session_id);
 
-	ok = daap_request_stream (chan, request, host, request_id, filesize);
+	ok = daap_request_stream (chan, request, host, request_id, auth, filesize);
 	g_free (request);
 
 	if (!ok) {
@@ -207,13 +207,13 @@ daap_command_init_stream (gchar *host, gint port, guint session_id,
 }
 
 static cc_data_t *
-daap_request_data (GIOChannel *chan, const gchar *path, gchar *host, guint request_id)
+daap_request_data (GIOChannel *chan, const gchar *path, gchar *host, guint request_id, gchar *auth)
 {
 	guint status;
 	gchar *request, *header = NULL;
 	cc_data_t *retval;
 
-	request = daap_generate_request (path, host, request_id);
+	request = daap_generate_request (path, host, request_id, auth);
 	daap_send_request (chan, request);
 	g_free (request);
 
@@ -244,12 +244,12 @@ daap_request_data (GIOChannel *chan, const gchar *path, gchar *host, guint reque
 
 static gboolean
 daap_request_stream (GIOChannel *chan, gchar *path, gchar *host,
-                     guint request_id, guint *size)
+                     guint request_id, gchar *auth, guint *size)
 {
 	guint status;
 	gchar *request, *header = NULL;
 
-	request = daap_generate_request (path, host, request_id);
+	request = daap_generate_request (path, host, request_id, auth);
 	daap_send_request (chan, request);
 	g_free (request);
 
@@ -289,4 +289,3 @@ daap_url_append_meta (gchar *url, GSList *meta_list)
 
 	return url;
 }
-

@@ -34,6 +34,6 @@ def plugin_build(bld, obj):
     obj.source.append("daap_mdns_%s.c" % daap_backend)
 
 configure, build = plugin('daap', configure=plugin_configure,
-                          libs=["curl"], build=plugin_build,
+                          libs=["curl", "openssl"], build=plugin_build,
                           source=["daap_xform.c", "daap_cmd.c", "daap_conn.c",
                                   "daap_util.c", "daap_md5.c", "cc_handlers.c"])

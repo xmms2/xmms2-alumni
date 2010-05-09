@@ -141,15 +141,19 @@ daap_open_connection (gchar *host, gint port)
 }
 
 gchar *
-daap_generate_request (const gchar *path, gchar *host, gint request_id)
+daap_generate_request (const gchar *path, gchar *host, gint request_id, gchar *auth)
 {
-	gchar *req;
+	gchar *req, *auth_header;
 	gint8 hash[33];
 
 	memset (hash, 0, 33);
 
 	daap_hash_generate (DAAP_VERSION, (guchar *) path, 2, (guchar *) hash,
 	                    request_id);
+
+	if (auth) {
+		auth_header = g_strdup_printf ("Authorization: Basic %s\r\n", auth);
+	}
 
 	req = g_strdup_printf ("GET %s %s\r\n"
 	                       "Host: %s\r\n"
@@ -160,10 +164,16 @@ daap_generate_request (const gchar *path, gchar *host, gint request_id)
 	                       "Client-DAAP-Version: 3.0\r\n"
 	                       "Client-DAAP-Validation: %s\r\n"
 	                       "Client-DAAP-Request-ID: %d\r\n"
+	                       "%s" /* note this includes line termination */
 	                       "Connection: close\r\n"
 	                       "\r\n",
 	                       path, HTTP_VER_STRING, host,
-	                       USER_AGENT, hash, request_id);
+	                       USER_AGENT, hash, request_id,
+	                       auth ? auth_header : "");
+	if (auth) {
+		 g_free (auth_header);
+	}
+
 	return req;
 }
 

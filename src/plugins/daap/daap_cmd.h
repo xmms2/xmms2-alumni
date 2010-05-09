@@ -26,10 +26,11 @@
  * @param host host IP of server
  * @param port port that the server uses on host
  * @param request_id the request id
+ * @param auth authentication string
  * @return a session id for use in further commands
  */
 guint
-daap_command_login (gchar *host, gint port, guint request_id, xmms_error_t *err);
+daap_command_login (gchar *host, gint port, guint request_id, gchar *auth, xmms_error_t *err);
 
 /**
  * Update the DAAP server status.
@@ -39,10 +40,11 @@ daap_command_login (gchar *host, gint port, guint request_id, xmms_error_t *err)
  * @param port port that the server uses on host
  * @param session_id the id of the current session
  * @param request_id the request id
+ * @param auth authentication string
  * @return a revision id for use in further commands
  */
 guint
-daap_command_update (gchar *host, gint port, guint session_id, guint request_id);
+daap_command_update (gchar *host, gint port, guint session_id, guint request_id, gchar *auth);
 
 /**
  * Log out of a DAAP server.
@@ -52,10 +54,11 @@ daap_command_update (gchar *host, gint port, guint session_id, guint request_id)
  * @param port port that the server uses on host
  * @param session_id the id of the current session
  * @param request_id the request id
+ * @param auth authentication string
  * @return TRUE on success, FALSE otherwise
  */
 gboolean
-daap_command_logout (gchar *host, gint port, guint session_id, guint request_id);
+daap_command_logout (gchar *host, gint port, guint session_id, guint request_id, gchar *auth);
 
 /**
  * Get a list of databases.
@@ -66,11 +69,12 @@ daap_command_logout (gchar *host, gint port, guint session_id, guint request_id)
  * @param session_id the id of the current session
  * @param revision_id the id of the current revision
  * @param request_id the request id
+ * @param auth authentication string
  * @return a list of database ids
  */
 GSList *
 daap_command_db_list (gchar *host, gint port, guint session_id,
-                      guint revision_id, guint request_id);
+                      guint revision_id, guint request_id, gchar *auth);
 
 /**
  * Get a list of songs in a database.
@@ -81,12 +85,13 @@ daap_command_db_list (gchar *host, gint port, guint session_id,
  * @param session_id the id of the current session
  * @param revision_id the id of the current revision
  * @param request_id the request id
+ * @param auth authentication string
  * @param db_id the database id
  * @return a list of songs in the database
  */
 GSList *
 daap_command_song_list (gchar *host, gint port, guint session_id,
-                        guint revision_id, guint request_id, gint db_id);
+                        guint revision_id, guint request_id, gchar* auth, gint db_id);
 
 /**
  * Begin streaming a song.
@@ -100,6 +105,7 @@ daap_command_song_list (gchar *host, gint port, guint session_id,
  * @param session_id the id of the current session
  * @param revision_id the id of the current revision
  * @param request_id the request id
+ * @param auth authentication string
  * @param dbid the database id
  * @param song a string containing the id and file type of the song to stream
  * @param filesize a pointer to an integer that stores the content length 
@@ -107,7 +113,7 @@ daap_command_song_list (gchar *host, gint port, guint session_id,
  */
 GIOChannel *
 daap_command_init_stream (gchar *host, gint port, guint session_id,
-                          guint revision_id, guint request_id,
+                          guint revision_id, guint request_id, gchar* auth,
                           gint dbid, gchar *song, guint *filesize);
 
 #endif

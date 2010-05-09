@@ -14,8 +14,14 @@
  *  GNU General Public License for more details.
  */
 
+#include <stdlib.h>
+#include <string.h>
+
 #include <glib.h>
 #include <glib/gprintf.h>
+
+#include <openssl/bio.h>
+#include <openssl/evp.h>
 
 #include "daap_util.h"
 
@@ -79,3 +85,25 @@ read_buffer_from_channel (GIOChannel *chan, gchar *buf, gint bufsize)
 	return n_total_bytes_read;
 }
 
+/* copied from raop_client.c */
+gint
+b64_encode_alloc (const guchar *data, int size, char **out)
+{
+	BIO *mb,*b64b,*bio;
+	char *p;
+
+	mb = BIO_new (BIO_s_mem ());
+	b64b = BIO_new (BIO_f_base64 ());
+	BIO_set_flags (b64b, BIO_FLAGS_BASE64_NO_NL);
+	bio = BIO_push (b64b, mb);
+
+	BIO_write (bio,data,size);
+
+	(void) BIO_flush (bio);
+	size = BIO_ctrl (mb, BIO_CTRL_INFO, 0, (char *)&p);
+	*out = g_malloc (size+1);
+	memcpy (*out, p, size);
+	(*out)[size] = 0;
+	BIO_free_all (bio);
+	return size;
+}

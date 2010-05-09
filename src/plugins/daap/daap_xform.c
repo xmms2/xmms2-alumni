@@ -38,6 +38,7 @@
 typedef struct {
 	gchar *host;
 	guint port;
+	gchar *password;
 
 	GIOChannel *channel;
 
@@ -50,6 +51,7 @@ typedef struct {
 	guint session_id;
 	guint revision_id;
 	guint request_id;
+	gchar *auth;
 } xmms_daap_login_data_t;
 
 static GHashTable *login_sessions = NULL;
@@ -66,9 +68,11 @@ static void
 xmms_daap_destroy (xmms_xform_t *xform);
 static gint
 xmms_daap_read (xmms_xform_t *xform, void *buffer,
-                gint len, xmms_error_t *error);
+		gint len, xmms_error_t *error);
 static gboolean
 xmms_daap_browse (xmms_xform_t *xform, const gchar *url, xmms_error_t *error);
+static gchar *
+daap_get_auth (const gchar *password);
 
 /*
  * Plugin header
@@ -82,12 +86,12 @@ XMMS_XFORM_PLUGIN ("daap",
 
 /**
  * Extract hostname, port and command from an url.
- * daap://hostname:port/command
+ * daap://[username:password@]hostname:port/command
  */
 static gboolean
-get_data_from_url (const gchar *url, gchar **host, guint *port, gchar **cmd, xmms_error_t *err)
+get_data_from_url (const gchar *url, gchar **host, guint *port, gchar **password, gchar **cmd, xmms_error_t *err)
 {
-	const gchar *port_ptr, *cmd_ptr, *end_ptr, *stripped;
+	const gchar *port_ptr, *cmd_ptr, *end_ptr, *stripped, *at_ptr;
 
 	stripped = url + sizeof (gchar) * strlen ("daap://");
 
@@ -96,6 +100,17 @@ get_data_from_url (const gchar *url, gchar **host, guint *port, gchar **cmd, xmm
 	if (stripped == end_ptr) {
 		xmms_error_set (err, XMMS_ERROR_INVAL, "Empty URL");
 		return FALSE;
+	}
+
+	at_ptr = g_strstr_len (stripped, -1, "@");
+	if (at_ptr) {
+		const gchar *colon = g_strstr_len (stripped, at_ptr - stripped, ":");
+		if (colon) {
+			*password = g_strndup (colon + 1, at_ptr - colon - 1);
+		} else {
+			*password = g_strndup (stripped, at_ptr - stripped);
+		}
+		stripped = at_ptr + 1;
 	}
 
 	port_ptr = strstr (stripped, ":");
@@ -114,6 +129,7 @@ get_data_from_url (const gchar *url, gchar **host, guint *port, gchar **cmd, xmm
 	} else if (cmd) {
 		/* cmd wanted but not found */
 		xmms_error_set (err, XMMS_ERROR_INVAL, "No file requested");
+		return FALSE;
 	} else if (!cmd && cmd_ptr && (cmd_ptr + 1) != end_ptr) {
 		/* cmd not wanted but found */
 		xmms_error_set (err, XMMS_ERROR_NOENT, "No such directory");
@@ -195,12 +211,26 @@ daap_add_song_to_list (xmms_xform_t *xform, cc_item_record_t *song)
 	                                          song->song_track_no);
 }
 
+static gchar *
+daap_get_auth (const gchar *password)
+{
+	gchar *auth, *retval;
+
+	if (password) {
+		auth = g_strconcat (":", password, NULL);
+		b64_encode_alloc ((const guchar*) auth, strlen(auth), (char**) &retval);
+		g_free (auth);
+	} else {
+		retval = NULL;
+	}
+	return retval;
+}
 
 /**
  * Scan a daap server for songs.
  */
 static gboolean
-daap_get_urls_from_server (xmms_xform_t *xform, gchar *host, guint port,
+daap_get_urls_from_server (xmms_xform_t *xform, gchar *host, guint port, gchar *password,
                            xmms_error_t *err)
 {
 	GSList *dbid_list = NULL;
@@ -216,15 +246,18 @@ daap_get_urls_from_server (xmms_xform_t *xform, gchar *host, guint port,
 	if (!login_data) {
 		login_data = g_new0 (xmms_daap_login_data_t, 1);
 
-		login_data->session_id = daap_command_login (host, port, 0, err);
+		login_data->auth = daap_get_auth (password);
+
+		login_data->session_id = daap_command_login (host, port, 0, login_data->auth, err);
 		if (xmms_error_iserror (err)) {
 			g_free (login_data);
 			return FALSE;
 		}
 
 		login_data->revision_id = daap_command_update (host, port,
-		                                               login_data->session_id,
-		                                               0);
+							       login_data->session_id,
+							       0,
+							       login_data->auth);
 
 		login_data->request_id = 1;
 		login_data->logged_in = TRUE;
@@ -232,12 +265,13 @@ daap_get_urls_from_server (xmms_xform_t *xform, gchar *host, guint port,
 		g_hash_table_insert (login_sessions, hash, login_data);
 	} else {
 		login_data->revision_id = daap_command_update (host, port,
-		                                               login_data->session_id,
-		                                               0);
+							       login_data->session_id,
+							       0,
+							       login_data->auth);
 	}
 
 	dbid_list = daap_command_db_list (host, port, login_data->session_id,
-	                                  login_data->revision_id, 0);
+	                                  login_data->revision_id, 0, login_data->auth);
 	if (!dbid_list) {
 		return FALSE;
 	}
@@ -247,8 +281,8 @@ daap_get_urls_from_server (xmms_xform_t *xform, gchar *host, guint port,
 	 *     just use the first db in the list */
 	db_data = (cc_item_record_t *) dbid_list->data;
 	song_list = daap_command_song_list (host, port, login_data->session_id,
-	                                    login_data->revision_id,
-	                                    0, db_data->dbid);
+					    login_data->revision_id,
+					    0, login_data->auth, db_data->dbid);
 
 	g_slist_foreach (dbid_list, (GFunc) cc_item_record_free, NULL);
 	g_slist_free (dbid_list);
@@ -295,7 +329,7 @@ xmms_daap_init (xmms_xform_t *xform)
 
 	xmms_error_reset (&err);
 
-	if (!get_data_from_url (url, &(data->host), &(data->port), &command, &err)) {
+	if (!get_data_from_url (url, &(data->host), &(data->port), &(data->password), &command, &err)) {
 		goto init_error;
 	}
 
@@ -309,9 +343,12 @@ xmms_daap_init (xmms_xform_t *xform)
 		login_data->request_id = 1;
 		login_data->logged_in = TRUE;
 
+		login_data->auth = daap_get_auth (data->password);
+
 		login_data->session_id = daap_command_login (data->host, data->port,
-		                                             login_data->request_id,
-		                                             &err);
+							     login_data->request_id,
+							     login_data->auth,
+							     &err);
 		if (xmms_error_iserror (&err)) {
 			g_free (login_data);
 			goto init_error;
@@ -321,12 +358,14 @@ xmms_daap_init (xmms_xform_t *xform)
 	}
 
 	login_data->revision_id = daap_command_update (data->host, data->port,
-	                                               login_data->session_id,
-	                                               login_data->request_id);
+						       login_data->session_id,
+						       login_data->request_id,
+						       login_data->auth);
 	dbid_list = daap_command_db_list (data->host, data->port,
-	                                  login_data->session_id,
-	                                  login_data->revision_id,
-	                                  login_data->request_id);
+					  login_data->session_id,
+					  login_data->revision_id,
+					  login_data->request_id,
+					  login_data->auth);
 	if (!dbid_list) {
 		goto init_error;
 	}
@@ -335,10 +374,10 @@ xmms_daap_init (xmms_xform_t *xform)
 	dbid = ((cc_item_record_t *) dbid_list->data)->dbid;
 	/* want to request a stream, but don't read the data yet */
 	data->channel = daap_command_init_stream (data->host, data->port,
-	                                          login_data->session_id,
-	                                          login_data->revision_id,
-	                                          login_data->request_id, dbid,
-	                                          command, &filesize);
+						  login_data->session_id,
+						  login_data->revision_id,
+						  login_data->request_id, login_data->auth, dbid,
+						  command, &filesize);
 	if (! data->channel) {
 		goto init_error;
 	}
@@ -362,8 +401,8 @@ xmms_daap_init (xmms_xform_t *xform)
 
 init_error:
 	if (data) {
-		if (data->host)
-			g_free (data->host);
+		g_free (data->host);
+		g_free (data->password);
 		g_free (data);
 	}
 	return FALSE;
@@ -380,6 +419,7 @@ xmms_daap_destroy (xmms_xform_t *xform)
 	g_io_channel_unref (data->channel);
 
 	g_free (data->host);
+	g_free (data->password);
 	g_free (data);
 }
 
@@ -448,12 +488,14 @@ xmms_daap_browse (xmms_xform_t *xform, const gchar *url, xmms_error_t *error)
 
 		g_slist_free (sl);
 	} else {
-		gchar *host;
+		gchar *host = NULL;
+		gchar *password = NULL;
 		guint port;
 
-		if (get_data_from_url (url, &host, &port, NULL, error)) {
-			ret = daap_get_urls_from_server (xform, host, port, error);
+		if (get_data_from_url (url, &host, &port, &password, NULL, error)) {
+			ret = daap_get_urls_from_server (xform, host, port, password, error);
 			g_free (host);
+			g_free (password);
 		}
 	}
 
