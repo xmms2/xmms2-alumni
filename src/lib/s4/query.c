@@ -1,10 +1,9 @@
 #include <s4.h>
-#include "src/s4_be.h"
 #include <xmmsclient/xmmsclient.h>
 #include <string.h>
 #include <stdlib.h>
-#include <ctype.h>
-#include "s4_query.h"
+#include "xmmspriv/s4_query.h"
+#include "xmmspriv/xmms_utils.h"
 
 
 /**
@@ -20,20 +19,6 @@ static s4_set_t *universe (s4_t *s4) {
 	s4_entry_t *entry = s4_entry_get_s (s4, "type", "song");
 	s4_set_t *ret = s4_entry_contained (s4, entry);
 	s4_entry_free (entry);
-	return ret;
-}
-
-static int is_int (const char *str, int *val)
-{
-	int ret = 0;
-	char *end;
-
-	if (!isspace (*str)) {
-		*val = strtol (str, &end, 10);
-		if (*end == '\0')
-			ret = 1;
-	}
-
 	return ret;
 }
 
@@ -202,7 +187,7 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 				s4_set_free (sa);
 
 				/* If it is an int we should search for integer entries too */
-				if (is_int (val, &ival)) {
+				if (xmms_is_int (val, &ival)) {
 					entry = s4_entry_get_i (s4, key, ival);
 					sa = ret;
 					sb = s4_entry_contained (s4, entry);
