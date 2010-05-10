@@ -149,6 +149,46 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	return medialib;
 }
 
+static s4_entry_t *
+xmms_medialib_entry_property_get (xmms_medialib_entry_t id_num,
+		const gchar *property)
+{
+	s4_entry_t *ret = NULL;
+	int i, pref = -1;
+
+	g_return_val_if_fail (property, NULL);
+
+	if (!strcmp (property, XMMS_MEDIALIB_ENTRY_PROPERTY_ID)) {
+		ret = s4_entry_get_i (medialib->s4, XMMS_MEDIALIB_ENTRY_PROPERTY_ID, id_num);
+	} else {
+		s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
+		s4_set_t *props = s4_entry_get_property (medialib->s4, entry, property);
+		s4_entry_t *prop = s4_set_next (props);
+
+		for (; prop != NULL; prop = s4_set_next (props)) {
+			s4_entry_fillin (medialib->s4, prop);
+
+			for (i = 0
+					; i < SOURCE_PREF_COUNT &&
+					!g_pattern_match_string (source_spec[i], prop->src_s)
+					; i++);
+
+			if (pref == -1 || i < pref) {
+				ret = prop;
+				pref = i;
+			}
+		}
+
+		if (ret != NULL)
+			ret = s4_entry_copy (ret);
+
+		s4_set_free (props);
+		s4_entry_free (entry);
+	}
+
+	return ret;
+}
+
 
 /**
  * Retrieve a property from an entry
@@ -161,41 +201,17 @@ xmms_medialib_entry_property_get_value (xmms_medialib_entry_t id_num,
                                         const gchar *property)
 {
 	xmmsv_t *ret = NULL;
-	int i, pref = -1;
+	s4_entry_t *prop;
 
-	g_return_val_if_fail (property, NULL);
+	prop = xmms_medialib_entry_property_get (id_num, property);
+	g_return_val_if_fail (prop != NULL, NULL);
 
-	if (!strcmp (property, XMMS_MEDIALIB_ENTRY_PROPERTY_ID)) {
-		ret = xmmsv_new_int (id_num);
-	} else {
-		s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-		s4_set_t *props = s4_entry_get_property (medialib->s4, entry, property);
-		s4_entry_t *prop = s4_set_next (props);
+	if (prop->type == ENTRY_INT)
+		ret = xmmsv_new_int (prop->val_i);
+	else
+		ret = xmmsv_new_string (prop->val_s);
 
-		for (; prop != NULL; prop = s4_set_next (props)) {
-			s4_entry_fillin (medialib->s4, prop);
-
-			for (i = 0
-					; i < SOURCE_PREF_COUNT &&
-					!g_pattern_match_string (source_spec[i],
-						prop->src_s)
-					; i++);
-
-			if (i >= pref && pref != -1)
-				continue;
-			pref = i;
-			if (ret != NULL)
-				xmmsv_unref (ret);
-
-			if (prop->type == ENTRY_INT)
-				ret = xmmsv_new_int (prop->val_i);
-			else
-				ret = xmmsv_new_string (prop->val_s);
-		}
-
-		s4_set_free (props);
-		s4_entry_free (entry);
-	}
+	s4_entry_free (prop);
 
 	return ret;
 }
@@ -215,36 +231,17 @@ xmms_medialib_entry_property_get_str (xmms_medialib_entry_t id_num,
                                       const gchar *property)
 {
 	gchar *ret = NULL;
-	int i, pref = -1;
+	s4_entry_t *prop;
 
-	g_return_val_if_fail (property, NULL);
+	prop = xmms_medialib_entry_property_get (id_num, property);
+	g_return_val_if_fail (prop != NULL, NULL);
 
-	s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-	s4_set_t *props = s4_entry_get_property (medialib->s4, entry, property);
-	s4_entry_t *prop = s4_set_next (props);
+	if (prop->type == ENTRY_INT)
+		ret = g_strdup_printf ("%i", prop->val_i);
+	else
+		ret = g_strdup (prop->val_s);
 
-	for (; prop != NULL; prop = s4_set_next (props)) {
-		s4_entry_fillin (medialib->s4, prop);
-
-		for (i = 0
-				; i < SOURCE_PREF_COUNT &&
-				!g_pattern_match_string (source_spec[i],
-					prop->src_s)
-				; i++);
-
-		if (i >= pref && pref != -1)
-			continue;
-		pref = i;
-
-		if (prop->type == ENTRY_STR) {
-			if (ret != NULL)
-				g_free (ret);
-			ret = g_strdup (prop->val_s);
-		}
-	}
-
-	s4_set_free (props);
-	s4_entry_free (entry);
+	s4_entry_free (prop);
 
 	return ret;
 }
@@ -263,35 +260,44 @@ xmms_medialib_entry_property_get_int (xmms_medialib_entry_t id_num,
                                       const gchar *property)
 {
 	gint32 ret = -1;
-	int i, pref = -1;
-
-	g_return_val_if_fail (property, -1);
-
-	s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-	s4_set_t *props = s4_entry_get_property (medialib->s4, entry, property);
 	s4_entry_t *prop;
 
-	for (prop = s4_set_next (props); prop != NULL; prop = s4_set_next (props)) {
-		s4_entry_fillin (medialib->s4, prop);
+	prop = xmms_medialib_entry_property_get (id_num, property);
+	g_return_val_if_fail (prop != NULL, -1);
 
-		for (i = 0
-				; i < SOURCE_PREF_COUNT &&
-				!g_pattern_match_string (source_spec[i],
-					prop->src_s)
-				; i++);
+	if (prop->type == ENTRY_INT)
+		ret = prop->val_i;
 
-		if (i >= pref && pref != -1)
-			continue;
-		pref = i;
-
-		if (prop->type == ENTRY_INT)
-			ret = prop->val_i;
-	}
-
-	s4_set_free (props);
-	s4_entry_free (entry);
+	s4_entry_free (prop);
 
 	return ret;
+}
+
+static gboolean
+xmms_medialib_entry_property_set_source (xmms_medialib_entry_t id_num,
+		s4_entry_t *new_prop,
+		const gchar *source)
+{
+
+	s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
+	s4_set_t *props = s4_entry_get_property (medialib->s4, entry, new_prop->key_s);
+	s4_entry_t *prop = s4_set_next (props);
+
+	while (prop != NULL) {
+		s4_entry_fillin (medialib->s4, prop);
+		if (strcmp (prop->src_s, source) == 0) {
+			s4_entry_del (medialib->s4, entry, prop, source);
+			prop = NULL;
+		} else {
+			prop = s4_set_next (props);
+		}
+	}
+
+	s4_entry_add (medialib->s4, entry, new_prop, source);
+	s4_set_free (props);
+
+	return TRUE;
+
 }
 
 /**
@@ -319,33 +325,16 @@ xmms_medialib_entry_property_set_int_source (xmms_medialib_entry_t id_num,
                                              const gchar *property, gint value,
                                              const gchar *source)
 {
-	gboolean ret = TRUE;
+	gboolean ret;
+	s4_entry_t *prop;
 
 	g_return_val_if_fail (property, FALSE);
 
-	s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-	s4_set_t *props = s4_entry_get_property (medialib->s4, entry, property);
-	s4_entry_t *prop = s4_set_next (props);
-	while (prop != NULL) {
-		s4_entry_fillin (medialib->s4, prop);
-		if (strcmp (prop->src_s, source) == 0) {
-			s4_entry_del (medialib->s4, entry, prop, source);
-			s4_set_free (props);
-			props = NULL;
-			prop = NULL;
-		} else
-			prop = s4_set_next (props);
-	}
-
 	prop = s4_entry_get_i (medialib->s4, property, value);
-	s4_entry_add (medialib->s4, entry, prop, source);
+	ret = xmms_medialib_entry_property_set_source (id_num, prop, source);
 
-	s4_set_free (props);
 	s4_entry_free (prop);
-	s4_entry_free (entry);
-
 	return ret;
-
 }
 
 /**
@@ -373,7 +362,9 @@ xmms_medialib_entry_property_set_str_source (xmms_medialib_entry_t id_num,
                                              const gchar *property, const gchar *value,
                                              const gchar *source)
 {
-	gboolean ret = TRUE;
+	gboolean ret;
+	s4_entry_t *prop;
+	int ival;
 
 	g_return_val_if_fail (property, FALSE);
 
@@ -382,26 +373,13 @@ xmms_medialib_entry_property_set_str_source (xmms_medialib_entry_t id_num,
 		return FALSE;
 	}
 
-	s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-	s4_set_t *props = s4_entry_get_property (medialib->s4, entry, property);
-	s4_entry_t *prop = s4_set_next (props);
-
-	while (prop != NULL) {
-		s4_entry_fillin (medialib->s4, prop);
-		if (strcmp (prop->src_s, source) == 0) {
-			s4_entry_del (medialib->s4, entry, prop, source);
-			s4_set_free (props);
-			props = NULL;
-			prop = NULL;
-		} else
-			prop = s4_set_next (props);
+	if (xmms_is_int (value, &ival)) {
+		prop = s4_entry_get_i (medialib->s4, property, ival);
+	} else {
+		prop = s4_entry_get_s (medialib->s4, property, value);
 	}
-
-	prop = s4_entry_get_s (medialib->s4, property, value);
-	s4_entry_add (medialib->s4, entry, prop, source);
-
+	ret = xmms_medialib_entry_property_set_source (id_num, prop, source);
 	s4_entry_free (prop);
-	s4_entry_free (entry);
 
 	return ret;
 
