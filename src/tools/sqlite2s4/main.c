@@ -14,15 +14,39 @@
 
 #include "s4.h"
 #include "xmmspriv/xmms_collection.h"
+#include "xmmspriv/xmms_utils.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <sqlite3.h>
 #include <glib.h>
+#include <ctype.h>
 
 extern gboolean try_upgrade (sqlite3 *sql);
 extern void collection_restore (sqlite3 *db, GHashTable **ht);
 extern void collection_dag_save (GHashTable **ht, const char *bdir);
+
+/**
+ * Check if a string is a number, if it is save it in val
+ *
+ * @param str The str to check
+ * @param val A pointer to where we want the number to be saved
+ * @return TRUE if the str is a number, FALSE otherwise
+ */
+gboolean
+xmms_is_int (const gchar *str, int *val)
+{
+	gboolean ret = FALSE;
+	gchar *end;
+
+	if (!isspace (*str)) {
+		*val = strtol (str, &end, 10);
+		if (*end == '\0')
+			ret = TRUE;
+	}
+
+	return ret;
+}
 
 static int tree_cmp (gconstpointer a, gconstpointer b)
 {
@@ -78,7 +102,12 @@ static int media_callback (void *u, int argc, char *argv[], char *col[])
 
 	src = g_tree_lookup (sources, &src_id);
 	entry = s4_entry_get_i (s4, "song_id", id);
-	prop = s4_entry_get_s (s4, key, val);
+
+	if (xmms_is_int (val, &i)) {
+		prop = s4_entry_get_i (s4, key, i);
+	} else {
+		prop = s4_entry_get_s (s4, key, val);
+	}
 
 	s4_entry_add (s4, entry, prop, src);
 
