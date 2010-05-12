@@ -25,8 +25,6 @@
 #include <glib/gstdio.h>
 
 
-#define COLL_DIR "collections"
-
 typedef struct {
 	const gchar *key;
 	xmmsv_coll_t *value;
@@ -148,7 +146,7 @@ collection_dag_save (GHashTable **ht, const char *bdir)
 	/* Write all collections in all namespaces */
 	for (i = 0; i < XMMS_COLLECTION_NUM_NAMESPACES; ++i) {
 		namespace = get_namespace_string (i);
-		path = g_build_filename (base_dir, COLL_DIR, namespace, NULL);
+		path = g_build_filename (base_dir, namespace, NULL);
 
 		if (!create_dir (path))
 			return;
@@ -173,7 +171,7 @@ collection_dag_save (GHashTable **ht, const char *bdir)
 		name = search_pair.key;
 	}
 
-	path = g_build_filename (base_dir, COLL_DIR, XMMS_COLLECTION_NS_PLAYLISTS,
+	path = g_build_filename (base_dir, XMMS_COLLECTION_NS_PLAYLISTS,
 			XMMS_ACTIVE_PLAYLIST, NULL);
 	file = fopen (path, "w");
 
@@ -248,7 +246,7 @@ write_operator (void *key, void *value, void *udata)
 {
 	char *label = key;
 	char *namespace = udata;
-	char *path = g_build_filename (base_dir, COLL_DIR, namespace, label, NULL);
+	char *path = g_build_filename (base_dir, namespace, label, NULL);
 	xmmsv_coll_t *coll = value;
 	FILE *file;
 
