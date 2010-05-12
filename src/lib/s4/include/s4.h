@@ -30,6 +30,13 @@
 #define S4_EXISTS           1 << 5
 #define S4_SYNC_THREAD      1 << 6
 
+/* Error codes */
+#define S4E_EXISTS 1
+#define S4E_NOENT 2
+#define S4E_OPEN  3
+#define S4E_STHREAD 4
+#define S4E_INCONS 5
+
 typedef struct s4_entry_St {
 	int type;
 	char *key_s;
@@ -62,6 +69,7 @@ int s4_recover (s4_t *s4, const char *name);
 void s4_sync (s4_t *s4);
 int s4_start_sync_thread (s4_t *s4);
 int s4_stop_sync_thread (s4_t *s4);
+int s4_errno ();
 
 /* set.c */
 s4_set_t *s4_set_new (int size);
