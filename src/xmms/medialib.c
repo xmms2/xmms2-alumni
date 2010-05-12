@@ -30,6 +30,7 @@
 #include <stdlib.h>
 
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <time.h>
 
 /**
@@ -125,6 +126,8 @@ xmms_medialib_t *
 xmms_medialib_init (xmms_playlist_t *playlist)
 {
 	gchar *path;
+	const gchar *conf_path;
+	xmms_config_property_t *cp, *conv_conf, *coll_conf;
 	int i;
 
 	for (i = 0; i < SOURCE_PREF_COUNT; i++)
@@ -137,12 +140,59 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 
 	path = XMMS_BUILD_PATH ("medialib.s4");
 
-	xmms_config_property_register ("medialib.path", path, NULL, NULL);
-	xmms_config_property_register ("medialib.analyze_on_startup", "0", NULL, NULL);
-	xmms_config_property_register ("medialib.allow_remote_fs",
-	                               "0", NULL, NULL);
+	cp = xmms_config_property_register ("medialib.path", path, NULL, NULL);
+	conv_conf = xmms_config_property_register ("sqlite2s4.path", "sqlite2s4", NULL, NULL);
+	coll_conf = xmms_config_property_register ("collection.directory",
+			XMMS_BUILD_PATH ("collections"), NULL, NULL);
 
-	medialib->s4 = s4_open (path, S4_VERIFY | S4_RECOVER);
+/*	xmms_config_property_register ("medialib.analyze_on_startup", "0", NULL, NULL);
+	xmms_config_property_register ("medialib.allow_remote_fs",
+	                               "0", NULL, NULL);*/
+
+	conf_path = xmms_config_property_get_string (cp);
+	medialib->s4 = s4_open (conf_path, S4_VERIFY | S4_RECOVER);
+
+	/* Could not open the S4 database */
+	if (medialib->s4 == NULL) {
+		int err = s4_errno ();
+		/* Wrong magic number, maybe we stumbled upon an old sqlite database?
+		 * We'll try to convert it
+		 */
+		if (err == S4E_MAGIC) {
+			gchar *cmdline = g_strjoin (" ", xmms_config_property_get_string (conv_conf),
+					conf_path, path, xmms_config_property_get_string (coll_conf), NULL);
+			gchar *std_out, *std_err;
+			gint exit_status;
+			GError *error;
+
+			XMMS_DBG ("Trying to run sqlite2s4, command line %s", cmdline);
+
+			if (!g_spawn_command_line_sync (cmdline, &std_out, &std_err, &exit_status, &error) ||
+					exit_status) {
+				xmms_log_fatal ("Could not run \"%s\", try to run it manually", cmdline);
+			}
+
+			g_free (cmdline);
+
+			medialib->s4 = s4_open (path, S4_VERIFY | S4_RECOVER);
+
+			/* Now we give up */
+			if (medialib->s4 == NULL) {
+				xmms_log_fatal ("Could not open the S4 database");
+			} else {
+				/* Move the sqlite database */
+				gchar *new_path = g_strconcat (conf_path, ".obsolete", NULL);
+				g_rename (conf_path, new_path);
+				g_free (new_path);
+
+				/* Update the config path */
+				xmms_config_property_set_data (cp, path);
+			}
+		} else {
+			/* TODO: Cleaner exit? */
+			xmms_log_fatal ("Could not open the S4 database");
+		}
+	}
 
 	g_free (path);
 
