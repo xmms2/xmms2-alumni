@@ -254,7 +254,8 @@ xmms_medialib_entry_property_get_value (xmms_medialib_entry_t id_num,
 	s4_entry_t *prop;
 
 	prop = xmms_medialib_entry_property_get (id_num, property);
-	g_return_val_if_fail (prop != NULL, NULL);
+	if (prop == NULL)
+		return NULL;
 
 	if (prop->type == ENTRY_INT)
 		ret = xmmsv_new_int (prop->val_i);
@@ -284,7 +285,8 @@ xmms_medialib_entry_property_get_str (xmms_medialib_entry_t id_num,
 	s4_entry_t *prop;
 
 	prop = xmms_medialib_entry_property_get (id_num, property);
-	g_return_val_if_fail (prop != NULL, NULL);
+	if (prop == NULL)
+		return NULL;
 
 	if (prop->type == ENTRY_INT)
 		ret = g_strdup_printf ("%i", prop->val_i);
@@ -313,7 +315,8 @@ xmms_medialib_entry_property_get_int (xmms_medialib_entry_t id_num,
 	s4_entry_t *prop;
 
 	prop = xmms_medialib_entry_property_get (id_num, property);
-	g_return_val_if_fail (prop != NULL, -1);
+	if (prop == NULL)
+		return -1;
 
 	if (prop->type == ENTRY_INT)
 		ret = prop->val_i;
