@@ -111,6 +111,13 @@ static int media_callback (void *u, int argc, char *argv[], char *col[])
 
 	s4_entry_add (s4, entry, prop, src);
 
+	/* To every song we add the property type:song */
+	if (!strcmp (val, "url")) {
+		s4_entry_free (prop);
+		prop = s4_entry_get_s (s4, "type", "song");
+		s4_entry_add (s4, entry, prop, src);
+	}
+
 	s4_entry_free (entry);
 	s4_entry_free (prop);
 
