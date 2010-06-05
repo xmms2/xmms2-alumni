@@ -812,7 +812,7 @@ xmms_medialib_client_get_id (xmms_medialib_t *medialib, const gchar *url,
 
 	s4_entry_free (entry);
 
-	if (set != NULL) {
+	if (s4_set_size (set) != 0) {
 		id = s4_set_next (set)->val_i;
 		s4_set_free (set);
 	}
