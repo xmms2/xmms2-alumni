@@ -1323,34 +1323,50 @@ xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 GList*
 xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
 {
-	GList *ids = xmms_medialib_query_ids (dag, coll);
+//	GList *ids = xmms_medialib_query_ids (dag, coll);
+	s4_set_t *set = s4_query (medialib->s4, dag, coll);
 	GList *ret = NULL;
 	xmmsv_t *dict, *val, *prop;
 	int i, size;
 	int32_t id;
 	const char *p;
+	const char **fs;
 
 	size = xmmsv_list_get_size (fetch);
 
-	while (ids != NULL) {
-		dict = NULL;
+	fs = malloc (sizeof (const char *) * (size + 1));
 
-		for (i = 0; i < size; i++) {
-			xmmsv_list_get (fetch, i, &prop);
+	for (i = 0; i < size; i++) {
+		xmmsv_list_get (fetch, i, &prop);
 
-			if (!xmmsv_get_string (prop, &p))
-				p = NULL;
+		if (!xmmsv_get_string (prop, &p))
+			p = NULL;
 
-			if (!xmmsv_get_int (ids->data, &id))
+		fs[i] = p;
+	}
+	fs[size] = NULL;
+
+	GList *res = s4_fetch (medialib->s4, set, fs);
+
+	s4_set_free (set);
+
+	while (res != NULL) {
+		s4_val_t **vals = res->data;
+		for (dict = NULL, i = 0; i < size; i++) {
+			xmmsv_t *val = NULL;
+			if (vals[i] == NULL)
 				continue;
 
-			if (strcmp ("id", p) == 0) {
-				val = xmmsv_ref (ids->data);
-			} else if (p != NULL) {
-				val = xmms_medialib_entry_property_get_value (id, p);
-			} else {
-				val = NULL;
+			switch (vals[i]->type) {
+				case S4_VAL_STR:
+					val = xmmsv_new_string (vals[i]->val.s);
+					break;
+				case S4_VAL_INT:
+					val = xmmsv_new_int (vals[i]->val.i);
+					break;
 			}
+
+			s4_val_free (vals[i]);
 
 			if (val == NULL)
 				continue;
@@ -1358,16 +1374,16 @@ xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fe
 			if (dict == NULL)
 				dict = xmmsv_new_dict();
 
-			xmmsv_dict_set (dict, p, val);
+			xmmsv_dict_set (dict, fs[i], val);
 			xmmsv_unref (val);
 		}
+		free (vals);
 
 		if (dict != NULL)
 			ret = g_list_prepend (ret, dict);
 
-		xmmsv_unref (ids->data);
-		ids = g_list_delete_link (ids, ids);
+		res = g_list_delete_link (res, res);
 	}
 
-	return g_list_reverse (ret);
+	return ret;
 }
