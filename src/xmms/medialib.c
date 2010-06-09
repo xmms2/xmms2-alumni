@@ -1326,15 +1326,17 @@ xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fe
 //	GList *ids = xmms_medialib_query_ids (dag, coll);
 	s4_set_t *set = s4_query (medialib->s4, dag, coll);
 	GList *ret = NULL;
-	xmmsv_t *dict, *val, *prop;
+	xmmsv_t *dict, *prop;
 	int i, size;
-	int32_t id;
 	const char *p;
 	const char **fs;
+	xmmsv_dict_iter_t *it;
+	xmmsv_t **keyvals;
 
 	size = xmmsv_list_get_size (fetch);
 
 	fs = malloc (sizeof (const char *) * (size + 1));
+	keyvals = malloc (sizeof (xmmsv_t*) * size);
 
 	for (i = 0; i < size; i++) {
 		xmmsv_list_get (fetch, i, &prop);
@@ -1347,6 +1349,10 @@ xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fe
 	fs[size] = NULL;
 
 	GList *res = s4_fetch (medialib->s4, set, fs);
+
+	for (i = 0; i < size; i++) {
+		keyvals[i] = xmmsv_new_string (fs[i]);
+	}
 
 	s4_set_free (set);
 
@@ -1371,10 +1377,17 @@ xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fe
 			if (val == NULL)
 				continue;
 
-			if (dict == NULL)
+			if (dict == NULL) {
 				dict = xmmsv_new_dict();
+				xmmsv_get_dict_iter (dict, &it);
+			}
 
-			xmmsv_dict_set (dict, fs[i], val);
+			xmmsv_dict_iter_find (it, fs[i]);
+
+			xmmsv_list_iter_insert (*(xmmsv_list_iter_t**)it, keyvals[i]);
+			xmmsv_list_iter_next (*(xmmsv_list_iter_t**)it);
+			xmmsv_list_iter_insert (*(xmmsv_list_iter_t**)it, val);
+
 			xmmsv_unref (val);
 		}
 		free (vals);
@@ -1384,6 +1397,11 @@ xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fe
 
 		res = g_list_delete_link (res, res);
 	}
+
+	for (i = 0; i < size; i++) {
+		xmmsv_unref (keyvals[i]);
+	}
+	free (keyvals);
 
 	return ret;
 }
