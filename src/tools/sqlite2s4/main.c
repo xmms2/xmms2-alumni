@@ -86,7 +86,7 @@ static int media_callback (void *u, int argc, char *argv[], char *col[])
 	GTree *sources = u;
 	int id, src_id, i;
 	char *key, *val, *src;
-	s4_entry_t *entry, *prop;
+	s4_val_t *id_val, *val_val;
 
 	for (i = 0; i < argc; i++) {
 		if (!strcmp ("id", col[i])) {
@@ -101,18 +101,19 @@ static int media_callback (void *u, int argc, char *argv[], char *col[])
 	}
 
 	src = g_tree_lookup (sources, &src_id);
-	entry = s4_entry_get_i (s4, "song_id", id);
+
+	id_val = s4_val_new_int (id);
 
 	if (xmms_is_int (val, &i)) {
-		prop = s4_entry_get_i (s4, key, i);
+		val_val = s4_val_new_int (i);
 	} else {
-		prop = s4_entry_get_s (s4, key, val);
+		val_val = s4_val_new_string_nocopy (val);
 	}
 
-	s4_entry_add (s4, entry, prop, src);
+	s4_add (s4, "song_id", id_val, key, val_val, src);
 
-	s4_entry_free (entry);
-	s4_entry_free (prop);
+	s4_val_free (val_val);
+	s4_val_free (id_val);
 
 	return 0;
 }
@@ -147,7 +148,7 @@ int main (int argc, char *argv[])
 		exit (1);
 	}
 
-	s4 = s4_open (argv[2], S4_NEW);
+	s4 = s4_open (argv[2], NULL, S4_NEW);
 	if (s4 == NULL) {
 		fprintf (stderr, "Can't open s4 file\n");
 		exit (1);
