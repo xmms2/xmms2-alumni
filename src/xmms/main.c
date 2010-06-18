@@ -563,7 +563,7 @@ main (int argc, char **argv)
 	o_plugin = (xmms_output_plugin_t *)xmms_plugin_find (XMMS_PLUGIN_TYPE_OUTPUT, outname);
 	if (!o_plugin) {
 		xmms_log_error ("Baaaaad output plugin, try to change the"
-		                "output.plugin config variable to something usefull");
+		                "output.plugin config variable to something useful");
 	}
 
 	mainobj->output = xmms_output_new (o_plugin, playlist);
