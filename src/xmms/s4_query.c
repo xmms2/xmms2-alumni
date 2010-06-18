@@ -2,8 +2,10 @@
 #include <xmmsclient/xmmsclient.h>
 #include <string.h>
 #include <stdlib.h>
-#include "xmmspriv/s4_query.h"
+//#include "xmmspriv/s4_query.h"
 #include "xmmspriv/xmms_utils.h"
+#include <xmmsc/xmmsv.h>
+#include <xmmspriv/xmms_collection.h>
 
 
 /**
@@ -15,12 +17,14 @@
  * @{
  */
 
+/*
 static s4_set_t *universe (s4_t *s4) {
 	s4_entry_t *entry = s4_entry_get_s (s4, "type", "song");
 	s4_set_t *ret = s4_entry_contained (s4, entry);
 	s4_entry_free (entry);
 	return ret;
 }
+*/
 
 static int is_universe (xmmsv_coll_t *coll)
 {
@@ -31,6 +35,7 @@ static int is_universe (xmmsv_coll_t *coll)
 	return (target_name != NULL && strcmp (target_name, "All Media") == 0);
 }
 
+/*
 static s4_set_t *handle_filter_operands (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_list_iter_t *it, s4_set_t *set)
 {
 	xmmsv_t *v;
@@ -70,7 +75,171 @@ static int is_filter (xmmsv_coll_type_t type)
 
 	return ret;
 }
+*/
 
+int idlist_filter (s4_val_t *value, s4_condition_t *cond)
+{
+	int32_t ival;
+	GHashTable *id_table = s4_cond_get_funcdata (cond);
+
+	if (!s4_val_get_int (value, &ival))
+		return 1;
+
+	return g_hash_table_lookup (id_table, GINT_TO_POINTER (ival)) == NULL;
+}
+
+s4_condition_t *xmms_coll_to_cond (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, s4_sourcepref_t *sp)
+{
+	xmmsv_list_iter_t *it;
+	xmmsv_t *v;
+	xmmsv_coll_t *c;
+	char *key, *val;
+	int i;
+	int case_sens;
+	int32_t ival;
+	s4_condition_t *cond = NULL;
+	GList *operands = NULL;
+	s4_val_t *sval = NULL;
+	uint32_t *idlist;
+	GHashTable *id_table;
+
+	xmmsv_coll_attribute_get (coll, "case-sensitive", &val);
+	case_sens = (val != NULL && strcmp (val, "true") == 0);
+
+	xmmsv_get_list_iter (xmmsv_coll_operands_get (coll), &it);
+
+	switch (xmmsv_coll_get_type (coll)) {
+		case XMMS_COLLECTION_TYPE_UNION:
+			for (i = 0; xmmsv_list_iter_valid (it); xmmsv_list_iter_next (it), i++) {
+				xmmsv_list_iter_entry (it, &v);
+				xmmsv_get_coll (v, &c);
+
+				operands = g_list_prepend (operands, xmms_coll_to_cond (dag, c, sp));
+			}
+
+			cond = s4_cond_new_combiner (S4_COMBINE_OR, operands);
+			break;
+
+		case XMMS_COLLECTION_TYPE_INTERSECTION:
+			for (i = 0; xmmsv_list_iter_valid (it); xmmsv_list_iter_next (it), i++) {
+				xmmsv_list_iter_entry (it, &v);
+				xmmsv_get_coll (v, &c);
+
+				operands = g_list_prepend (operands, xmms_coll_to_cond (dag, c, sp));
+			}
+			cond = s4_cond_new_combiner (S4_COMBINE_AND, operands);
+			break;
+
+		case XMMS_COLLECTION_TYPE_COMPLEMENT:
+			for (i = 0; xmmsv_list_iter_valid (it); xmmsv_list_iter_next (it), i++) {
+				xmmsv_list_iter_entry (it, &v);
+				xmmsv_get_coll (v, &c);
+
+				operands = g_list_prepend (operands, xmms_coll_to_cond (dag, c, sp));
+			}
+			cond = s4_cond_new_combiner (S4_COMBINE_NOT, operands);
+			break;
+
+		case XMMS_COLLECTION_TYPE_EQUALS:
+			xmmsv_coll_attribute_get (coll, "field", &key);
+			xmmsv_coll_attribute_get (coll, "value", &val);
+
+			if (xmms_is_int (val, &ival)) {
+				sval = s4_val_new_int (ival);
+			} else {
+				sval = s4_val_new_string (val);
+			}
+
+			cond = s4_cond_new_filter (S4_FILTER_EQUAL, key, sval, sp, 0);
+			break;
+
+		case XMMS_COLLECTION_TYPE_MATCH:
+			xmmsv_coll_attribute_get (coll, "field", &key);
+			xmmsv_coll_attribute_get (coll, "value", &val);
+
+			if (xmms_is_int (val, &ival)) {
+				sval = s4_val_new_int (ival);
+			} else {
+				sval = s4_val_new_string (val);
+			}
+
+			cond = s4_cond_new_filter (S4_FILTER_MATCH, key, sval, sp, 0);
+			break;
+
+		case XMMS_COLLECTION_TYPE_SMALLER:
+			xmmsv_coll_attribute_get (coll, "field", &key);
+			xmmsv_coll_attribute_get (coll, "value", &val);
+
+			if (xmms_is_int (val, &ival)) {
+				sval = s4_val_new_int (ival);
+			} else {
+				sval = s4_val_new_string (val);
+			}
+
+			cond = s4_cond_new_filter (S4_FILTER_SMALLER, key, sval, sp, 0);
+			break;
+
+		case XMMS_COLLECTION_TYPE_GREATER:
+			xmmsv_coll_attribute_get (coll, "field", &key);
+			xmmsv_coll_attribute_get (coll, "value", &val);
+
+			if (xmms_is_int (val, &ival)) {
+				sval = s4_val_new_int (ival);
+			} else {
+				sval = s4_val_new_string (val);
+			}
+
+			cond = s4_cond_new_filter (S4_FILTER_GREATER, key, sval, sp, 0);
+			break;
+
+		case XMMS_COLLECTION_TYPE_REFERENCE:
+			if (is_universe (coll)) {
+				sval = s4_val_new_string ("song");
+				cond = s4_cond_new_filter (S4_FILTER_EQUAL, "type", sval, sp, 0);
+			} else {
+				xmmsv_coll_attribute_get (coll, "reference", &key);
+				xmmsv_coll_attribute_get (coll, "namespace", &val);
+				c = xmms_collection_get_pointer (dag, key,
+						xmms_collection_get_namespace_id (val));
+				cond = xmms_coll_to_cond (dag, c, sp);
+			}
+			break;
+
+		case XMMS_COLLECTION_TYPE_IDLIST:
+			idlist = xmmsv_coll_get_idlist (coll);
+			id_table = g_hash_table_new (NULL, NULL);
+
+			for (i = 0; idlist[i] != 0; i++) {
+				g_hash_table_insert (id_table, GINT_TO_POINTER (idlist[i]), GINT_TO_POINTER (1));
+			}
+
+			cond = s4_cond_new_custom_filter (idlist_filter, id_table,
+					(free_func_t)g_hash_table_destroy, "song_id", sp, S4_COND_PARENT);
+			break;
+
+		case XMMS_COLLECTION_TYPE_HAS:
+			xmmsv_coll_attribute_get (coll, "field", &key);
+
+			cond = s4_cond_new_filter (S4_FILTER_EXISTS, key, NULL, sp, 0);
+			break;
+
+		default:
+			printf ("Do not support %i\n", xmmsv_coll_get_type (coll));
+			break;
+	}
+
+	if (sval != NULL)
+		s4_val_free (sval);
+
+	/*
+	if (is_filter (xmmsv_coll_get_type (coll))) {
+		ret = handle_filter_operands (s4, dag, it, ret);
+	}
+	*/
+
+
+	return cond;
+}
 
 /**
  * Query the database with the given collection
@@ -80,6 +249,7 @@ static int is_filter (xmmsv_coll_type_t type)
  * @param coll The collection to query
  * @return A set with all the entries matching
  */
+#if 0
 s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 {
 	s4_set_t *ret, *sa, *sb;
@@ -335,7 +505,7 @@ s4_set_t *s4_query (s4_t *s4, xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 
 	return ret;
 }
-
+#endif
 /**
  * @}
  */
