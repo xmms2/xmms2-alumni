@@ -220,9 +220,9 @@ xmms_medialib_entry_property_get (xmms_medialib_entry_t id_num,
 			const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
 			if (res != NULL)
 				ret = s4_val_copy (s4_result_get_val (res));
+			s4_resultset_free (set);
 		}
 
-		s4_resultset_free (set);
 		s4_val_free (ival);
 		s4_cond_free (cond);
 	}
@@ -341,6 +341,7 @@ xmms_medialib_entry_property_set_source (xmms_medialib_entry_t id_num,
 
 	s4_add (medialib->s4, "song_id", id_val, key, new_prop, source);
 
+	s4_fetchspec_free (fs);
 	s4_sourcepref_free (sp);
 	s4_cond_free (cond);
 	s4_val_free (id_val);
@@ -519,8 +520,11 @@ xmms_medialib_entry_remove (xmms_medialib_entry_t id_num)
 		const s4_result_t *res = s4_resultset_get_result (set, i, 0);
 
 		for (; res != NULL; res = s4_result_next (res)) {
-			s4_del (medialib->s4, "song_id", id_val, s4_result_get_key (res),
-					s4_result_get_val (res), s4_result_get_src (res));
+			const char *src = s4_result_get_src (res);
+
+			if (src != NULL)
+				s4_del (medialib->s4, "song_id", id_val, s4_result_get_key (res),
+						s4_result_get_val (res), src);
 		}
 	}
 
@@ -1448,6 +1452,9 @@ xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fe
 
 	s4_fetchspec_free (fs);
 	s4_cond_free (cond);
+
+	if (set == NULL)
+		return NULL;
 
 	for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
 		for (dict = NULL, j = 0; j < size; j++) {
