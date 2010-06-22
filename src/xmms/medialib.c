@@ -193,7 +193,7 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 
 	g_free (path);
 
-	default_sp = s4_sourcepref_create (medialib->s4, source_pref);
+	default_sp = s4_sourcepref_create (source_pref);
 
 	return medialib;
 }
@@ -325,7 +325,7 @@ xmms_medialib_entry_property_set_source (xmms_medialib_entry_t id_num,
 {
 	s4_val_t *id_val = s4_val_new_int (id_num);
 	const char *sources[2] = {source, NULL};
-	s4_sourcepref_t *sp = s4_sourcepref_create (medialib->s4, sources);
+	s4_sourcepref_t *sp = s4_sourcepref_create (sources);
 	s4_fetchspec_t *fs = s4_fetchspec_create ();
 	s4_fetchspec_add (fs, key, sp);
 	s4_condition_t *cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", id_val, sp, S4_COND_PARENT);
@@ -1156,7 +1156,7 @@ xmms_medialib_property_remove (xmms_medialib_t *medialib, guint32 id_num,
 {
 	s4_val_t *id_val = s4_val_new_int (id_num);
 	const char *sources[2] = {source, NULL};
-	s4_sourcepref_t *sp = s4_sourcepref_create (medialib->s4, sources);
+	s4_sourcepref_t *sp = s4_sourcepref_create (sources);
 	s4_fetchspec_t *fs = s4_fetchspec_create ();
 	s4_fetchspec_add (fs, key, sp);
 	s4_condition_t *cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", id_val, sp, S4_COND_PARENT);
