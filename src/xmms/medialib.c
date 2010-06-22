@@ -846,7 +846,7 @@ xmms_medialib_client_get_id (xmms_medialib_t *medialib, const gchar *url,
 	gint32 id = 0;
 	s4_fetchspec_t *fs = s4_fetchspec_create ();
 	s4_fetchspec_add (fs, "song_id", default_sp);
-	s4_val_t *url_val = s4_val_new_string_nocopy (url);
+	s4_val_t *url_val = s4_val_new_string (url);
 	s4_condition_t *cond = s4_cond_new_filter (S4_FILTER_EQUAL,
 			XMMS_MEDIALIB_ENTRY_PROPERTY_URL, url_val, default_sp, 0);
 	s4_resultset_t *set = s4_query (medialib->s4, fs, cond);

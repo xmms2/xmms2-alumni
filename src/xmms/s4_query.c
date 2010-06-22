@@ -102,9 +102,13 @@ s4_condition_t *xmms_coll_to_cond (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, s4_
 	s4_val_t *sval = NULL;
 	uint32_t *idlist;
 	GHashTable *id_table;
+	int flags = 0;
 
 	xmmsv_coll_attribute_get (coll, "case-sensitive", &val);
 	case_sens = (val != NULL && strcmp (val, "true") == 0);
+
+	if (case_sens)
+		flags |= S4_COND_CASESENS;
 
 	xmmsv_get_list_iter (xmmsv_coll_operands_get (coll), &it);
 
@@ -150,7 +154,7 @@ s4_condition_t *xmms_coll_to_cond (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, s4_
 				sval = s4_val_new_string (val);
 			}
 
-			cond = s4_cond_new_filter (S4_FILTER_EQUAL, key, sval, sp, 0);
+			cond = s4_cond_new_filter (S4_FILTER_EQUAL, key, sval, sp, flags);
 			break;
 
 		case XMMS_COLLECTION_TYPE_MATCH:
@@ -163,7 +167,7 @@ s4_condition_t *xmms_coll_to_cond (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, s4_
 				sval = s4_val_new_string (val);
 			}
 
-			cond = s4_cond_new_filter (S4_FILTER_MATCH, key, sval, sp, 0);
+			cond = s4_cond_new_filter (S4_FILTER_MATCH, key, sval, sp, flags);
 			break;
 
 		case XMMS_COLLECTION_TYPE_SMALLER:
@@ -176,7 +180,7 @@ s4_condition_t *xmms_coll_to_cond (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, s4_
 				sval = s4_val_new_string (val);
 			}
 
-			cond = s4_cond_new_filter (S4_FILTER_SMALLER, key, sval, sp, 0);
+			cond = s4_cond_new_filter (S4_FILTER_SMALLER, key, sval, sp, flags);
 			break;
 
 		case XMMS_COLLECTION_TYPE_GREATER:
@@ -189,13 +193,13 @@ s4_condition_t *xmms_coll_to_cond (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, s4_
 				sval = s4_val_new_string (val);
 			}
 
-			cond = s4_cond_new_filter (S4_FILTER_GREATER, key, sval, sp, 0);
+			cond = s4_cond_new_filter (S4_FILTER_GREATER, key, sval, sp, flags);
 			break;
 
 		case XMMS_COLLECTION_TYPE_REFERENCE:
 			if (is_universe (coll)) {
 				sval = s4_val_new_string ("song");
-				cond = s4_cond_new_filter (S4_FILTER_EQUAL, "type", sval, sp, 0);
+				cond = s4_cond_new_filter (S4_FILTER_EQUAL, "type", sval, sp, flags);
 			} else {
 				xmmsv_coll_attribute_get (coll, "reference", &key);
 				xmmsv_coll_attribute_get (coll, "namespace", &val);
@@ -220,7 +224,7 @@ s4_condition_t *xmms_coll_to_cond (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, s4_
 		case XMMS_COLLECTION_TYPE_HAS:
 			xmmsv_coll_attribute_get (coll, "field", &key);
 
-			cond = s4_cond_new_filter (S4_FILTER_EXISTS, key, NULL, sp, 0);
+			cond = s4_cond_new_filter (S4_FILTER_EXISTS, key, NULL, sp, flags);
 			break;
 
 		default:

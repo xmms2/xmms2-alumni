@@ -107,7 +107,7 @@ static int media_callback (void *u, int argc, char *argv[], char *col[])
 	if (xmms_is_int (val, &i)) {
 		val_val = s4_val_new_int (i);
 	} else {
-		val_val = s4_val_new_string_nocopy (val);
+		val_val = s4_val_new_string (val);
 	}
 
 	s4_add (s4, "song_id", id_val, key, val_val, src);
