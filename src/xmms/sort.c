@@ -68,5 +68,8 @@ compare_entries (gconstpointer a, gconstpointer b, gpointer data)
 GList*
 xmms_sort_list (GList *list, xmmsv_t *order)
 {
-	return g_list_sort_with_data (list, compare_entries, order);
+	if (xmmsv_list_get_size (order) > 0)
+		return g_list_sort_with_data (list, compare_entries, order);
+	else
+		return list;
 }
