@@ -26,6 +26,8 @@ extern gboolean try_upgrade (sqlite3 *sql);
 extern void collection_restore (sqlite3 *db, GHashTable **ht);
 extern void collection_dag_save (GHashTable **ht, const char *bdir);
 
+static int highest_id = 0;
+
 /**
  * Check if a string is a number, if it is save it in val
  *
@@ -100,6 +102,9 @@ static int media_callback (void *u, int argc, char *argv[], char *col[])
 		}
 	}
 
+	if (id > highest_id)
+		highest_id = id;
+
 	src = g_tree_lookup (sources, &src_id);
 
 	id_val = s4_val_new_int (id);
@@ -160,6 +165,7 @@ int main (int argc, char *argv[])
 	ret = sqlite3_exec (db, "select id,key,value,source from Media;",
 			media_callback, sources, &errmsg);
 
+	s4_add (s4, "song_id", s4_val_new_int (0), "new_id", s4_val_new_int (highest_id + 1), "server");
 
 	s4_close (s4);
 
