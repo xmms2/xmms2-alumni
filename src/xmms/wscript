@@ -34,6 +34,7 @@ source = """
     sample.genpy
     utils.c
     sort.c
+    s4_query.c
     visualization/format.c
     visualization/object.c
     visualization/udp.c
@@ -88,14 +89,14 @@ def build(bld):
         lib.source = source
         lib.includes = '. ../.. ../include ../includepriv'
         lib.uselib = 'glib2 gmodule2 gthread2 statfs socket shm'
-        lib.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization s4 s4_query'
+        lib.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization s4'
 
         prog.uselib_local = 'xmms2core'
     else:
         prog.source += source
         prog.uselib_local = ''
 
-    prog.uselib_local += ' xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization s4 s4_query'
+    prog.uselib_local += ' xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization s4'
     prog.uselib = 'math glib2 gmodule2 gthread2 statfs socket shm valgrind'
 
     if env['xmms_icon']:

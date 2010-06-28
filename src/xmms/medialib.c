@@ -24,12 +24,12 @@
 #include "xmms/xmms_ipc.h"
 #include "xmms/xmms_log.h"
 #include "s4.h"
-#include "s4_query.h"
 
 #include <string.h>
 #include <stdlib.h>
 
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <time.h>
 
 /**
@@ -91,14 +91,15 @@ static xmms_medialib_t *medialib;
  */
 #define SOURCE_PREF_COUNT 4
 
-static const char *source_pref[SOURCE_PREF_COUNT] = {
+static s4_sourcepref_t *default_sp;
+static const char *source_pref[] = {
 	"server",
 	"client/*",
 	"plugin/id3v2",
-	"plugin/*"
+	"plugin/*",
+	"*",
+	NULL
 };
-static GPatternSpec *source_spec[SOURCE_PREF_COUNT];
-
 
 static void
 xmms_medialib_destroy (xmms_object_t *object)
@@ -125,10 +126,9 @@ xmms_medialib_t *
 xmms_medialib_init (xmms_playlist_t *playlist)
 {
 	gchar *path;
-	int i;
-
-	for (i = 0; i < SOURCE_PREF_COUNT; i++)
-		source_spec[i] = g_pattern_spec_new (source_pref[i]);
+	const gchar *conf_path;
+	const char *indices[] = {XMMS_MEDIALIB_ENTRY_PROPERTY_URL, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS, NULL};
+	xmms_config_property_t *cp, *conv_conf, *coll_conf;
 
 	medialib = xmms_object_new (xmms_medialib_t, xmms_medialib_destroy);
 	medialib->playlist = playlist;
@@ -137,53 +137,94 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 
 	path = XMMS_BUILD_PATH ("medialib.s4");
 
-	xmms_config_property_register ("medialib.path", path, NULL, NULL);
-	xmms_config_property_register ("medialib.analyze_on_startup", "0", NULL, NULL);
-	xmms_config_property_register ("medialib.allow_remote_fs",
-	                               "0", NULL, NULL);
+	cp = xmms_config_property_register ("medialib.path", path, NULL, NULL);
+	conv_conf = xmms_config_property_register ("sqlite2s4.path", "sqlite2s4", NULL, NULL);
+	coll_conf = xmms_config_property_register ("collection.directory",
+			XMMS_BUILD_PATH ("collections"), NULL, NULL);
 
-	medialib->s4 = s4_open (path, S4_VERIFY | S4_RECOVER);
+/*	xmms_config_property_register ("medialib.analyze_on_startup", "0", NULL, NULL);
+	xmms_config_property_register ("medialib.allow_remote_fs",
+	                               "0", NULL, NULL);*/
+
+	conf_path = xmms_config_property_get_string (cp);
+	medialib->s4 = s4_open (conf_path, indices, S4_VERIFY | S4_RECOVER);
+
+	/* Could not open the S4 database */
+	if (medialib->s4 == NULL) {
+		int err = s4_errno ();
+		/* Wrong magic number, maybe we stumbled upon an old sqlite database?
+		 * We'll try to convert it
+		 */
+		if (err == S4E_MAGIC) {
+			gchar *cmdline = g_strjoin (" ", xmms_config_property_get_string (conv_conf),
+					conf_path, path, xmms_config_property_get_string (coll_conf), NULL);
+			gchar *std_out, *std_err;
+			gint exit_status;
+			GError *error;
+
+			XMMS_DBG ("Trying to run sqlite2s4, command line %s", cmdline);
+
+			if (!g_spawn_command_line_sync (cmdline, &std_out, &std_err, &exit_status, &error) ||
+					exit_status) {
+				xmms_log_fatal ("Could not run \"%s\", try to run it manually", cmdline);
+			}
+
+			g_free (cmdline);
+
+			medialib->s4 = s4_open (path, indices, S4_VERIFY | S4_RECOVER);
+
+			/* Now we give up */
+			if (medialib->s4 == NULL) {
+				xmms_log_fatal ("Could not open the S4 database");
+			} else {
+				/* Move the sqlite database */
+				gchar *new_path = g_strconcat (conf_path, ".obsolete", NULL);
+				g_rename (conf_path, new_path);
+				g_free (new_path);
+
+				/* Update the config path */
+				xmms_config_property_set_data (cp, path);
+			}
+		} else {
+			/* TODO: Cleaner exit? */
+			xmms_log_fatal ("Could not open the S4 database");
+		}
+	}
 
 	g_free (path);
+
+	default_sp = s4_sourcepref_create (source_pref);
 
 	return medialib;
 }
 
-static s4_entry_t *
+static s4_val_t *
 xmms_medialib_entry_property_get (xmms_medialib_entry_t id_num,
 		const gchar *property)
 {
-	s4_entry_t *ret = NULL;
-	int i, pref = -1;
+	s4_val_t *ret = NULL;
+	s4_val_t *ival = s4_val_new_int (id_num);
 
 	g_return_val_if_fail (property, NULL);
 
 	if (!strcmp (property, XMMS_MEDIALIB_ENTRY_PROPERTY_ID)) {
-		ret = s4_entry_get_i (medialib->s4, XMMS_MEDIALIB_ENTRY_PROPERTY_ID, id_num);
+		ret = ival;
 	} else {
-		s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-		s4_set_t *props = s4_entry_get_property (medialib->s4, entry, property);
-		s4_entry_t *prop = s4_set_next (props);
+		s4_fetchspec_t *fs = s4_fetchspec_create ();
+		s4_fetchspec_add (fs, property, default_sp);
+		s4_condition_t *cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", ival, default_sp, S4_COND_PARENT);
+		s4_resultset_t *set = s4_query (medialib->s4, fs, cond);
+		s4_fetchspec_free (fs);
 
-		for (; prop != NULL; prop = s4_set_next (props)) {
-			s4_entry_fillin (medialib->s4, prop);
-
-			for (i = 0
-					; i < SOURCE_PREF_COUNT &&
-					!g_pattern_match_string (source_spec[i], prop->src_s)
-					; i++);
-
-			if (pref == -1 || i < pref) {
-				ret = prop;
-				pref = i;
-			}
+		if (set != NULL) {
+			const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
+			if (res != NULL)
+				ret = s4_val_copy (s4_result_get_val (res));
+			s4_resultset_free (set);
 		}
 
-		if (ret != NULL)
-			ret = s4_entry_copy (ret);
-
-		s4_set_free (props);
-		s4_entry_free (entry);
+		s4_val_free (ival);
+		s4_cond_free (cond);
 	}
 
 	return ret;
@@ -201,18 +242,20 @@ xmms_medialib_entry_property_get_value (xmms_medialib_entry_t id_num,
                                         const gchar *property)
 {
 	xmmsv_t *ret = NULL;
-	s4_entry_t *prop;
+	s4_val_t *prop;
+	const char *s;
+	int32_t i;
 
 	prop = xmms_medialib_entry_property_get (id_num, property);
 	if (prop == NULL)
 		return NULL;
 
-	if (prop->type == ENTRY_INT)
-		ret = xmmsv_new_int (prop->val_i);
-	else
-		ret = xmmsv_new_string (prop->val_s);
+	if (s4_val_get_str (prop, &s))
+		ret = xmmsv_new_string (s);
+	else if (s4_val_get_int (prop, &i))
+		ret = xmmsv_new_int (i);
 
-	s4_entry_free (prop);
+	s4_val_free (prop);
 
 	return ret;
 }
@@ -232,18 +275,20 @@ xmms_medialib_entry_property_get_str (xmms_medialib_entry_t id_num,
                                       const gchar *property)
 {
 	gchar *ret = NULL;
-	s4_entry_t *prop;
+	s4_val_t *prop;
+	const char *s;
+	int32_t i;
 
 	prop = xmms_medialib_entry_property_get (id_num, property);
 	if (prop == NULL)
 		return NULL;
 
-	if (prop->type == ENTRY_INT)
-		ret = g_strdup_printf ("%i", prop->val_i);
-	else
-		ret = g_strdup (prop->val_s);
+	if (s4_val_get_int (prop, &i))
+		ret = g_strdup_printf ("%i", i);
+	else if (s4_val_get_str (prop, &s))
+		ret = g_strdup (s);
 
-	s4_entry_free (prop);
+	s4_val_free (prop);
 
 	return ret;
 }
@@ -262,45 +307,46 @@ xmms_medialib_entry_property_get_int (xmms_medialib_entry_t id_num,
                                       const gchar *property)
 {
 	gint32 ret = -1;
-	s4_entry_t *prop;
+	s4_val_t *prop;
 
 	prop = xmms_medialib_entry_property_get (id_num, property);
-	if (prop == NULL)
+	if (prop == NULL || !s4_val_get_int (prop, &ret))
 		return -1;
 
-	if (prop->type == ENTRY_INT)
-		ret = prop->val_i;
-
-	s4_entry_free (prop);
+	s4_val_free (prop);
 
 	return ret;
 }
 
 static gboolean
 xmms_medialib_entry_property_set_source (xmms_medialib_entry_t id_num,
-		s4_entry_t *new_prop,
+		const char *key, s4_val_t *new_prop,
 		const gchar *source)
 {
+	s4_val_t *id_val = s4_val_new_int (id_num);
+	const char *sources[2] = {source, NULL};
+	s4_sourcepref_t *sp = s4_sourcepref_create (sources);
+	s4_fetchspec_t *fs = s4_fetchspec_create ();
+	s4_fetchspec_add (fs, key, sp);
+	s4_condition_t *cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", id_val, sp, S4_COND_PARENT);
+	s4_resultset_t *set = s4_query (medialib->s4, fs, cond);
 
-	s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-	s4_set_t *props = s4_entry_get_property (medialib->s4, entry, new_prop->key_s);
-	s4_entry_t *prop = s4_set_next (props);
+	if (set != NULL) {
+		const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
+		if (res != NULL)
+			s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), source);
 
-	while (prop != NULL) {
-		s4_entry_fillin (medialib->s4, prop);
-		if (strcmp (prop->src_s, source) == 0) {
-			s4_entry_del (medialib->s4, entry, prop, source);
-			prop = NULL;
-		} else {
-			prop = s4_set_next (props);
-		}
+		s4_resultset_free (set);
 	}
 
-	s4_entry_add (medialib->s4, entry, new_prop, source);
-	s4_set_free (props);
+	s4_add (medialib->s4, "song_id", id_val, key, new_prop, source);
+
+	s4_fetchspec_free (fs);
+	s4_sourcepref_free (sp);
+	s4_cond_free (cond);
+	s4_val_free (id_val);
 
 	return TRUE;
-
 }
 
 /**
@@ -329,14 +375,14 @@ xmms_medialib_entry_property_set_int_source (xmms_medialib_entry_t id_num,
                                              const gchar *source)
 {
 	gboolean ret;
-	s4_entry_t *prop;
+	s4_val_t *prop;
 
 	g_return_val_if_fail (property, FALSE);
 
-	prop = s4_entry_get_i (medialib->s4, property, value);
-	ret = xmms_medialib_entry_property_set_source (id_num, prop, source);
+	prop = s4_val_new_int (value);
+	ret = xmms_medialib_entry_property_set_source (id_num, property, prop, source);
 
-	s4_entry_free (prop);
+	s4_val_free (prop);
 	return ret;
 }
 
@@ -366,7 +412,7 @@ xmms_medialib_entry_property_set_str_source (xmms_medialib_entry_t id_num,
                                              const gchar *source)
 {
 	gboolean ret;
-	s4_entry_t *prop;
+	s4_val_t *prop;
 	int ival;
 
 	g_return_val_if_fail (property, FALSE);
@@ -377,12 +423,12 @@ xmms_medialib_entry_property_set_str_source (xmms_medialib_entry_t id_num,
 	}
 
 	if (xmms_is_int (value, &ival)) {
-		prop = s4_entry_get_i (medialib->s4, property, ival);
+		prop = s4_val_new_int (ival);
 	} else {
-		prop = s4_entry_get_s (medialib->s4, property, value);
+		prop = s4_val_new_string (value);
 	}
-	ret = xmms_medialib_entry_property_set_source (id_num, prop, source);
-	s4_entry_free (prop);
+	ret = xmms_medialib_entry_property_set_source (id_num, property, prop, source);
+	s4_val_free (prop);
 
 	return ret;
 
@@ -452,27 +498,38 @@ xmms_medialib_client_remove_entry (xmms_medialib_t *medialib,
 void
 xmms_medialib_entry_remove (xmms_medialib_entry_t id_num)
 {
-	s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-	s4_set_t *contained = s4_entry_contained (medialib->s4, entry);
-	s4_set_t *contains = s4_entry_contains (medialib->s4, entry);
-	s4_entry_t *prop;
+	s4_fetchspec_t *fs;
+	s4_condition_t *cond;
+	s4_resultset_t *set;
+	s4_val_t *id_val = s4_val_new_int (id_num);
+	int i;
 
-	for (prop = s4_set_next (contained)
-			; prop != NULL
-			; prop = s4_set_next (contained)) {
-		s4_entry_fillin (medialib->s4, prop);
-		s4_entry_del (medialib->s4, prop, entry, prop->src_s);
-	}
-	for (prop = s4_set_next (contains)
-			; prop != NULL
-			; prop = s4_set_next (contains)) {
-		s4_entry_fillin (medialib->s4, prop);
-		s4_entry_del (medialib->s4, entry, prop, prop->src_s);
+	fs = s4_fetchspec_create ();
+	s4_fetchspec_add (fs, NULL, default_sp);
+	cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", id_val, default_sp, S4_COND_PARENT);
+
+	set = s4_query (medialib->s4, fs, cond);
+
+	s4_cond_free (cond);
+	s4_fetchspec_free (fs);
+
+	if (set == NULL)
+		return;
+
+	for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
+		const s4_result_t *res = s4_resultset_get_result (set, i, 0);
+
+		for (; res != NULL; res = s4_result_next (res)) {
+			const char *src = s4_result_get_src (res);
+
+			if (src != NULL)
+				s4_del (medialib->s4, "song_id", id_val, s4_result_get_key (res),
+						s4_result_get_val (res), src);
+		}
 	}
 
-	s4_set_free (contained);
-	s4_set_free (contains);
-	s4_entry_free (entry);
+	s4_resultset_free (set);
+	s4_val_free (id_val);
 
 	/** @todo safe ? */
 	xmms_playlist_remove_by_entry (medialib->playlist, id_num);
@@ -559,34 +616,46 @@ process_dir (const gchar *directory,
 void
 xmms_medialib_entry_cleanup (xmms_medialib_entry_t id_num)
 {
-	s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-	s4_set_t *set = s4_entry_contains (medialib->s4, entry);
-	s4_entry_t *prop;
+	s4_fetchspec_t *fs;
+	s4_condition_t *cond;
+	s4_resultset_t *set;
+	s4_val_t *id_val = s4_val_new_int (id_num);
+	int i;
 
-	for (prop = s4_set_next (set); prop != NULL; prop = s4_set_next (set)) {
-		s4_entry_fillin (medialib->s4, prop);
+	fs = s4_fetchspec_create ();
+	s4_fetchspec_add (fs, NULL, default_sp);
+	cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", id_val, default_sp, S4_COND_PARENT);
 
-		if (strcmp (XMMS_MEDIALIB_SOURCE_SERVER, prop->src_s) == 0) {
-			if (strcmp (prop->key_s,
-						XMMS_MEDIALIB_ENTRY_PROPERTY_URL) &&
-					strcmp (prop->key_s,
-						XMMS_MEDIALIB_ENTRY_PROPERTY_ADDED) &&
-					strcmp (prop->key_s,
-						XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS) &&
-					strcmp (prop->key_s,
-						XMMS_MEDIALIB_ENTRY_PROPERTY_LMOD) &&
-					strcmp (prop->key_s,
-						XMMS_MEDIALIB_ENTRY_PROPERTY_LASTSTARTED) &&
-					strcmp (prop->key_s,
-						XMMS_MEDIALIB_ENTRY_PROPERTY_TYPE))
-				s4_entry_del (medialib->s4, entry, prop, prop->src_s);
-		} else if (strncmp (prop->src_s, "plugin/", 7) == 0 &&
-				strcmp (prop->src_s + 7, "playlist") != 0)
-			s4_entry_del (medialib->s4, entry, prop, prop->src_s);
+	set = s4_query (medialib->s4, fs, cond);
+
+	s4_cond_free (cond);
+	s4_fetchspec_free (fs);
+
+	if (set == NULL)
+		return;
+
+	for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
+		const s4_result_t *res = s4_resultset_get_result (set, i, 0);
+
+		for (; res != NULL; res = s4_result_next (res)) {
+			const char *src = s4_result_get_src (res);
+			const char *key = s4_result_get_key (res);
+			if (src != NULL && strcmp (XMMS_MEDIALIB_SOURCE_SERVER, src) == 0) {
+				if (strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_URL) &&
+						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_ADDED) &&
+						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS) &&
+						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_LMOD) &&
+						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_LASTSTARTED) &&
+						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_TYPE))
+					s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), src);
+			} else if (src != NULL && strcmp (src, "plugin/playlist") != 0) {
+				s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), src);
+			}
+		}
 	}
 
-	s4_set_free (set);
-	s4_entry_free (entry);
+	s4_resultset_free (set);
+	s4_val_free (id_val);
 }
 
 static void
@@ -597,17 +666,36 @@ xmms_medialib_client_rehash (xmms_medialib_t *medialib, gint32 id, xmms_error_t 
 	if (id) {
 		xmms_medialib_entry_status_set (id, XMMS_MEDIALIB_ENTRY_STATUS_REHASH);
 	} else {
-		s4_entry_t *prop, *entry = s4_entry_get_i (medialib->s4,
-				XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
-				XMMS_MEDIALIB_ENTRY_STATUS_OK);
-		s4_set_t *set = s4_entry_contained (medialib->s4, entry);
+		s4_fetchspec_t *fs;
+		s4_condition_t *cond;
+		s4_resultset_t *set;
+		s4_val_t *ival = s4_val_new_int (XMMS_MEDIALIB_ENTRY_STATUS_OK);
+		int i;
 
-		for (prop = s4_set_next (set); prop != NULL; prop = s4_set_next (set))
-			xmms_medialib_entry_status_set (prop->val_i,
-					XMMS_MEDIALIB_ENTRY_STATUS_REHASH);
+		fs = s4_fetchspec_create ();
+		s4_fetchspec_add (fs, "song_id", default_sp);
+		cond = s4_cond_new_filter (S4_FILTER_EQUAL, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
+				ival, default_sp, 0);
 
-		s4_set_free (set);
-		s4_entry_free (entry);
+		set = s4_query (medialib->s4, fs, cond);
+
+		s4_cond_free (cond);
+		s4_fetchspec_free (fs);
+		s4_val_free (ival);
+
+		if (set == NULL)
+			return;
+
+		for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
+			const s4_result_t *res = s4_resultset_get_result (set, i, 0);
+
+			for (; res != NULL; res = s4_result_next (res)) {
+				s4_val_get_int (s4_result_get_val (res), &id);
+				xmms_medialib_entry_status_set (id, XMMS_MEDIALIB_ENTRY_STATUS_REHASH);
+			}
+		}
+
+		s4_resultset_free (set);
 	}
 
 	mr = xmms_playlist_mediainfo_reader_get (medialib->playlist);
@@ -756,16 +844,24 @@ xmms_medialib_client_get_id (xmms_medialib_t *medialib, const gchar *url,
                              xmms_error_t *error)
 {
 	gint32 id = 0;
-	s4_entry_t *entry = s4_entry_get_s (medialib->s4,
-			XMMS_MEDIALIB_ENTRY_PROPERTY_URL, url);
-	s4_set_t *set = s4_entry_contained (medialib->s4, entry);
-
-	s4_entry_free (entry);
+	s4_fetchspec_t *fs = s4_fetchspec_create ();
+	s4_fetchspec_add (fs, "song_id", default_sp);
+	s4_val_t *url_val = s4_val_new_string (url);
+	s4_condition_t *cond = s4_cond_new_filter (S4_FILTER_EQUAL,
+			XMMS_MEDIALIB_ENTRY_PROPERTY_URL, url_val, default_sp, 0);
+	s4_resultset_t *set = s4_query (medialib->s4, fs, cond);
+	s4_fetchspec_free (fs);
 
 	if (set != NULL) {
-		id = s4_set_next (set)->val_i;
-		s4_set_free (set);
+		const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
+		if (res != NULL)
+			s4_val_get_int (s4_result_get_val (res), &id);
+
+		s4_resultset_free (set);
 	}
+
+	s4_cond_free (cond);
+	s4_val_free (url_val);
 
 	return id;
 }
@@ -802,28 +898,51 @@ GList *
 xmms_medialib_entry_to_list (xmms_medialib_entry_t id_num)
 {
 	GList *ret = NULL;
-	s4_entry_t *entry;
-	s4_set_t *set;
+	xmmsv_t *v_entry;
+	s4_fetchspec_t *fs;
+	s4_condition_t *cond;
+	s4_resultset_t *set;
+	int i;
 
 	g_return_val_if_fail (id_num, NULL);
 
-	entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-	set = s4_entry_contains (medialib->s4, entry);
-	s4_entry_free (entry);
+	if (!xmms_medialib_check_id (id_num)) {
+		return NULL;
+	}
+
+	fs = s4_fetchspec_create ();
+	s4_fetchspec_add (fs, NULL, default_sp);
+	cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", s4_val_new_int (id_num), default_sp, S4_COND_PARENT);
+
+	set = s4_query (medialib->s4, fs, cond);
+
+	s4_cond_free (cond);
+	s4_fetchspec_free (fs);
 
 	if (set == NULL)
 		return NULL;
 
-	for (entry = s4_set_next (set); entry != NULL; entry = s4_set_next (set)) {
-		s4_entry_fillin (medialib->s4, entry);
+	for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
+		const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
 
-		ret = g_list_prepend (ret, xmmsv_new_string (entry->src_s));
-		ret = g_list_prepend (ret, xmmsv_new_string (entry->key_s));
+		while (res != NULL) {
+			const s4_val_t *val = s4_result_get_val (res);
+			int32_t i;
+			const char *s;
 
-		if (entry->type == ENTRY_STR)
-			ret = g_list_prepend (ret, xmmsv_new_string (entry->val_s));
-		else
-			ret = g_list_prepend (ret, xmmsv_new_int (entry->val_i));
+			if (s4_val_get_str (val, &s)) {
+				v_entry = xmmsv_new_string (s);
+			} else if (s4_val_get_int (val, &i)) {
+				v_entry = xmmsv_new_int (i);
+			}
+
+			ret = g_list_prepend (ret, xmmsv_new_string (s4_result_get_src (res)));
+			ret = g_list_prepend (ret, xmmsv_new_string (s4_result_get_key (res)));
+			ret = g_list_prepend (ret, v_entry);
+
+			res = s4_result_next (res);
+		}
+
 	}
 
 	/* Source */
@@ -854,8 +973,10 @@ xmms_medialib_entry_to_tree (xmms_medialib_entry_t id_num)
 {
 	GTree *ret;
 	xmmsv_t *v_entry;
-	s4_entry_t *entry;
-	s4_set_t *set;
+	s4_fetchspec_t *fs;
+	s4_condition_t *cond;
+	s4_resultset_t *set;
+	int i;
 
 	g_return_val_if_fail (id_num, NULL);
 
@@ -863,9 +984,14 @@ xmms_medialib_entry_to_tree (xmms_medialib_entry_t id_num)
 		return NULL;
 	}
 
-	entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-	set = s4_entry_contains (medialib->s4, entry);
-	s4_entry_free (entry);
+	fs = s4_fetchspec_create ();
+	s4_fetchspec_add (fs, NULL, default_sp);
+	cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", s4_val_new_int (id_num), default_sp, S4_COND_PARENT);
+
+	set = s4_query (medialib->s4, fs, cond);
+
+	s4_cond_free (cond);
+	s4_fetchspec_free (fs);
 
 	if (set == NULL)
 		return NULL;
@@ -873,18 +999,29 @@ xmms_medialib_entry_to_tree (xmms_medialib_entry_t id_num)
 	ret = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, g_free,
 	                       (GDestroyNotify) xmmsv_unref);
 
-	for (entry = s4_set_next (set); entry != NULL; entry = s4_set_next (set)) {
-		s4_entry_fillin (medialib->s4, entry);
-		if (entry->type == ENTRY_STR)
-			v_entry = xmmsv_new_string (entry->val_s);
-		else
-			v_entry = xmmsv_new_int (entry->val_i);
+	for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
+		const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
 
-		xmms_medialib_tree_add_tuple (ret, entry->key_s, entry->src_s, v_entry);
-		xmmsv_unref (v_entry);
+		while (res != NULL) {
+			const s4_val_t *val = s4_result_get_val (res);
+			int32_t i;
+			const char *s;
+
+			if (s4_val_get_str (val, &s)) {
+				v_entry = xmmsv_new_string (s);
+			} else if (s4_val_get_int (val, &i)) {
+				v_entry = xmmsv_new_int (i);
+			}
+
+			xmms_medialib_tree_add_tuple (ret, s4_result_get_key (res), s4_result_get_src (res), v_entry);
+			xmmsv_unref (v_entry);
+
+			res = s4_result_next (res);
+		}
+
 	}
 
-	s4_set_free (set);
+	s4_resultset_free (set);
 	v_entry = xmmsv_new_int (id_num);
 	xmms_medialib_tree_add_tuple (ret, "id", "server", v_entry);
 	xmmsv_unref (v_entry);
@@ -1017,25 +1154,26 @@ xmms_medialib_property_remove (xmms_medialib_t *medialib, guint32 id_num,
                                const gchar *source, const gchar *key,
                                xmms_error_t *error)
 {
-	s4_entry_t *entry, *prop;
-	s4_set_t *props;
+	s4_val_t *id_val = s4_val_new_int (id_num);
+	const char *sources[2] = {source, NULL};
+	s4_sourcepref_t *sp = s4_sourcepref_create (sources);
+	s4_fetchspec_t *fs = s4_fetchspec_create ();
+	s4_fetchspec_add (fs, key, sp);
+	s4_condition_t *cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", id_val, sp, S4_COND_PARENT);
+	s4_resultset_t *set = s4_query (medialib->s4, fs, cond);
+	s4_fetchspec_free (fs);
 
-	entry = s4_entry_get_i (medialib->s4, "song_id", id_num);
-	props = s4_entry_get_property (medialib->s4, entry, key);
-	prop = s4_set_next (props);
+	if (set != NULL) {
+		const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
+		if (res != NULL)
+			s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), source);
 
-	while (prop != NULL) {
-		s4_entry_fillin (medialib->s4, prop);
-		if (strcmp (prop->src_s, source) == 0) {
-			s4_entry_del (medialib->s4, entry, prop, source);
-			s4_set_free (props);
-			props = NULL;
-		} else
-			prop = s4_set_next (props);
+		s4_resultset_free (set);
 	}
 
-	s4_set_free (props);
-	s4_entry_free (entry);
+	s4_val_free (id_val);
+	s4_sourcepref_free (sp);
+	s4_cond_free (cond);
 
 	xmms_medialib_entry_send_update (id_num);
 }
@@ -1064,14 +1202,13 @@ xmms_medialib_client_remove_property (xmms_medialib_t *medialib, gint32 entry,
 gboolean
 xmms_medialib_check_id (xmms_medialib_entry_t id)
 {
-	s4_entry_t *entry = s4_entry_get_i (medialib->s4, "song_id", id);
-	s4_set_t *set = s4_entry_contains (medialib->s4, entry);
+	xmmsv_t *val = xmms_medialib_entry_property_get_value (id,
+			XMMS_MEDIALIB_ENTRY_PROPERTY_URL);
 
-	if (set == NULL)
+	if (val == NULL)
 		return FALSE;
 
-	s4_set_free (set);
-	s4_entry_free (entry);
+	xmmsv_unref (val);
 
 	return TRUE;
 }
@@ -1086,29 +1223,25 @@ xmms_medialib_entry_t
 xmms_medialib_entry_not_resolved_get (void)
 {
 	gint32 ret = 0;
-	s4_entry_t *entry;
-	s4_set_t *a, *b, *set;
+	s4_fetchspec_t *fs = s4_fetchspec_create ();
+	s4_fetchspec_add (fs, "song_id", default_sp);
+	s4_val_t *val = s4_val_new_int (XMMS_MEDIALIB_ENTRY_STATUS_NEW);
+	s4_condition_t *cond = s4_cond_new_filter (S4_FILTER_EQUAL,
+			XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS, val, default_sp, 0);
+	s4_resultset_t *set = s4_query (medialib->s4, fs, cond);
+	s4_fetchspec_free (fs);
 
-	entry = s4_entry_get_i (medialib->s4,
-			XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
-			XMMS_MEDIALIB_ENTRY_STATUS_NEW);
-	a = s4_entry_contained (medialib->s4, entry);
-	s4_entry_free (entry);
-	entry = s4_entry_get_i (medialib->s4,
-			XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
-			XMMS_MEDIALIB_ENTRY_STATUS_REHASH);
-	b = s4_entry_contained (medialib->s4, entry);
-	set = s4_set_union (a, b);
+	if (set != NULL) {
+		const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
 
-	s4_set_free (a);
-	s4_set_free (b);
-	s4_entry_free (entry);
+		if (res != NULL)
+			s4_val_get_int (s4_result_get_val (res), &ret);
 
-	if (s4_set_size (set)) {
-		ret = s4_set_next (set)->val_i;
+		s4_resultset_free (set);
 	}
 
-	s4_set_free (set);
+	s4_cond_free (cond);
+	s4_val_free (val);
 
 	return ret;
 }
@@ -1117,26 +1250,22 @@ guint
 xmms_medialib_num_not_resolved (void)
 {
 	gint ret = 0;
-	s4_entry_t *entry;
-	s4_set_t *a, *b, *set;
+	s4_fetchspec_t *fs = s4_fetchspec_create ();
+	s4_fetchspec_add (fs, "song_id", default_sp);
+	s4_val_t *val = s4_val_new_int (XMMS_MEDIALIB_ENTRY_STATUS_NEW);
+	s4_condition_t *cond = s4_cond_new_filter (S4_FILTER_EQUAL,
+			XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS, val, default_sp, 0);
+	s4_resultset_t *set = s4_query (medialib->s4, fs, cond);
+	s4_fetchspec_free (fs);
 
-	entry = s4_entry_get_i (medialib->s4,
-			XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
-			XMMS_MEDIALIB_ENTRY_STATUS_NEW);
-	a = s4_entry_contained (medialib->s4, entry);
-	s4_entry_free (entry);
-	entry = s4_entry_get_i (medialib->s4,
-			XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
-			XMMS_MEDIALIB_ENTRY_STATUS_REHASH);
-	b = s4_entry_contained (medialib->s4, entry);
-	set = s4_set_union (a, b);
+	if (set != NULL) {
+		ret = s4_resultset_get_rowcount (set);
 
-	s4_set_free (a);
-	s4_set_free (b);
-	s4_entry_free (entry);
+		s4_resultset_free (set);
+	}
 
-	ret = s4_set_size (set);
-	s4_set_free (set);
+	s4_cond_free (cond);
+	s4_val_free (val);
 
 	return ret;
 }
@@ -1220,13 +1349,14 @@ xmms_medialib_url_encode (const gchar *path)
 }
 
 
-
+s4_condition_t *xmms_coll_to_cond (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, s4_sourcepref_t *sp);
 GList*
 xmms_medialib_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 {
-	s4_set_t *set;
-	s4_entry_t *e;
 	GList *ret = NULL;
+	int i;
+	int32_t ival;
+
 
 	/* If the top collection is an idlist we simply extract the ids
 	 * directly, otherwise S4 will turn our idlist into a set.
@@ -1240,13 +1370,26 @@ xmms_medialib_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			ret = g_list_prepend (ret, xmmsv_new_int (ids[i]));
 		}
 	} else {
-		set = s4_query (medialib->s4, dag, coll);
+		s4_fetchspec_t *fs = s4_fetchspec_create ();
+		s4_fetchspec_add (fs, "song_id", default_sp);
+		s4_condition_t *cond = xmms_coll_to_cond (dag, coll, default_sp);
+		s4_resultset_t *set = s4_query (medialib->s4, fs, cond);
 
-		for (e = s4_set_next (set); e != NULL; e = s4_set_next (set)) {
-			ret = g_list_prepend (ret, xmmsv_new_int (e->val_i));
+		s4_fetchspec_free (fs);
+		s4_cond_free (cond);
+
+		if (set == NULL)
+			return NULL;
+
+		for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
+			const s4_result_t *res = s4_resultset_get_result (set, i, 0);
+
+			if (res != NULL && s4_val_get_int (s4_result_get_val (res), &ival)) {
+				ret = g_list_prepend (ret, xmmsv_new_int (ival));
+			}
 		}
 
-		s4_set_free (set);
+		s4_resultset_free (set);
 	}
 
 	return g_list_reverse (ret);
@@ -1255,17 +1398,26 @@ xmms_medialib_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 gint
 xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 {
-	s4_set_t *set = s4_query (medialib->s4, dag, coll);
-	gint size = s4_set_size (set);
-	gint ret;
+	s4_fetchspec_t *fs = s4_fetchspec_create ();
+	s4_fetchspec_add (fs, "song_id", default_sp);
+	s4_condition_t *cond = xmms_coll_to_cond (dag, coll, default_sp);
+	s4_resultset_t *set = s4_query (medialib->s4, fs, cond);
+	int size = (set == NULL)?0:s4_resultset_get_rowcount (set);
+	int32_t ret = 0;
+
+	s4_fetchspec_free (fs);
+	s4_cond_free (cond);
 
 	if (size) {
-		ret = s4_set_get (set, g_random_int_range (0, size))->val_i;
-	} else {
-		ret = 0;
+		const s4_result_t *res = NULL;
+		while (res == NULL)
+			res = s4_resultset_get_result (set, g_random_int_range (0, size), 0);
+
+		s4_val_get_int (s4_result_get_val (res), &ret);
 	}
 
-	s4_set_free (set);
+	if (set != NULL)
+		s4_resultset_free (set);
 
 	return ret;
 }
@@ -1273,51 +1425,77 @@ xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 GList*
 xmms_medialib_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
 {
-	GList *ids = xmms_medialib_query_ids (dag, coll);
 	GList *ret = NULL;
-	xmmsv_t *dict, *val, *prop;
-	int i, size;
-	int32_t id;
-	const char *p;
+	xmmsv_t *dict, *prop;
+	int i,j,size;
+	const char *p, *s;
+	int32_t ival;
+	s4_fetchspec_t *fs = s4_fetchspec_create ();
 
 	size = xmmsv_list_get_size (fetch);
 
-	while (ids != NULL) {
-		dict = NULL;
+	for (i = 0; i < size; i++) {
+		xmmsv_list_get (fetch, i, &prop);
 
-		for (i = 0; i < size; i++) {
-			xmmsv_list_get (fetch, i, &prop);
+		if (!xmmsv_get_string (prop, &p))
+			p = NULL;
+		else {
+			if (!strcmp (p, "id"))
+				p = "song_id";
 
-			if (!xmmsv_get_string (prop, &p))
-				p = NULL;
+			s4_fetchspec_add (fs, p, default_sp);
+		}
+	}
 
-			if (!xmmsv_get_int (ids->data, &id))
+	s4_condition_t *cond = xmms_coll_to_cond (dag, coll, default_sp);
+	s4_resultset_t *set = s4_query (medialib->s4, fs, cond);
+
+	s4_fetchspec_free (fs);
+	s4_cond_free (cond);
+
+	if (set == NULL)
+		return NULL;
+
+	for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
+		for (dict = NULL, j = 0; j < size; j++) {
+			const s4_result_t *res = s4_resultset_get_result (set, i, j);
+			xmmsv_t *val = NULL;
+			if (res == NULL)
 				continue;
 
-			if (strcmp ("id", p) == 0) {
-				val = xmmsv_ref (ids->data);
-			} else if (p != NULL) {
-				val = xmms_medialib_entry_property_get_value (id, p);
-			} else {
-				val = NULL;
+			if (s4_val_get_str (s4_result_get_val (res), &s)) {
+				val = xmmsv_new_string (s);
+			} else if (s4_val_get_int (s4_result_get_val (res), &ival)) {
+				val = xmmsv_new_int (ival);
 			}
 
 			if (val == NULL)
 				continue;
 
-			if (dict == NULL)
+			if (dict == NULL) {
 				dict = xmmsv_new_dict();
+//				xmmsv_get_dict_iter (dict, &it);
+			}
 
-			xmmsv_dict_set (dict, p, val);
+/*			xmmsv_dict_iter_find (it, fs[i]);
+
+			xmmsv_list_iter_insert (*(xmmsv_list_iter_t**)it, keyvals[i]);
+			xmmsv_list_iter_next (*(xmmsv_list_iter_t**)it);
+			xmmsv_list_iter_insert (*(xmmsv_list_iter_t**)it, val);
+			*/
+			const char *key = s4_result_get_key (res);
+			if (!strcmp (key, "song_id"))
+				key = "id";
+			xmmsv_dict_set (dict, key, val);
+
 			xmmsv_unref (val);
 		}
 
 		if (dict != NULL)
 			ret = g_list_prepend (ret, dict);
-
-		xmmsv_unref (ids->data);
-		ids = g_list_delete_link (ids, ids);
 	}
 
-	return g_list_reverse (ret);
+	s4_resultset_free (set);
+
+	return ret;
 }
