@@ -167,16 +167,41 @@ coll_dump_list (xmmsv_t *list, unsigned int level)
 	}
 }
 
+static void
+coll_write_attribute (const char *key, xmmsv_t *val, void *user_data)
+{
+	const char *str;
+	int32_t i;
+	gboolean *first = user_data;
+
+	if (*first) {
+		*first = FALSE;
+	} else {
+		printf (", ");
+	}
+
+	printf ("%s:", key);
+	if (xmmsv_get_string (val, &str)) {
+		printf ("'%s'", str);
+	} else if (xmmsv_get_int (val, &i)) {
+		printf ("%i", i);
+	}
+}
+
+static void
+coll_dump_attributes (xmmsv_t *attributes)
+{
+	gboolean first = TRUE;
+	xmmsv_dict_foreach (attributes, coll_write_attribute, &first);
+}
+
 /* Dump the structure of the collection as a string */
 static void
 coll_dump (xmmsv_coll_t *coll, unsigned int level)
 {
 	gint i;
 	gchar *indent;
-	gboolean first;
 
-	const gchar *attr_key, *attr_value;
-	xmmsv_coll_t *operand;
 	GString *idlist_str;
 
 	indent = g_malloc ((level * 2) + 1);
@@ -229,27 +254,9 @@ coll_dump (xmmsv_coll_t *coll, unsigned int level)
 	}
 
 	/* attributes */
-	xmmsv_coll_attribute_list_first (coll);
-	if (xmmsv_coll_attribute_list_valid (coll)) {
-		printf (" (");
-		for (first = TRUE ;
-		     xmmsv_coll_attribute_list_valid (coll);
-		     xmmsv_coll_attribute_list_next (coll)) {
-
-			if (first) {
-				first = FALSE;
-			} else {
-				printf (", ");
-			}
-
-			xmmsv_coll_attribute_list_entry (coll, &attr_key, &attr_value);
-
-			printf ("%s:'%s'", attr_key, attr_value);
-		}
-		printf (")");
-	}
-
-	printf ("\n");
+	printf (" (");
+	coll_dump_attributes (xmmsv_coll_attributes_get (coll));
+	printf (")\n");
 
 	/* idlist */
 	idlist_str = coll_idlist_to_string (coll);
