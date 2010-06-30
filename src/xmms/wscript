@@ -16,6 +16,7 @@ source = """
     error.c
     output.c
     playlist.c
+    idlist_vtab.c
     collection.c
     collserial.c
     collsync.c

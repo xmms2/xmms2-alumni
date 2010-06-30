@@ -1569,6 +1569,15 @@ xmms_xform_config_lookup (xmms_xform_t *xform, const gchar *path)
 	return xmms_plugin_config_lookup ((xmms_plugin_t *) xform->plugin, path);
 }
 
+gboolean
+xmms_xform_source_rank_default_set (xmms_xform_t *xform, gint value)
+{
+	g_return_val_if_fail (xform->plugin, FALSE);
+
+	return xmms_plugin_source_rank_default_set ((xmms_plugin_t *) xform->plugin,
+	                                            value);
+}
+
 static xmms_xform_t *
 add_effects (xmms_xform_t *last, xmms_medialib_entry_t entry,
              GList *goal_formats)

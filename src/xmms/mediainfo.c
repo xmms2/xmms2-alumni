@@ -148,6 +148,7 @@ xmms_mediainfo_reader_thread (gpointer data)
 
 		entry = xmms_medialib_entry_not_resolved_get ();
 		XMMS_DBG ("got %d as not resolved", entry);
+		xmms_medialib_end (session);
 
 		if (!entry) {
 			xmms_object_emit_f (XMMS_OBJECT (mrt),

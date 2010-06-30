@@ -81,6 +81,7 @@ xmmsc_result_t *xmmsc_playlist_add_url (xmmsc_connection_t *c, const char *playl
 xmmsc_result_t *xmmsc_playlist_add_id (xmmsc_connection_t *c, const char *playlist, int id);
 xmmsc_result_t *xmmsc_playlist_add_encoded (xmmsc_connection_t *c, const char *playlist, const char *url);
 xmmsc_result_t *xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist, xmmsv_coll_t *coll);
+xmmsc_result_t *xmmsc_playlist_add_medialist (xmmsc_connection_t *c, const char *playlist, xmmsv_coll_t *coll);
 xmmsc_result_t *xmmsc_playlist_add_collection (xmmsc_connection_t *c, const char *playlist, xmmsv_coll_t *coll, xmmsv_t *order);
 xmmsc_result_t *xmmsc_playlist_remove_entry (xmmsc_connection_t *c, const char *playlist, int);
 xmmsc_result_t *xmmsc_playlist_clear (xmmsc_connection_t *c, const char *playlist);
@@ -97,6 +98,7 @@ xmmsc_result_t *xmmsc_playlist_insert_full (xmmsc_connection_t *c, const char *p
 xmmsc_result_t *xmmsc_playlist_insert_url (xmmsc_connection_t *c, const char *playlist, int pos, const char *url);
 xmmsc_result_t *xmmsc_playlist_insert_id (xmmsc_connection_t *c, const char *playlist, int pos, int32_t id);
 xmmsc_result_t *xmmsc_playlist_insert_encoded (xmmsc_connection_t *c, const char *playlist, int pos, const char *url);
+xmmsc_result_t *xmmsc_playlist_insert_medialist (xmmsc_connection_t *c, const char *playlist, int pos, xmmsv_coll_t *coll);
 xmmsc_result_t *xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist, int pos, xmmsv_coll_t *coll, xmmsv_t *order);
 xmmsc_result_t *xmmsc_playlist_load (xmmsc_connection_t *c, const char *playlist);
 xmmsc_result_t *xmmsc_playlist_radd (xmmsc_connection_t *c, const char *playlist, const char *url);
@@ -266,6 +268,10 @@ xmmsc_result_t* xmmsc_coll_find (xmmsc_connection_t *conn, int mediaid, xmmsv_co
 xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn, const char* from_name, const char* to_name, xmmsv_coll_namespace_t ns);
 xmmsc_result_t *xmmsc_coll_idlist_from_playlist_file (xmmsc_connection_t *conn, const char *path);
 xmmsc_result_t* xmmsc_coll_sync (xmmsc_connection_t *conn);
+
+xmmsc_result_t* xmmsc_coll_query_medialist (xmmsc_connection_t *conn, xmmsv_coll_t *coll, const char *fetch);
+xmmsc_result_t* xmmsc_coll_query_clustered (xmmsc_connection_t *conn, xmmsv_coll_t *coll, const char *spec);
+xmmsc_result_t* xmmsc_coll_query_medialist_ids (xmmsc_connection_t *conn, xmmsv_coll_t *coll);
 
 xmmsc_result_t* xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsv_coll_t *coll, xmmsv_t *order, int limit_start, int limit_len);
 xmmsc_result_t* xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsv_coll_t *coll, xmmsv_t *order, int limit_start, int limit_len, xmmsv_t *fetch, xmmsv_t *group);

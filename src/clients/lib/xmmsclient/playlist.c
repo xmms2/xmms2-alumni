@@ -386,13 +386,10 @@ xmmsc_playlist_insert_encoded (xmmsc_connection_t *c, const char *playlist, int 
  * @param playlist The playlist in which to insert the media.
  * @param pos A position in the playlist
  * @param coll The collection to find media in the medialib.
- * @param order The list of properties by which to order the matching
- *              media, passed as an #xmmsv_t list of strings.
  */
 xmmsc_result_t *
-xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist,
-                                  int pos, xmmsv_coll_t *coll,
-                                  xmmsv_t *order)
+xmmsc_playlist_insert_medialist (xmmsc_connection_t *c, const char *playlist,
+                                 int pos, xmmsv_coll_t *coll)
 {
 	x_check_conn (c, NULL);
 
@@ -402,12 +399,39 @@ xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist,
 	}
 
 	return xmmsc_send_cmd (c, XMMS_IPC_OBJECT_PLAYLIST,
-	                       XMMS_IPC_CMD_INSERT_COLL,
+	                       XMMS_IPC_CMD_INSERT_MEDIALIST,
 	                       XMMSV_LIST_ENTRY_STR (playlist),
 	                       XMMSV_LIST_ENTRY_INT (pos),
 	                       XMMSV_LIST_ENTRY_COLL (coll),
-	                       XMMSV_LIST_ENTRY (xmmsv_ref (order)),
-	                       XMMSV_LIST_END);
+						   XMMSV_LIST_END);
+}
+
+/**
+ * Queries the medialib for media and inserts the matching ones to
+ * the current playlist at the given position.
+ *
+ * @param c The connection structure.
+ * @param playlist The playlist in which to insert the media.
+ * @param pos A position in the playlist
+ * @param coll The collection to find media in the medialib.
+ * @param order The list of properties by which to order the matching media.
+ */
+xmmsc_result_t *
+xmmsc_playlist_insert_collection (xmmsc_connection_t *c, const char *playlist,
+                                  int pos, xmmsv_coll_t *coll, xmmsv_t *order)
+{
+	xmmsc_result_t *res;
+	xmmsv_coll_t *coll2;
+
+	x_check_conn (c, NULL);
+
+	coll2 = xmmsv_coll_add_order_operators (coll, order);
+
+	res = xmmsc_playlist_insert_medialist (c, playlist, pos, coll2);
+
+	xmmsv_coll_unref (coll2);
+
+	return res;
 }
 
 
@@ -602,6 +626,31 @@ xmmsc_playlist_add_encoded (xmmsc_connection_t *c, const char *playlist, const c
 }
 
 /**
+ * Adds media in medialist to a playlist.
+ *
+ * @param c The connection structure.
+ * @param playlist The playlist in which to add the media.
+ * @param coll The collection to find media in the medialib.
+ */
+xmmsc_result_t *
+xmmsc_playlist_add_medialist (xmmsc_connection_t *c, const char *playlist,
+                           xmmsv_coll_t *coll)
+{
+	x_check_conn (c, NULL);
+
+	/* default to the active playlist */
+	if (playlist == NULL) {
+		playlist = XMMS_ACTIVE_PLAYLIST;
+	}
+
+	return xmmsc_send_cmd (c, XMMS_IPC_OBJECT_PLAYLIST,
+	                       XMMS_IPC_CMD_ADD_MEDIALIST,
+	                       XMMSV_LIST_ENTRY_STR (playlist),
+	                       XMMSV_LIST_ENTRY_COLL (coll),
+	                       XMMSV_LIST_END);
+}
+
+/**
  * Adds media in idlist to a playlist.
  *
  * @param c The connection structure.
@@ -619,8 +668,7 @@ xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist,
 		playlist = XMMS_ACTIVE_PLAYLIST;
 	}
 
-	return xmmsc_send_cmd (c, XMMS_IPC_OBJECT_PLAYLIST,
-	                       XMMS_IPC_CMD_ADD_IDLIST,
+	return xmmsc_send_cmd (c, XMMS_IPC_OBJECT_PLAYLIST, XMMS_IPC_CMD_ADD_IDLIST,
 	                       XMMSV_LIST_ENTRY_STR (playlist),
 	                       XMMSV_LIST_ENTRY_COLL (coll),
 	                       XMMSV_LIST_END);
@@ -633,25 +681,24 @@ xmmsc_playlist_add_idlist (xmmsc_connection_t *c, const char *playlist,
  * @param c The connection structure.
  * @param playlist The playlist in which to add the media.
  * @param coll The collection to find media in the medialib.
- * @param order The list of properties by which to order the matching
- *              media, passed as an #xmmsv_t list of strings.
+ * @param order The list of properties by which to order the matching media.
  */
 xmmsc_result_t *
 xmmsc_playlist_add_collection (xmmsc_connection_t *c, const char *playlist,
                                xmmsv_coll_t *coll, xmmsv_t *order)
 {
+	xmmsc_result_t *res;
+	xmmsv_coll_t *coll2;
+
 	x_check_conn (c, NULL);
 
-	/* default to the active playlist */
-	if (playlist == NULL) {
-		playlist = XMMS_ACTIVE_PLAYLIST;
-	}
+	coll2 = xmmsv_coll_add_order_operators (coll, order);
 
-	return xmmsc_send_cmd (c, XMMS_IPC_OBJECT_PLAYLIST, XMMS_IPC_CMD_ADD_COLL,
-	                       XMMSV_LIST_ENTRY_STR (playlist),
-	                       XMMSV_LIST_ENTRY_COLL (coll),
-	                       XMMSV_LIST_ENTRY (xmmsv_ref (order)),
-	                       XMMSV_LIST_END);
+	res = xmmsc_playlist_add_medialist (c, playlist, coll2);
+
+	xmmsv_coll_unref (coll2);
+
+	return res;
 }
 
 /**

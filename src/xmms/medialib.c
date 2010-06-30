@@ -111,10 +111,6 @@ xmms_medialib_destroy (xmms_object_t *object)
 	xmms_medialib_unregister_ipc_commands ();
 }
 
-#define XMMS_MEDIALIB_SOURCE_SERVER "server"
-#define XMMS_MEDIALIB_SOURCE_SERVER_ID 1
-
-
 /**
  * Initialize the medialib and open the database file.
  *
@@ -306,6 +302,7 @@ gint
 xmms_medialib_entry_property_get_int (xmms_medialib_entry_t id_num,
                                       const gchar *property)
 {
+	gchar *buf = NULL, *end;
 	gint32 ret = -1;
 	s4_val_t *prop;
 
@@ -374,6 +371,7 @@ xmms_medialib_entry_property_set_int_source (xmms_medialib_entry_t id_num,
                                              const gchar *property, gint value,
                                              const gchar *source)
 {
+	gchar str[32];
 	gboolean ret;
 	s4_val_t *prop;
 
@@ -433,7 +431,6 @@ xmms_medialib_entry_property_set_str_source (xmms_medialib_entry_t id_num,
 	return ret;
 
 }
-
 
 /**
  * Return a fresh unused medialib id.
@@ -661,6 +658,7 @@ xmms_medialib_entry_cleanup (xmms_medialib_entry_t id_num)
 static void
 xmms_medialib_client_rehash (xmms_medialib_t *medialib, gint32 id, xmms_error_t *error)
 {
+	gchar str[32];
 	xmms_mediainfo_reader_t *mr;
 
 	if (id) {
@@ -883,10 +881,9 @@ xmms_medialib_tree_add_tuple (GTree *tree, const char *key,
 	xmmsv_dict_set (keytreeval, source, value);
 }
 
-
 /**
  * Convert a entry and all properties to a hashtable that
- * could be feed to the client or somewhere else in the daemon.
+ * could be fed to the client or somewhere else in the daemon.
  *
  * @param id_num Entry to convert.
  *

@@ -309,6 +309,7 @@ xmms_config_property_t *xmms_xform_plugin_config_property_register (
 	gpointer userdata);
 xmms_config_property_t *xmms_xform_config_lookup (xmms_xform_t *xform,
                                                   const gchar *path);
+gboolean xmms_xform_source_rank_default_set (xmms_xform_t *xform, gint value);
 
 /**
  * Get the medialib entry played by this xform.

@@ -65,7 +65,7 @@ static gboolean xmms_plugin_scan_directory (const gchar *dir);
  */
 
 /**
- * @internal 
+ * @internal
  * Lookup the value of a plugin's config property, given the property key.
  * @param[in] plugin The plugin
  * @param[in] key The property key (config path)
@@ -121,6 +121,36 @@ xmms_plugin_config_property_register (xmms_plugin_t *plugin,
 	                                      userdata);
 
 	return prop;
+}
+
+/**
+ * @internal 
+ * Set the default sourcerank for a plugin.
+ * @param plugin The plugin
+ * @param value The default sourcerank
+ * @return Whether value became this source's sourcerank.
+ */
+gboolean
+xmms_plugin_source_rank_default_set (xmms_plugin_t *plugin, gint value)
+{
+	xmms_config_property_t *prop;
+	char str[32];
+
+	g_return_val_if_fail (plugin, FALSE);
+
+	sprintf (str, "%d", value);
+
+	prop = xmms_plugin_config_lookup (plugin, "sourcerank");
+	if (!prop) {
+		xmms_plugin_config_property_register (plugin, "sourcerank",
+		                                      str, NULL, NULL);
+		return TRUE;
+	} else if (strcmp (xmms_config_property_get_string (prop), "") == 0) {
+		xmms_config_property_set_data (prop, str);
+		return TRUE;
+	} else {
+		return FALSE;
+	}
 }
 
 /**

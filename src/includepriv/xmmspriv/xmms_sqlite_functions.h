@@ -14,27 +14,15 @@
  *  Lesser General Public License for more details.
  */
 
-#ifndef __XMMS_COLLQUERY_H__
-#define __XMMS_COLLQUERY_H__
+#ifndef __XMMS_SQLITE_FUNCTIONS_H__
+#define __XMMS_SQLITE_FUNCTIONS_H__
 
-#include <glib.h>
-
-/*
- * Private definitions
- */
-
-#include "xmmsc/xmmsv_coll.h"
-#include "xmmspriv/xmms_collection.h"
-
+#include <sqlite3.h>
 
 /*
  * Public functions
  */
 
-GList* xmms_coll_query_clustered (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, const gchar *spec, xmms_error_t *err);
-GList* xmms_coll_query_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, const gchar *fetch, xmms_error_t *err);
-GList* xmms_coll_query_legacy (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, guint limit_start, guint limit_len, xmmsv_t *order, xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err);
-
-uint32_t **xmms_collection_query_idlist_register_get ();
+void xmms_sqlite_add_functions (sqlite3 *db);
 
 #endif

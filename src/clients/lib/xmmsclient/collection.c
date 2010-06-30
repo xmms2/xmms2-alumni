@@ -186,6 +186,56 @@ xmmsc_result_t* xmmsc_coll_rename (xmmsc_connection_t *conn,
 
 
 /**
+ * List metadata of all media in a medialist (in the appropiate order).
+ *
+ * @param conn  The connection to the server.
+ * @param coll  The collection used to query.
+ * @param fetch The metadata to query
+ */
+xmmsc_result_t*
+xmmsc_coll_query_medialist (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
+                            const char *fetch)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (conn, NULL);
+	x_api_error_if (!coll, "with a NULL collection", NULL);
+	x_api_error_if (!fetch, "with a NULL fetch", NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_COLLECTION,
+	                        XMMS_IPC_CMD_QUERY_MEDIALIST);
+	xmms_ipc_msg_put_collection (msg, coll);
+	xmms_ipc_msg_put_string (msg, fetch);
+
+	return xmmsc_send_msg (conn, msg);
+}
+
+/**
+ * List metadata of all media in a collection, by cluster.
+ *
+ * @param conn  The connection to the server.
+ * @param coll  The collection used to query.
+ * @param spec  The metadata to query and how to cluster.
+ */
+xmmsc_result_t*
+xmmsc_coll_query_clustered (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
+                            const char *spec)
+{
+	xmms_ipc_msg_t *msg;
+
+	x_check_conn (conn, NULL);
+	x_api_error_if (!coll, "with a NULL collection", NULL);
+	x_api_error_if (!spec, "with a NULL spec", NULL);
+
+	msg = xmms_ipc_msg_new (XMMS_IPC_OBJECT_COLLECTION,
+	                        XMMS_IPC_CMD_QUERY_CLUSTERED);
+	xmms_ipc_msg_put_collection (msg, coll);
+	xmms_ipc_msg_put_string (msg, spec);
+
+	return xmmsc_send_msg (conn, msg);
+}
+
+/**
  * List the ids of all media matched by the given collection.
  * A list of ordering properties can be specified, as well as offsets
  * to only retrieve part of the result set.
