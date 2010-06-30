@@ -332,8 +332,6 @@ xmms_collection_client_idlist_from_playlist (xmms_coll_dag_t *dag,
 
 			xmmsv_dict_foreach(a, add_metadata_from_tree, &udata);
 
-			xmms_medialib_update_goodness (session, entry, NULL);
-
 			xmmsv_coll_idlist_append (coll, entry);
 		} else {
 			xmmsv_get_string (b, &buf);
@@ -1700,8 +1698,6 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 				break;
 			}
 		}
-
-		xmmsv_list_iter_explicit_destroy (iter);
 	}
 
 	return valid;

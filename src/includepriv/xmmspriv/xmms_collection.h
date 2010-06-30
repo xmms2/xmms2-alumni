@@ -61,7 +61,7 @@ gboolean xmms_collection_save (xmms_coll_dag_t *dag, const gchar *name, const gc
 gboolean xmms_collection_remove (xmms_coll_dag_t *dag, const gchar *collname, const gchar *namespace, xmms_error_t *error);
 GList * xmms_collection_find (xmms_coll_dag_t *dag, guint mid, const gchar *namespace, xmms_error_t *error);
 gboolean xmms_collection_rename (xmms_coll_dag_t *dag, const gchar *from_name, const gchar *to_name, const gchar *namespace, xmms_error_t *error);
-void xmms_collection_sync (xmms_coll_dag_t *dag, xmms_error_t *error);
+void xmms_collection_sync (xmms_coll_dag_t *dag);
 gboolean xmms_collection_is_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmms_error_t *error);
 
 GList * xmms_collection_query_clustered (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, const gchar *spec, xmms_error_t *err);

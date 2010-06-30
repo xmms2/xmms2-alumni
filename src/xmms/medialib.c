@@ -90,6 +90,7 @@ static xmms_medialib_t *medialib;
  * If you add new sourcepreferences update this!
  */
 #define SOURCE_PREF_COUNT 4
+#define XMMS_MEDIALIB_SOURCE_SERVER "server"
 
 static s4_sourcepref_t *default_sp;
 static const char *source_pref[] = {
@@ -302,7 +303,6 @@ gint
 xmms_medialib_entry_property_get_int (xmms_medialib_entry_t id_num,
                                       const gchar *property)
 {
-	gchar *buf = NULL, *end;
 	gint32 ret = -1;
 	s4_val_t *prop;
 
@@ -371,7 +371,6 @@ xmms_medialib_entry_property_set_int_source (xmms_medialib_entry_t id_num,
                                              const gchar *property, gint value,
                                              const gchar *source)
 {
-	gchar str[32];
 	gboolean ret;
 	s4_val_t *prop;
 
@@ -658,7 +657,6 @@ xmms_medialib_entry_cleanup (xmms_medialib_entry_t id_num)
 static void
 xmms_medialib_client_rehash (xmms_medialib_t *medialib, gint32 id, xmms_error_t *error)
 {
-	gchar str[32];
 	xmms_mediainfo_reader_t *mr;
 
 	if (id) {
