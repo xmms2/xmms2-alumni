@@ -261,7 +261,7 @@ vim:expandtab
         </method>
 
         <method>
-            <name>add_collection</name>
+            <name>add_medialist</name>
             <documentation>Adds the contents of a collection to the given playlist.</documentation>
 
             <argument>
@@ -279,17 +279,6 @@ vim:expandtab
 
                 <type>
                     <collection />
-                </type>
-            </argument>
-
-            <argument>
-                <name>order</name>
-                <documentation>A list of medialib properties by which to sort the collection.</documentation>
-
-                <type>
-                    <list>
-                        <string />
-                    </list>
                 </type>
             </argument>
         </method>
@@ -514,7 +503,7 @@ vim:expandtab
         </method>
 
         <method>
-            <name>insert_collection</name>
+            <name>insert_medialist</name>
             <documentation>Inserts the contents of a collection into the given playlist.</documentation>
 
             <argument>
@@ -541,17 +530,6 @@ vim:expandtab
 
                 <type>
                     <collection />
-                </type>
-            </argument>
-
-            <argument>
-                <name>order</name>
-                <documentation>A list of medialib properties on which to sort the collection.</documentation>
-
-                <type>
-                    <list>
-                        <string />
-                    </list>
                 </type>
             </argument>
         </method>

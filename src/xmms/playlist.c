@@ -52,6 +52,7 @@ static void xmms_playlist_destroy (xmms_object_t *object);
 static void xmms_playlist_client_add_id (xmms_playlist_t *playlist, const gchar *plname, xmms_medialib_entry_t file, xmms_error_t *error);
 static void xmms_playlist_client_add_url (xmms_playlist_t *playlist, const gchar *plname, const gchar *nurl, xmms_error_t *err);
 static void xmms_playlist_client_add_idlist (xmms_playlist_t *playlist, const gchar *plname, xmmsv_coll_t *coll, xmms_error_t *err);
+static void xmms_playlist_client_add_medialist (xmms_playlist_t *playlist, const gchar *plname, xmmsv_coll_t *coll, xmms_error_t *err);
 static GTree * xmms_playlist_client_current_pos (xmms_playlist_t *playlist, const gchar *plname, xmms_error_t *err);
 static gint xmms_playlist_client_set_next (xmms_playlist_t *playlist, gint32 pos, xmms_error_t *error);
 static void xmms_playlist_client_remove_entry (xmms_playlist_t *playlist, const gchar *plname, gint32 pos, xmms_error_t *err);
@@ -62,7 +63,6 @@ static gint xmms_playlist_set_current_position_do (xmms_playlist_t *playlist, gu
 
 static void xmms_playlist_client_insert_url (xmms_playlist_t *playlist, const gchar *plname, gint32 pos, const gchar *url, xmms_error_t *error);
 static void xmms_playlist_client_insert_id (xmms_playlist_t *playlist, const gchar *plname, gint32 pos, xmms_medialib_entry_t file, xmms_error_t *error);
-static void xmms_playlist_client_insert_collection (xmms_playlist_t *playlist, const gchar *plname, gint32 pos, xmmsv_coll_t *coll, xmmsv_t *order, xmms_error_t *error);
 static void xmms_playlist_client_radd (xmms_playlist_t *playlist, const gchar *plname, const gchar *path, xmms_error_t *error);
 static void xmms_playlist_client_rinsert (xmms_playlist_t *playlist, const gchar *plname, gint32 pos, const gchar *path, xmms_error_t *error);
 static void xmms_playlist_client_insert_medialist (xmms_playlist_t *playlist, const gchar *plname, guint32 pos, xmmsv_coll_t *coll, xmms_error_t *error);
@@ -847,28 +847,6 @@ xmms_playlist_client_insert_id (xmms_playlist_t *playlist, const gchar *plname,
 	xmms_playlist_insert_entry (playlist, plname, pos, file, err);
 }
 
-static void
-xmms_playlist_client_insert_collection (xmms_playlist_t *playlist, const gchar *plname,
-                                        gint32 pos, xmmsv_coll_t *coll,
-                                        xmmsv_t *order, xmms_error_t *err)
-{
-	GList *res;
-
-	res = xmms_collection_query_ids (playlist->colldag, coll, 0, 0, order, err);
-
-	while (res) {
-		xmmsv_t *val = (xmmsv_t*) res->data;
-		gint id;
-		xmmsv_get_int (val, &id);
-		xmms_playlist_client_insert_id (playlist, plname, pos, id, err);
-		xmmsv_unref (val);
-
-		res = g_list_delete_link (res, res);
-		pos++;
-	}
-
-}
-
 /**
  * Insert an entry at a given position in the playlist without
  * validating it.
@@ -920,8 +898,8 @@ xmms_playlist_insert_entry (xmms_playlist_t *playlist, const gchar *plname,
 	return;
 }
 
-gboolean
-xmms_playlist_insert_medialist (xmms_playlist_t *playlist, const gchar *plname,
+void
+xmms_playlist_client_insert_medialist (xmms_playlist_t *playlist, const gchar *plname,
                                 guint32 pos, xmmsv_coll_t *coll,
                                 xmms_error_t *err)
 {
@@ -931,16 +909,13 @@ xmms_playlist_insert_medialist (xmms_playlist_t *playlist, const gchar *plname,
 
 	while (res) {
 		xmmsv_t *val = (xmmsv_t*) res->data;
-		guint id;
-		xmmsv_get_uint (val, &id);
+		gint id;
+		xmmsv_get_int (val, &id);
 		xmms_playlist_add_entry (playlist, plname, id, err);
 		xmmsv_unref (val);
 
 		res = g_list_delete_link (res, res);
 	}
-
-	/* FIXME: detect errors? */
-	return TRUE;
 }
 
 /**
@@ -1283,8 +1258,7 @@ xmms_playlist_client_sort (xmms_playlist_t *playlist, const gchar *plname,
 	currpos = xmms_playlist_coll_get_currpos (plcoll);
 	xmmsv_coll_idlist_get_index (plcoll, currpos, &currid);
 
-	tmp = xmms_collection_query_ids (playlist->colldag, plcoll, 0, 0,
-			properties, err);
+	tmp = xmms_collection_query_medialist_ids (playlist->colldag, plcoll, err);
 
 	if (tmp == NULL) {
 		g_mutex_unlock (playlist->mutex);
