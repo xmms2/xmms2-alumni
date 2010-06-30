@@ -28,7 +28,6 @@
 
 #include "xmmspriv/xmms_collection.h"
 #include "xmmspriv/xmms_playlist.h"
-#include "xmmspriv/xmms_collquery.h"
 #include "xmmspriv/xmms_collserial.h"
 #include "xmmspriv/xmms_collsync.h"
 #include "xmmspriv/xmms_xform.h"
@@ -121,8 +120,9 @@ static void xmms_collection_client_remove (xmms_coll_dag_t *dag, const gchar *co
 static GList * xmms_collection_client_find (xmms_coll_dag_t *dag, gint32 mid, const gchar *namespace, xmms_error_t *error);
 static void xmms_collection_client_rename (xmms_coll_dag_t *dag, const gchar *from_name, const gchar *to_name, const gchar *namespace, xmms_error_t *error);
 
+static GList *xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, gint32 lim_start, gint32 lim_len, xmmsv_t *order, xmms_error_t *err);
 static GList * xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, gint32 lim_start, gint32 lim_len, xmmsv_t *order, xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err);
-static GList * xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, gint32 lim_start, gint32 lim_len, xmmsv_t *order, xmms_error_t *err);
+static GList * xmms_collection_client_query_medialist_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmms_error_t *err);
 static GList *xmms_collection_client_query_clustered (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, const gchar *spec, xmms_error_t *err);
 static GList *xmms_collection_client_query_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, const gchar *fetch, xmms_error_t *err);
 static xmmsv_coll_t *xmms_collection_client_idlist_from_playlist (xmms_coll_dag_t *dag, const gchar *mediainfo, xmms_error_t *err);
@@ -624,7 +624,7 @@ xmms_collection_client_find (xmms_coll_dag_t *dag, gint32 mid, const gchar *name
 
 		coll1 = xmms_collection_get_pointer (dag, open_name, nsid);
 
-		xmmsv_coll_operand_list_clear (coll2);
+		xmmsv_list_clear (xmmsv_coll_operands_get (coll2));
 		xmmsv_coll_add_operand (coll2, coll1);
 
 		/* Do not unref coll1, as _get_pointer does not ref it.*/
@@ -637,8 +637,6 @@ xmms_collection_client_find (xmms_coll_dag_t *dag, gint32 mid, const gchar *name
 			*match = XMMS_COLLECTION_FIND_STATE_NOMATCH;
 		}
 		g_hash_table_replace (match_table, g_strdup (open_name), match);
-
-		xmmsv_coll_operand_list_clear (coll2);
 	}
 	g_mutex_unlock (dag->mutex);
 
@@ -787,7 +785,7 @@ xmms_collection_client_query_clustered (xmms_coll_dag_t *dag, xmmsv_coll_t *coll
  * @return A list of dicts.
  */
 GList *
-xmms_collection_clustered_query_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
+xmms_collection_client_query_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
                                  const gchar *fetch, xmms_error_t *err)
 {
 	GList *res = NULL;
@@ -806,6 +804,12 @@ xmms_collection_clustered_query_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *c
 
 	return res;
 }
+GList *
+xmms_collection_query_medialist_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmms_error_t *err)
+{
+	/* FIXME: Implement */
+	return NULL;
+}
 
 /** Find the ids of the medialist.
  *
@@ -815,9 +819,8 @@ xmms_collection_clustered_query_medialist (xmms_coll_dag_t *dag, xmmsv_coll_t *c
  * @return A list of media ids.
  */
 GList *
-xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
-                           gint32 lim_start, gint32 lim_len, xmmsv_t *order,
-                           xmms_error_t *err)
+xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
+		gint32 lim_start, gint32 lim_len, xmmsv_t *order, xmms_error_t *err)
 {
 	GList *res, *n;
 	xmmsv_t *idval, *fetch;
@@ -941,11 +944,10 @@ identical_values (xmmsv_t *keys, xmmsv_t *dict1, xmmsv_t *dict2)
 }
 
 GList *
-xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
-                                  gint32 lim_start, gint32 lim_len, xmmsv_t *order,
+xmms_collection_client_query_medialist_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
                                   xmms_error_t *err)
 {
-	return xmms_collection_query_ids (dag, coll, lim_start, lim_len, order, err);
+	return xmms_collection_query_medialist_ids (dag, coll, err);
 }
 /** Find the properties of the media matched by a collection.
  *
@@ -961,8 +963,8 @@ xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
  */
 GList *
 xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
-                                    gint32 lim_start, gint32 lim_len, xmmsv_t *order,
-                                    xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err)
+		gint32 lim_start, gint32 lim_len, xmmsv_t *order,
+		xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err)
 {
 	GList *res = NULL;
 	xmmsv_t *values;
@@ -1106,15 +1108,10 @@ xmms_collection_is_medialist_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 			/* fall through */
 
 		default:
-			xmmsv_coll_operand_list_save (coll);
-
-			xmmsv_coll_operand_list_first (coll);
-			if (!xmmsv_coll_operand_list_entry (coll, &operand)) {
+			if (!xmmsv_list_get_coll (xmmsv_coll_operands_get (coll), 0, &operand)) {
 				xmms_log_error ("Operand expected but none found");
 				return FALSE;
 			}
-
-			xmmsv_coll_operand_list_restore (coll);
 
 			return xmms_collection_is_medialist_recurs (dag, operand);
 	}
@@ -1672,30 +1669,28 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 		     valid && xmmsv_list_iter_valid (iter);
 		     xmmsv_list_iter_next (iter)) {
 
-			xmmsv_t *val;
-			xmmsv_list_iter_entry (iter, &val);
-			xmmsv_get_coll (val, &op);
+			xmmsv_list_iter_entry_coll (iter, &op);
 
 			if (!xmms_collection_validate_recurs (dag, op, save_name,
 			                                      save_namespace)) {
 				valid = FALSE;
-				break;
 			}
-			xmmsv_coll_operand_list_next (coll);
 		}
-
-		xmmsv_coll_operand_list_restore (coll);
 	}
 
 	if (valid && (type == XMMS_COLLECTION_TYPE_CONCATENATION ||
 	              type == XMMS_COLLECTION_TYPE_LIMIT)) {
-		xmmsv_coll_operand_list_save (coll);
+		xmmsv_list_iter_t *iter;
+		xmmsv_get_list_iter (xmmsv_coll_operands_get (coll), &iter);
 
-		xmmsv_coll_operand_list_first (coll);
-		while (xmmsv_coll_operand_list_entry (coll, &op) && valid) {
+		for (xmmsv_list_iter_first (iter);
+		     valid && xmmsv_list_iter_valid (iter);
+		     xmmsv_list_iter_next (iter)) {
+
+			xmmsv_list_iter_entry_coll (iter, &op);
+
 			if (!xmms_collection_is_medialist_recurs (dag, op)) {
 				valid = FALSE;
-				break;
 			}
 		}
 	}

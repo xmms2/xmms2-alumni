@@ -1534,6 +1534,95 @@ vim:expandtab
         </method>
 
         <method>
+            <name>is_medialist</name>
+            <documentation>FIXME.</documentation>
+            <argument>
+                <documentation>FIXME.</documentation>
+                <name>coll</name>
+
+                <type>
+                    <collection />
+                </type>
+            </argument>
+
+            <return_value>
+                <documentation>FIXME.</documentation>
+
+                <type>
+                    <int />
+                </type>
+            </return_value>
+        </method>
+
+        <method>
+            <name>query_clustered</name>
+            <documentation>FIXME.</documentation>
+            <argument>
+                <documentation>FIXME.</documentation>
+                <name>coll</name>
+
+                <type>
+                    <collection />
+                </type>
+            </argument>
+
+            <argument>
+                <documentation>FIXME.</documentation>
+                <name>spec</name>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+
+            <return_value>
+                <documentation>FIXME.</documentation>
+
+                <type>
+                    <list>
+                        <dictionary>
+                            <unknown />
+                        </dictionary>
+                    </list>
+                </type>
+            </return_value>
+        </method>
+
+        <method>
+            <name>query_medialist</name>
+            <documentation>FIXME.</documentation>
+            <argument>
+                <documentation>FIXME.</documentation>
+                <name>coll</name>
+
+                <type>
+                    <collection />
+                </type>
+            </argument>
+
+            <argument>
+                <documentation>FIXME.</documentation>
+                <name>fetch</name>
+
+                <type>
+                    <string />
+                </type>
+            </argument>
+
+            <return_value>
+                <documentation>FIXME.</documentation>
+
+                <type>
+                    <list>
+                        <dictionary>
+                            <unknown />
+                        </dictionary>
+                    </list>
+                </type>
+            </return_value>
+        </method>
+
+        <method>
             <name>query_infos</name>
             <documentation>FIXME.</documentation>
 
