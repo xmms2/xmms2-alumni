@@ -18,6 +18,7 @@
 #include "xmmspriv/xmms_medialib.h"
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_utils.h"
+#include "xmmspriv/xmms_collcond.h"
 #include "xmms/xmms_error.h"
 #include "xmms/xmms_config.h"
 #include "xmms/xmms_object.h"
@@ -1344,7 +1345,6 @@ xmms_medialib_url_encode (const gchar *path)
 }
 
 
-s4_condition_t *xmms_coll_to_cond (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, s4_sourcepref_t *sp);
 GList*
 xmms_medialib_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 {

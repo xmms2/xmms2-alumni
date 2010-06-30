@@ -19,6 +19,7 @@ source = """
     collection.c
     collserial.c
     collsync.c
+    collcond.c
     ipc.c
     log.c
     plugin.c
@@ -34,7 +35,6 @@ source = """
     sample.genpy
     utils.c
     sort.c
-    s4_query.c
     visualization/format.c
     visualization/object.c
     visualization/udp.c
