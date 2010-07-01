@@ -62,6 +62,7 @@ static void xmms_main_client_hello (xmms_object_t *object, gint protocolver, con
 static void install_scripts (const gchar *into_dir);
 static void spawn_script_setup (gpointer data);
 static xmms_xform_object_t *xform_obj;
+static xmms_playlist_t *playlist;
 static xmms_bindata_t *bindata_obj;
 
 #include "main_ipc.c"
@@ -286,6 +287,8 @@ xmms_main_destroy (xmms_object_t *object)
 
 	xmms_object_unref (xform_obj);
 
+	xmms_object_unref (playlist);
+
 	xmms_config_save ();
 
 	xmms_config_shutdown ();
@@ -410,7 +413,6 @@ main (int argc, char **argv)
 	xmms_config_property_t *cv;
 	xmms_main_t *mainobj;
 	int loglevel = 1;
-	xmms_playlist_t *playlist;
 	gchar default_path[XMMS_PATH_MAX + 16], *tmp;
 	gboolean verbose = FALSE;
 	gboolean quiet = FALSE;
