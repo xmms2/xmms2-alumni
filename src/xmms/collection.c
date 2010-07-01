@@ -28,11 +28,11 @@
 
 #include "xmmspriv/xmms_collection.h"
 #include "xmmspriv/xmms_playlist.h"
-#include "xmmspriv/xmms_collquery.h"
 #include "xmmspriv/xmms_collserial.h"
 #include "xmmspriv/xmms_collsync.h"
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_streamtype.h"
+#include "xmmspriv/xmms_medialib.h"
 #include "xmms/xmms_ipc.h"
 #include "xmms/xmms_config.h"
 #include "xmms/xmms_log.h"
@@ -77,9 +77,8 @@ typedef enum {
 } coll_find_state_t;
 
 typedef struct add_metadata_from_tree_user_data_St {
-	xmms_medialib_session_t *session;
 	xmms_medialib_entry_t entry;
-	guint src;
+	const gchar* src;
 } add_metadata_from_tree_user_data_t;
 
 static GList *global_stream_type;
@@ -268,14 +267,14 @@ add_metadata_from_tree (const gchar *key, xmmsv_t *value, gpointer user_data)
 	if (xmmsv_get_type (value) == XMMSV_TYPE_INT32) {
 		gint iv;
 		xmmsv_get_int (value, &iv);
-		xmms_medialib_entry_property_set_int_source (ud->session, ud->entry,
+		xmms_medialib_entry_property_set_int_source (ud->entry,
 		                                             key,
 		                                             iv,
 		                                             ud->src);
 	} else if (xmmsv_get_type (value) == XMMSV_TYPE_STRING) {
 		const gchar *sv;
 		xmmsv_get_string (value, &sv);
-		xmms_medialib_entry_property_set_str_source (ud->session, ud->entry,
+		xmms_medialib_entry_property_set_str_source (ud->entry,
 		                                             key,
 		                                             sv,
 		                                             ud->src);
@@ -297,8 +296,7 @@ xmms_collection_client_idlist_from_playlist (xmms_coll_dag_t *dag,
 	xmms_xform_t *xform;
 	GList *lst, *n;
 	xmmsv_coll_t *coll;
-	xmms_medialib_session_t *session;
-	guint src;
+	const gchar* src;
 	const gchar *buf;
 
 	/* we don't want any effects for playlist, so just report we're rehashing */
@@ -316,8 +314,7 @@ xmms_collection_client_idlist_from_playlist (xmms_coll_dag_t *dag,
 	}
 
 	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
-	session = xmms_medialib_begin_write ();
-	src = xmms_medialib_source_to_id (session, "plugin/playlist");
+	src = "plugin/playlist";
 
 	n = lst;
 	while (n) {
@@ -334,13 +331,12 @@ xmms_collection_client_idlist_from_playlist (xmms_coll_dag_t *dag,
 		}
 
 		xmmsv_get_string (b, &buf);
-		entry = xmms_medialib_entry_new_encoded (session, buf, err);
+		entry = xmms_medialib_entry_new_encoded (buf, err);
 		xmmsv_dict_remove (a, "realpath");
 		xmmsv_dict_remove (a, "path");
 
 		if (entry) {
 			add_metadata_from_tree_user_data_t udata;
-			udata.session = session;
 			udata.entry = entry;
 			udata.src = src;
 
@@ -356,7 +352,6 @@ xmms_collection_client_idlist_from_playlist (xmms_coll_dag_t *dag,
 		n = g_list_delete_link (n, n);
 	}
 
-	xmms_medialib_end (session);
 	xmms_object_unref (xform);
 
 	return coll;
@@ -716,6 +711,32 @@ xmms_collection_client_rename (xmms_coll_dag_t *dag, const gchar *from_name,
 
 }
 
+/* Helper function for the xmms_collection_query_* functions.
+ * Returns a list with lim_len entries starting at lim_start.
+ */
+static GList*
+limit_list (GList *list, guint lim_start, guint lim_len)
+{
+	GList *ret = list, *tmp;
+	int pos;
+
+	if (lim_start == 0 && lim_len == 0)
+		return list;
+
+	for (pos = 0; pos < lim_start; pos++) {
+		ret = g_list_delete_link (ret, ret);
+	}
+
+	tmp = g_list_nth (ret, lim_len);
+
+	if (tmp != NULL) {
+		tmp->prev->next = NULL;
+		tmp->prev = NULL;
+		g_list_free (tmp);
+	}
+
+	return ret;
+}
 
 /** Find the ids of the media matched by a collection.
  *
@@ -732,19 +753,44 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
                            gint32 lim_start, gint32 lim_len, xmmsv_t *order,
                            xmms_error_t *err)
 {
-	GList *res, *n;
-	xmmsv_t *fetch, *group, *idval;
+	xmms_medialib_result_t *res;
+	GList *ret, *n;
+	xmmsv_t *idval, *fetch;
+	int i;
 
-	/* no grouping, fetch only id */
-	group = xmmsv_new_list ();
 	fetch = xmmsv_new_list ();
+
+	/* We need to fetch all the fields in order and the id field */
+	for (i = 0; order != NULL && i < xmmsv_list_get_size (order); i++) {
+		xmmsv_t *val, *tmp;
+		const char *str;
+		xmmsv_list_get (order, i, &tmp);
+
+		/* Remove the - on the ordering valus */
+		if (xmmsv_get_string (tmp, &str)) {
+			if (*str == '-') {
+				val = xmmsv_new_string (str + 1);
+				xmmsv_list_append (fetch, val);
+				xmmsv_unref (val);
+			}
+			else {
+				xmmsv_list_append (fetch, tmp);
+			}
+		}
+	}
+
 	idval = xmmsv_new_string ("id");
 	xmmsv_list_append (fetch, idval);
 
-	res = xmms_collection_client_query_infos (dag, coll, lim_start, lim_len, order, fetch, group, err);
+	g_mutex_lock (dag->mutex);
+	res = xmms_medialib_query (dag, coll, fetch);
+	g_mutex_unlock (dag->mutex);
 
-	/* FIXME: get an uint list directly ! (we're getting ints here actually) */
-	for (n = res; n; n = n->next) {
+	xmms_medialib_result_sort (res, order);
+	ret = xmms_medialib_result_to_list (res);
+	xmms_medialib_result_free (res);
+
+	for (n = ret; n; n = n->next) {
 		xmms_medialib_entry_t id;
 		xmmsv_t *id_val, *cmdval = n->data;
 
@@ -755,13 +801,102 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 		xmmsv_unref (cmdval);
 	}
 
-	xmmsv_unref (group);
 	xmmsv_unref (fetch);
 	xmmsv_unref (idval);
 
-	return res;
+	return limit_list (ret, lim_start, lim_len);
 }
 
+static int
+compare_values (xmmsv_t *a, xmmsv_t *b)
+{
+	const char *sa, *sb;
+	int32_t ia, ib;
+
+	if (a == NULL || b == NULL) {
+		return (a == NULL) * (-1) + (b == NULL);
+	} else if (xmmsv_get_string (a, &sa) && xmmsv_get_string (b, &sb)) {
+		return strcmp (sa, sb);
+	} else if (xmmsv_get_int (a, &ia) && xmmsv_get_int (b, &ib)) {
+		return (ia < ib) * (-1) + (ia > ib);
+	} else {
+		XMMS_DBG ("Trying to compare values of different type");
+		return 0;
+	}
+}
+
+/* A helper function for xmms_collection_query_infos,
+ * combines the two lists fetch and order into one with no
+ * duplicates.
+ */
+static xmmsv_t*
+combine_lists (xmmsv_t *fetch, xmmsv_t *order)
+{
+	xmmsv_t *values = xmmsv_new_list();
+	int i, j;
+
+	/* Make sure all the fields in both fetch and order are in values */
+	for (i = 0; i < xmmsv_list_get_size (fetch); i++) {
+		xmmsv_t *val;
+		xmmsv_list_get (fetch, i, &val);
+		xmmsv_list_append (values, val);
+	}
+	/* Add all the fields in order that's not in fetch */
+	for (i = 0; i < xmmsv_list_get_size (order); i++) {
+		xmmsv_t *tmp, *val;
+		int found;
+		const char *str;
+		xmmsv_list_get (order, i, &tmp);
+
+		if (xmmsv_get_string (tmp, &str)) {
+			if (*str == '-') {
+				val = xmmsv_new_string (str + 1);
+			} else
+				val = tmp;
+		}
+
+		for (j = 0, found = 0; !found && j < xmmsv_list_get_size (fetch); j++) {
+			xmmsv_t *val_b;
+			xmmsv_list_get (fetch, j, &val_b);
+
+			if (compare_values (val, val_b) == 0)
+				found = 1;
+		}
+
+		if (!found)
+			xmmsv_list_append (values, val);
+
+		if (tmp != val)
+			xmmsv_unref (val);
+	}
+
+	return values;
+}
+
+static gboolean
+identical_values (xmmsv_t *keys, xmmsv_t *dict1, xmmsv_t *dict2)
+{
+	gboolean identical = TRUE;
+	xmmsv_list_iter_t *keys_it = NULL;
+	xmmsv_t *keyval, *val1, *val2;
+	const gchar *key;
+
+	for (xmmsv_get_list_iter (keys, &keys_it);
+	     identical && xmmsv_list_iter_entry (keys_it, &keyval);
+	     xmmsv_list_iter_next (keys_it)) {
+
+		if (xmmsv_get_string (keyval, &key)) {
+			val1 = val2 = NULL;
+			xmmsv_dict_get (dict1, key, &val1);
+			xmmsv_dict_get (dict2, key, &val2);
+			if (compare_values (val1, val2) != 0) {
+				identical = FALSE;
+			}
+		}
+	}
+
+	return identical;
+}
 
 GList *
 xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
@@ -787,8 +922,9 @@ xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
                                     gint32 lim_start, gint32 lim_len, xmmsv_t *order,
                                     xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err)
 {
-	GList *res = NULL;
-	GString *query;
+	xmms_medialib_result_t *res;
+	GList *ret = NULL;
+	xmmsv_t *values;
 
 	/* check that fetch is not empty */
 	if (xmmsv_list_get_size (fetch) == 0) {
@@ -818,23 +954,32 @@ xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 		return NULL;
 	}
 
+	values = combine_lists (fetch, order);
 	g_mutex_lock (dag->mutex);
-
-	query = xmms_collection_get_query (dag, coll, lim_start, lim_len,
-	                                   order, fetch, group);
-
+	res = xmms_medialib_query (dag, coll, fetch);
 	g_mutex_unlock (dag->mutex);
+	xmmsv_unref (values);
 
-	XMMS_DBG ("COLLECTIONS: query_infos with %s", query->str);
+	values = combine_lists (group, order);
+	xmms_medialib_result_sort (res, values);
+	xmmsv_unref (values);
 
-	/* Run the query */
-	xmms_medialib_session_t *session = xmms_medialib_begin ();
-	res = xmms_medialib_select (session, query->str, err);
-	xmms_medialib_end (session);
+	ret = xmms_medialib_result_to_list (res);
+	xmms_medialib_result_free (res);
 
-	g_string_free (query, TRUE);
+	if (xmmsv_list_get_size (group) > 0) {
+		GList *n, *last = NULL;
+		for (n = ret; n; n = n->next) {
+			/* if current clusterable with last, drop last */
+			if (last && identical_values (group, (xmmsv_t *) n->data,
+			                              (xmmsv_t *) last->data)) {
+				ret = g_list_delete_link (ret, last);
+			}
+			last = n;
+		}
+	}
 
-	return res;
+	return limit_list (ret, lim_start, lim_len);
 }
 
 /**
@@ -977,27 +1122,7 @@ xmms_collection_find_alias (xmms_coll_dag_t *dag, guint nsid,
 xmms_medialib_entry_t
 xmms_collection_get_random_media (xmms_coll_dag_t *dag, xmmsv_coll_t *source)
 {
-	GList *res;
-	xmms_medialib_entry_t mid = 0;
-	xmmsv_t *rorder = xmmsv_new_list ();
-	xmmsv_t *randval = xmmsv_new_string ("~RANDOM()");
-
-	/* FIXME: Temporary hack to allow custom ordering functions */
-	xmmsv_list_append (rorder, randval);
-
-	res = xmms_collection_query_ids (dag, source, 0, 1, rorder, NULL);
-
-	if (res != NULL) {
-		xmmsv_t *val = (xmmsv_t *) res->data;
-		xmmsv_get_int (val, &mid);
-		xmmsv_unref (val);
-		g_list_free (res);
-	}
-
-	xmmsv_unref (rorder);
-	xmmsv_unref (randval);
-
-	return mid;
+	return xmms_medialib_query_random_id (dag, source);
 }
 
 /** @} */
