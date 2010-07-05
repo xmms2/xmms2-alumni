@@ -368,9 +368,12 @@ xmms_output_filler_seek_state (xmms_output_t *output, guint32 samples)
 static void *
 xmms_output_filler (void *arg)
 {
-	xmms_output_t *output = (xmms_output_t *)arg;
+		xmms_output_t *output = (xmms_output_t *)arg;
 	xmms_xform_t *chain = NULL;
+	xmms_xform_t *first_effect = NULL;
+	xmms_xform_t *last_effect = NULL;
 	gboolean last_was_kill = FALSE;
+	gboolean refresh_effects = TRUE;
 	char buf[4096];
 	xmms_error_t err;
 	gint ret;
@@ -391,8 +394,19 @@ xmms_output_filler (void *arg)
 		}
 		if (output->filler_state == FILLER_KILL) {
 			if (chain) {
-				xmms_object_unref (chain);
-				chain = NULL;
+
+				while(chain != NULL && xmms_xform_prev_get(chain) != NULL && xmms_xform_is_effect_get(xmms_xform_prev_get(chain)))
+				{
+				    first_effect = chain;
+				    chain = xmms_xform_prev_get(chain);
+				}
+
+				if(chain != NULL)
+				{
+					xmms_xform_prev_set(first_effect, NULL);
+					xmms_object_unref (chain);
+					chain = NULL;
+				}
 				output->filler_state = FILLER_RUN;
 				last_was_kill = TRUE;
 			} else {
@@ -429,6 +443,7 @@ xmms_output_filler (void *arg)
 		}
 
 		if (!chain) {
+
 			xmms_medialib_entry_t entry;
 			xmms_output_song_changed_arg_t *hsarg;
 			xmms_medialib_session_t *session;
@@ -443,7 +458,22 @@ xmms_output_filler (void *arg)
 				continue;
 			}
 
+			// BRUNO : important
 			chain = xmms_xform_chain_setup (entry, output->format_list, FALSE);
+			if(refresh_effects)
+			{
+				
+			    chain = xmms_xform_add_effects_and_finalize(chain, entry, output->format_list);
+				last_effect = chain;
+				refresh_effects = FALSE;
+			}
+			else
+			{
+			    // just link with the effect chain and finalize
+			    xmms_log_info("BRUNO: next song // link with effects");
+			    chain = xmms_xform_link_effects_and_finalize(chain,entry,output->format_list,last_effect);
+			}
+
 			if (!chain) {
 				session = xmms_medialib_begin_write ();
 				if (xmms_medialib_entry_property_get_int (session, entry, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS) == XMMS_MEDIALIB_ENTRY_STATUS_NEW) {
@@ -498,6 +528,7 @@ xmms_output_filler (void *arg)
 				                         output->filler_mutex);
 			}
 		} else {
+
 			if (ret == -1) {
 				/* print error */
 				xmms_error_reset (&err);

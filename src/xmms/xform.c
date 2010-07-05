@@ -73,6 +73,10 @@ struct xmms_xform_St {
 		gchar buf[XMMS_XFORM_MAX_LINE_SIZE];
 		gchar *bufend;
 	} lr;
+
+    /* bruno/ */
+    gboolean is_effect;
+    /* /bruno */
 };
 
 typedef struct xmms_xform_hotspot_St {
@@ -90,6 +94,24 @@ struct xmms_xform_plugin_St {
 
 	GList *in_types;
 };
+
+
+/* bruno/ */
+gboolean xmms_xform_is_effect_get(xmms_xform_t *xform)
+{
+    return xform->is_effect;
+}
+
+xmms_xform_t *xmms_xform_prev_get(xmms_xform_t *xform)
+{
+    return xform->prev;
+}
+void xmms_xform_prev_set(xmms_xform_t *xform,xmms_xform_t *prev)
+{
+    xform->prev = prev;
+}
+/* /bruno */
+
 
 xmms_xform_t *xmms_xform_find (xmms_xform_t *prev, xmms_medialib_entry_t entry,
                                GList *goal_hints);
@@ -1548,7 +1570,9 @@ xmms_xform_chain_setup_url (xmms_medialib_entry_t entry, const gchar *url,
 	}
 
 	/* if not rehashing, also initialize all the effect plugins */
-	if (!rehash) {
+	
+	/* bruno/ */	
+	/*if (!rehash) {
 		last = add_effects (last, entry, goal_formats);
 		if (!last) {
 			return NULL;
@@ -1556,8 +1580,72 @@ xmms_xform_chain_setup_url (xmms_medialib_entry_t entry, const gchar *url,
 	}
 
 	chain_finalize (last, entry, url, rehash);
+	*/
+	/* /bruno */
 	return last;
 }
+
+/* bruno/ */	
+    xmms_xform_t *
+xmms_xform_add_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t entry,GList *goal_formats)
+{
+
+    gchar *url;
+
+    if (!(url = get_url_for_entry (entry))) {
+	return NULL;
+    }
+
+
+    last = add_effects (last, entry, goal_formats);
+    if (!last) {
+	return NULL;
+    }
+
+    chain_finalize (last, entry, url, FALSE);
+    return last;
+}
+static    xmms_xform_t *
+link_effects (xmms_xform_t *last, xmms_xform_t *lastEffect)
+{
+    if(lastEffect != NULL)
+    {
+	xmms_xform_t *currentEffect = lastEffect;
+	while(currentEffect->prev != NULL)
+	{
+	    currentEffect = currentEffect->prev;
+	}
+	currentEffect->prev = last;
+	// then return the last xform of the chain
+	return lastEffect;
+    }
+
+    return last;
+}
+
+
+
+    xmms_xform_t *
+xmms_xform_link_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t entry,GList *goal_formats,xmms_xform_t *lastEffect)
+{
+
+    gchar *url;
+
+    if (!(url = get_url_for_entry (entry))) {
+	return NULL;
+    }
+
+
+    last = link_effects (last, lastEffect);
+   
+    if (!last) {
+	return NULL;
+    }
+
+    chain_finalize (last, entry, url, FALSE);
+    return last;
+}
+	/* /bruno */
 
 xmms_config_property_t *
 xmms_xform_plugin_config_property_register (xmms_xform_plugin_t *xform_plugin,

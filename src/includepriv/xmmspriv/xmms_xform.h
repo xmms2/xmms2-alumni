@@ -37,6 +37,16 @@ gboolean xmms_xform_plugin_verify (xmms_plugin_t *plugin);
 xmms_xform_t *xmms_xform_chain_setup (xmms_medialib_entry_t entry, GList *goal_formats, gboolean rehash);
 xmms_xform_t *xmms_xform_chain_setup_url (xmms_medialib_entry_t entry, const gchar *url, GList *goal_formats, gboolean rehash);
 
+/* BRUNO/ */
+xmms_xform_t *xmms_xform_add_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t entry,GList *goal_formats);
+xmms_xform_t *xmms_xform_link_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t entry,GList *goal_formats, xmms_xform_t *lastEffect);
+void xmms_xform_prev_set(xmms_xform_t *xform,xmms_xform_t *prev);
+xmms_xform_t *xmms_xform_prev_get(xmms_xform_t *xform);
+gboolean xmms_xform_is_effect(xmms_xform_t *xform);
+/* /BRUNO */
+
+
+
 gint64 xmms_xform_this_seek (xmms_xform_t *xform, gint64 offset, xmms_xform_seek_mode_t whence, xmms_error_t *err);
 int xmms_xform_this_read (xmms_xform_t *xform, gpointer buf, int siz, xmms_error_t *err);
 gboolean xmms_xform_iseos (xmms_xform_t *xform);
