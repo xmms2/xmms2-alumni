@@ -1781,7 +1781,6 @@ xmms_medialib_result_to_list (s4_resultset_t *set)
 	return g_list_reverse (ret);
 }
 
-gint
 /**
  * Returns a random entry from a collection
  *
@@ -1789,6 +1788,7 @@ gint
  * @param coll The collection to find a random entry in
  * @return A random entry from the collection, 0 if the collection is empty
  */
+xmms_medialib_entry_t
 xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 {
 	xmmsv_t *fetch;
