@@ -16,7 +16,6 @@
 
 #include "xmms_configuration.h"
 #include "xmmspriv/xmms_medialib.h"
-#include "xmmspriv/xmms_collcond.h"
 #include "xmmspriv/xmms_xform.h"
 #include "xmmspriv/xmms_utils.h"
 #include "xmms/xmms_error.h"
@@ -1349,46 +1348,135 @@ xmms_medialib_url_encode (const gchar *path)
 	return res;
 }
 
-
-gint
-xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
+/* A filter for idlists. Checks if the value given (id number)
+ * is in the hash table
+ */
+static int idlist_filter (s4_val_t *value, s4_condition_t *cond)
 {
-	s4_fetchspec_t *fs = s4_fetchspec_create ();
-	s4_fetchspec_add (fs, "song_id", default_sp);
-	s4_condition_t *cond = xmms_coll_to_cond (dag, coll, default_sp);
-	s4_resultset_t *set = s4_query (medialib->s4, fs, cond);
-	int size = (set == NULL)?0:s4_resultset_get_rowcount (set);
-	int32_t ret = 0;
+	int32_t ival;
+	GHashTable *id_table = s4_cond_get_funcdata (cond);
 
-	s4_fetchspec_free (fs);
-	s4_cond_free (cond);
+	if (!s4_val_get_int (value, &ival))
+		return 1;
 
-	if (size) {
-		const s4_result_t *res = NULL;
-		while (res == NULL)
-			res = s4_resultset_get_result (set, g_random_int_range (0, size), 0);
+	return g_hash_table_lookup (id_table, GINT_TO_POINTER (ival)) == NULL;
+}
 
-		s4_val_get_int (s4_result_get_val (res), &ret);
+/**
+ * Finds the position of "id" in the list given
+ * @param fetch The list to search for "id"
+ * @return The position of "id"
+ */
+static int
+xmms_medialib_find_idpos (xmmsv_t *fetch)
+{
+	int i;
+	const char *str;
+
+	for (i = 0; i < xmmsv_list_get_size (fetch); i++) {
+		if (xmmsv_list_get_string (fetch, i, &str) && strcmp (str, "id")) {
+			break;
+		}
 	}
 
-	if (set != NULL)
-		s4_resultset_free (set);
+	return i;
+}
 
+/**
+ * Creates a new resultset where the order is the same as in the idlist
+ *
+ * @param set The resultset to sort. It will be freed by this function
+ * @param id_pos The position of the "id" column
+ * @param idlist The idlist to order by
+ * @return A new set with the same order as the idlist
+ */
+static s4_resultset_t *
+xmms_medialib_result_sort_idlist (s4_resultset_t *set, int id_pos, xmmsv_t *idlist)
+{
+	int i;
+	const s4_resultrow_t *row;
+	const s4_result_t *result;
+	int32_t ival;
+	GHashTable *row_table = g_hash_table_new (NULL, NULL);
+	s4_resultset_t *ret = s4_resultset_create (s4_resultset_get_colcount (set));
+
+	for (i = 0; s4_resultset_get_row (set, i, &row); i++) {
+		if (s4_resultrow_get_col (row, id_pos, &result)
+				&& s4_val_get_int (s4_result_get_val (result), &ival)) {
+			g_hash_table_insert (row_table, GINT_TO_POINTER (ival), (void*)row);
+		}
+	}
+
+	for (i = 0; xmmsv_list_get_int (idlist, i, &ival); i++) {
+		row = g_hash_table_lookup (row_table, GINT_TO_POINTER (ival));
+		if (row != NULL)
+			s4_resultset_add_row (ret, row);
+	}
+
+	g_hash_table_destroy (row_table);
+	s4_resultset_free (set);
 	return ret;
 }
 
-struct xmms_medialib_result_St {
-	xmmsv_t *fetch;
-	s4_resultset_t *set;
-};
-
-xmms_medialib_result_t*
-xmms_medialib_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
+/**
+ * Sorts a resultset
+ *
+ * @param set The resultset to sort
+ * @param fetch The fetch-list used when set was created
+ * @param order A list with orderings. An ordering can be a string
+ * telling which column to sort by (prefixed by '-' to sort ascending)
+ * or a list of integers (an idlist).
+ * @return The set (or a new set) with the correct ordering
+ */
+static s4_resultset_t *
+xmms_medialib_result_sort (s4_resultset_t *set, xmmsv_t *fetch, xmmsv_t *order)
 {
-	int i, id_pos = -1;
-	const char *p;
-	xmms_medialib_result_t *ret = malloc (sizeof (xmms_medialib_result_t));
+	int *s4_order = malloc (sizeof (int) * (xmmsv_list_get_size (order) + 1));
+	int i, j, k, stop;
+	xmmsv_t *val;
+	const char *str, *fstr;
+
+	/* Find the first idlist-order operand */
+	for (i = 0; xmmsv_list_get (order, i, &val); i++) {
+		if (xmmsv_is_type (val, XMMSV_TYPE_LIST)) {
+			set = xmms_medialib_result_sort_idlist (set, xmms_medialib_find_idpos (fetch), val);
+			break;
+		}
+	}
+	/* We will only order by the operands before the idlist */
+	stop = i;
+
+	for (i = 0, j = 0; i < stop; i++) {
+		if (xmmsv_list_get_string (order, i, &str)) {
+			int neg = (*str == '-')?1:0;
+			str += neg;
+
+			for (k = 0; k < xmmsv_list_get_size (fetch); k++) {
+				if (xmmsv_list_get_string (fetch, k, &fstr) && strcmp (str, fstr) == 0) {
+					s4_order[j++] = neg?-(k + 1):(k + 1);
+				}
+			}
+		}
+	}
+	s4_order[j] = 0;
+	s4_resultset_sort (set, s4_order);
+	free (s4_order);
+	return set;
+}
+
+/**
+ * Creates an S4 fetchspec for the fetch list given
+ *
+ * @param fetch The fetch list to use when creating the fetch spec
+ * @return A new fetchspec, must be freed with s4_fetchspec_free
+ */
+static s4_fetchspec_t*
+xmms_medialib_fetch_to_spec (xmmsv_t *fetch)
+{
 	xmmsv_t *prop;
+	const char *p;
+	int i;
+	int found_id = 0;
 	s4_fetchspec_t *fs = s4_fetchspec_create ();
 
 	for (i = 0; i < xmmsv_list_get_size (fetch); i++) {
@@ -1399,7 +1487,7 @@ xmms_medialib_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
 		else {
 			if (!strcmp (p, "id")) {
 				p = "song_id";
-				id_pos = i;
+				found_id = 1;
 			}
 
 			s4_fetchspec_add (fs, p, default_sp);
@@ -1407,85 +1495,249 @@ xmms_medialib_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
 	}
 
 	/* Always add id to the fetchspec */
-	if (id_pos == -1) {
-		id_pos = i;
+	if (!found_id) {
 		s4_fetchspec_add (fs, "song_id", default_sp);
+		xmmsv_list_append_string (fetch, "id");
 	}
 
-	s4_condition_t *cond = xmms_coll_to_cond (dag, coll, default_sp);
-	ret->set = s4_query (medialib->s4, fs, cond);
-	ret->fetch = xmmsv_ref (fetch);
+	return fs;
+}
 
-	/* If we are dealing with an idlist, we have to do some voodoo */
-	if (ret->set != NULL && xmmsv_coll_get_type (coll) == XMMS_COLLECTION_TYPE_IDLIST) {
-		s4_resultset_t *tmp, *list = s4_resultset_create (s4_resultset_get_colcount (ret->set));
-		GHashTable *table = g_hash_table_new (NULL, NULL);
-		const s4_resultrow_t *row;
-		int32_t id;
+/* Check if a collection is the universe
+ * TODO: Move it to the xmmstypes lib?
+ */
+static int is_universe (xmmsv_coll_t *coll)
+{
+	char *target_name;
+	int ret = 0;
 
-		for (i = 0; s4_resultset_get_row (ret->set, i, &row); i++) {
-			const s4_result_t *res;
-
-			if (s4_resultrow_get_col (row, id_pos, &res) && s4_val_get_int (s4_result_get_val (res), &id)) {
-				g_hash_table_insert (table, GINT_TO_POINTER (id), GINT_TO_POINTER (i));
-			}
-		}
-
-		for (i = 0; xmmsv_coll_idlist_get_index (coll, i, &id); i++) {
-			int pos = GPOINTER_TO_INT (g_hash_table_lookup (table, GINT_TO_POINTER (id)));
-
-			if (s4_resultset_get_row (ret->set, pos, &row)) {
-				s4_resultset_add_row (list, row);
-			}
-		}
-
-		tmp = ret->set;
-		ret->set = list;
-		s4_resultset_free (tmp);
+	switch (xmmsv_coll_get_type (coll)) {
+	case XMMS_COLLECTION_TYPE_UNIVERSE:
+		ret = 1;
+		break;
+	case XMMS_COLLECTION_TYPE_REFERENCE:
+		if (xmmsv_coll_attribute_get (coll, "reference", &target_name)
+				&& strcmp (target_name, "All Media") == 0)
+			ret = 1;
+		break;
+	default:
+		break;
 	}
-
-	s4_fetchspec_free (fs);
-	s4_cond_free (cond);
 
 	return ret;
 }
 
-void
-xmms_medialib_result_free (xmms_medialib_result_t *result)
+/**
+ * Queries the medialib. Big and ugly function
+ * TODO: Make it smaller and prettier
+ *
+ * @param dag The collection DAG
+ * @param coll The collection to query for
+ * @param fetch A list of keys to fetch
+ * @param order A list of orderings. If an operand adds an ordering
+ * on the result it appends it to this list
+ * @param cond A pointer to where the condition to use when querying will be stored
+ * @param return_result Specifies if we should return a result (non-zero)
+ * or just the condition (0).
+ * @return An S4 resultset, or NULL if return_result equals 0
+ */
+static s4_resultset_t*
+xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch,
+		xmmsv_t *order, s4_condition_t **cond, int return_result)
 {
-	if (result->set != NULL)
-		s4_resultset_free (result->set);
-	xmmsv_unref (result->fetch);
-	free (result);
-}
+	s4_resultset_t *res = NULL;
+	s4_val_t *sval;
+	char *key, *val;
+	xmmsv_coll_t *c;
+	xmmsv_t *operands = xmmsv_coll_operands_get (coll);
 
-void
-xmms_medialib_result_sort (xmms_medialib_result_t *result, xmmsv_t *order)
-{
-	int *s4_order = malloc (sizeof (int) * (xmmsv_list_get_size (order) + 1));
-	int i, j, k;
+	switch (xmmsv_coll_get_type (coll)) {
+		case XMMS_COLLECTION_TYPE_REFERENCE:
+			if (!is_universe (coll)) {
+				xmmsv_coll_attribute_get (coll, "reference", &key);
+				xmmsv_coll_attribute_get (coll, "namespace", &val);
+				c = xmms_collection_get_pointer (dag, key,
+						xmms_collection_get_namespace_id (val));
+				res = xmms_medialib_query_recurs (dag, c, fetch, order,
+						cond, return_result);
+				break;
+			}
+			/* Fall through */
+		case XMMS_COLLECTION_TYPE_UNIVERSE:
+			sval = s4_val_new_string ("song");
+			*cond = s4_cond_new_filter (S4_FILTER_EQUAL, "type", sval, default_sp, 0);
+			break;
+		case XMMS_COLLECTION_TYPE_UNION:
+		case XMMS_COLLECTION_TYPE_INTERSECTION:
+		case XMMS_COLLECTION_TYPE_COMPLEMENT:
+		{
+			GList *op_list = NULL;
+			s4_combine_type_t type;
+			int i;
 
-	for (i = 0, j = 0; i < xmmsv_list_get_size (order); i++) {
-		const char *str;
-		if (xmmsv_list_get_string (order, i, &str)) {
-			int neg = (*str == '-')?1:0;
-			str += neg;
+			switch (xmmsv_coll_get_type (coll)) {
+			case XMMS_COLLECTION_TYPE_UNION: type = S4_COMBINE_OR; break;
+			case XMMS_COLLECTION_TYPE_INTERSECTION: type = S4_COMBINE_AND; break;
+			case XMMS_COLLECTION_TYPE_COMPLEMENT: type = S4_COMBINE_NOT; break;
+			default: break; /* To silence compiler warnings */
+			}
 
-			for (k = 0; k < xmmsv_list_get_size (result->fetch); k++) {
-				const char *fstr;
-				if (xmmsv_list_get_string (result->fetch, k, &fstr) && strcmp (str, fstr) == 0) {
-					s4_order[j++] = neg?-(k + 1):(k + 1);
+			for (i = 0; i < xmmsv_list_get_size (operands); i++) {
+				s4_condition_t *op_cond;
+				if (i == 0) {
+					/* We keep the ordering of the first operand */
+					xmms_medialib_query_recurs (dag, c, fetch, order, &op_cond, 0);
+				} else {
+					xmms_medialib_query_recurs (dag, c, fetch, NULL, &op_cond, 0);
+				}
+				op_list = g_list_prepend (op_list, op_cond);
+			}
+
+			*cond = s4_cond_new_combiner (type, op_list);
+			break;
+		}
+		case XMMS_COLLECTION_TYPE_FILTER:
+		{
+			s4_filter_type_t type;
+			int32_t ival;
+
+			xmmsv_coll_attribute_get (coll, "field", &key);
+			if (xmmsv_coll_attribute_get (coll, "value", &val)) {
+				if (xmms_is_int (val, &ival)) {
+					sval = s4_val_new_int (ival);
+				} else {
+					sval = s4_val_new_string (val);
 				}
 			}
+
+			xmmsv_coll_attribute_get (coll, "operation", &val);
+			if (strcmp (val, "=") == 0) {
+				type = S4_FILTER_EQUAL;
+			} else if (strcmp (val, "<") == 0) {
+				type = S4_FILTER_SMALLER;
+			} else if (strcmp (val, ">") == 0) {
+				type = S4_FILTER_GREATER;
+			} else if (strcmp (val, "match") == 0) {
+				type = S4_FILTER_MATCH;
+			} else if (strcmp (val, "has") == 0) {
+				type = S4_FILTER_EXISTS;
+			}
+
+			*cond = s4_cond_new_filter (type, key, sval, default_sp, 0);
+
+			xmmsv_list_get_coll (operands, 0, &c);
+			if (!is_universe (c)) {
+				s4_condition_t *op_cond;
+				GList *list = g_list_prepend (NULL, *cond);
+				xmms_medialib_query_recurs (dag, c, fetch, order, &op_cond, 0);
+				list = g_list_prepend (list, op_cond);
+				*cond = s4_cond_new_combiner (S4_COMBINE_AND, list);
+			}
+			break;
+		}
+		case XMMS_COLLECTION_TYPE_ORDER:
+			if (order != NULL) {
+				/* TODO: Add support for DESC and the other types of sorting */
+				if (!xmmsv_coll_attribute_get (coll, "type", &key) || strcmp (key, "value") == 0) {
+					xmmsv_coll_attribute_get (coll, "field", &key);
+					xmmsv_list_append_string (order, key);
+				}
+			}
+			xmmsv_list_get_coll (operands, 0, &c);
+			res = xmms_medialib_query_recurs (dag, c, fetch, order, cond, return_result);
+			break;
+		case XMMS_COLLECTION_TYPE_LIMIT:
+		{
+			unsigned int start = 0, stop = UINT_MAX;
+			xmmsv_t *child_order = xmmsv_new_list ();
+			const s4_resultrow_t *row;
+			const s4_result_t *result;
+			const s4_resultset_t *set;
+			int32_t ival;
+			int id_pos = xmms_medialib_find_idpos (fetch);
+			GHashTable *id_table = g_hash_table_new (NULL, NULL);
+
+			if (xmmsv_coll_attribute_get (coll, "start", &key)) {
+				start = atoi (key);
+			}
+			if (xmmsv_coll_attribute_get (coll, "length", &key)) {
+				stop = atoi (key) + start;
+			}
+
+			set = xmms_medialib_query_recurs (dag, c, fetch, child_order, cond, 1);
+			xmmsv_unref (child_order);
+
+			child_order = xmmsv_new_list ();
+
+			for (; start < stop && s4_resultset_get_row (set, start, &row); start++) {
+				if (return_result) {
+					if (res == NULL) {
+						res = s4_resultset_create (s4_resultset_get_colcount (set));
+					}
+					s4_resultset_add_row (res, row);
+				}
+
+				s4_resultrow_get_col (row, id_pos, &result);
+				if (result != NULL && s4_val_get_int (s4_result_get_val (result), &ival)) {
+					g_hash_table_insert (id_table, GINT_TO_POINTER (ival), GINT_TO_POINTER (1));
+					xmmsv_list_append_int (child_order, ival);
+				}
+			}
+
+			if (order != NULL) {
+				xmmsv_list_append (order, child_order);
+			}
+
+			*cond = s4_cond_new_custom_filter (idlist_filter, id_table,
+					(free_func_t)g_hash_table_destroy, "song_id", default_sp, S4_COND_PARENT);
+			g_hash_table_destroy (id_table);
+			xmmsv_unref (child_order);
+			break;
+		}
+		case XMMS_COLLECTION_TYPE_MEDIASET:
+			xmmsv_list_get_coll (operands, 0, &c);
+			res = xmms_medialib_query_recurs (dag, c, fetch, NULL, cond, return_result);
+			break;
+		case XMMS_COLLECTION_TYPE_IDLIST:
+		{
+			GHashTable *id_table = g_hash_table_new (NULL, NULL);
+			int i;
+			int32_t ival;
+
+			if (order != NULL) {
+				xmmsv_list_append (order, xmmsv_coll_idlist_get (coll));
+			}
+
+			for (i = 0; xmmsv_coll_idlist_get_index (coll, i, &ival); i++) {
+				g_hash_table_insert (id_table, GINT_TO_POINTER (ival), GINT_TO_POINTER (1));
+			}
+
+			*cond = s4_cond_new_custom_filter (idlist_filter, id_table,
+					(free_func_t)g_hash_table_destroy, "song_id", default_sp, S4_COND_PARENT);
+
+			g_hash_table_destroy (id_table);
+			break;
 		}
 	}
-	s4_order[j] = 0;
-	s4_resultset_sort (result->set, s4_order);
-	free (s4_order);
+
+	if (res == NULL && return_result) {
+		s4_fetchspec_t *fs = xmms_medialib_fetch_to_spec (fetch);
+		res = s4_query (medialib->s4, fs, *cond);
+		s4_fetchspec_free (fs);
+		xmms_medialib_result_sort (res, fetch, order);
+	}
+
+	return res;
 }
 
-GList*
-xmms_medialib_result_to_list (xmms_medialib_result_t *result)
+/**
+ * Converts an S4 resultset into a list of dicts
+ *
+ * @param set The set to convert
+ * @return A GList of xmmsv dicts, one dict for every entry
+ */
+static GList*
+xmms_medialib_result_to_list (s4_resultset_t *set)
 {
 	int i,j;
 	const char *s, *key;
@@ -1493,7 +1745,6 @@ xmms_medialib_result_to_list (xmms_medialib_result_t *result)
 	xmmsv_t *dict;
 	GList *ret = NULL;
 	const s4_resultrow_t *row;
-	s4_resultset_t *set = result->set;
 
 	for (i = 0; s4_resultset_get_row (set, i, &row); i++) {
 		for (dict = NULL, j = 0; j < s4_resultset_get_colcount (set); j++) {
@@ -1528,4 +1779,66 @@ xmms_medialib_result_to_list (xmms_medialib_result_t *result)
 	}
 
 	return g_list_reverse (ret);
+}
+
+gint
+/**
+ * Returns a random entry from a collection
+ *
+ * @param dag The collection DAG
+ * @param coll The collection to find a random entry in
+ * @return A random entry from the collection, 0 if the collection is empty
+ */
+xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
+{
+	xmmsv_t *fetch;
+	s4_condition_t *cond;
+	s4_resultset_t *set;
+	int32_t ret = 0;
+
+	fetch = xmmsv_new_list ();
+	xmmsv_list_append_string (fetch, "id");
+	set = xmms_medialib_query_recurs (dag, coll, fetch, NULL, &cond, 1);
+	s4_cond_free (cond);
+
+	if (set != NULL) {
+		const s4_result_t *res = NULL;
+		int size = s4_resultset_get_rowcount (set);
+		while (res == NULL)
+			res = s4_resultset_get_result (set, g_random_int_range (0, size), 0);
+
+		s4_val_get_int (s4_result_get_val (res), &ret);
+		s4_resultset_free (set);
+	}
+
+	return ret;
+}
+
+/**
+ * Returns a list of dicts of all the entries in a collection
+ *
+ * @param dag The collection DAG
+ * @param coll The collection to find the entries in
+ * @param fetch The values to fetch from the entries in coll
+ * @return A GList of xmmsv dicts, one for every entry
+ */
+GList*
+xmms_medialib_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
+{
+	s4_resultset_t *set;
+	s4_condition_t *cond;
+	xmmsv_t *order;
+	GList *ret;
+
+	order = xmmsv_new_list ();
+
+	set = xmms_medialib_query_recurs (dag, coll, fetch, order, &cond, 1);
+	ret = xmms_medialib_result_to_list (set);
+
+	if (set != NULL)
+		s4_resultset_free (set);
+	s4_cond_free (cond);
+	xmmsv_unref (order);
+
+	return ret;
 }
