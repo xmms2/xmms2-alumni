@@ -753,7 +753,6 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
                            gint32 lim_start, gint32 lim_len, xmmsv_t *order,
                            xmms_error_t *err)
 {
-	xmms_medialib_result_t *res;
 	GList *ret, *n;
 	xmmsv_t *idval, *fetch;
 	int i;
@@ -782,13 +781,13 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 	idval = xmmsv_new_string ("id");
 	xmmsv_list_append (fetch, idval);
 
+	coll = xmmsv_coll_add_order_operators (coll, order);
+
 	g_mutex_lock (dag->mutex);
-	res = xmms_medialib_query (dag, coll, fetch);
+	ret = xmms_medialib_query (dag, coll, fetch);
 	g_mutex_unlock (dag->mutex);
 
-	xmms_medialib_result_sort (res, order);
-	ret = xmms_medialib_result_to_list (res);
-	xmms_medialib_result_free (res);
+	xmmsv_coll_unref (coll);
 
 	for (n = ret; n; n = n->next) {
 		xmms_medialib_entry_t id;
@@ -922,7 +921,6 @@ xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
                                     gint32 lim_start, gint32 lim_len, xmmsv_t *order,
                                     xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err)
 {
-	xmms_medialib_result_t *res;
 	GList *ret = NULL;
 	xmmsv_t *values;
 
@@ -955,17 +953,14 @@ xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 	}
 
 	values = combine_lists (fetch, order);
+	coll = xmmsv_coll_add_order_operators (coll, order);
+
 	g_mutex_lock (dag->mutex);
-	res = xmms_medialib_query (dag, coll, fetch);
+	ret = xmms_medialib_query (dag, coll, values);
 	g_mutex_unlock (dag->mutex);
-	xmmsv_unref (values);
 
-	values = combine_lists (group, order);
-	xmms_medialib_result_sort (res, values);
 	xmmsv_unref (values);
-
-	ret = xmms_medialib_result_to_list (res);
-	xmms_medialib_result_free (res);
+	xmmsv_coll_unref (coll);
 
 	if (xmmsv_list_get_size (group) > 0) {
 		GList *n, *last = NULL;
