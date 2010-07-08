@@ -1642,10 +1642,17 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 		}
 		case XMMS_COLLECTION_TYPE_ORDER:
 			if (order != NULL) {
-				/* TODO: Add support for DESC and the other types of sorting */
 				if (!xmmsv_coll_attribute_get (coll, "type", &key) || strcmp (key, "value") == 0) {
-					xmmsv_coll_attribute_get (coll, "field", &key);
-					xmmsv_list_append_string (order, key);
+					xmmsv_coll_attribute_get (coll, "field", &val);
+					if (!xmmsv_coll_attribute_get (coll, "order", &key) || strcmp (key, "ASC") == 0) {
+						xmmsv_list_append_string (order, val);
+					} else if (strcmp (key, "DESC") == 0) {
+						val = g_strconcat ("-", val, NULL);
+						xmmsv_list_append_string (order, val);
+						g_free (val);
+					}
+				} else if (strcmp (key, "random")) {
+					/* TODO: Implement random ordering */
 				}
 			}
 			xmmsv_list_get_coll (operands, 0, &c);
