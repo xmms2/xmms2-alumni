@@ -1452,6 +1452,13 @@ xmms_medialib_result_sort (s4_resultset_t *set, xmmsv_t *fetch, xmmsv_t *order)
 			int neg = (*str == '-')?1:0;
 			str += neg;
 
+			if (strcmp (str, "random") == 0) {
+				if (i == 0) {
+					s4_resultset_shuffle (set);
+				}
+				break;
+			}
+
 			for (k = 0; k < xmmsv_list_get_size (fetch); k++) {
 				if (xmmsv_list_get_string (fetch, k, &fstr) && strcmp (str, fstr) == 0) {
 					s4_order[j++] = neg?-(k + 1):(k + 1);
@@ -1461,7 +1468,7 @@ xmms_medialib_result_sort (s4_resultset_t *set, xmmsv_t *fetch, xmmsv_t *order)
 	}
 	s4_order[j] = 0;
 
-	if (stop > 0)
+	if (j > 0)
 		s4_resultset_sort (set, s4_order);
 
 	free (s4_order);
@@ -1663,8 +1670,11 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 						xmmsv_list_append_string (order, val);
 						g_free (val);
 					}
-				} else if (strcmp (key, "random")) {
-					/* TODO: Implement random ordering */
+				} else if (strcmp (key, "random") == 0) {
+					/* FIXME: Do this in a way that doesn't make it
+					 * impossible to sort by an actual field named "random"
+					 */
+					xmmsv_list_append_string (order, "random");
 				}
 			}
 			xmmsv_list_get_coll (operands, 0, &c);
