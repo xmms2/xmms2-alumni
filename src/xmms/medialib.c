@@ -1374,7 +1374,7 @@ xmms_medialib_find_idpos (xmmsv_t *fetch)
 	const char *str;
 
 	for (i = 0; i < xmmsv_list_get_size (fetch); i++) {
-		if (xmmsv_list_get_string (fetch, i, &str) && strcmp (str, "id")) {
+		if (xmmsv_list_get_string (fetch, i, &str) && strcmp (str, "id") == 0) {
 			break;
 		}
 	}
@@ -1459,7 +1459,10 @@ xmms_medialib_result_sort (s4_resultset_t *set, xmmsv_t *fetch, xmmsv_t *order)
 		}
 	}
 	s4_order[j] = 0;
-	s4_resultset_sort (set, s4_order);
+
+	if (stop > 0)
+		s4_resultset_sort (set, s4_order);
+
 	free (s4_order);
 	return set;
 }
@@ -1582,7 +1585,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 			default: break; /* To silence compiler warnings */
 			}
 
-			for (i = 0; i < xmmsv_list_get_size (operands); i++) {
+			for (i = 0; xmmsv_list_get_coll (operands, i, &c); i++) {
 				s4_condition_t *op_cond;
 				if (i == 0) {
 					/* We keep the ordering of the first operand */
@@ -1664,6 +1667,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 				stop = atoi (key) + start;
 			}
 
+			xmmsv_list_get_coll (operands, 0, &c);
 			set = xmms_medialib_query_recurs (dag, c, fetch, child_order, cond, 1);
 			xmmsv_unref (child_order);
 
@@ -1690,7 +1694,6 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 
 			*cond = s4_cond_new_custom_filter (idlist_filter, id_table,
 					(free_func_t)g_hash_table_destroy, "song_id", default_sp, S4_COND_PARENT);
-			g_hash_table_destroy (id_table);
 			xmmsv_unref (child_order);
 			break;
 		}
@@ -1714,8 +1717,6 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 
 			*cond = s4_cond_new_custom_filter (idlist_filter, id_table,
 					(free_func_t)g_hash_table_destroy, "song_id", default_sp, S4_COND_PARENT);
-
-			g_hash_table_destroy (id_table);
 			break;
 		}
 	}
@@ -1724,7 +1725,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 		s4_fetchspec_t *fs = xmms_medialib_fetch_to_spec (fetch);
 		res = s4_query (medialib->s4, fs, *cond);
 		s4_fetchspec_free (fs);
-		xmms_medialib_result_sort (res, fetch, order);
+		res = xmms_medialib_result_sort (res, fetch, order);
 	}
 
 	return res;
