@@ -1569,6 +1569,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 		case XMMS_COLLECTION_TYPE_UNIVERSE:
 			sval = s4_val_new_string ("song");
 			*cond = s4_cond_new_filter (S4_FILTER_EQUAL, "type", sval, default_sp, 0);
+			s4_val_free (sval);
 			break;
 		case XMMS_COLLECTION_TYPE_UNION:
 		case XMMS_COLLECTION_TYPE_INTERSECTION:
@@ -1627,6 +1628,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 			}
 
 			*cond = s4_cond_new_filter (type, key, sval, default_sp, 0);
+			s4_val_free (sval);
 
 			xmmsv_list_get_coll (operands, 0, &c);
 			if (!is_universe (c)) {
