@@ -106,6 +106,7 @@ xmms_medialib_destroy (xmms_object_t *object)
 {
 	xmms_medialib_t *mlib = (xmms_medialib_t *)object;
 
+	s4_sourcepref_unref (default_sp);
 	s4_close (mlib->s4);
 
 	xmms_medialib_unregister_ipc_commands ();
@@ -342,7 +343,7 @@ xmms_medialib_entry_property_set_source (xmms_medialib_entry_t id_num,
 	s4_add (medialib->s4, "song_id", id_val, key, new_prop, source);
 
 	s4_fetchspec_free (fs);
-	s4_sourcepref_free (sp);
+	s4_sourcepref_unref (sp);
 	s4_cond_free (cond);
 	s4_val_free (id_val);
 
@@ -1172,7 +1173,7 @@ xmms_medialib_property_remove (xmms_medialib_t *medialib, guint32 id_num,
 	}
 
 	s4_val_free (id_val);
-	s4_sourcepref_free (sp);
+	s4_sourcepref_unref (sp);
 	s4_cond_free (cond);
 
 	xmms_medialib_entry_send_update (id_num);
