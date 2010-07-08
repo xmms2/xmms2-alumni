@@ -1604,6 +1604,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 		case XMMS_COLLECTION_TYPE_FILTER:
 		{
 			s4_filter_type_t type;
+			s4_sourcepref_t *sp = default_sp;
 			int32_t ival;
 
 			xmmsv_coll_attribute_get (coll, "field", &key);
@@ -1628,8 +1629,18 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 				type = S4_FILTER_EXISTS;
 			}
 
-			*cond = s4_cond_new_filter (type, key, sval, default_sp, 0);
+			if (xmmsv_coll_attribute_get (coll, "source-preference", &val)) {
+				char **prefs = g_strsplit (val, ":", -1);
+				sp = s4_sourcepref_create ((const char**)prefs);
+				g_strfreev (prefs);
+			}
+
+			*cond = s4_cond_new_filter (type, key, sval, sp, 0);
 			s4_val_free (sval);
+
+			if (sp != default_sp) {
+				s4_sourcepref_unref (sp);
+			}
 
 			xmmsv_list_get_coll (operands, 0, &c);
 			if (!is_universe (c)) {
