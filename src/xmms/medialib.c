@@ -1398,6 +1398,10 @@ xmms_medialib_result_sort_idlist (s4_resultset_t *set, int id_pos, xmmsv_t *idli
 	const s4_resultrow_t *row;
 	const s4_result_t *result;
 	int32_t ival;
+
+	if (set == NULL)
+		return NULL;
+
 	GHashTable *row_table = g_hash_table_new (NULL, NULL);
 	s4_resultset_t *ret = s4_resultset_create (s4_resultset_get_colcount (set));
 
