@@ -1613,8 +1613,13 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 			s4_filter_type_t type;
 			s4_sourcepref_t *sp = default_sp;
 			int32_t ival;
+			int flags = 0;
 
 			xmmsv_coll_attribute_get (coll, "field", &key);
+			if (strcmp (key, "id") == 0) {
+				key = (char*)"song_id";
+				flags = S4_COND_PARENT;
+			}
 			if (xmmsv_coll_attribute_get (coll, "value", &val)) {
 				if (xmms_is_int (val, &ival)) {
 					sval = s4_val_new_int (ival);
@@ -1642,7 +1647,12 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 				g_strfreev (prefs);
 			}
 
-			*cond = s4_cond_new_filter (type, key, sval, sp, 0);
+			if (xmmsv_coll_attribute_get (coll, "case-sensitive", &val) &&
+					strcmp (val, "true") == 0) {
+				flags |= S4_COND_CASESENS;
+			}
+
+			*cond = s4_cond_new_filter (type, key, sval, sp, flags);
 			s4_val_free (sval);
 
 			if (sp != default_sp) {
