@@ -1319,7 +1319,7 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 
 	case XMMS_COLLECTION_TYPE_IDLIST:
 		if (!xmmsv_coll_attribute_get (coll, "type", &attr)) {
-			attr = "list";
+			attr = (char*)"list";
 		}
 
 		if (strcmp (attr, "list") == 0 || strcmp (attr, "queue") == 0) {
@@ -1332,6 +1332,48 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 				return FALSE;
 			}
 		} else {
+			return FALSE;
+		}
+		break;
+
+	case XMMS_COLLECTION_TYPE_UNIVERSE:
+		/* No operands */
+		if (num_operands > 0) {
+			return FALSE;
+		}
+		break;
+
+	case XMMS_COLLECTION_TYPE_ORDER:
+		/* One operand */
+		if (num_operands != 1) {
+			return FALSE;
+		}
+
+		if (xmmsv_coll_attribute_get (coll, "order", &attr) &&
+				strcmp (attr, "ASC") != 0 &&
+				strcmp (attr, "DESC") != 0) {
+			return FALSE;
+		}
+
+		if (!xmmsv_coll_attribute_get (coll, "type", &attr) ||
+				strcmp (attr, "value") == 0) {
+			/* If it's a sorting on values we need a field to sort on */
+			if (!xmmsv_coll_attribute_get (coll, "field", &attr)) {
+				return FALSE;
+			}
+		}
+		break;
+
+	case XMMS_COLLECTION_TYPE_LIMIT:
+		/* One operand */
+		if (num_operands != 1) {
+			return FALSE;
+		}
+		break;
+
+	case XMMS_COLLECTION_TYPE_MEDIASET:
+		/* One operand */
+		if (num_operands != 1) {
 			return FALSE;
 		}
 		break;
