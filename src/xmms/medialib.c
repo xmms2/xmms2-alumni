@@ -1561,7 +1561,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 		xmmsv_t *order, s4_condition_t **cond, int return_result)
 {
 	s4_resultset_t *res = NULL;
-	s4_val_t *sval;
+	s4_val_t *sval = NULL;
 	char *key, *val;
 	xmmsv_coll_t *c;
 	xmmsv_t *operands = xmmsv_coll_operands_get (coll);
@@ -1657,7 +1657,9 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 			}
 
 			*cond = s4_cond_new_filter (type, key, sval, sp, flags);
-			s4_val_free (sval);
+
+			if (sval != NULL)
+				s4_val_free (sval);
 
 			if (sp != default_sp) {
 				s4_sourcepref_unref (sp);
