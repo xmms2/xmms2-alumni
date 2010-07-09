@@ -1788,6 +1788,9 @@ xmms_medialib_result_to_list (s4_resultset_t *set)
 	GList *ret = NULL;
 	const s4_resultrow_t *row;
 
+	if (set == NULL)
+		return NULL;
+
 	for (i = 0; s4_resultset_get_row (set, i, &row); i++) {
 		for (dict = NULL, j = 0; j < s4_resultset_get_colcount (set); j++) {
 			const s4_result_t *res;
