@@ -413,7 +413,7 @@ xmms_xform_new (xmms_xform_plugin_t *plugin, xmms_xform_t *prev,
 
     /* bruno/ */
     xform->is_effect = FALSE;
-    xmms_log_info("BRUNO: std xform created : %s", xmms_plugin_shortname_get (plugin));
+    xmms_log_info("BRUNO: std xform created : %s", xmms_plugin_shortname_get ((xmms_plugin_t*)plugin));
     /* /bruno */
 
     if (prev) {
@@ -1615,7 +1615,7 @@ xmms_xform_add_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t e
 static void xmms_xform_print_outdata_infos(xmms_xform_t *t)
 {
     	xmms_stream_type_t *type = xmms_xform_outtype_get(t);
-	xmms_log_info("[ %s ] OutData %s - %d",xmms_plugin_shortname_get (t->plugin),xmms_stream_type_get_str(type,XMMS_STREAM_TYPE_NAME),xmms_stream_type_get_int(type,XMMS_STREAM_TYPE_FMT_SAMPLERATE));
+	xmms_log_info("[ %s ] OutData %s - %d",xmms_plugin_shortname_get ((xmms_plugin_t*)t->plugin),xmms_stream_type_get_str(type,XMMS_STREAM_TYPE_NAME),xmms_stream_type_get_int(type,XMMS_STREAM_TYPE_FMT_SAMPLERATE));
 }
 static void xmms_xform_print_indata_infos(xmms_xform_t *t)
 {
@@ -1623,7 +1623,7 @@ static void xmms_xform_print_indata_infos(xmms_xform_t *t)
     {
 	t = t->prev;
     	xmms_stream_type_t *type = xmms_xform_outtype_get(t);
-	xmms_log_info("[ %s ] InData %s - %d",xmms_plugin_shortname_get (t->plugin),xmms_stream_type_get_str(type,XMMS_STREAM_TYPE_NAME),xmms_stream_type_get_int(type,XMMS_STREAM_TYPE_FMT_SAMPLERATE));
+	xmms_log_info("[ %s ] InData %s - %d",xmms_plugin_shortname_get ((xmms_plugin_t*)t->plugin),xmms_stream_type_get_str(type,XMMS_STREAM_TYPE_NAME),xmms_stream_type_get_int(type,XMMS_STREAM_TYPE_FMT_SAMPLERATE));
 
     }
 }
@@ -1649,23 +1649,37 @@ link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
 
     if(last_effect != NULL)
     {
-	xmms_xform_t *currentEffect = last_effect;
-	xmms_xform_t *effects[3];
-	int i=0;
-	while(currentEffect->prev != NULL)
-	{
-	    effects[i]=currentEffect;
-	    i++;
-	    currentEffect = currentEffect->prev;
-	}
-	currentEffect->prev = last;
-	effects[2] = currentEffect;
+	xmms_xform_t *current_effect = last_effect;
 
-	/* bad */
-	for(i=2;i>=0;--i)
+	/* how many effects */
+	int n_effects = 0;
+
+	while(current_effect != NULL)
 	{
-		xmms_xform_outdata_type_copy (effects[i]);
-		xmms_xform_print_outdata_infos(effects[i]);
+		current_effect = current_effect->prev;
+		n_effects++;
+	}
+	current_effect = last_effect;
+
+	/* allocate a tab for all the fx because we need to browse the xforms from the first to the last */
+	xmms_xform_t **fx_tab = g_malloc(sizeof(xmms_xform_t*)*n_effects);
+	int i=0;
+	while(current_effect->prev != NULL)
+	{
+	    fx_tab[i] = g_malloc(sizeof(xmms_xform_t));
+	    fx_tab[i] = current_effect;
+	    i++;
+	    current_effect = current_effect->prev;
+	}
+	current_effect->prev = last;
+	fx_tab[i] = g_malloc(sizeof(xmms_xform_t));
+	fx_tab[i] = current_effect;
+
+	/* refresh the outdata of each xform */
+	for(;i>=0;--i)
+	{
+		xmms_xform_outdata_type_copy (fx_tab[i]);
+		xmms_xform_print_outdata_infos(fx_tab[i]);
 	}
 
 
