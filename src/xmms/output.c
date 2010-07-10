@@ -535,11 +535,11 @@ xmms_output_filler (void *arg)
 		xmms_error_reset (&err);
 	    }
 
-	    /* BRUNO : THIS works, but this it not what we want */
 	    xmms_log_info("BRUNO: eof");
-	    			xmms_object_unref (chain);
+	    /* BRUNO : THIS works, but this it not what we want */
+	    /*			xmms_object_unref (chain);
 				chain = NULL;
-				refresh_effects = TRUE;
+				refresh_effects = TRUE;*/
 
 
 	    /* BRUNO : BUG HERE */
@@ -548,7 +548,8 @@ xmms_output_filler (void *arg)
 				chain = NULL;
 				}*/
 
-/*	    while(chain != NULL && xmms_xform_prev_get(chain) != NULL && xmms_xform_is_effect(xmms_xform_prev_get(chain)))
+	    while(chain != NULL && xmms_xform_prev_get(chain) != NULL && xmms_xform_is_effect(xmms_xform_prev_get(chain)))
+//	    while(chain != NULL && xmms_xform_is_effect(chain));
 	    {
 		first_effect = chain;
 		chain = xmms_xform_prev_get(chain);
@@ -559,7 +560,7 @@ xmms_output_filler (void *arg)
 		xmms_xform_prev_set(first_effect, NULL);
 		xmms_object_unref (chain);
 		chain = NULL;
-	    }*/
+	    }
 
 
 

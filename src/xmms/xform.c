@@ -1611,17 +1611,65 @@ xmms_xform_add_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t e
     chain_finalize (last, entry, url, FALSE);
     return last;
 }
+
+static void xmms_xform_print_outdata_infos(xmms_xform_t *t)
+{
+    	xmms_stream_type_t *type = xmms_xform_outtype_get(t);
+	xmms_log_info("[ %s ] OutData %s - %d",xmms_plugin_shortname_get (t->plugin),xmms_stream_type_get_str(type,XMMS_STREAM_TYPE_NAME),xmms_stream_type_get_int(type,XMMS_STREAM_TYPE_FMT_SAMPLERATE));
+}
+static void xmms_xform_print_indata_infos(xmms_xform_t *t)
+{
+    if(t->prev)
+    {
+	t = t->prev;
+    	xmms_stream_type_t *type = xmms_xform_outtype_get(t);
+	xmms_log_info("[ %s ] InData %s - %d",xmms_plugin_shortname_get (t->plugin),xmms_stream_type_get_str(type,XMMS_STREAM_TYPE_NAME),xmms_stream_type_get_int(type,XMMS_STREAM_TYPE_FMT_SAMPLERATE));
+
+    }
+}
+
     static    xmms_xform_t *
 link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
 {
+
+    if(last != NULL)
+	{
+
+/*	    xmms_stream_type_t *newType = _xmms_stream_type_new ("audio/pcm",
+		    						XMMS_STREAM_TYPE_MIMETYPE,
+								"audio/pcm",
+								XMMS_STREAM_TYPE_FMT_FORMAT,
+								XMMS_SAMPLE_FORMAT_S16,
+								XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+								22050,
+								XMMS_STREAM_TYPE_END);
+	    xmms_xform_outdata_type_set (last, newType);
+	    xmms_stream_type_t *type = xmms_xform_outtype_get(last);*/
+	}
+
     if(last_effect != NULL)
     {
 	xmms_xform_t *currentEffect = last_effect;
+	xmms_xform_t *effects[3];
+	int i=0;
 	while(currentEffect->prev != NULL)
 	{
+	    effects[i]=currentEffect;
+	    i++;
 	    currentEffect = currentEffect->prev;
 	}
 	currentEffect->prev = last;
+	effects[2] = currentEffect;
+
+	/* bad */
+	for(i=2;i>=0;--i)
+	{
+		xmms_xform_outdata_type_copy (effects[i]);
+		xmms_xform_print_outdata_infos(effects[i]);
+	}
+
+
+
 	// then return the last xform of the chain
 	return last_effect;
     }
