@@ -77,7 +77,7 @@ xmms_eq2_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	                              44100,
 	                              XMMS_STREAM_TYPE_END);
 
-	xmms_xform_plugin_indata_add (xform_plugin,
+/*	xmms_xform_plugin_indata_add (xform_plugin,
 	                              XMMS_STREAM_TYPE_MIMETYPE,
 	                              "audio/pcm",
 	                              XMMS_STREAM_TYPE_FMT_FORMAT,
@@ -93,7 +93,7 @@ xmms_eq2_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 	                              XMMS_SAMPLE_FORMAT_S16,
 	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
 	                              11025,
-	                              XMMS_STREAM_TYPE_END);
+	                              XMMS_STREAM_TYPE_END);*/
 
 	return TRUE;
 }
@@ -135,7 +135,7 @@ xmms_eq2_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 	{
 	    for(j=0;j<chan;++j)
 	    {
-		data[i+j] = data[i+j];
+		data[i+j] = data[i+j]*0.1;
 	    }
 	}
 	return read;

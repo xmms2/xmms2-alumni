@@ -74,9 +74,9 @@ struct xmms_xform_St {
 	gchar *bufend;
     } lr;
 
-    /* bruno/ */
+    /** used for persistant xforms  */
     gboolean is_effect;
-    /* /bruno */
+    gboolean skipped;
 };
 
 typedef struct xmms_xform_hotspot_St {
@@ -94,26 +94,6 @@ struct xmms_xform_plugin_St {
 
     GList *in_types;
 };
-
-
-/* bruno/ */
-gboolean xmms_xform_is_effect(xmms_xform_t *xform)
-{
-    return xform->is_effect;
-}
-
-xmms_xform_t *xmms_xform_prev_get(xmms_xform_t *xform)
-{
-    return xform->prev;
-}
-void xmms_xform_prev_set(xmms_xform_t *xform,xmms_xform_t *prev)
-{
-    if(xform != NULL)
-    {
-    	xform->prev = prev;
-    }
-}
-/* /bruno */
 
 
 xmms_xform_t *xmms_xform_find (xmms_xform_t *prev, xmms_medialib_entry_t entry,
@@ -414,10 +394,9 @@ xmms_xform_new (xmms_xform_plugin_t *plugin, xmms_xform_t *prev,
     xform->goal_hints = goal_hints;
     xform->lr.bufend = &xform->lr.buf[0];
 
-    /* bruno/ */
+    /* we consider that it is not persistant yet */
     xform->is_effect = FALSE;
-    xmms_log_info("BRUNO: std xform created : %s", xmms_plugin_shortname_get ((xmms_plugin_t*)plugin));
-    /* /bruno */
+    xform->skipped = FALSE;
 
     if (prev) {
 	xmms_object_ref (prev);
@@ -447,6 +426,22 @@ xmms_xform_new (xmms_xform_plugin_t *plugin, xmms_xform_t *prev,
 
     return xform;
 }
+
+gboolean xmms_xform_is_effect (xmms_xform_t *xform){
+    return xform->is_effect;
+}
+
+xmms_xform_t *xmms_xform_prev_get (xmms_xform_t *xform){
+    return xform->prev;
+}
+
+void xmms_xform_prev_set (xmms_xform_t *xform,xmms_xform_t *prev){
+    if(xform != NULL){
+    	xform->prev = prev;
+    }
+}
+
+
 
     xmms_medialib_entry_t
 xmms_xform_entry_get (xmms_xform_t *xform)
@@ -1008,6 +1003,11 @@ xmms_xform_this_read (xmms_xform_t *xform, gpointer buf, gint siz,
 
     if (xform->eos) {
 	return read;
+    }
+
+    /* we check here that the xform should not be skipped */
+    if(xform->skipped) {
+	return  xmms_xform_read(xform->prev,buf,siz,err);
     }
 
     while (read < siz) {
@@ -1579,7 +1579,8 @@ xmms_xform_chain_setup_url (xmms_medialib_entry_t entry, const gchar *url,
 
     /* if not rehashing, also initialize all the effect plugins */
 
-    /* bruno/ */	
+
+    /* now, we do this later, in the add_effects or link_effects functions. See the output_filler for more details */
 
     /*if (!rehash) {
       last = add_effects (last, entry, goal_formats);
@@ -1587,17 +1588,15 @@ xmms_xform_chain_setup_url (xmms_medialib_entry_t entry, const gchar *url,
       return NULL;
       }
       }
-
       chain_finalize (last, entry, url, rehash);*/
 
-    /* /bruno */
     return last;
 }
 
-/* bruno/ */	
     xmms_xform_t *
 xmms_xform_add_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t entry,GList *goal_formats)
 {
+    /* create all the effects, add them into the chain, and finalize the chain */
 
     gchar *url;
 
@@ -1615,19 +1614,18 @@ xmms_xform_add_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t e
     return last;
 }
 
-static void xmms_xform_print_outdata_infos(xmms_xform_t *t)
-{
+static void xmms_xform_print_outdata_infos(xmms_xform_t *t){
+    /* just print infos about outdata */
     	xmms_stream_type_t *type = xmms_xform_outtype_get(t);
 	xmms_log_info("[ %s ] OutData %s - %d",xmms_plugin_shortname_get ((xmms_plugin_t*)t->plugin),xmms_stream_type_get_str(type,XMMS_STREAM_TYPE_NAME),xmms_stream_type_get_int(type,XMMS_STREAM_TYPE_FMT_SAMPLERATE));
 }
-static void xmms_xform_print_indata_infos(xmms_xform_t *t)
-{
+static void xmms_xform_print_indata_infos(xmms_xform_t *t){
+    /* just print infos about indata */
     if(t->prev)
     {
 	t = t->prev;
     	xmms_stream_type_t *type = xmms_xform_outtype_get(t);
 	xmms_log_info("[ %s ] InData %s - %d",xmms_plugin_shortname_get ((xmms_plugin_t*)t->plugin),xmms_stream_type_get_str(type,XMMS_STREAM_TYPE_NAME),xmms_stream_type_get_int(type,XMMS_STREAM_TYPE_FMT_SAMPLERATE));
-
     }
 }
 
@@ -1640,7 +1638,7 @@ link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
 
 	xmms_xform_t *current_effect = last_effect;
 
-	/* how many effects */
+	/* how many effects do we have ? */
 	int n_effects = 0;
 
 	while(current_effect != NULL)
@@ -1667,11 +1665,29 @@ link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
 	/* refresh the outdata of each xform */
 	for(;i>=0;--i)
 	{
-	    fx_tab[i]->eos = FALSE;
+	    // not eos anymore
+	    	fx_tab[i]->eos = FALSE;
+
+		// effect does not change the type 
 		xmms_xform_outdata_type_copy (fx_tab[i]);
 		//xmms_xform_print_outdata_infos(fx_tab[i]);
-	}
 
+		// check that the effect supports the streamtype
+    		xmms_xform_plugin_t *xform_plugin = (xmms_xform_plugin_t *) fx_tab[i]->plugin;
+	        if (!xmms_xform_plugin_supports (xform_plugin, last->out_type, NULL)) {
+	            xmms_log_info ("Effect '%s' doesn't support format, skipping",
+		    xmms_plugin_shortname_get (fx_tab[i]->plugin));
+		    // if it doesn't we skip ip
+		    fx_tab[i]->skipped = TRUE;
+
+
+    		} else {
+			fx_tab[i]->skipped = FALSE;
+		}
+
+
+
+	}
 
 
 	// then return the last xform of the chain
@@ -1688,14 +1704,14 @@ link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
 xmms_xform_link_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t entry,GList *goal_formats,xmms_xform_t *last_effect)
 {
 
+    /* the effects should already be created, we just need to link them into the chain */
+
     gchar *url;
 
     if (!(url = get_url_for_entry (entry))) {
 	return NULL;
     }
-//    last = add_effects (last, entry, goal_formats);
     last = link_effects (last, last_effect);
-
     if (!last) {
 	return NULL;
     }
@@ -1703,7 +1719,6 @@ xmms_xform_link_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t 
     chain_finalize (last, entry, url, FALSE);
     return last;
 }
-/* /bruno */
 
     xmms_config_property_t *
 xmms_xform_plugin_config_property_register (xmms_xform_plugin_t *xform_plugin,
@@ -1771,19 +1786,24 @@ xmms_xform_new_effect (xmms_xform_t *last, xmms_medialib_entry_t entry,
 	return last;
     }
 
+ 
+   /* if a plugin does not support the current format, we still create it,
+    * but we inform that it should be skipped */
     xform_plugin = (xmms_xform_plugin_t *) plugin;
+
+    xform = xmms_xform_new (xform_plugin, last, entry, goal_formats);
+
     if (!xmms_xform_plugin_supports (xform_plugin, last->out_type, NULL)) {
 	xmms_log_info ("Effect '%s' doesn't support format, skipping",
 		xmms_plugin_shortname_get (plugin));
 	xmms_object_unref (plugin);
-	return last;
+	xform->skipped = TRUE;
+//	return last;
     }
 
-    xform = xmms_xform_new (xform_plugin, last, entry, goal_formats);
-    /* bruno/ */
+    /* we inform here that this xform is persitant */
     xform->is_effect = TRUE;
-    xmms_log_info("BRUNO: effect xform created : %s", xmms_plugin_shortname_get (plugin));
-    /* /bruno */
+    XMMS_DBG("effect xform created : %s", xmms_plugin_shortname_get (plugin));
 
     if (xform) {
 	xmms_object_unref (last);
