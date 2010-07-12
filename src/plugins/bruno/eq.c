@@ -126,7 +126,6 @@ xmms_eq2_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
               xmms_error_t *error)
 {
 	gint read, chan,i,j;
-
 	g_return_val_if_fail (xform, -1);
 
 	read = xmms_xform_read (xform, buf, len, error);

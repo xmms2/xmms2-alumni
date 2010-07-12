@@ -461,7 +461,7 @@ xmms_output_filler (void *arg)
 
 	    // BRUNO : important
 	    chain = xmms_xform_chain_setup (entry, output->format_list, FALSE);
-	    if(refresh_effects)
+	    if(refresh_effects || first_effect == NULL)
 	    {
 
 		chain = xmms_xform_add_effects_and_finalize(chain, entry, output->format_list);
@@ -562,6 +562,7 @@ xmms_output_filler (void *arg)
 		chain = NULL;
 	    }
 
+//	    refresh_effects = TRUE;
 
 
 

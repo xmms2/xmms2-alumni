@@ -108,7 +108,10 @@ xmms_xform_t *xmms_xform_prev_get(xmms_xform_t *xform)
 }
 void xmms_xform_prev_set(xmms_xform_t *xform,xmms_xform_t *prev)
 {
-    xform->prev = prev;
+    if(xform != NULL)
+    {
+    	xform->prev = prev;
+    }
 }
 /* /bruno */
 
@@ -1632,23 +1635,9 @@ static void xmms_xform_print_indata_infos(xmms_xform_t *t)
 link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
 {
 
-    if(last != NULL)
-	{
-
-/*	    xmms_stream_type_t *newType = _xmms_stream_type_new ("audio/pcm",
-		    						XMMS_STREAM_TYPE_MIMETYPE,
-								"audio/pcm",
-								XMMS_STREAM_TYPE_FMT_FORMAT,
-								XMMS_SAMPLE_FORMAT_S16,
-								XMMS_STREAM_TYPE_FMT_SAMPLERATE,
-								22050,
-								XMMS_STREAM_TYPE_END);
-	    xmms_xform_outdata_type_set (last, newType);
-	    xmms_stream_type_t *type = xmms_xform_outtype_get(last);*/
-	}
-
     if(last_effect != NULL)
     {
+
 	xmms_xform_t *current_effect = last_effect;
 
 	/* how many effects */
@@ -1661,7 +1650,7 @@ link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
 	}
 	current_effect = last_effect;
 
-	/* allocate a tab for all the fx because we need to browse the xforms from the first to the last */
+	/* allocate a tab for all the fx because we need to browse the xforms in the opposite order */
 	xmms_xform_t **fx_tab = g_malloc(sizeof(xmms_xform_t*)*n_effects);
 	int i=0;
 	while(current_effect->prev != NULL)
@@ -1678,14 +1667,16 @@ link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
 	/* refresh the outdata of each xform */
 	for(;i>=0;--i)
 	{
+	    fx_tab[i]->eos = FALSE;
 		xmms_xform_outdata_type_copy (fx_tab[i]);
-		xmms_xform_print_outdata_infos(fx_tab[i]);
+		//xmms_xform_print_outdata_infos(fx_tab[i]);
 	}
 
 
 
 	// then return the last xform of the chain
 	return last_effect;
+
     }
 
     return last;
@@ -1702,8 +1693,7 @@ xmms_xform_link_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t 
     if (!(url = get_url_for_entry (entry))) {
 	return NULL;
     }
-
-
+//    last = add_effects (last, entry, goal_formats);
     last = link_effects (last, last_effect);
 
     if (!last) {
