@@ -459,19 +459,18 @@ xmms_output_filler (void *arg)
 		continue;
 	    }
 
-	    // BRUNO : important
-	    chain = xmms_xform_chain_setup (entry, output->format_list, FALSE);
-	    if(refresh_effects || first_effect == NULL)
-	    {
+	    // setup the new chain
 
+	    // create a new chain for the new stream
+	    chain = xmms_xform_chain_setup (entry, output->format_list, FALSE);
+	    if(refresh_effects || first_effect == NULL) {
+		// if we need to refresh the effects, we recreate all of them
 		chain = xmms_xform_add_effects_and_finalize(chain, entry, output->format_list);
 		last_effect = chain;
 		refresh_effects = FALSE;
-	    }
-	    else
-	    {
+	    } else {
 		// just link with the effect chain and finalize
-		xmms_log_info("BRUNO: link with effects");
+		XMMS_DBG("Link chain with effects");
 		chain = xmms_xform_link_effects_and_finalize(chain,entry,output->format_list,last_effect);
 	    }
 

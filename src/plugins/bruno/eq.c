@@ -135,7 +135,7 @@ xmms_eq2_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 	{
 	    for(j=0;j<chan;++j)
 	    {
-		data[i+j] = data[i+j]*0.1;
+		data[i+j] = data[i+j];
 	    }
 	}
 	return read;

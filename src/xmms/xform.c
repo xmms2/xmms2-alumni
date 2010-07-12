@@ -1628,10 +1628,47 @@ static void xmms_xform_print_indata_infos(xmms_xform_t *t){
 	xmms_log_info("[ %s ] InData %s - %d",xmms_plugin_shortname_get ((xmms_plugin_t*)t->plugin),xmms_stream_type_get_str(type,XMMS_STREAM_TYPE_NAME),xmms_stream_type_get_int(type,XMMS_STREAM_TYPE_FMT_SAMPLERATE));
     }
 }
+    static gboolean
+xmms_xform_check_effects (xmms_xform_t **effect, gint size)
+{
+    gint effect_no, i;
+
+    for(effect_no = 0, i=size; i>=0; i--,effect_no++) {
+	xmms_config_property_t *cfg;
+	gchar key[64];
+	const gchar *name;
+	const gchar *currentName;
+
+	currentName = xmms_plugin_shortname_get ((xmms_plugin_t*)effect[i]->plugin);
+	g_snprintf (key, sizeof (key), "effect.order.%i", effect_no);
+
+	cfg = xmms_config_lookup (key);
+	if (!cfg) {
+	    return FALSE;
+	}
+
+	name = xmms_config_property_get_string (cfg);
+
+	if(!name[0]) {
+	    i++;
+	    continue;
+	}
+
+	XMMS_DBG("Checking effect no %i : %s vs %s",effect_no,name,currentName);
+
+	if(!g_strcasecmp(name,currentName) == 0) {
+	    return FALSE;
+	}
+    }
+    return TRUE;
+
+}
 
     static    xmms_xform_t *
-link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
+link_effects (xmms_xform_t *last, xmms_medialib_entry_t entry,GList *goal_formats, xmms_xform_t *last_effect)
 {
+
+//    return add_effects(last,entry,goal_formats);
 
     if(last_effect != NULL)
     {
@@ -1648,19 +1685,29 @@ link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
 	}
 	current_effect = last_effect;
 
+
 	/* allocate a tab for all the fx because we need to browse the xforms in the opposite order */
 	xmms_xform_t **fx_tab = g_malloc(sizeof(xmms_xform_t*)*n_effects);
-	int i=0;
-	while(current_effect->prev != NULL)
-	{
-	    fx_tab[i] = g_malloc(sizeof(xmms_xform_t));
+	gint i;
+	for(i=0; current_effect->prev != NULL; i++) {
 	    fx_tab[i] = current_effect;
-	    i++;
 	    current_effect = current_effect->prev;
 	}
-	current_effect->prev = last;
-	fx_tab[i] = g_malloc(sizeof(xmms_xform_t));
 	fx_tab[i] = current_effect;
+
+	// check that the effects are in the right place
+	if(!xmms_xform_check_effects (fx_tab,i)) {
+	
+	    // rebuild all the chain
+	    /*for(;i>=0;--i) {
+		xmms_object_unref(fx_tab[i]);
+	    }*/
+	    g_free(fx_tab);
+	    return add_effects(last, entry, goal_formats);
+	}
+
+	current_effect->prev = last;
+
 
 	/* refresh the outdata of each xform */
 	for(;i>=0;--i)
@@ -1676,7 +1723,7 @@ link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
     		xmms_xform_plugin_t *xform_plugin = (xmms_xform_plugin_t *) fx_tab[i]->plugin;
 	        if (!xmms_xform_plugin_supports (xform_plugin, last->out_type, NULL)) {
 	            xmms_log_info ("Effect '%s' doesn't support format, skipping",
-		    xmms_plugin_shortname_get (fx_tab[i]->plugin));
+		    xmms_plugin_shortname_get ((xmms_plugin_t *)fx_tab[i]->plugin));
 		    // if it doesn't we skip ip
 		    fx_tab[i]->skipped = TRUE;
 
@@ -1689,7 +1736,7 @@ link_effects (xmms_xform_t *last, xmms_xform_t *last_effect)
 
 	}
 
-
+	g_free(fx_tab);
 	// then return the last xform of the chain
 	return last_effect;
 
@@ -1711,11 +1758,10 @@ xmms_xform_link_effects_and_finalize (xmms_xform_t *last, xmms_medialib_entry_t 
     if (!(url = get_url_for_entry (entry))) {
 	return NULL;
     }
-    last = link_effects (last, last_effect);
+    last = link_effects (last, entry, goal_formats, last_effect);
     if (!last) {
 	return NULL;
     }
-
     chain_finalize (last, entry, url, FALSE);
     return last;
 }
@@ -1772,6 +1818,8 @@ add_effects (xmms_xform_t *last, xmms_medialib_entry_t entry,
     return last;
 }
 
+
+
     static xmms_xform_t *
 xmms_xform_new_effect (xmms_xform_t *last, xmms_medialib_entry_t entry,
 	GList *goal_formats, const gchar *name)
@@ -1796,7 +1844,7 @@ xmms_xform_new_effect (xmms_xform_t *last, xmms_medialib_entry_t entry,
     if (!xmms_xform_plugin_supports (xform_plugin, last->out_type, NULL)) {
 	xmms_log_info ("Effect '%s' doesn't support format, skipping",
 		xmms_plugin_shortname_get (plugin));
-	xmms_object_unref (plugin);
+	//xmms_object_unref (plugin);
 	xform->skipped = TRUE;
 //	return last;
     }
