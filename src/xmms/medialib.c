@@ -649,7 +649,9 @@ xmms_medialib_entry_cleanup (xmms_medialib_entry_t id_num)
 						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_LASTSTARTED) &&
 						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_TYPE))
 					s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), src);
-			} else if (src != NULL && strcmp (src, "plugin/playlist") != 0) {
+			} else if (src != NULL
+					&& strncmp (src, "plugin/", 7) == 0
+					&& strcmp (src, "plugin/playlist") != 0) {
 				s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), src);
 			}
 		}
