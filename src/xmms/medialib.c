@@ -1629,6 +1629,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 			s4_cmp_mode_t cmp_mode;
 			int32_t ival;
 			int flags = 0;
+			int not = 0;
 
 			xmmsv_coll_attribute_get (coll, "field", &key);
 			if (strcmp (key, "id") == 0) {
@@ -1643,8 +1644,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 				}
 			}
 
-			xmmsv_coll_attribute_get (coll, "operation", &val);
-			if (strcmp (val, "=") == 0) {
+			if (!xmmsv_coll_attribute_get (coll, "operation", &val) || strcmp (val, "=") == 0) {
 				type = S4_FILTER_EQUAL;
 			} else if (strcmp (val, "<") == 0) {
 				type = S4_FILTER_SMALLER;
@@ -1654,10 +1654,21 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 				type = S4_FILTER_MATCH;
 			} else if (strcmp (val, "has") == 0) {
 				type = S4_FILTER_EXISTS;
+			} else if (strcmp (val, "<=") == 0) {
+				type = S4_FILTER_GREATER;
+				not = 1;
+			} else if (strcmp (val, ">=") == 0) {
+				type = S4_FILTER_SMALLER;
+				not = 1;
+			} else if (strcmp (val, "!=") == 0) {
+				type = S4_FILTER_EQUAL;
+				not = 1;
+			} else { /* Unknown operation, default to equal */
+				type = S4_FILTER_EQUAL;
 			}
 
 			if (!xmmsv_coll_attribute_get (coll, "collation", &val)) {
-				/* For < and > we use natcoll,
+				/* For < and > we default to natcoll,
 				 * so that strings will order correctly
 				 * */
 				if (type == S4_FILTER_SMALLER || type == S4_FILTER_GREATER) {
@@ -1697,6 +1708,11 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 				xmms_medialib_query_recurs (dag, c, fetch, order, &op_cond, 0);
 				list = g_list_prepend (list, op_cond);
 				*cond = s4_cond_new_combiner (S4_COMBINE_AND, list);
+			}
+
+			if (not) {
+				GList *list = g_list_prepend (NULL, *cond);
+				*cond = s4_cond_new_combiner (S4_COMBINE_NOT, list);
 			}
 			break;
 		}
