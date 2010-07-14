@@ -1551,6 +1551,50 @@ static int is_universe (xmmsv_coll_t *coll)
 	return ret;
 }
 
+/* Returns non-zero if the collection has an ordering, 0 otherwise */
+static int has_order (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
+{
+	char *ref, *ns;
+	xmmsv_t *operands = xmmsv_coll_operands_get (coll);
+	xmmsv_coll_t *c;
+	int i;
+
+	switch (xmmsv_coll_get_type (coll)) {
+		/* Intersection is orderded if the first operand is ordeed */
+	case XMMS_COLLECTION_TYPE_INTERSECTION:
+		xmmsv_list_get_coll (operands, 0, &c);
+		return has_order (dag, c);
+
+		/* Union is ordered if all operands are ordered (concat) */
+	case XMMS_COLLECTION_TYPE_UNION:
+		for (i = 0; xmmsv_list_get_coll (operands, i, &c); i++) {
+			if (!has_order (dag, c))
+				return 0;
+		}
+
+		/* These are always ordered */
+	case XMMS_COLLECTION_TYPE_IDLIST:
+	case XMMS_COLLECTION_TYPE_ORDER:
+	case XMMS_COLLECTION_TYPE_LIMIT:
+		return 1;
+
+	case XMMS_COLLECTION_TYPE_REFERENCE:
+		if (!is_universe (coll)) {
+			xmmsv_coll_attribute_get (coll, "reference", &ref);
+			xmmsv_coll_attribute_get (coll, "namespace", &ns);
+			c = xmms_collection_get_pointer (dag, ref, xmms_collection_get_namespace_id (ns));
+			return has_order (dag, c);
+		}
+	case XMMS_COLLECTION_TYPE_COMPLEMENT:
+	case XMMS_COLLECTION_TYPE_UNIVERSE:
+	case XMMS_COLLECTION_TYPE_MEDIASET:
+	case XMMS_COLLECTION_TYPE_FILTER:
+		break;
+	}
+
+	return 0;
+}
+
 /**
  * Queries the medialib. Big and ugly function
  * TODO: Make it smaller and prettier
@@ -1574,6 +1618,8 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 	char *key, *val;
 	xmmsv_coll_t *c;
 	xmmsv_t *operands = xmmsv_coll_operands_get (coll);
+	GList *list = NULL;
+	int i;
 
 	switch (xmmsv_coll_get_type (coll)) {
 		case XMMS_COLLECTION_TYPE_REFERENCE:
@@ -1593,21 +1639,71 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 					sval, default_sp, S4_CMP_CASELESS, 0);
 			s4_val_free (sval);
 			break;
-		case XMMS_COLLECTION_TYPE_UNION:
-		case XMMS_COLLECTION_TYPE_INTERSECTION:
-		case XMMS_COLLECTION_TYPE_COMPLEMENT:
-		{
-			GList *op_list = NULL;
-			s4_combine_type_t type;
-			int i;
 
-			switch (xmmsv_coll_get_type (coll)) {
-			case XMMS_COLLECTION_TYPE_UNION: type = S4_COMBINE_OR; break;
-			case XMMS_COLLECTION_TYPE_INTERSECTION: type = S4_COMBINE_AND; break;
-			case XMMS_COLLECTION_TYPE_COMPLEMENT: type = S4_COMBINE_NOT; break;
-			default: break; /* To silence compiler warnings */
+		case XMMS_COLLECTION_TYPE_UNION:
+		{
+			int concat = has_order (dag, coll) && order != NULL;
+			xmmsv_t *id_list = concat?xmmsv_new_list ():NULL;
+			GHashTable *id_table;
+			s4_resultset_t *set;
+			int id_pos = xmms_medialib_find_idpos (fetch);
+
+			if (concat) {
+				id_table = g_hash_table_new (NULL, NULL);
+				if (return_result) {
+					res = s4_resultset_create (xmmsv_list_get_size (fetch));
+				}
 			}
 
+			for (i = 0; xmmsv_list_get_coll (operands, i, &c); i++) {
+				s4_condition_t *op_cond;
+
+				/* If this is a concatenation we have to do a query for every operand */
+				if (concat) {
+					xmmsv_t *child_order = xmmsv_new_list ();
+					const s4_resultrow_t *row;
+					const s4_result_t *result;
+					int j;
+
+					/* Query the operand and sort it */
+					set = xmms_medialib_query_recurs (dag, c, fetch, child_order, &op_cond, 1);
+					set = xmms_medialib_result_sort (set, fetch, child_order);
+
+					/* Append the IDs to the id_list */
+					for (j = 0; s4_resultset_get_row (set, j, &row); j++) {
+						int32_t ival;
+
+						if (s4_resultrow_get_col (row, id_pos, &result)
+								&& s4_val_get_int (s4_result_get_val (result), &ival)) {
+							xmmsv_list_append_int (id_list, ival);
+							g_hash_table_insert (id_table, GINT_TO_POINTER (ival), GINT_TO_POINTER (1));
+						}
+
+						/* If we're returning a result we have to add the row to the result */
+						if (return_result) {
+							s4_resultset_add_row (res, row);
+						}
+					}
+
+					xmmsv_unref (child_order);
+				} else { /* If this is not a concat, just a simple union,
+							we make a list of the conditions for the operands */
+					xmms_medialib_query_recurs (dag, c, fetch, NULL, &op_cond, 0);
+					list = g_list_prepend (list, op_cond);
+				}
+			}
+
+			if (concat) {
+				xmmsv_list_append (order, id_list);
+				*cond = s4_cond_new_custom_filter (idlist_filter, id_table,
+						(free_func_t)g_hash_table_destroy, "song_id", default_sp, 0, S4_COND_PARENT);
+			} else {
+				*cond = s4_cond_new_combiner (S4_COMBINE_OR, list);
+			}
+			break;
+		}
+
+		case XMMS_COLLECTION_TYPE_INTERSECTION:
 			for (i = 0; xmmsv_list_get_coll (operands, i, &c); i++) {
 				s4_condition_t *op_cond;
 				if (i == 0) {
@@ -1616,12 +1712,20 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 				} else {
 					xmms_medialib_query_recurs (dag, c, fetch, NULL, &op_cond, 0);
 				}
-				op_list = g_list_prepend (op_list, op_cond);
+				list = g_list_prepend (list, op_cond);
 			}
-
-			*cond = s4_cond_new_combiner (type, op_list);
+			*cond = s4_cond_new_combiner (S4_COMBINE_AND, list);
 			break;
-		}
+
+		case XMMS_COLLECTION_TYPE_COMPLEMENT:
+			if (xmmsv_list_get_coll (operands, 0, &c)) {
+				s4_condition_t *op;
+				xmms_medialib_query_recurs (dag, c, fetch, NULL, &op, 0);
+				list = g_list_prepend (list, op);
+			}
+			*cond = s4_cond_new_combiner (S4_COMBINE_NOT, list);
+			break;
+
 		case XMMS_COLLECTION_TYPE_FILTER:
 		{
 			s4_filter_type_t type;
