@@ -1669,6 +1669,8 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 					set = xmms_medialib_query_recurs (dag, c, fetch, child_order, &op_cond, 1);
 					set = xmms_medialib_result_sort (set, fetch, child_order);
 
+					s4_cond_free (op_cond);
+
 					/* Append the IDs to the id_list */
 					for (j = 0; s4_resultset_get_row (set, j, &row); j++) {
 						int32_t ival;
@@ -1685,6 +1687,8 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 						}
 					}
 
+					s4_resultset_free (set);
+
 					xmmsv_unref (child_order);
 				} else { /* If this is not a concat, just a simple union,
 							we make a list of the conditions for the operands */
@@ -1695,6 +1699,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 
 			if (concat) {
 				xmmsv_list_append (order, id_list);
+				xmmsv_unref (id_list);
 				*cond = s4_cond_new_custom_filter (idlist_filter, id_table,
 						(free_func_t)g_hash_table_destroy, "song_id", default_sp, 0, S4_COND_PARENT);
 			} else {
