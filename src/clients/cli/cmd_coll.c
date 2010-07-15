@@ -178,15 +178,39 @@ coll_dump_list (xmmsv_t *list, unsigned int level)
 
 }
 
+static void
+coll_write_attribute (const char *key, xmmsv_t *val, gboolean *first)
+{
+	const char *str;
+	if (xmmsv_get_string (val, &str)) {
+		if (*first) {
+			printf ("%s: %s", key, str);
+			*first = FALSE;
+		} else {
+			printf (", %s: %s", key, str);
+		}
+	}
+}
+
+static void
+coll_dump_attributes (xmmsv_t *attr, gchar *indent)
+{
+	gboolean first = TRUE;
+	if (xmmsv_dict_get_size (attr) > 0) {
+		printf ("%sAttributes: (", indent);
+		xmmsv_dict_foreach (attr, (xmmsv_dict_foreach_func)coll_write_attribute, &first);
+		printf (")\n");
+	}
+}
+
 /* Dump the structure of the collection as a string */
 static void
-coll_dump (xmmsv_coll_t *coll, unsigned int level)
+coll_dump (xmmsv_coll_t *coll, guint level)
 {
 	gint i;
 	gchar *indent;
 
-	gchar *attr1;
-	gchar *attr2;
+	const gchar *type;
 	GString *idlist_str;
 
 	indent = g_malloc ((level * 2) + 1);
@@ -196,78 +220,29 @@ coll_dump (xmmsv_coll_t *coll, unsigned int level)
 	indent[i] = '\0';
 
 	/* type */
-	switch (xmmsv_coll_get_type (coll)) {
+	switch (xmmsc_coll_get_type (coll)) {
 	case XMMS_COLLECTION_TYPE_REFERENCE:
-		xmmsv_coll_attribute_get (coll, "reference", &attr1);
-		print_info ("%sReference: '%s'", indent, attr1);
+		type = "Reference";
 		break;
 
 	case XMMS_COLLECTION_TYPE_UNION:
-		print_info ("%sUnion:", indent);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
+		type = "Union";
 		break;
 
 	case XMMS_COLLECTION_TYPE_INTERSECTION:
-		print_info ("%sIntersection:", indent);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
+		type = "Intersection";
 		break;
 
 	case XMMS_COLLECTION_TYPE_COMPLEMENT:
-		print_info ("%sComplement:", indent);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
+		type = "Complement";
 		break;
 
-	case XMMS_COLLECTION_TYPE_EQUALS:
-		xmmsv_coll_attribute_get (coll, "field",  &attr1);
-		xmmsv_coll_attribute_get (coll, "value", &attr2);
-		print_info ("%sEquals ('%s', '%s') for:", indent, attr1, attr2);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
-	case XMMS_COLLECTION_TYPE_HAS:
-		xmmsv_coll_attribute_get (coll, "field",  &attr1);
-		print_info ("%sHas ('%s') for:", indent, attr1);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
-	case XMMS_COLLECTION_TYPE_MATCH:
-		xmmsv_coll_attribute_get (coll, "field",  &attr1);
-		xmmsv_coll_attribute_get (coll, "value", &attr2);
-		print_info ("%sMatch ('%s', '%s') for:", indent, attr1, attr2);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
-	case XMMS_COLLECTION_TYPE_SMALLER:
-		xmmsv_coll_attribute_get (coll, "field",  &attr1);
-		xmmsv_coll_attribute_get (coll, "value", &attr2);
-		print_info ("%sSmaller ('%s', '%s') for:", indent, attr1, attr2);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
-		break;
-
-	case XMMS_COLLECTION_TYPE_GREATER:
-		xmmsv_coll_attribute_get (coll, "field",  &attr1);
-		xmmsv_coll_attribute_get (coll, "value", &attr2);
-		print_info ("%sGreater ('%s', '%s') for:", indent, attr1, attr2);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
+	case XMMS_COLLECTION_TYPE_FILTER:
+		type = "Filter";
 		break;
 
 	case XMMS_COLLECTION_TYPE_IDLIST:
-		idlist_str = coll_idlist_to_string (coll);
-		print_info ("%sIdlist: %s", indent, idlist_str->str);
-		g_string_free (idlist_str, TRUE);
-		break;
-
-	case XMMS_COLLECTION_TYPE_QUEUE:
-		idlist_str = coll_idlist_to_string (coll);
-		print_info ("%sQueue: %s", indent, idlist_str->str);
-		g_string_free (idlist_str, TRUE);
-		break;
-
-	case XMMS_COLLECTION_TYPE_PARTYSHUFFLE:
-		idlist_str = coll_idlist_to_string (coll);
-		print_info ("%sParty Shuffle: %s from :", indent, idlist_str->str);
-		g_string_free (idlist_str, TRUE);
-		coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
+		type = "Idlist";
 		break;
 
 	default:
@@ -275,7 +250,20 @@ coll_dump (xmmsv_coll_t *coll, unsigned int level)
 		break;
 	}
 
-	g_free (indent);
+	print_info ("%sType: %s", indent, type);
+
+	/* Idlist */
+	idlist_str = coll_idlist_to_string (coll);
+	if (strcmp (idlist_str->str, "()") != 0) {
+		print_info ("%sIDs: %s", indent, idlist_str->str);
+	}
+	g_string_free (idlist_str, TRUE);
+
+	/* Attributes */
+	coll_dump_attributes (xmmsv_coll_attributes_get (coll), indent);
+
+	/* Operands */
+	coll_dump_list (xmmsv_coll_operands_get (coll), level + 1);
 }
 
 static void
