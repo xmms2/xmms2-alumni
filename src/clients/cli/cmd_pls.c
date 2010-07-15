@@ -57,18 +57,6 @@ add_item_to_playlist (xmmsc_connection_t *conn, gchar *playlist, gchar *item)
 	}
 }
 
-
-static const gchar *
-get_playlist_type_string (xmmsv_coll_type_t type)
-{
-	switch (type) {
-	case XMMS_COLLECTION_TYPE_IDLIST:        return "list";
-	case XMMS_COLLECTION_TYPE_QUEUE:         return "queue";
-	case XMMS_COLLECTION_TYPE_PARTYSHUFFLE:  return "pshuffle";
-	default:                                 return "unknown";
-	}
-}
-
 static void
 coll_copy_attributes (const char *key, const char *value, void *udata)
 {
@@ -792,9 +780,9 @@ void
 cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 {
 	gchar *name;
-	xmmsv_coll_type_t prevtype, newtype;
 	xmmsc_result_t *res;
 	xmmsv_t *val;
+	char *type;
 	const char *errmsg;
 	xmmsv_coll_t *coll;
 
@@ -814,40 +802,25 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 	}
 
 	xmmsv_get_coll (val, &coll);
-	prevtype = xmmsv_coll_get_type (coll);
 
 	/* No type argument, simply display the current type */
 	if (argc < 5) {
-		print_info (get_playlist_type_string (prevtype));
+		if (xmmsv_coll_attribute_get (coll, "type", &type)) {
+			print_info (type);
+		} else {
+			print_info ("list");
+		}
 
 	/* Type argument, set the new type */
 	} else {
-		gint typelen;
 		gint idlistsize;
 		xmmsc_result_t *saveres;
 		xmmsv_t *saveval;
 		xmmsv_coll_t *newcoll;
 		gint i;
 
-		typelen = strlen (argv[4]);
-		if (g_ascii_strncasecmp (argv[4], "list", typelen) == 0) {
-			newtype = XMMS_COLLECTION_TYPE_IDLIST;
-		} else if (g_ascii_strncasecmp (argv[4], "queue", typelen) == 0) {
-			newtype = XMMS_COLLECTION_TYPE_QUEUE;
-		} else if (g_ascii_strncasecmp (argv[4], "pshuffle", typelen) == 0) {
-			newtype = XMMS_COLLECTION_TYPE_PARTYSHUFFLE;
-
-			/* Setup operand for party shuffle (set operand) ! */
-			if (argc < 6) {
-				print_error ("Give the source collection for the party shuffle");
-			}
-
-		} else {
-			print_error ("Invalid playlist type (valid types: list, queue, pshuffle)");
-		}
-
 		/* Copy collection idlist, attributes and operand (if needed) */
-		newcoll = xmmsv_coll_new (newtype);
+		newcoll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
 
 		idlistsize = xmmsv_coll_idlist_get_size (coll);
 		for (i = 0; i < idlistsize; i++) {
@@ -857,8 +830,9 @@ cmd_playlist_type (xmmsc_connection_t *conn, gint argc, gchar **argv)
 		}
 
 		xmmsv_coll_attribute_foreach (coll, coll_copy_attributes, newcoll);
+		xmmsv_coll_attribute_set (newcoll, "type", argv[4]);
 
-		if (newtype == XMMS_COLLECTION_TYPE_PARTYSHUFFLE) {
+		if (argc > 5) {
 			playlist_setup_pshuffle (conn, newcoll, argv[5]);
 		}
 
