@@ -27,6 +27,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -1372,6 +1373,54 @@ static int idlist_filter (s4_val_t *value, s4_condition_t *cond)
 	return g_hash_table_lookup (id_table, GINT_TO_POINTER (ival)) == NULL;
 }
 
+/* A token filter. Checks if the passed value contains a token */
+static int token_filter (s4_val_t *value, s4_condition_t *cond)
+{
+	const char *token = s4_cond_get_funcdata (cond);
+	const char *s;
+	int32_t i;
+	s4_cmp_mode_t mode = s4_cond_get_cmp_mode (cond);
+
+	if ((mode == S4_CMP_CASELESS && s4_val_get_casefolded_str (value, &s)) ||
+			s4_val_get_str (value, &s)) {
+		while (*s) {
+			/* Skip whitespaces */
+			for (; isspace (*s); s++);
+
+			/* Compare token */
+			for (i = 0; *s && *s == token[i] && token[i] != '*'; i++, s++);
+
+			/* Check if it matched */
+			if (token[i] == '*' || (!token[i] && (isspace (*s) || !*s))) {
+				return 0;
+			}
+
+			/* Eat the rest of the token */
+			for (; *s && !isspace (*s); s++);
+		}
+	} else if (s4_val_get_int (value, &i)) {
+		char *end;
+		int32_t j = strtol (token, &end, 10);
+
+		if (end != token) {
+			/* If the token is just a number we have to have an exact match */
+			if (*end == '\0' && j == i) {
+				return 0;
+			/* If the character after the last digit is a star we have to
+			 * shift the number until it has the right number of digits
+			 */
+			} else if (*end == '*') {
+				for (; i > j; i /= 10);
+				if (i == j) {
+					return 0;
+				}
+			}
+		}
+	}
+
+	return 1;
+}
+
 /**
  * Finds the position of "id" in the list given
  * @param fetch The list to search for "id"
@@ -1739,18 +1788,13 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 			int32_t ival;
 			int flags = 0;
 			int not = 0;
+			int token = 0;
+			const char *token_value;
 
 			xmmsv_coll_attribute_get (coll, "field", &key);
 			if (strcmp (key, "id") == 0) {
 				key = (char*)"song_id";
 				flags = S4_COND_PARENT;
-			}
-			if (xmmsv_coll_attribute_get (coll, "value", &val)) {
-				if (xmms_is_int (val, &ival)) {
-					sval = s4_val_new_int (ival);
-				} else {
-					sval = s4_val_new_string (val);
-				}
 			}
 
 			if (!xmmsv_coll_attribute_get (coll, "operation", &val) || strcmp (val, "=") == 0) {
@@ -1772,8 +1816,22 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 			} else if (strcmp (val, "!=") == 0) {
 				type = S4_FILTER_EQUAL;
 				not = 1;
+			} else if (strcmp (val, "token") == 0) {
+				token = 1;
 			} else { /* Unknown operation, default to equal */
 				type = S4_FILTER_EQUAL;
+			}
+
+			if (xmmsv_coll_attribute_get (coll, "value", &val)) {
+				if (token) {
+					token_value = val;
+				} else {
+					if (xmms_is_int (val, &ival)) {
+						sval = s4_val_new_int (ival);
+					} else {
+						sval = s4_val_new_string (val);
+					}
+				}
 			}
 
 			if (!xmmsv_coll_attribute_get (coll, "collation", &val)) {
@@ -1801,7 +1859,17 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 				g_strfreev (prefs);
 			}
 
-			*cond = s4_cond_new_filter (type, key, sval, sp, cmp_mode, flags);
+			if (token) {
+				if (cmp_mode == S4_CMP_CASELESS) {
+					token_value = s4_string_casefold (token_value);
+				} else {
+					token_value = g_strdup (token_value);
+				}
+				*cond = s4_cond_new_custom_filter (token_filter, (void*)token_value,
+						g_free, key, sp, cmp_mode, flags);
+			} else {
+				*cond = s4_cond_new_filter (type, key, sval, sp, cmp_mode, flags);
+			}
 
 			if (sval != NULL)
 				s4_val_free (sval);
