@@ -431,6 +431,13 @@ gboolean xmms_xform_is_effect (xmms_xform_t *xform){
     return xform->is_effect;
 }
 
+xmms_xform_t *xmms_xform_eos_get (xmms_xform_t *xform){
+    return xform->eos;
+}
+void xmms_xform_eos_set (xmms_xform_t *xform, gboolean b){
+    xform->eos = b;
+}
+
 xmms_xform_t *xmms_xform_prev_get (xmms_xform_t *xform){
     return xform->prev;
 }
