@@ -854,19 +854,14 @@ xmms_playlist_client_insert_collection (xmms_playlist_t *playlist, const gchar *
                                         gint32 pos, xmmsv_coll_t *coll,
                                         xmmsv_t *order, xmms_error_t *err)
 {
-	GList *res;
+	xmmsv_t *res;
+	int32_t id;
+	int i;
 
 	res = xmms_collection_query_ids (playlist->colldag, coll, 0, 0, order, err);
 
-	while (res) {
-		xmmsv_t *val = (xmmsv_t*) res->data;
-		gint id;
-		xmmsv_get_int (val, &id);
+	for (i = 0; xmmsv_list_get_int (res, i, &id); i++) {
 		xmms_playlist_client_insert_id (playlist, plname, pos, id, err);
-		xmmsv_unref (val);
-
-		res = g_list_delete_link (res, res);
-		pos++;
 	}
 
 }
@@ -1030,20 +1025,15 @@ xmms_playlist_client_add_collection (xmms_playlist_t *playlist, const gchar *pln
                                      xmmsv_coll_t *coll, xmmsv_t *order,
                                      xmms_error_t *err)
 {
-	GList *res;
+	xmmsv_t *res;
+	int32_t id;
+	int i;
 
 	res = xmms_collection_query_ids (playlist->colldag, coll, 0, 0, order, err);
 
-	while (res) {
-		xmmsv_t *val = (xmmsv_t*) res->data;
-		gint id;
-		xmmsv_get_int (val, &id);
+	for (i = 0; xmmsv_list_get_int (res, i, &id); i++) {
 		xmms_playlist_add_entry (playlist, plname, id, err);
-		xmmsv_unref (val);
-
-		res = g_list_delete_link (res, res);
 	}
-
 }
 
 /**
@@ -1242,7 +1232,7 @@ xmms_playlist_client_sort (xmms_playlist_t *playlist, const gchar *plname,
                            xmmsv_t *properties, xmms_error_t *err)
 {
 
-	GList *tmp = NULL, *n;
+	xmmsv_t *tmp, *idlist, *val;
 	xmmsv_coll_t *plcoll;
 	gint currpos, pos;
 	xmms_medialib_entry_t currid;
@@ -1271,21 +1261,22 @@ xmms_playlist_client_sort (xmms_playlist_t *playlist, const gchar *plname,
 		return;
 	}
 
-	xmmsv_coll_idlist_clear (plcoll);
+	idlist = xmmsv_coll_idlist_get (plcoll);
+	xmmsv_list_clear (idlist);
 
-	for (n = tmp, pos = 0; n != NULL; n = g_list_delete_link (n, n), pos++) {
+	for (pos = 0; xmmsv_list_get (tmp, pos, &val); pos++) {
 		xmms_medialib_entry_t id;
-		xmmsv_t *val = n->data;
 
 		xmmsv_get_int (val, &id);
-		xmmsv_coll_idlist_append (plcoll, id);
-		xmmsv_unref (val);
+		xmmsv_list_append (idlist, val);
 
 		if (id == currid) {
 			xmms_collection_set_int_attr (plcoll, "position", pos);
 			currpos = pos;
 		}
 	}
+
+	xmmsv_unref (tmp);
 
 	XMMS_PLAYLIST_CHANGED_MSG (XMMS_PLAYLIST_CHANGED_SORT, 0, plname);
 	XMMS_PLAYLIST_CURRPOS_MSG (currpos, plname);
