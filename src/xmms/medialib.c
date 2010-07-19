@@ -309,12 +309,12 @@ gint
 xmms_medialib_entry_property_get_int (xmms_medialib_entry_t id_num,
                                       const gchar *property)
 {
-	gint32 ret = -1;
+	gint32 ret;
 	s4_val_t *prop;
 
 	prop = xmms_medialib_entry_property_get (id_num, property);
 	if (prop == NULL || !s4_val_get_int (prop, &ret))
-		return -1;
+		ret = -1;
 
 	s4_val_free (prop);
 
@@ -509,7 +509,7 @@ xmms_medialib_entry_remove (xmms_medialib_entry_t id_num)
 	int i;
 
 	fs = s4_fetchspec_create ();
-	s4_fetchspec_add (fs, NULL, default_sp);
+	s4_fetchspec_add (fs, NULL, NULL);
 	cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", id_val,
 			default_sp, S4_CMP_CASELESS, S4_COND_PARENT);
 
@@ -628,7 +628,7 @@ xmms_medialib_entry_cleanup (xmms_medialib_entry_t id_num)
 	int i;
 
 	fs = s4_fetchspec_create ();
-	s4_fetchspec_add (fs, NULL, default_sp);
+	s4_fetchspec_add (fs, NULL, NULL);
 	cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", id_val,
 			default_sp, S4_CMP_CASELESS, S4_COND_PARENT);
 
@@ -919,7 +919,7 @@ xmms_medialib_entry_to_tree (xmms_medialib_entry_t id_num)
 	}
 
 	fs = s4_fetchspec_create ();
-	s4_fetchspec_add (fs, NULL, default_sp);
+	s4_fetchspec_add (fs, NULL, NULL);
 	cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", s4_val_new_int (id_num),
 			default_sp, S4_CMP_CASELESS, S4_COND_PARENT);
 
