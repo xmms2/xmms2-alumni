@@ -891,81 +891,6 @@ xmms_medialib_tree_add_tuple (GTree *tree, const char *key,
 	xmmsv_dict_set (keytreeval, source, value);
 }
 
-
-/**
- * Convert a entry and all properties to a hashtable that
- * could be feed to the client or somewhere else in the daemon.
- *
- * @param id_num Entry to convert.
- *
- * @returns Newly allocated hashtable with newly allocated strings
- * make sure to free them all.
- */
-
-GList *
-xmms_medialib_entry_to_list (xmms_medialib_entry_t id_num)
-{
-	GList *ret = NULL;
-	xmmsv_t *v_entry;
-	s4_fetchspec_t *fs;
-	s4_condition_t *cond;
-	s4_resultset_t *set;
-	int i;
-
-	g_return_val_if_fail (id_num, NULL);
-
-	if (!xmms_medialib_check_id (id_num)) {
-		return NULL;
-	}
-
-	fs = s4_fetchspec_create ();
-	s4_fetchspec_add (fs, NULL, default_sp);
-	cond = s4_cond_new_filter (S4_FILTER_EQUAL, "song_id", s4_val_new_int (id_num),
-			default_sp, S4_CMP_CASELESS, S4_COND_PARENT);
-
-	set = s4_query (medialib->s4, fs, cond);
-
-	s4_cond_free (cond);
-	s4_fetchspec_free (fs);
-
-	if (set == NULL)
-		return NULL;
-
-	for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
-		const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
-
-		while (res != NULL) {
-			const s4_val_t *val = s4_result_get_val (res);
-			int32_t i;
-			const char *s;
-
-			if (s4_val_get_str (val, &s)) {
-				v_entry = xmmsv_new_string (s);
-			} else if (s4_val_get_int (val, &i)) {
-				v_entry = xmmsv_new_int (i);
-			}
-
-			ret = g_list_prepend (ret, xmmsv_new_string (s4_result_get_src (res)));
-			ret = g_list_prepend (ret, xmmsv_new_string (s4_result_get_key (res)));
-			ret = g_list_prepend (ret, v_entry);
-
-			res = s4_result_next (res);
-		}
-
-	}
-
-	/* Source */
-	ret = g_list_prepend (ret, xmmsv_new_string ("server"));
-
-	/* Key */
-	ret = g_list_prepend (ret, xmmsv_new_string ("id"));
-
-	/* Value */
-	ret = g_list_prepend (ret, xmmsv_new_int (id_num));
-
-	return g_list_reverse (ret);
-}
-
 /**
  * Convert a entry and all properties to a key-source-value tree that
  * could be feed to the client or somewhere else in the daemon.
@@ -1035,26 +960,6 @@ xmms_medialib_entry_to_tree (xmms_medialib_entry_t id_num)
 	v_entry = xmmsv_new_int (id_num);
 	xmms_medialib_tree_add_tuple (ret, "id", "server", v_entry);
 	xmmsv_unref (v_entry);
-
-	return ret;
-}
-
-/* Legacy, still used by collections. */
-GList *
-xmms_medialib_info_list (xmms_medialib_t *medialib, guint32 id, xmms_error_t *err)
-{
-	GList *ret = NULL;
-
-	if (!id) {
-		xmms_error_set (err, XMMS_ERROR_NOENT, "No such entry, 0");
-	} else {
-		ret = xmms_medialib_entry_to_list (id);
-
-		if (!ret) {
-			xmms_error_set (err, XMMS_ERROR_NOENT,
-			                "Could not retrieve info for that entry!");
-		}
-	}
 
 	return ret;
 }
