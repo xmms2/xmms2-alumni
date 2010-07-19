@@ -134,8 +134,9 @@ static void xmms_collection_client_remove (xmms_coll_dag_t *dag, const gchar *co
 static GList * xmms_collection_client_find (xmms_coll_dag_t *dag, gint32 mid, const gchar *namespace, xmms_error_t *error);
 static void xmms_collection_client_rename (xmms_coll_dag_t *dag, const gchar *from_name, const gchar *to_name, const gchar *namespace, xmms_error_t *error);
 
-static GList * xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, gint32 lim_start, gint32 lim_len, xmmsv_t *order, xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err);
-static GList * xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, gint32 lim_start, gint32 lim_len, xmmsv_t *order, xmms_error_t *err);
+static xmmsv_t * xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, gint32 lim_start, gint32 lim_len, xmmsv_t *order, xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err);
+static xmmsv_t * xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, gint32 lim_start, gint32 lim_len, xmmsv_t *order, xmms_error_t *err);
+static xmmsv_t * xmms_collection_client_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch, xmms_error_t *err);
 static xmmsv_coll_t *xmms_collection_client_idlist_from_playlist (xmms_coll_dag_t *dag, const gchar *mediainfo, xmms_error_t *err);
 static void xmms_collection_client_sync (xmms_coll_dag_t *dag, xmms_error_t *err);
 
@@ -748,62 +749,57 @@ limit_list (GList *list, guint lim_start, guint lim_len)
  * @param err  If an error occurs, a message is stored in it.
  * @return A list of media ids.
  */
-GList *
+xmmsv_t *
 xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
                            gint32 lim_start, gint32 lim_len, xmmsv_t *order,
                            xmms_error_t *err)
 {
-	GList *ret, *n;
-	xmmsv_t *idval, *fetch;
-	int i;
+	xmmsv_t *ret;
+	static xmmsv_t *fetch_spec = NULL;
+	xmmsv_coll_t *coll2, *coll3;
 
-	fetch = xmmsv_new_list ();
+	/* Creates the fetchspec to use */
+	if (fetch_spec == NULL) {
+		xmmsv_t *get_list = xmmsv_new_list ();
+		xmmsv_t *id_dict = xmmsv_new_dict ();
 
-	/* We need to fetch all the fields in order and the id field */
-	for (i = 0; order != NULL && i < xmmsv_list_get_size (order); i++) {
-		xmmsv_t *val, *tmp;
-		const char *str;
-		xmmsv_list_get (order, i, &tmp);
+		xmmsv_list_append_string (get_list, "id");
 
-		/* Remove the - on the ordering valus */
-		if (xmmsv_get_string (tmp, &str)) {
-			if (*str == '-') {
-				val = xmmsv_new_string (str + 1);
-				xmmsv_list_append (fetch, val);
-				xmmsv_unref (val);
-			}
-			else {
-				xmmsv_list_append (fetch, tmp);
-			}
+		xmmsv_dict_set_string (id_dict, "_type", "metadata");
+		xmmsv_dict_set (id_dict, "get", get_list);
+
+		fetch_spec = xmmsv_new_dict ();
+		xmmsv_dict_set_string (fetch_spec, "_type", "cluster-list");
+		xmmsv_dict_set_string (fetch_spec, "cluster-by", "id");
+		xmmsv_dict_set (fetch_spec, "data", id_dict);
+	}
+
+	coll2 = xmmsv_coll_add_order_operators (coll, order);
+
+	if (lim_start != 0 || lim_len != 0) {
+		char str[12];
+		coll3 = xmmsv_coll_new (XMMS_COLLECTION_TYPE_LIMIT);
+		xmmsv_coll_add_operand (coll3, coll2);
+
+		if (lim_start != 0) {
+			sprintf (str, "%i", lim_start);
+			xmmsv_coll_attribute_set (coll3, "start", str);
 		}
+
+		if (lim_len != 0) {
+			sprintf (str, "%i", lim_len);
+			xmmsv_coll_attribute_set (coll3, "length", str);
+		}
+
+		xmmsv_coll_unref (coll2);
+		coll2 = coll3;
 	}
 
-	idval = xmmsv_new_string ("id");
-	xmmsv_list_append (fetch, idval);
+	ret = xmms_collection_client_query (dag, coll2, fetch_spec, err);
 
-	coll = xmmsv_coll_add_order_operators (coll, order);
+	xmmsv_coll_unref (coll2);
 
-	g_mutex_lock (dag->mutex);
-	ret = xmms_medialib_query (dag, coll, fetch);
-	g_mutex_unlock (dag->mutex);
-
-	xmmsv_coll_unref (coll);
-
-	for (n = ret; n; n = n->next) {
-		xmms_medialib_entry_t id;
-		xmmsv_t *id_val, *cmdval = n->data;
-
-		xmmsv_dict_get (cmdval, "id", &id_val);
-		xmmsv_get_int (id_val, &id);
-		n->data = xmmsv_new_int (id);
-
-		xmmsv_unref (cmdval);
-	}
-
-	xmmsv_unref (fetch);
-	xmmsv_unref (idval);
-
-	return limit_list (ret, lim_start, lim_len);
+	return ret;
 }
 
 static int
@@ -897,7 +893,7 @@ identical_values (xmmsv_t *keys, xmmsv_t *dict1, xmmsv_t *dict2)
 	return identical;
 }
 
-GList *
+xmmsv_t *
 xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
                                   gint32 lim_start, gint32 lim_len, xmmsv_t *order,
                                   xmms_error_t *err)
@@ -916,13 +912,14 @@ xmms_collection_client_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
  * @param err  If an error occurs, a message is stored in it.
  * @return A list of property dicts for each entry.
  */
-GList *
+xmmsv_t *
 xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
                                     gint32 lim_start, gint32 lim_len, xmmsv_t *order,
                                     xmmsv_t *fetch, xmmsv_t *group, xmms_error_t *err)
 {
-	GList *ret = NULL;
-	xmmsv_t *values;
+	xmmsv_t *ret, *fetch_spec, *org_dict;
+	int i;
+	const char *str;
 
 	/* check that fetch is not empty */
 	if (xmmsv_list_get_size (fetch) == 0) {
@@ -944,6 +941,51 @@ xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 		return NULL;
 	}
 
+	fetch_spec = xmmsv_new_dict ();
+	xmmsv_dict_set_string (fetch_spec, "_type", "cluster-list");
+	if (xmmsv_list_get_size (group) > 0) {
+		xmmsv_dict_set (fetch_spec, "cluster-by", group);
+	} else {
+		xmmsv_dict_set_string (fetch_spec, "cluster-by", "id");
+	}
+
+	org_dict = xmmsv_new_dict ();
+	xmmsv_dict_set_string (org_dict, "_type", "organize");
+	xmmsv_dict_set (fetch_spec, "data", org_dict);
+
+	for (i = 0; xmmsv_list_get_string (fetch, i, &str); i++) {
+		xmmsv_t *meta = xmmsv_new_dict ();
+
+		if (strcmp (str, "id") == 0) {
+			xmmsv_t *get = xmmsv_new_list ();
+			xmmsv_list_append_string (get, "id");
+			xmmsv_dict_set (meta, "get", get);
+			xmmsv_unref (get);
+			xmmsv_dict_set_string (meta, "keys", "song_id");
+		} else {
+			xmmsv_dict_set_string (meta, "keys", str);
+		}
+
+		xmmsv_dict_set (org_dict, str, meta);
+		xmmsv_unref (meta);
+	}
+
+	coll = xmmsv_coll_add_order_operators (coll, order);
+
+	ret = xmms_collection_client_query (dag, coll, fetch_spec, err);
+
+	xmmsv_coll_unref (coll);
+	xmmsv_unref (fetch_spec);
+	xmmsv_unref (org_dict);
+
+	return ret;
+}
+
+xmmsv_t *
+xmms_collection_client_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
+		xmmsv_t *fetch, xmms_error_t *err)
+{
+	xmmsv_t *ret;
 	/* validate the collection to query */
 	if (!xmms_collection_validate (dag, coll, NULL, NULL)) {
 		if (err) {
@@ -952,29 +994,11 @@ xmms_collection_client_query_infos (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 		return NULL;
 	}
 
-	values = combine_lists (fetch, order);
-	coll = xmmsv_coll_add_order_operators (coll, order);
-
 	g_mutex_lock (dag->mutex);
-	ret = xmms_medialib_query (dag, coll, values);
+	ret = xmms_medialib_query (dag, coll, fetch);
 	g_mutex_unlock (dag->mutex);
 
-	xmmsv_unref (values);
-	xmmsv_coll_unref (coll);
-
-	if (xmmsv_list_get_size (group) > 0) {
-		GList *n, *last = NULL;
-		for (n = ret; n; n = n->next) {
-			/* if current clusterable with last, drop last */
-			if (last && identical_values (group, (xmmsv_t *) n->data,
-			                              (xmmsv_t *) last->data)) {
-				ret = g_list_delete_link (ret, last);
-			}
-			last = n;
-		}
-	}
-
-	return limit_list (ret, lim_start, lim_len);
+	return ret;
 }
 
 /**
