@@ -93,10 +93,12 @@ static void
 setup_coll_path (void)
 {
 	xmms_config_property_t *coll_conf;
+	char *path = XMMS_BUILD_PATH ("collections");
 
 	coll_conf = xmms_config_property_register ("collection.directory",
-			XMMS_BUILD_PATH ("collections"), NULL, NULL);
+			path, NULL, NULL);
 	coll_path = xmms_config_property_get_string (coll_conf);
+	g_free (path);
 }
 
 
