@@ -72,6 +72,7 @@ struct xmms_medialib_St {
 	xmms_object_t object;
 
 	s4_t *s4;
+	int32_t next_id;
 	/** The current playlist */
 	xmms_playlist_t *playlist;
 };
@@ -116,6 +117,31 @@ xmms_medialib_destroy (xmms_object_t *object)
 #define XMMS_MEDIALIB_SOURCE_SERVER "server"
 #define XMMS_MEDIALIB_SOURCE_SERVER_ID 1
 
+static int32_t
+find_highest_id (void)
+{
+	xmmsv_coll_t *coll = xmmsv_coll_universe ();
+	xmmsv_t *fetch = xmmsv_new_dict ();
+	xmmsv_t *id;
+	int32_t ret;
+
+	xmmsv_dict_set_string (fetch, "aggregate", "max");
+	xmmsv_dict_set_string (fetch, "get", "id");
+
+	id = xmms_medialib_query (NULL, coll, fetch);
+	if (!xmmsv_get_int (id, &ret)) {
+		ret = 0;
+	}
+
+	if (id != NULL) {
+		xmmsv_unref (id);
+	}
+
+	xmmsv_unref (fetch);
+	xmmsv_coll_unref (coll);
+
+	return ret;
+}
 
 /**
  * Initialize the medialib and open the database file.
@@ -196,6 +222,8 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	g_free (path);
 
 	default_sp = s4_sourcepref_create (source_pref);
+
+	medialib->next_id = find_highest_id() + 1;
 
 	return medialib;
 }
@@ -442,17 +470,10 @@ xmms_medialib_entry_property_set_str_source (xmms_medialib_entry_t id_num,
 /**
  * Return a fresh unused medialib id.
  */
-int32_t
+static int32_t
 xmms_medialib_get_new_id (void)
 {
-	int32_t id = xmms_medialib_entry_property_get_int (0, "new_id");
-
-	if (id == -1)
-		id = 1;
-
-	xmms_medialib_entry_property_set_int (0, "new_id", id + 1);
-
-	return id;
+	return medialib->next_id++;
 }
 
 
