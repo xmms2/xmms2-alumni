@@ -880,6 +880,9 @@ xmms_medialib_tree_add_tuple (GTree *tree, const char *key,
 {
 	xmmsv_t *keytreeval;
 
+	if (key == NULL || source == NULL || value == NULL)
+		return;
+
 	/* Find (or insert) subtree matching the prop key */
 	keytreeval = (xmmsv_t *) g_tree_lookup (tree, key);
 	if (!keytreeval) {
@@ -1264,6 +1267,47 @@ xmms_medialib_url_encode (const gchar *path)
 	return res;
 }
 
+typedef struct {
+	s4_fetchspec_t *fs;
+	GHashTable *ft;
+} fetch_info_t;
+
+static int
+fetchinfo_add_key (fetch_info_t *info, void *object, const char *key, s4_sourcepref_t *sp)
+{
+	int index;
+
+	if (key != NULL && strcmp (key, "id") == 0)
+		return 0;
+
+	GHashTable *obj_table = g_hash_table_lookup (info->ft, object);
+
+	if (key == NULL)
+		key = "__NULL__";
+
+	if (obj_table == NULL) {
+		obj_table = g_hash_table_new (g_str_hash, g_str_equal);
+		g_hash_table_insert (info->ft, object, obj_table);
+	}
+
+	if ((index = GPOINTER_TO_INT (g_hash_table_lookup (obj_table, key))) == 0) {
+		index = s4_fetchspec_size (info->fs);
+		g_hash_table_insert (obj_table, (void*)key, GINT_TO_POINTER (index));
+		s4_fetchspec_add (info->fs, key, sp);
+	}
+
+	return index;
+}
+
+static int
+fetchinfo_get_index (fetch_info_t *info, void *object, const char *key)
+{
+	GHashTable *obj_table = g_hash_table_lookup (info->ft, object);
+	if (key == NULL)
+		key = "__NULL__";
+	return GPOINTER_TO_INT (g_hash_table_lookup (obj_table, key));
+}
+
 /* A filter for idlists. Checks if the value given (id number)
  * is in the hash table
  */
@@ -1327,26 +1371,6 @@ static int token_filter (s4_val_t *value, s4_condition_t *cond)
 }
 
 /**
- * Finds the position of "id" in the list given
- * @param fetch The list to search for "id"
- * @return The position of "id"
- */
-static int
-xmms_medialib_find_idpos (xmmsv_t *fetch)
-{
-	int i;
-	const char *str;
-
-	for (i = 0; i < xmmsv_list_get_size (fetch); i++) {
-		if (xmmsv_list_get_string (fetch, i, &str) && strcmp (str, "id") == 0) {
-			break;
-		}
-	}
-
-	return i;
-}
-
-/**
  * Creates a new resultset where the order is the same as in the idlist
  *
  * @param set The resultset to sort. It will be freed by this function
@@ -1355,7 +1379,7 @@ xmms_medialib_find_idpos (xmmsv_t *fetch)
  * @return A new set with the same order as the idlist
  */
 static s4_resultset_t *
-xmms_medialib_result_sort_idlist (s4_resultset_t *set, int id_pos, xmmsv_t *idlist)
+xmms_medialib_result_sort_idlist (s4_resultset_t *set, xmmsv_t *idlist)
 {
 	int i;
 	const s4_resultrow_t *row;
@@ -1369,7 +1393,7 @@ xmms_medialib_result_sort_idlist (s4_resultset_t *set, int id_pos, xmmsv_t *idli
 	s4_resultset_t *ret = s4_resultset_create (s4_resultset_get_colcount (set));
 
 	for (i = 0; s4_resultset_get_row (set, i, &row); i++) {
-		if (s4_resultrow_get_col (row, id_pos, &result)
+		if (s4_resultrow_get_col (row, 0, &result)
 				&& s4_val_get_int (s4_result_get_val (result), &ival)) {
 			g_hash_table_insert (row_table, GINT_TO_POINTER (ival), (void*)row);
 		}
@@ -1397,17 +1421,17 @@ xmms_medialib_result_sort_idlist (s4_resultset_t *set, int id_pos, xmmsv_t *idli
  * @return The set (or a new set) with the correct ordering
  */
 static s4_resultset_t *
-xmms_medialib_result_sort (s4_resultset_t *set, xmmsv_t *fetch, xmmsv_t *order)
+xmms_medialib_result_sort (s4_resultset_t *set, fetch_info_t *fetch_info, xmmsv_t *order)
 {
 	int *s4_order = malloc (sizeof (int) * (xmmsv_list_get_size (order) + 1));
-	int i, j, k, stop;
+	int i, j, stop;
 	xmmsv_t *val;
-	const char *str, *fstr;
+	const char *str;
 
 	/* Find the first idlist-order operand */
 	for (i = 0; xmmsv_list_get (order, i, &val); i++) {
 		if (xmmsv_is_type (val, XMMSV_TYPE_LIST)) {
-			set = xmms_medialib_result_sort_idlist (set, xmms_medialib_find_idpos (fetch), val);
+			set = xmms_medialib_result_sort_idlist (set, val);
 			break;
 		}
 	}
@@ -1424,13 +1448,16 @@ xmms_medialib_result_sort (s4_resultset_t *set, xmmsv_t *fetch, xmmsv_t *order)
 					s4_resultset_shuffle (set);
 				}
 				break;
+			} else if (strcmp (str, "id") == 0) {
+				s4_order[j] = 1;
+			} else {
+				s4_order[j] = fetchinfo_get_index (fetch_info, NULL, str) + 1;
 			}
 
-			for (k = 0; k < xmmsv_list_get_size (fetch); k++) {
-				if (xmmsv_list_get_string (fetch, k, &fstr) && strcmp (str, fstr) == 0) {
-					s4_order[j++] = neg?-(k + 1):(k + 1);
-				}
+			if (neg) {
+				s4_order[j] = -s4_order[j];
 			}
+			j++;
 		}
 	}
 	s4_order[j] = 0;
@@ -1440,45 +1467,6 @@ xmms_medialib_result_sort (s4_resultset_t *set, xmmsv_t *fetch, xmmsv_t *order)
 
 	free (s4_order);
 	return set;
-}
-
-/**
- * Creates an S4 fetchspec for the fetch list given
- *
- * @param fetch The fetch list to use when creating the fetch spec
- * @return A new fetchspec, must be freed with s4_fetchspec_free
- */
-static s4_fetchspec_t*
-xmms_medialib_fetch_to_spec (xmmsv_t *fetch)
-{
-	xmmsv_t *prop;
-	const char *p;
-	int i;
-	int found_id = 0;
-	s4_fetchspec_t *fs = s4_fetchspec_create ();
-
-	for (i = 0; i < xmmsv_list_get_size (fetch); i++) {
-		xmmsv_list_get (fetch, i, &prop);
-
-		if (!xmmsv_get_string (prop, &p))
-			p = NULL;
-		else {
-			if (!strcmp (p, "id")) {
-				p = "song_id";
-				found_id = 1;
-			}
-
-			s4_fetchspec_add (fs, p, default_sp);
-		}
-	}
-
-	/* Always add id to the fetchspec */
-	if (!found_id) {
-		s4_fetchspec_add (fs, "song_id", default_sp);
-		xmmsv_list_append_string (fetch, "id");
-	}
-
-	return fs;
 }
 
 /* Check if a collection is the universe
@@ -1564,7 +1552,7 @@ static int has_order (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
  * @return An S4 resultset, or NULL if return_result equals 0
  */
 static s4_resultset_t*
-xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch,
+xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info_t *fetch,
 		xmmsv_t *order, s4_condition_t **cond, int return_result)
 {
 	s4_resultset_t *res = NULL;
@@ -1600,12 +1588,11 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 			xmmsv_t *id_list = concat?xmmsv_new_list ():NULL;
 			GHashTable *id_table;
 			s4_resultset_t *set;
-			int id_pos = xmms_medialib_find_idpos (fetch);
 
 			if (concat) {
 				id_table = g_hash_table_new (NULL, NULL);
 				if (return_result) {
-					res = s4_resultset_create (xmmsv_list_get_size (fetch));
+					res = s4_resultset_create (s4_fetchspec_size (fetch->fs));
 				}
 			}
 
@@ -1629,7 +1616,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 					for (j = 0; s4_resultset_get_row (set, j, &row); j++) {
 						int32_t ival;
 
-						if (s4_resultrow_get_col (row, id_pos, &result)
+						if (s4_resultrow_get_col (row, 0, &result)
 								&& s4_val_get_int (s4_result_get_val (result), &ival)) {
 							xmmsv_list_append_int (id_list, ival);
 							g_hash_table_insert (id_table, GINT_TO_POINTER (ival), GINT_TO_POINTER (1));
@@ -1802,6 +1789,9 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 			if (order != NULL) {
 				if (!xmmsv_coll_attribute_get (coll, "type", &key) || strcmp (key, "value") == 0) {
 					xmmsv_coll_attribute_get (coll, "field", &val);
+
+					fetchinfo_add_key (fetch, NULL, val, default_sp);
+
 					if (!xmmsv_coll_attribute_get (coll, "order", &key) || strcmp (key, "ASC") == 0) {
 						xmmsv_list_append_string (order, val);
 					} else if (strcmp (key, "DESC") == 0) {
@@ -1817,7 +1807,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 				}
 			}
 			xmmsv_list_get_coll (operands, 0, &c);
-			res = xmms_medialib_query_recurs (dag, c, fetch, order, cond, return_result);
+			xmms_medialib_query_recurs (dag, c, fetch, order, cond, 0);
 			break;
 		case XMMS_COLLECTION_TYPE_LIMIT:
 		{
@@ -1827,7 +1817,6 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 			const s4_result_t *result;
 			const s4_resultset_t *set;
 			int32_t ival;
-			int id_pos = xmms_medialib_find_idpos (fetch);
 			GHashTable *id_table = g_hash_table_new (NULL, NULL);
 
 			if (xmmsv_coll_attribute_get (coll, "start", &key)) {
@@ -1851,7 +1840,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 					s4_resultset_add_row (res, row);
 				}
 
-				s4_resultrow_get_col (row, id_pos, &result);
+				s4_resultrow_get_col (row, 0, &result);
 				if (result != NULL && s4_val_get_int (s4_result_get_val (result), &ival)) {
 					g_hash_table_insert (id_table, GINT_TO_POINTER (ival), GINT_TO_POINTER (1));
 					xmmsv_list_append_int (child_order, ival);
@@ -1892,67 +1881,11 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *f
 	}
 
 	if (res == NULL && return_result) {
-		s4_fetchspec_t *fs = xmms_medialib_fetch_to_spec (fetch);
-		res = s4_query (medialib->s4, fs, *cond);
-		s4_fetchspec_free (fs);
+		res = s4_query (medialib->s4, fetch->fs, *cond);
 		res = xmms_medialib_result_sort (res, fetch, order);
 	}
 
 	return res;
-}
-
-/**
- * Converts an S4 resultset into a list of dicts
- *
- * @param set The set to convert
- * @return A GList of xmmsv dicts, one dict for every entry
- */
-static GList*
-xmms_medialib_result_to_list (s4_resultset_t *set)
-{
-	int i,j;
-	const char *s, *key;
-	int32_t ival;
-	xmmsv_t *dict;
-	GList *ret = NULL;
-	const s4_resultrow_t *row;
-
-	if (set == NULL)
-		return NULL;
-
-	for (i = 0; s4_resultset_get_row (set, i, &row); i++) {
-		for (dict = NULL, j = 0; j < s4_resultset_get_colcount (set); j++) {
-			const s4_result_t *res;
-			xmmsv_t *val = NULL;
-			if (!s4_resultrow_get_col (row, j, &res))
-				continue;
-
-			if (s4_val_get_str (s4_result_get_val (res), &s)) {
-				val = xmmsv_new_string (s);
-			} else if (s4_val_get_int (s4_result_get_val (res), &ival)) {
-				val = xmmsv_new_int (ival);
-			}
-
-			if (val == NULL)
-				continue;
-
-			if (dict == NULL) {
-				dict = xmmsv_new_dict();
-			}
-
-			key = s4_result_get_key (res);
-			if (!strcmp (key, "song_id"))
-				key = "id";
-			xmmsv_dict_set (dict, key, val);
-
-			xmmsv_unref (val);
-		}
-
-		if (dict != NULL)
-			ret = g_list_prepend (ret, dict);
-	}
-
-	return g_list_reverse (ret);
 }
 
 /**
@@ -1965,54 +1898,732 @@ xmms_medialib_result_to_list (s4_resultset_t *set)
 xmms_medialib_entry_t
 xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 {
-	xmmsv_t *fetch;
-	s4_condition_t *cond;
-	s4_resultset_t *set;
-	int32_t ret = 0;
+	xmmsv_t *fetch_spec = xmmsv_new_dict ();
+	xmmsv_t *get_list = xmmsv_new_list ();
+	xmmsv_t *res;
+	xmms_medialib_entry_t ret;
 
-	fetch = xmmsv_new_list ();
-	xmmsv_list_append_string (fetch, "id");
-	set = xmms_medialib_query_recurs (dag, coll, fetch, NULL, &cond, 1);
-	s4_cond_free (cond);
+	xmmsv_list_append_string (get_list, "id");
 
-	if (set != NULL) {
-		const s4_result_t *res = NULL;
-		int size = s4_resultset_get_rowcount (set);
-		while (res == NULL)
-			res = s4_resultset_get_result (set, g_random_int_range (0, size), 0);
+	xmmsv_dict_set_string (fetch_spec, "_type", "metadata");
+	xmmsv_dict_set_string (fetch_spec, "aggregate", "random");
+	xmmsv_dict_set (fetch_spec, "get", get_list);
 
-		s4_val_get_int (s4_result_get_val (res), &ret);
-		s4_resultset_free (set);
+	res = xmms_medialib_query (dag, coll, fetch_spec);
+	xmmsv_get_int (res, &ret);
+
+	xmmsv_unref (get_list);
+	xmmsv_unref (fetch_spec);
+	xmmsv_unref (res);
+
+	return ret;
+}
+
+typedef enum {
+	AGGREGATE_FIRST,
+	AGGREGATE_SUM,
+	AGGREGATE_MAX,
+	AGGREGATE_MIN,
+	AGGREGATE_LIST,
+	AGGREGATE_RANDOM,
+	AGGREGATE_AVG
+} aggregate_function_t;
+
+typedef struct fetch_spec_St {
+	enum {
+		FETCH_CLUSTER_LIST,
+		FETCH_CLUSTER_DICT,
+		FETCH_ORGANIZE,
+		FETCH_METADATA
+	} type;
+	union {
+		struct {
+			const char **cluster_by;
+			int cluster_count;
+			int *cols;
+			struct fetch_spec_St *data;
+		} cluster;
+		struct {
+			enum {
+				METADATA_ID,
+				METADATA_KEY,
+				METADATA_VALUE,
+				METADATA_SOURCE,
+				METADATA_NONE
+			} get[5];
+			int col_count;
+			int *cols;
+			aggregate_function_t aggr_func;
+		} metadata;
+		struct {
+			int count;
+			const char **keys;
+			struct fetch_spec_St **data;
+		} organize;
+	} data;
+} fetch_spec_t;
+
+/* Converts an S4 result (a column) into a list of xmmsv values */
+static xmmsv_t *
+result_to_xmmsv (xmmsv_t *ret, int32_t id, const s4_result_t *res,
+		fetch_spec_t *spec)
+{
+	int32_t i;
+	xmmsv_t *dict = NULL; /* The dict used to find cur */
+	xmmsv_t *cur = ret;
+	const char *strval, *key = NULL;
+	char buf[12]; /* Big enough to hold 2^32 with minus sign */
+	int32_t ival;
+	const s4_val_t *val;
+
+	/* Loop through all the values the column has */
+	while (res != NULL) {
+		/* Loop through the list of what to get ("key", "source", ..) */
+		for (i = 0; spec->data.metadata.get[i] != METADATA_NONE; i++) {
+			strval = NULL;
+			/* Fill strval with the correct value if it is a string
+			 * or ival if it is an integer
+			 */
+			switch (spec->data.metadata.get[i]) {
+			case METADATA_KEY:
+				strval = s4_result_get_key (res);
+				break;
+			case METADATA_SOURCE:
+				strval = s4_result_get_src (res);
+				break;
+			case METADATA_ID:
+				ival = id;
+				break;
+			case METADATA_VALUE:
+				val = s4_result_get_val (res);
+
+				if (!s4_val_get_int (val, &ival)) {
+					s4_val_get_str (val, &strval);
+				}
+				break;
+			default: break; /* Silence compiler warning */
+			}
+
+			/* If this is not the last property to get we use this property
+			 * as a key in a dict
+			 */
+			if (spec->data.metadata.get[i + 1] != METADATA_NONE) {
+				/* Convert integers to strings */
+				if (strval == NULL) {
+					sprintf (buf, "%i", ival);
+					key = buf;
+				} else {
+					key = strval;
+				}
+
+				/* Create a new dict if none exists */
+				if (cur == NULL) {
+					cur = xmmsv_new_dict ();
+
+					if (dict == NULL) {
+						ret = cur;
+					} else {
+						xmmsv_dict_set (dict, key, cur);
+					}
+				}
+				dict = cur;
+				if (!xmmsv_dict_get (dict, key, &cur)) {
+					cur = NULL;
+				}
+			}
+		}
+
+		/* We do not build a list for first, but simply return the first value */
+		if (spec->data.metadata.aggr_func == AGGREGATE_FIRST) {
+			if (cur != NULL)
+				return ret;
+			if (strval != NULL) {
+				cur = xmmsv_new_string (strval);
+			} else {
+				cur = xmmsv_new_int (ival);
+			}
+		} else { /* Append the new value to the end of the list */
+			if (cur == NULL) {
+				cur = xmmsv_new_list ();
+			}
+			if (strval != NULL) {
+				xmmsv_list_append_string (cur, strval);
+			} else {
+				xmmsv_list_append_int (cur, ival);
+			}
+		}
+
+		/* Update the previous dict (if there is one) */
+		if (dict != NULL) {
+			xmmsv_dict_set (dict, key, cur);
+		} else {
+			ret = cur;
+		}
+
+		res = s4_result_next (res);
 	}
 
 	return ret;
 }
 
+/* Takes a list and returns the result after the aggregate function has been
+ * applied to it. The returned value has a refcount of 1.
+ */
+static xmmsv_t *
+aggregate_list (xmmsv_t *list, aggregate_function_t aggr_func)
+{
+	int i, list_size = xmmsv_list_get_size (list);
+	int32_t ival, min = INT32_MAX, max = INT32_MIN, sum = 0, n = 0;
+	const char *str;
+	xmmsv_t *val, *ret = NULL;
+	GHashTable *str_table, *int_table;
+	GHashTableIter iter;
+
+	switch (aggr_func) {
+	case AGGREGATE_FIRST:
+		xmmsv_list_get (list, 0, &ret);
+		xmmsv_ref (ret);
+		break;
+	case AGGREGATE_LIST:
+		/* To remove duplicates from the list we create two hash tables
+		 * one for integers and one for strings and insert all strings
+		 * and integers into them. The hash table have no duplicates
+		 * and we simply iterate over it afterwards to get back the values
+		 */
+		str_table = g_hash_table_new (g_str_hash, g_str_equal);
+		int_table = g_hash_table_new (NULL, NULL);
+		ret = xmmsv_new_list ();
+
+		for (i = 0; xmmsv_list_get (list, i, &val); i++) {
+			if (xmmsv_get_int (val, &ival)) {
+				g_hash_table_insert (int_table, GINT_TO_POINTER (ival), (void*)1);
+			} else if (xmmsv_get_string (val, &str)) {
+				g_hash_table_insert (str_table, (void*)str, (void*)1);
+			}
+		}
+
+		g_hash_table_iter_init (&iter, str_table);
+		while (g_hash_table_iter_next (&iter, (void**)&str, NULL)) {
+			xmmsv_list_append_string (ret, str);
+		}
+		g_hash_table_iter_init (&iter, int_table);
+		while (g_hash_table_iter_next (&iter, (void**)&ival, NULL)) {
+			xmmsv_list_append_int (ret, ival);
+		}
+
+		g_hash_table_destroy (str_table);
+		g_hash_table_destroy (int_table);
+		break;
+	case AGGREGATE_SUM:
+	case AGGREGATE_MAX:
+	case AGGREGATE_MIN:
+	case AGGREGATE_AVG:
+		for (i = 0; i < list_size; i++) {
+			int32_t ival;
+			if (xmmsv_list_get_int (list, i, &ival)) {
+				sum += ival;
+				if (ival < min)
+					min = ival;
+				if (ival > max)
+					max = ival;
+				n++;
+			}
+		}
+		if (n > 0) {
+			switch (aggr_func) {
+			case AGGREGATE_SUM: ret = xmmsv_new_int (sum); break;
+			case AGGREGATE_MIN: ret = xmmsv_new_int (min); break;
+			case AGGREGATE_MAX: ret = xmmsv_new_int (max); break;
+			case AGGREGATE_AVG: ret = xmmsv_new_int (sum/n); break;
+			default: break; /* To prevent compiler warnings */
+			}
+		}
+		break;
+	case AGGREGATE_RANDOM:
+		xmmsv_list_get (list, g_random_int_range (0, n), &ret);
+		xmmsv_ref (ret);
+		break;
+	}
+
+	return ret;
+}
+
+/* Applies an aggregation function to an xmmsv */
+static xmmsv_t *
+aggregate_result (xmmsv_t *val, aggregate_function_t aggr_func)
+{
+	if (val == NULL) {
+		return NULL;
+	} else if (xmmsv_is_type (val, XMMSV_TYPE_DICT)) {
+		/* If it's a dict we call this function recursively on all its values */
+		xmmsv_dict_iter_t *it;
+		xmmsv_get_dict_iter (val, &it);
+
+		for (; xmmsv_dict_iter_valid (it); xmmsv_dict_iter_next (it)) {
+			xmmsv_t *val;
+			xmmsv_dict_iter_pair (it, NULL, &val);
+			val = aggregate_result (val, aggr_func);
+			xmmsv_dict_iter_set (it, val);
+			xmmsv_unref (val);
+		}
+	} else if (xmmsv_is_type (val, XMMSV_TYPE_LIST)) {
+		val = aggregate_list (val, aggr_func);
+	}
+
+	return val;
+}
+
+/* Converts an S4 resultset to an xmmsv using the fetch specification */
+static xmmsv_t *
+metadata_to_xmmsv (s4_resultset_t *set, fetch_spec_t *spec)
+{
+	xmmsv_t *ret = NULL, *tmp;
+	const s4_resultrow_t *row;
+	const s4_result_t *res;
+	int i, j;
+
+	/* Loop over the rows in the resultset */
+	for (i = 0; s4_resultset_get_row (set, i, &row); i++) {
+		int32_t id;
+		s4_val_get_int (s4_result_get_val (s4_resultset_get_result (set, i, 0)), &id);
+		for (j = 0; j < spec->data.metadata.col_count; j++) {
+			if (s4_resultrow_get_col (row, spec->data.metadata.cols[j], &res)) {
+				ret = result_to_xmmsv (ret, id, res, spec);
+			}
+		}
+	}
+
+	/* Optimize for first */
+	if (spec->data.metadata.aggr_func == AGGREGATE_FIRST) {
+		tmp = ret;
+	} else {
+		tmp = aggregate_result (ret, spec->data.metadata.aggr_func);
+		if (tmp != ret) {
+			xmmsv_unref (ret);
+		}
+	}
+
+	return tmp;
+}
+
+/* Divides an S4 set into a list of smaller sets with
+ * the same values for the cluster attributes
+ */
+static GList *
+cluster_set (s4_resultset_t *set, fetch_spec_t *spec)
+{
+	int i, j, levels = spec->data.cluster.cluster_count;
+	s4_resultset_t *cluster;
+	const s4_resultrow_t *row;
+	const s4_result_t *res;
+	GHashTable *cur_table, *root_table;
+	GList *ret = NULL;
+
+	/* Create a hash table for hash tables if we group on more than one attribute */
+	if (levels > 1) {
+		root_table = g_hash_table_new_full (NULL, NULL,
+				NULL, (GDestroyNotify)g_hash_table_destroy);
+	} else {
+		root_table = g_hash_table_new (NULL, NULL);
+	}
+
+	/* Run through all the rows in the result set.
+	 * Uses a hash table to find the correct cluster to put the row in
+	 */
+	for (i = 0; s4_resultset_get_row (set, i, &row); i++) {
+		cur_table = root_table;
+		for (j = 0; j < levels; j++) {
+			int col = spec->data.cluster.cols[j];
+			void *value = NULL;
+
+			/* If the value to cluster by is a string we save the pointer
+			 * of it into value (this works because there are no duplicate
+			 * strings in S4), otherwise we write the integer to value
+			 */
+			if (s4_resultrow_get_col (row, col, &res)) {
+				const s4_val_t *val = s4_result_get_val (res);
+				if (!s4_val_get_str (val, (const char**)&value))
+					s4_val_get_int (val, (int32_t*)&value);
+			}
+
+			/* If we have more keys to cluster by after this
+			 * we lookup the hash table for that key
+			 */
+			if (j < (levels - 1)) {
+				GHashTable *next_table = g_hash_table_lookup (cur_table, value);
+				if (next_table == NULL) {
+					if (j < (levels - 2)) {
+						next_table = g_hash_table_new_full (NULL, NULL,
+								NULL, (GDestroyNotify)g_hash_table_destroy);
+					} else {
+						next_table = g_hash_table_new (NULL, NULL);
+					}
+					g_hash_table_insert (cur_table, value, next_table);
+				}
+				cur_table = next_table;
+			} else {
+				/* This is the last key to cluster by, we find the cluster
+				 * and insert the row
+				 */
+				cluster = g_hash_table_lookup (cur_table, value);
+				if (cluster == NULL) {
+					cluster = s4_resultset_create (s4_resultset_get_colcount (set));
+					g_hash_table_insert (cur_table, value, cluster);
+					ret = g_list_prepend (ret, cluster);
+				}
+				s4_resultset_add_row (cluster, row);
+			}
+		}
+	}
+
+	g_hash_table_destroy (root_table);
+
+	return g_list_reverse (ret);
+}
+
+/* Converts an S4 resultset into an xmmsv_t, based on the fetch specification */
+static xmmsv_t *
+resultset_to_xmmsv (s4_resultset_t *set, fetch_spec_t *spec)
+{
+	xmmsv_t *val, *tmp, *dict, *ret = NULL;
+	GList *sets;
+	int i;
+
+	switch (spec->type) {
+	case FETCH_METADATA:
+		ret = metadata_to_xmmsv (set, spec);
+		break;
+
+	case FETCH_ORGANIZE:
+		ret = xmmsv_new_dict ();
+
+		for (i = 0; i < spec->data.organize.count; i++) {
+			val = resultset_to_xmmsv (set, spec->data.organize.data[i]);
+			if (val != NULL) {
+				xmmsv_dict_set (ret, spec->data.organize.keys[i], val);
+				xmmsv_unref (val);
+			}
+		}
+		break;
+
+	case FETCH_CLUSTER_LIST:
+	case FETCH_CLUSTER_DICT:
+		sets = cluster_set (set, spec);
+
+		if (spec->type == FETCH_CLUSTER_LIST) {
+			ret = xmmsv_new_list ();
+			for (; sets != NULL; sets = g_list_delete_link (sets, sets)) {
+				set = sets->data;
+
+				val = resultset_to_xmmsv (set, spec->data.cluster.data);
+				if (val != NULL) {
+					xmmsv_list_append (ret, val);
+					xmmsv_unref (val);
+				}
+				s4_resultset_free (set);
+			}
+		} else {
+			ret = xmmsv_new_dict ();
+			for (; sets != NULL; sets = g_list_delete_link (sets, sets)) {
+				set = sets->data;
+
+				val = resultset_to_xmmsv (set, spec->data.cluster.data);
+
+				/* Insert the value in the dict(s) */
+				if (val != NULL) {
+					dict = ret;
+
+					for (i = 0; i < spec->data.cluster.cluster_count; i++) {
+						int col = spec->data.cluster.cols[i];
+						int32_t ival;
+						char buf[12];
+						const char *str;
+						const s4_result_t *res;
+
+						/* Get the attributes from the first row. Since they are in
+						 * the same cluster this should be the same for all the
+						 * entries in the set
+						 */
+						if ((res = s4_resultset_get_result (set, 0, col)) != NULL) {
+							const s4_val_t *s4_val = s4_result_get_val (res);
+							if (!s4_val_get_str (s4_val, &str)) {
+								s4_val_get_int (s4_val, &ival);
+								sprintf (buf, "%i", ival);
+								str = buf;
+							}
+
+							if (i < (spec->data.cluster.cluster_count - 1)) {
+								if (!xmmsv_dict_get (dict, str, &tmp)) {
+									tmp = xmmsv_new_dict ();
+									xmmsv_dict_set (dict, str, tmp);
+									xmmsv_unref (tmp);
+								}
+								dict = tmp;
+							} else {
+								xmmsv_dict_set (dict, str, val);
+							}
+						} else {
+							/* A cluster where one of the cluster-properties
+							 * is not set, we do not store it in the dict
+							 */
+							break;
+						}
+					}
+
+					xmmsv_unref (val);
+				}
+				s4_resultset_free (set);
+			}
+		}
+		break;
+	}
+
+	return ret;
+}
+
+/* Converts a fetch specification in xmmsv_t form into a fetch_spec_t structure */
+static fetch_spec_t *
+fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info)
+{
+	xmmsv_t *val;
+	const char *str;
+	int i, id_only = 0;
+	fetch_spec_t *ret = malloc (sizeof (fetch_spec_t));
+	s4_sourcepref_t *sp;
+
+	switch (xmmsv_get_type (fetch)) {
+	case XMMSV_TYPE_DICT:
+	{
+		const char *type;
+		if (!xmmsv_dict_entry_get_string (fetch, "_type", &type)) {
+			type = "metadata";
+		}
+
+		if (strcmp (type, "metadata") == 0) {
+			ret->type = FETCH_METADATA;
+
+			if (xmmsv_dict_get (fetch, "get", &val)) {
+				for (i = 0; i < 4 && xmmsv_list_get_string (val, i, &str); i++) {
+					if (strcmp (str, "id") == 0) {
+						ret->data.metadata.get[i] = METADATA_ID;
+					} else if (strcmp (str, "key") == 0) {
+						ret->data.metadata.get[i] = METADATA_KEY;
+					} else if (strcmp (str, "value") == 0) {
+						ret->data.metadata.get[i] = METADATA_VALUE;
+					} else if (strcmp (str, "source") == 0) {
+						ret->data.metadata.get[i] = METADATA_SOURCE;
+					}
+				}
+				if (xmmsv_get_string (val, &str)) {
+					if (strcmp (str, "id") == 0) {
+						ret->data.metadata.get[i] = METADATA_ID;
+					} else if (strcmp (str, "key") == 0) {
+						ret->data.metadata.get[i] = METADATA_KEY;
+					} else if (strcmp (str, "value") == 0) {
+						ret->data.metadata.get[i] = METADATA_VALUE;
+					} else if (strcmp (str, "source") == 0) {
+						ret->data.metadata.get[i] = METADATA_SOURCE;
+					}
+					i++;
+				}
+
+				ret->data.metadata.get[i] = METADATA_NONE;
+				if (i == 1 && ret->data.metadata.get[0] == METADATA_ID)
+					id_only = 1;
+			} else {
+				ret->data.metadata.get[0] = METADATA_VALUE;
+				ret->data.metadata.get[1] = METADATA_NONE;
+			}
+
+			if (xmmsv_dict_get (fetch, "source-preference", &val)) {
+				const char **strs = malloc (
+						sizeof (const char*) * (xmmsv_list_get_size (val) + 1));
+
+				for (i = 0; xmmsv_list_get_string (val, i, &str); i++) {
+					strs[i] = str;
+				}
+				strs[i] = NULL;
+				sp = s4_sourcepref_create (strs);
+				free (strs);
+			} else {
+				sp = s4_sourcepref_ref (default_sp);
+			}
+			if (id_only) {
+				ret->data.metadata.col_count = 1;
+				ret->data.metadata.cols = malloc (sizeof (int) * ret->data.metadata.col_count);
+				ret->data.metadata.cols[0] = 0;
+			} else if (xmmsv_dict_get (fetch, "keys", &val)) {
+				ret->data.metadata.col_count = xmmsv_list_get_size (val);
+				if (ret->data.metadata.col_count == -1) {
+					ret->data.metadata.col_count = 1;
+				}
+				ret->data.metadata.cols = malloc (sizeof (int) * ret->data.metadata.col_count);
+				for (i = 0; xmmsv_list_get_string (val, i, &str); i++) {
+					ret->data.metadata.cols[i] =
+						fetchinfo_add_key (info, fetch, str, sp);
+				}
+				if (xmmsv_get_string (val, &str)) {
+					ret->data.metadata.cols[0] =
+						fetchinfo_add_key (info, fetch, str, sp);
+				}
+			} else {
+				ret->data.metadata.col_count = 1;
+				ret->data.metadata.cols = malloc (sizeof (int) * ret->data.metadata.col_count);
+				ret->data.metadata.cols[0] = fetchinfo_add_key (info, fetch, NULL, sp);
+			}
+			if (!xmmsv_dict_entry_get_string (fetch, "aggregate", &str)) {
+				/* Default to first as the aggregation function */
+				str = "first";
+			}
+			if (strcmp (str, "first") == 0) {
+				ret->data.metadata.aggr_func = AGGREGATE_FIRST;
+			} else if (strcmp (str, "sum") == 0) {
+				ret->data.metadata.aggr_func = AGGREGATE_SUM;
+			} else if (strcmp (str, "max") == 0) {
+				ret->data.metadata.aggr_func = AGGREGATE_MAX;
+			} else if (strcmp (str, "min") == 0) {
+				ret->data.metadata.aggr_func = AGGREGATE_MIN;
+			} else if (strcmp (str, "list") == 0) {
+				ret->data.metadata.aggr_func = AGGREGATE_LIST;
+			} else if (strcmp (str, "random") == 0) {
+				ret->data.metadata.aggr_func = AGGREGATE_RANDOM;
+			} else if (strcmp (str, "avg") == 0) {
+				ret->data.metadata.aggr_func = AGGREGATE_AVG;
+			} else { /* Unknown aggregation function */
+				ret->data.metadata.aggr_func = AGGREGATE_FIRST;
+			}
+
+			s4_sourcepref_unref (sp);
+		} else if (strcmp (type, "cluster-list") == 0
+				|| strcmp (type, "cluster-dict") == 0) {
+			if (xmmsv_dict_get (fetch, "cluster-by", &val)) {
+				if (xmmsv_is_type (val, XMMSV_TYPE_LIST)) {
+					ret->data.cluster.cluster_count = xmmsv_list_get_size (val);
+					ret->data.cluster.cluster_by = malloc (
+							sizeof (const char *) * ret->data.cluster.cluster_count);
+					ret->data.cluster.cols = malloc (
+							sizeof (int) * ret->data.cluster.cluster_count);
+					for (i = 0; xmmsv_list_get_string (val, i, &str); i++) {
+						ret->data.cluster.cluster_by[i] = str;
+						ret->data.cluster.cols[i] = fetchinfo_add_key (info, val, str, default_sp);
+					}
+				} else if (xmmsv_get_string (val, &str)) {
+					ret->data.cluster.cluster_count = 1;
+					ret->data.cluster.cluster_by = malloc (
+							sizeof (const char *) * ret->data.cluster.cluster_count);
+					ret->data.cluster.cols = malloc (
+							sizeof (int) * ret->data.cluster.cluster_count);
+					ret->data.cluster.cluster_by[0] = str;
+					ret->data.cluster.cols[0] = fetchinfo_add_key (info, val, str, default_sp);
+				}
+			}
+			if (xmmsv_dict_get (fetch, "data", &val)) {
+				ret->data.cluster.data = fetch_to_spec (val, info);
+			}
+
+			if (strcmp (type, "cluster-list") == 0) {
+				ret->type = FETCH_CLUSTER_LIST;
+			} else {
+				ret->type = FETCH_CLUSTER_DICT;
+			}
+		} else if (strcmp (type, "organize") == 0) {
+			xmmsv_dict_iter_t *it;
+			xmmsv_get_dict_iter (fetch, &it);
+
+			ret->type = FETCH_ORGANIZE;
+
+			for (ret->data.organize.count = -1 /* We do not want to count "_type" */
+					; xmmsv_dict_iter_valid (it)
+					; ret->data.organize.count++, xmmsv_dict_iter_next (it));
+
+			ret->data.organize.keys = malloc (sizeof (const char *) * ret->data.organize.count);
+			ret->data.organize.data = malloc (sizeof (fetch_spec_t *) * ret->data.organize.count);
+
+			for (i = 0, xmmsv_dict_iter_first (it)
+					; xmmsv_dict_iter_valid (it)
+					; xmmsv_dict_iter_next (it)) {
+				xmmsv_dict_iter_pair (it, &str, &val);
+
+				if (strcmp (str, "_type") != 0) {
+					ret->data.organize.keys[i] = str;
+					ret->data.organize.data[i] = fetch_to_spec (val, info);
+					i++;
+				}
+			}
+
+			xmmsv_dict_iter_explicit_destroy (it);
+		}
+		break;
+	}
+	default:
+		break;
+	}
+
+	return ret;
+}
+
+static void
+fetch_spec_free (fetch_spec_t *spec)
+{
+	int i;
+	switch (spec->type) {
+	case FETCH_METADATA:
+		free (spec->data.metadata.cols);
+		break;
+	case FETCH_CLUSTER_DICT:
+	case FETCH_CLUSTER_LIST:
+		free (spec->data.cluster.cols);
+		free (spec->data.cluster.cluster_by);
+		fetch_spec_free (spec->data.cluster.data);
+		break;
+	case FETCH_ORGANIZE:
+		for (i = 0; i < spec->data.organize.count; i++) {
+			fetch_spec_free (spec->data.organize.data[i]);
+		}
+
+		free (spec->data.organize.keys);
+		free (spec->data.organize.data);
+		break;
+	}
+
+	free (spec);
+}
+
 /**
- * Returns a list of dicts of all the entries in a collection
+ * Queries the medialib and returns an xmmsv_t with the info requested
  *
  * @param dag The collection DAG
- * @param coll The collection to find the entries in
- * @param fetch The values to fetch from the entries in coll
- * @return A GList of xmmsv dicts, one for every entry
+ * @param coll The collection to find
+ * @param fetch Specifies what to fetch
+ * @return An xmmsv_t with the structure requested in fetch
  */
-GList*
+xmmsv_t *
 xmms_medialib_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
 {
 	s4_resultset_t *set;
 	s4_condition_t *cond;
-	xmmsv_t *order;
-	GList *ret;
+	xmmsv_t *order, *ret;
+	fetch_info_t info;
+	fetch_spec_t *spec;
 
+	info.fs = s4_fetchspec_create ();
+	info.ft = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+			NULL, (GDestroyNotify)g_hash_table_destroy);
+	s4_fetchspec_add (info.fs, "song_id", default_sp);
+
+	spec = fetch_to_spec (fetch, &info);
 	order = xmmsv_new_list ();
 
-	set = xmms_medialib_query_recurs (dag, coll, fetch, order, &cond, 1);
-	ret = xmms_medialib_result_to_list (set);
+	set = xmms_medialib_query_recurs (dag, coll, &info, order, &cond, 1);
+	ret = resultset_to_xmmsv (set, spec);
 
 	if (set != NULL)
 		s4_resultset_free (set);
 	s4_cond_free (cond);
+	s4_fetchspec_free (info.fs);
+	g_hash_table_destroy (info.ft);
 	xmmsv_unref (order);
+	fetch_spec_free (spec);
 
 	return ret;
 }
