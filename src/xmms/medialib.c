@@ -87,12 +87,6 @@ struct xmms_medialib_St {
   */
 static xmms_medialib_t *medialib;
 
-
-/**
- * If you add new sourcepreferences update this!
- */
-#define SOURCE_PREF_COUNT 4
-
 static s4_sourcepref_t *default_sp;
 static const char *source_pref[] = {
 	"server",
@@ -115,7 +109,6 @@ xmms_medialib_destroy (xmms_object_t *object)
 }
 
 #define XMMS_MEDIALIB_SOURCE_SERVER "server"
-#define XMMS_MEDIALIB_SOURCE_SERVER_ID 1
 
 static int32_t
 find_highest_id (void)
@@ -1088,7 +1081,7 @@ xmms_medialib_client_set_property_int (xmms_medialib_t *medialib, gint32 entry,
 	xmms_medialib_entry_send_update (entry);
 }
 
-void
+static void
 xmms_medialib_property_remove (xmms_medialib_t *medialib, guint32 id_num,
                                const gchar *source, const gchar *key,
                                xmms_error_t *error)
