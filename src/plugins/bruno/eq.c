@@ -64,10 +64,6 @@ static gint xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint l
 	xmms_error_t *error);
 static gint64 xmms_crossfade_seek (xmms_xform_t *xform, gint64 offset,
 	xmms_xform_seek_mode_t whence, xmms_error_t *err);
-static void xmms_crossfade_gain_changed (xmms_object_t *object, xmmsv_t *_data,
-	gpointer userdata);
-static void xmms_crossfade_config_changed (xmms_object_t *object, xmmsv_t *data, gpointer userdata);
-static gfloat xmms_crossfade_gain_scale (gfloat gain, gboolean preamp);
 
 XMMS_XFORM_PLUGIN ("bruno",
 	"Bruno effect",
@@ -136,8 +132,7 @@ xmms_crossfade_plugin_setup (xmms_xform_plugin_t *xform_plugin)
     static gboolean
 xmms_crossfade_init (xmms_xform_t *xform)
 {
-    gint i,j;
-    xmms_config_property_t *config;
+    gint i;
 
     g_return_val_if_fail (xform, FALSE);
 
@@ -198,7 +193,6 @@ xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
     gint read, chan,i,j, srate;
     xmms_bruno_data_t *data;
     xmms_fade_buffer_t *read_buffer, *write_buffer;
-    xmms_stream_type_t *newstreamtype;
     g_return_val_if_fail (xform, -1);
 
     data = xmms_xform_private_data_get (xform);
