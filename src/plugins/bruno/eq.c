@@ -18,25 +18,30 @@
 #include "xmms/xmms_config.h"
 #include "xmms/xmms_log.h"
 
+#include "../includepriv/xmmspriv/xmms_ringbuf.h"
+
 #include <glib.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
 
-#define DELAY_TIME 2
+#define DELAY_TIME 4
+#define CHUNK_SIZE 4096
+
 
 typedef struct {
 
-    short *buff;
     gint framerate;
     gint channels;
-    gint read_pointer;
-    gint write_pointer;
-    gint time;
     gboolean eos;
     gfloat volume;
     gint testDataTime;
+
+    xmms_ringbuf_t *buf;
+    gint buffered;
+    gint requested;
+
 
 } xmms_fade_buffer_t;
 
@@ -48,145 +53,128 @@ typedef struct {
     gboolean read_both_buffers;
     gboolean first;
 
+
+
 } xmms_bruno_data_t;
 
-static gboolean xmms_eq2_plugin_setup (xmms_xform_plugin_t *xform_plugin);
-static gboolean xmms_eq2_init (xmms_xform_t *xform);
-static void xmms_eq2_destroy (xmms_xform_t *xform);
-static gint xmms_eq2_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
-                          xmms_error_t *error);
-static gint64 xmms_eq2_seek (xmms_xform_t *xform, gint64 offset,
-                            xmms_xform_seek_mode_t whence, xmms_error_t *err);
-static void xmms_eq2_gain_changed (xmms_object_t *object, xmmsv_t *_data,
-                                  gpointer userdata);
-static void xmms_eq2_config_changed (xmms_object_t *object, xmmsv_t *data, gpointer userdata);
-static gfloat xmms_eq2_gain_scale (gfloat gain, gboolean preamp);
+static gboolean xmms_crossfade_plugin_setup (xmms_xform_plugin_t *xform_plugin);
+static gboolean xmms_crossfade_init (xmms_xform_t *xform);
+static void xmms_crossfade_destroy (xmms_xform_t *xform);
+static gint xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
+	xmms_error_t *error);
+static gint64 xmms_crossfade_seek (xmms_xform_t *xform, gint64 offset,
+	xmms_xform_seek_mode_t whence, xmms_error_t *err);
+static void xmms_crossfade_gain_changed (xmms_object_t *object, xmmsv_t *_data,
+	gpointer userdata);
+static void xmms_crossfade_config_changed (xmms_object_t *object, xmmsv_t *data, gpointer userdata);
+static gfloat xmms_crossfade_gain_scale (gfloat gain, gboolean preamp);
 
 XMMS_XFORM_PLUGIN ("bruno",
-                   "Bruno effect",
-                   XMMS_VERSION,
-                   "Bruno effect",
-        	xmms_eq2_plugin_setup);
+	"Bruno effect",
+	XMMS_VERSION,
+	"Bruno effect",
+	xmms_crossfade_plugin_setup);
 
-static void
-xmms_bruno_flush_buffer (xmms_fade_buffer_t *buffer)
+
+    static gboolean
+xmms_crossfade_plugin_setup (xmms_xform_plugin_t *xform_plugin)
 {
-   gint i,size;
-   size = 44100 * 2 * buffer->time;
-   for(i=0;i<size;++i)
-   {
-       buffer->buff[i] = 0;
-   }
-}
+    xmms_xform_methods_t methods;
 
-static gboolean
-xmms_eq2_plugin_setup (xmms_xform_plugin_t *xform_plugin)
-{
-	xmms_xform_methods_t methods;
+    XMMS_XFORM_METHODS_INIT (methods);
 
-	XMMS_XFORM_METHODS_INIT (methods);
+    methods.init = xmms_crossfade_init;
+    methods.destroy = xmms_crossfade_destroy;
+    methods.read = xmms_crossfade_read;
+    methods.seek = xmms_crossfade_seek;
 
-	methods.init = xmms_eq2_init;
-	methods.destroy = xmms_eq2_destroy;
-	methods.read = xmms_eq2_read;
-	methods.seek = xmms_eq2_seek;
+    xmms_xform_plugin_methods_set (xform_plugin, &methods);
 
-	xmms_xform_plugin_methods_set (xform_plugin, &methods);
+    //	xmms_xform_plugin_config_property_register (xform_plugin, "bands", "15",
+    //	                                            NULL, NULL);
+    xmms_xform_plugin_indata_add (xform_plugin,
+	    XMMS_STREAM_TYPE_MIMETYPE,
+	    "audio/pcm",
+	    XMMS_STREAM_TYPE_FMT_FORMAT,
+	    XMMS_SAMPLE_FORMAT_S16,
+	    XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	    48000,
+	    XMMS_STREAM_TYPE_END);
 
-//	xmms_xform_plugin_config_property_register (xform_plugin, "bands", "15",
-//	                                            NULL, NULL);
-	xmms_xform_plugin_indata_add (xform_plugin,
-	                              XMMS_STREAM_TYPE_MIMETYPE,
-	                              "audio/pcm",
-	                              XMMS_STREAM_TYPE_FMT_FORMAT,
-	                              XMMS_SAMPLE_FORMAT_S16,
-	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
-	                              48000,
-	                              XMMS_STREAM_TYPE_END);
+    xmms_xform_plugin_indata_add (xform_plugin,
+	    XMMS_STREAM_TYPE_MIMETYPE,
+	    "audio/pcm",
+	    XMMS_STREAM_TYPE_FMT_FORMAT,
+	    XMMS_SAMPLE_FORMAT_S16,
+	    XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	    44100,
+	    XMMS_STREAM_TYPE_END);
 
-	xmms_xform_plugin_indata_add (xform_plugin,
-	                              XMMS_STREAM_TYPE_MIMETYPE,
-	                              "audio/pcm",
-	                              XMMS_STREAM_TYPE_FMT_FORMAT,
-	                              XMMS_SAMPLE_FORMAT_S16,
-	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
-	                              44100,
-	                              XMMS_STREAM_TYPE_END);
+    xmms_xform_plugin_indata_add (xform_plugin,
+	    XMMS_STREAM_TYPE_MIMETYPE,
+	    "audio/pcm",
+	    XMMS_STREAM_TYPE_FMT_FORMAT,
+	    XMMS_SAMPLE_FORMAT_S16,
+	    XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	    22050,
+	    XMMS_STREAM_TYPE_END);
 
-	xmms_xform_plugin_indata_add (xform_plugin,
-	                              XMMS_STREAM_TYPE_MIMETYPE,
-	                              "audio/pcm",
-	                              XMMS_STREAM_TYPE_FMT_FORMAT,
-	                              XMMS_SAMPLE_FORMAT_S16,
-	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
-	                              22050,
-	                              XMMS_STREAM_TYPE_END);
+    xmms_xform_plugin_indata_add (xform_plugin,
+	    XMMS_STREAM_TYPE_MIMETYPE,
+	    "audio/pcm",
+	    XMMS_STREAM_TYPE_FMT_FORMAT,
+	    XMMS_SAMPLE_FORMAT_S16,
+	    XMMS_STREAM_TYPE_FMT_SAMPLERATE,
+	    11025,
+	    XMMS_STREAM_TYPE_END);
 
-	xmms_xform_plugin_indata_add (xform_plugin,
-	                              XMMS_STREAM_TYPE_MIMETYPE,
-	                              "audio/pcm",
-	                              XMMS_STREAM_TYPE_FMT_FORMAT,
-	                              XMMS_SAMPLE_FORMAT_S16,
-	                              XMMS_STREAM_TYPE_FMT_SAMPLERATE,
-	                              11025,
-	                              XMMS_STREAM_TYPE_END);
-
-	return TRUE;
-}
-
-static void 
-xmms_eq2_reinit (xmms_fade_buffer_t *data, gint framerate, gint channels, gint time) {
-
-    //data->read_pointer = 0;
-    //data->write_pointer = 0;
-    data->framerate = framerate;
-    data->channels = channels;
-    data->time = time*(data->framerate * data->channels)/2048;
-    data->testDataTime = 0;
-
+    return TRUE;
 }
 
 
-static gboolean
-xmms_eq2_init (xmms_xform_t *xform)
+
+    static gboolean
+xmms_crossfade_init (xmms_xform_t *xform)
 {
     gint i,j;
-	xmms_config_property_t *config;
+    xmms_config_property_t *config;
 
-	g_return_val_if_fail (xform, FALSE);
+    g_return_val_if_fail (xform, FALSE);
 
-	xmms_bruno_data_t *priv;
-	gint framerate, channels;
-	priv = g_new0 ( xmms_bruno_data_t, 1);
-	xmms_xform_private_data_set (xform, priv);
-	framerate = xmms_xform_indata_get_int(xform,XMMS_STREAM_TYPE_FMT_SAMPLERATE);
-	channels = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
+    xmms_bruno_data_t *priv;
+    gint framerate, channels;
+    priv = g_new0 ( xmms_bruno_data_t, 1);
+    xmms_xform_private_data_set (xform, priv);
+    framerate = xmms_xform_indata_get_int(xform,XMMS_STREAM_TYPE_FMT_SAMPLERATE);
+    channels = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
 
-	for(i=0; i<2;++i) {
-	        priv->buffer[i] = g_malloc(sizeof(xmms_fade_buffer_t));
-		xmms_eq2_reinit(priv->buffer[i],framerate,channels,DELAY_TIME);
-		priv->buffer[i]->eos=FALSE;
-		priv->buffer[i]->volume=1;
-    		priv->buffer[i]->buff = g_malloc(44100 * 2 * sizeof (short) * priv->buffer[i]->time);
-    		for(j=0; j < priv->buffer[i]->framerate * priv->buffer[i]->channels*2; j++){
-	    		priv->buffer[i]->buff[j] = 0;
-    		}		
-		priv->buffer[i]->read_pointer=0;
-		priv->buffer[i]->write_pointer=0;
-	}
+    for(i=0; i<2;++i) {
+	priv->buffer[i] = g_malloc(sizeof(xmms_fade_buffer_t));
+	priv->buffer[i]->eos=FALSE;
+	priv->buffer[i]->framerate = framerate;
+	priv->buffer[i]->channels = channels;
+	priv->buffer[i]->testDataTime = 0;
+	priv->buffer[i]->volume=1;
+	priv->buffer[i]->requested = DELAY_TIME*framerate*channels*2;
+	priv->buffer[i]->buf = xmms_ringbuf_new(priv->buffer[i]->requested);
+	priv->buffer[i]->buffered = 0;
+
+
+    }
+
 
     priv->read_buffer = 0;
     priv->write_buffer = 0;
     priv->read_both_buffers = FALSE;
     priv->first = TRUE;
 
-	xmms_xform_outdata_type_copy (xform);
+    xmms_xform_outdata_type_copy (xform);
 
-	return TRUE;
+    return TRUE;
 }
 
-static void
-xmms_eq2_destroy (xmms_xform_t *xform)
+    static void
+xmms_crossfade_destroy (xmms_xform_t *xform)
 {
     xmms_bruno_data_t *data;
     gint i;
@@ -194,123 +182,100 @@ xmms_eq2_destroy (xmms_xform_t *xform)
     data = xmms_xform_private_data_get (xform);
     g_return_if_fail (data);
     for(i=0; i<2; ++i) {
-	g_free (data->buffer[i]->buff);
+	xmms_ringbuf_destroy(data->buffer[i]->buf);
 	g_free (data->buffer[i]);
     }
     g_free (data);
 }
 
-static gint
-xmms_eq2_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
-              xmms_error_t *error)
+
+
+    static gint
+xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
+	xmms_error_t *error)
 {
-	gint read, chan,i,j, srate;
-	xmms_bruno_data_t *data;
-	xmms_fade_buffer_t *read_buffer, *write_buffer;
-	gint read_pointer, write_pointer, read_pointer_2;
-	g_return_val_if_fail (xform, -1);
 
-	data = xmms_xform_private_data_get (xform);
-	g_return_val_if_fail (data, -1);
+    gint read, chan,i,j, srate;
+    xmms_bruno_data_t *data;
+    xmms_fade_buffer_t *read_buffer, *write_buffer;
+    xmms_stream_type_t *newstreamtype;
+    g_return_val_if_fail (xform, -1);
 
+    data = xmms_xform_private_data_get (xform);
+    g_return_val_if_fail (data, -1);
 
-	xmms_xform_t *chain;
-	for(chain = xform; chain != NULL; chain = xmms_xform_prev_get(chain)) {
-	    if(xmms_xform_eos_get(chain)) {
-		data->buffer[data->write_buffer]->eos = TRUE;
-		data->buffer[data->write_buffer]->read_pointer = 0;
-		data->write_buffer = (data->write_buffer+1)%2;
-		data->buffer[data->write_buffer]->write_pointer = data->buffer[data->write_buffer]->time/2 -1;
-		xmms_log_info("END OF SONG!");
-		break;
-	    }
+    read_buffer = data->buffer[data->read_buffer];
+    write_buffer = data->buffer[data->write_buffer];
+
+    /* ensure buffer is filled */
+    while (write_buffer->buffered < write_buffer->requested + CHUNK_SIZE) {
+	char t[CHUNK_SIZE];
+	int l = MIN( CHUNK_SIZE,  write_buffer->requested + CHUNK_SIZE - write_buffer->buffered);
+	int r;
+	r = xmms_xform_read (xform, t, l, error);
+	if (r <= 0) {
+	    write_buffer->eos = TRUE;
+	    data->write_buffer = (data->write_buffer+1)%2;
+	    //xmms_log_info("END OF SONG!");
+	    return r;
 	}
-	read_buffer = data->buffer[data->read_buffer];
-	write_buffer = data->buffer[data->write_buffer];
+	xmms_ringbuf_write (write_buffer->buf, t, r);
+	write_buffer->buffered += r;
+    }
 
-	if(read_buffer->eos) {
-	    read_buffer->testDataTime++;
-	    if(!data->read_both_buffers) {
-	    	data->read_both_buffers = TRUE;
-		xmms_log_info("Read both buffers!");
-	    }
-//	    read_buffer->volume -= 1/(gfloat)read_buffer->time;
-	    if(read_buffer->testDataTime >= read_buffer->time/2-1)
-	    {
-		read_buffer->volume = 1;
-		xmms_bruno_flush_buffer(read_buffer);
-//		read_buffer->write_pointer = 0;
-		xmms_log_info("END OF PLAY : %i",read_buffer->testDataTime);
-		read_buffer->eos = FALSE;
-		read_buffer->testDataTime=0;
-		data->read_buffer = (data->read_buffer+1)%2;
-		data->read_both_buffers = FALSE;
-		read_buffer = data->buffer[data->read_buffer];
-		read_buffer->read_pointer = 0;
-	    }
+
+    if(read_buffer->eos) {
+	read_buffer->testDataTime++;
+	if(!data->read_both_buffers) {
+	    data->read_both_buffers = TRUE;
+	    //xmms_log_info("Read both buffers!");
 	}
+	read_buffer->volume -= 1/(gfloat)(read_buffer->requested/(gfloat)CHUNK_SIZE);
+	if(read_buffer->testDataTime >= read_buffer->requested/CHUNK_SIZE)
+	{
+	    read_buffer->volume = 1;
+	    //xmms_log_info("END OF PLAY : %i",read_buffer->testDataTime);
+	    read_buffer->eos = FALSE;
+	    read_buffer->testDataTime=0;
+	    data->read_buffer = (data->read_buffer+1)%2;
+	    data->read_both_buffers = FALSE;
+	    read_buffer = data->buffer[data->read_buffer];
+	}
+    }
 
-    
+    read = xmms_ringbuf_read (read_buffer->buf, buf, len);
+    read_buffer->buffered -= read;
 
+    if(data->read_both_buffers)
+    {
 
-	read = xmms_xform_read (xform, buf, len, error);
-	chan = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
-	srate = xmms_xform_indata_get_int(xform,XMMS_STREAM_TYPE_FMT_SAMPLERATE);
-/*	if(srate != write_buffer->framerate || chan != write_buffer->channels) {
-	    // the frame rate or the chan have changed, we need to reallocate the buffer
-	    xmms_eq2_reinit(write_buffer,srate,chan,DELAY_TIME);
-	}*/
+	gfloat volume = read_buffer->volume;
+	read_buffer = data->buffer[ (data->read_buffer+1)%2 ];
+	short *buf2 = g_malloc(read_buffer->requested);
+	read = xmms_ringbuf_read (read_buffer->buf, buf2, len);
+	read_buffer->buffered -= read;
+
 	short *out = buf;
-
-	if(data->first)
-	{
-	    write_buffer->write_pointer = write_buffer->time/2-1;
-	    xmms_log_info("FIRST PTR : %i",write_buffer->write_pointer);
-	    data->first = FALSE;
-	}
-
-	read_pointer =    read_buffer->read_pointer * read_buffer->framerate * read_buffer->channels;
-	read_pointer_2 = write_buffer->read_pointer * write_buffer->framerate * write_buffer->channels;
-	write_pointer =  write_buffer->write_pointer * write_buffer->framerate * write_buffer->channels;
-	if(data->first)
-	{
-		if(read_pointer_2 == 0) {
-		    write_pointer = (write_buffer->time-1) * write_buffer->framerate * write_buffer->channels;
-		} else {
-		    write_pointer = read_pointer_2 - write_buffer->framerate * write_buffer->channels;
-		}
-		data->first = FALSE;
-	}
-
-
+//	chan = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
+	chan = read_buffer->channels;
 
 	for (i = 0; i < len/2; i+=chan)
 	{
 	    for(j=0;j<chan;++j)
 	    {
-		write_buffer->buff[i+j+write_pointer] = out[i+j];
-		out[i+j] = read_buffer->buff[i+j+read_pointer]*read_buffer->volume;
-		read_buffer->buff[i+j+read_pointer] = 0;
-
-		if(data->read_both_buffers) {
-		    out[i+j] += write_buffer->buff[i+j+read_pointer_2]*write_buffer->volume;
-		    write_buffer->buff[i+j+read_pointer_2] = 0;
-		}
-		
+		out[i+j] = out[i+j]*volume + (1-volume)*buf2[i+j];
 	    }
-	}
 
-
-	read_buffer->read_pointer = (read_buffer->read_pointer + 1 ) % read_buffer->time;
-	write_buffer->write_pointer = (write_buffer->write_pointer + 1 ) % write_buffer->time;
-	if(data->read_both_buffers) {
-	    write_buffer->read_pointer = (write_buffer->read_pointer + 1 ) % write_buffer->time;
 	}
-	return read;
+	g_free(buf2);
+    }
+
+    return len;
+
 }
 
-static gint64
-xmms_eq2_seek (xmms_xform_t *xform, gint64 offset, xmms_xform_seek_mode_t whence, xmms_error_t *err)
+    static gint64
+xmms_crossfade_seek (xmms_xform_t *xform, gint64 offset, xmms_xform_seek_mode_t whence, xmms_error_t *err)
 {
-	return xmms_xform_seek (xform, offset, whence, err);
+    return xmms_xform_seek (xform, offset, whence, err);
 }

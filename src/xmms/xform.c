@@ -1671,6 +1671,14 @@ xmms_xform_check_effects (xmms_xform_t **effect, gint size)
 
 }
 
+
+/*    void
+xmms_xform_handle_formatchange (xmms_xform_t *xform)
+{
+    xmms_object_ref (xform->prev->out_type);
+    xform->out_type = xform->prev->out_type;
+}*/
+
     static    xmms_xform_t *
 link_effects (xmms_xform_t *last, xmms_medialib_entry_t entry,GList *goal_formats, xmms_xform_t *last_effect)
 {
@@ -1724,6 +1732,7 @@ link_effects (xmms_xform_t *last, xmms_medialib_entry_t entry,GList *goal_format
 
 		// effect does not change the type 
 		xmms_xform_outdata_type_copy (fx_tab[i]);
+		//xmms_xform_handle_formatchange (fx_tab[i]);
 		//xmms_xform_print_outdata_infos(fx_tab[i]);
 
 		// check that the effect supports the streamtype
