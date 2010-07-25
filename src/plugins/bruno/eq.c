@@ -36,7 +36,7 @@ typedef struct {
     gint channels;
     gboolean eos;
     gfloat volume;
-    gint testDataTime;
+    gint current_fading_time;
 
     xmms_ringbuf_t *buf;
     gint buffered;
@@ -148,7 +148,7 @@ xmms_crossfade_init (xmms_xform_t *xform)
 	priv->buffer[i]->eos=FALSE;
 	priv->buffer[i]->framerate = framerate;
 	priv->buffer[i]->channels = channels;
-	priv->buffer[i]->testDataTime = 0;
+	priv->buffer[i]->current_fading_time = 0;
 	priv->buffer[i]->volume=1;
 	priv->buffer[i]->requested = DELAY_TIME*framerate*channels*2;
 	priv->buffer[i]->buf = xmms_ringbuf_new(priv->buffer[i]->requested);
@@ -211,6 +211,20 @@ xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 	    write_buffer->eos = TRUE;
 	    data->write_buffer = (data->write_buffer+1)%2;
 	    //xmms_log_info("END OF SONG!");
+	    
+	    /* check for format change */
+	   chan = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
+	   srate = xmms_xform_indata_get_int(xform,XMMS_STREAM_TYPE_FMT_SAMPLERATE);
+    	if(srate != write_buffer->framerate || chan != write_buffer->channels) {
+	    // the frame rate or the chan have changed, we need to reallocate the buffer
+	    write_buffer->framerate = srate;
+	    write_buffer->channels = chan;
+	    write_buffer->requested =  DELAY_TIME*srate*chan*2;
+	    xmms_ringbuf_destroy(write_buffer->buf);
+	    write_buffer->buf = xmms_ringbuf_new(write_buffer->requested);
+	}
+
+	    
 	    return r;
 	}
 	xmms_ringbuf_write (write_buffer->buf, t, r);
@@ -219,18 +233,18 @@ xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 
 
     if(read_buffer->eos) {
-	read_buffer->testDataTime++;
+	read_buffer->current_fading_time++;
 	if(!data->read_both_buffers) {
 	    data->read_both_buffers = TRUE;
 	    //xmms_log_info("Read both buffers!");
 	}
 	read_buffer->volume -= 1/(gfloat)(read_buffer->requested/(gfloat)CHUNK_SIZE);
-	if(read_buffer->testDataTime >= read_buffer->requested/CHUNK_SIZE)
+	if(read_buffer->current_fading_time >= read_buffer->requested/CHUNK_SIZE)
 	{
 	    read_buffer->volume = 1;
-	    //xmms_log_info("END OF PLAY : %i",read_buffer->testDataTime);
+	    //xmms_log_info("END OF PLAY : %i",read_buffer->current_fading_time);
 	    read_buffer->eos = FALSE;
-	    read_buffer->testDataTime=0;
+	    read_buffer->current_fading_time=0;
 	    data->read_buffer = (data->read_buffer+1)%2;
 	    data->read_both_buffers = FALSE;
 	    read_buffer = data->buffer[data->read_buffer];
@@ -245,7 +259,8 @@ xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 
 	gfloat volume = read_buffer->volume;
 	read_buffer = data->buffer[ (data->read_buffer+1)%2 ];
-	short *buf2 = g_malloc(read_buffer->requested);
+	short *buf2 = g_malloc(len*sizeof(short));
+	// TODO: adjust len to format change
 	read = xmms_ringbuf_read (read_buffer->buf, buf2, len);
 	read_buffer->buffered -= read;
 
@@ -253,6 +268,7 @@ xmms_crossfade_read (xmms_xform_t *xform, xmms_sample_t *buf, gint len,
 //	chan = xmms_xform_indata_get_int (xform, XMMS_STREAM_TYPE_FMT_CHANNELS);
 	chan = read_buffer->channels;
 
+	// TODO: here we need to up/down sample one of the two buffers.
 	for (i = 0; i < len/2; i+=chan)
 	{
 	    for(j=0;j<chan;++j)
