@@ -76,6 +76,7 @@ optional_subdirs = ["src/clients/cli",
                     "src/clients/lib/python",
                     "src/clients/lib/perl",
                     "src/clients/lib/ruby",
+                    "src/clients/query",
                     "tests",
                     "pixmaps"]
 

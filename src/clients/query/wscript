@@ -1,0 +1,16 @@
+def build(bld):
+    obj = bld.new_task_gen('cc', 'program')
+    obj.target = 'query'
+    obj.source = """lex.l bison.y""".split()
+    obj.includes = '. ../../include'
+    obj.uselib_local = 'xmmsclient'
+    obj.uselib = 'fl'
+
+
+def configure(conf):
+    rl_headers=["stdio.h"]
+    conf.check_tool("flex")
+    conf.check_tool("bison")
+
+def set_options(opt):
+    pass
