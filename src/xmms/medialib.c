@@ -1290,14 +1290,17 @@ static int
 fetchinfo_add_key (fetch_info_t *info, void *object, const char *key, s4_sourcepref_t *sp)
 {
 	int index;
+	int null = 0;
 
 	if (key != NULL && strcmp (key, "id") == 0)
 		return 0;
 
 	GHashTable *obj_table = g_hash_table_lookup (info->ft, object);
 
-	if (key == NULL)
+	if (key == NULL) {
 		key = "__NULL__";
+		null = 1;
+	}
 
 	if (obj_table == NULL) {
 		obj_table = g_hash_table_new (g_str_hash, g_str_equal);
@@ -1307,6 +1310,8 @@ fetchinfo_add_key (fetch_info_t *info, void *object, const char *key, s4_sourcep
 	if ((index = GPOINTER_TO_INT (g_hash_table_lookup (obj_table, key))) == 0) {
 		index = s4_fetchspec_size (info->fs);
 		g_hash_table_insert (obj_table, (void*)key, GINT_TO_POINTER (index));
+		if (null)
+			key = NULL;
 		s4_fetchspec_add (info->fs, key, sp);
 	}
 
@@ -1933,6 +1938,40 @@ xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 	return ret;
 }
 
+typedef xmmsv_t *(*void_to_xmmsv_t)(void *value, void *userdata);
+
+static xmmsv_t *
+convert_ghashtable_to_xmmsv (GHashTable *table, int depth, void_to_xmmsv_t func, void *userdata)
+{
+	if (depth == 0) {
+		return func ((void*)table, userdata);
+	} else {
+		xmmsv_t *xval, *ret = xmmsv_new_dict ();
+		void *val;
+		const char *key;
+		int keys = 0;
+		GHashTableIter iter;
+
+		g_hash_table_iter_init (&iter, table);
+
+		while (g_hash_table_iter_next (&iter, (void**)&key, &val)) {
+			if (val != NULL) {
+				xval = convert_ghashtable_to_xmmsv (val, depth - 1, func, userdata);
+				xmmsv_dict_set (ret, key, xval);
+				xmmsv_unref (xval);
+				keys++;
+			}
+		}
+
+		if (keys == 0) {
+			xmmsv_unref (ret);
+			ret = NULL;
+		}
+
+		return ret;
+	}
+}
+
 typedef enum {
 	AGGREGATE_FIRST,
 	AGGREGATE_SUM,
@@ -1948,7 +1987,8 @@ typedef struct fetch_spec_St {
 		FETCH_CLUSTER_LIST,
 		FETCH_CLUSTER_DICT,
 		FETCH_ORGANIZE,
-		FETCH_METADATA
+		FETCH_METADATA,
+		FETCH_COUNT
 	} type;
 	union {
 		struct {
@@ -1965,6 +2005,7 @@ typedef struct fetch_spec_St {
 				METADATA_SOURCE,
 				METADATA_NONE
 			} get[5];
+			int get_size;
 			int col_count;
 			int *cols;
 			aggregate_function_t aggr_func;
@@ -1977,23 +2018,37 @@ typedef struct fetch_spec_St {
 	} data;
 } fetch_spec_t;
 
-/* Converts an S4 result (a column) into a list of xmmsv values */
-static xmmsv_t *
+typedef struct {
+	int64_t sum;
+	int n;
+} avg_data_t;
+
+typedef struct {
+	xmmsv_t *data;
+	int n;
+} random_data_t;
+
+/* Converts an S4 result (a column) into an xmmsv values */
+static void *
 result_to_xmmsv (xmmsv_t *ret, int32_t id, const s4_result_t *res,
 		fetch_spec_t *spec)
 {
 	int32_t i;
-	xmmsv_t *dict = NULL; /* The dict used to find cur */
-	xmmsv_t *cur = ret;
+	xmmsv_t *dict, *cur;
 	const char *strval, *key = NULL;
 	char buf[12]; /* Big enough to hold 2^32 with minus sign */
-	int32_t ival;
+	int32_t ival, oldval;
 	const s4_val_t *val;
+	unsigned int len;
+	int new_val;
 
 	/* Loop through all the values the column has */
 	while (res != NULL) {
+		dict = ret;
+		cur = ret;
+
 		/* Loop through the list of what to get ("key", "source", ..) */
-		for (i = 0; spec->data.metadata.get[i] != METADATA_NONE; i++) {
+		for (i = 0; i < spec->data.metadata.get_size; i++) {
 			strval = NULL;
 			/* Fill strval with the correct value if it is a string
 			 * or ival if it is an integer
@@ -2015,13 +2070,13 @@ result_to_xmmsv (xmmsv_t *ret, int32_t id, const s4_result_t *res,
 					s4_val_get_str (val, &strval);
 				}
 				break;
-			default: break; /* Silence compiler warning */
+			case METADATA_NONE: break; /* Silence compiler warnings */
 			}
 
 			/* If this is not the last property to get we use this property
 			 * as a key in a dict
 			 */
-			if (spec->data.metadata.get[i + 1] != METADATA_NONE) {
+			if (i < (spec->data.metadata.get_size - 1)) {
 				/* Convert integers to strings */
 				if (strval == NULL) {
 					sprintf (buf, "%i", ival);
@@ -2030,25 +2085,32 @@ result_to_xmmsv (xmmsv_t *ret, int32_t id, const s4_result_t *res,
 					key = strval;
 				}
 
-				/* Create a new dict if none exists */
-				if (cur == NULL) {
-					cur = xmmsv_new_dict ();
-
-					if (dict == NULL) {
-						ret = cur;
-					} else {
-						xmmsv_dict_set (dict, key, cur);
-					}
+				/* Make sure the root dict exists */
+				if (dict == NULL) {
+					ret = dict = xmmsv_new_dict ();
 				}
-				dict = cur;
-				if (!xmmsv_dict_get (dict, key, &cur)) {
+
+				/* If this dict contains dicts we have to create a new
+				 * dict if one does not exists for the key yet
+				 */
+				if (!xmmsv_dict_get (dict, key, &cur))
 					cur = NULL;
+
+				if (i < (spec->data.metadata.get_size - 2)) {
+					if (cur == NULL) {
+						cur = xmmsv_new_dict ();
+						xmmsv_dict_set (dict, key, cur);
+						xmmsv_unref (cur);
+					}
+					dict = cur;
 				}
 			}
 		}
 
-		/* We do not build a list for first, but simply return the first value */
-		if (spec->data.metadata.aggr_func == AGGREGATE_FIRST) {
+		new_val = 0;
+
+		switch (spec->data.metadata.aggr_func) {
+		case AGGREGATE_FIRST:
 			if (cur != NULL)
 				return ret;
 			if (strval != NULL) {
@@ -2056,21 +2118,117 @@ result_to_xmmsv (xmmsv_t *ret, int32_t id, const s4_result_t *res,
 			} else {
 				cur = xmmsv_new_int (ival);
 			}
-		} else { /* Append the new value to the end of the list */
+			new_val = 1;
+			break;
+
+		case AGGREGATE_LIST:
+		{
+			xmmsv_t *val;
+			void *key;
+			GHashTable *table;
+
 			if (cur == NULL) {
-				cur = xmmsv_new_list ();
+				table = g_hash_table_new_full (NULL, NULL,
+						NULL, (GDestroyNotify)xmmsv_unref);
+				cur = xmmsv_new_bin ((unsigned char*)&table, sizeof (GHashTable*));
+				new_val = 1;
+			} else {
+				GHashTable **tmp;
+				xmmsv_get_bin (cur, (const unsigned char**)&tmp, &len);
+				table = *tmp;
 			}
 			if (strval != NULL) {
-				xmmsv_list_append_string (cur, strval);
+				val = xmmsv_new_string (strval);
+				key = (void*)strval;
 			} else {
-				xmmsv_list_append_int (cur, ival);
+				val = xmmsv_new_int (ival);
+				key = GINT_TO_POINTER (ival);
 			}
+			g_hash_table_insert (table, key, val);
+			break;
+		}
+
+		case AGGREGATE_SUM:
+			if (strval != NULL)
+				ival = 0;
+			if (cur == NULL) {
+				oldval = 0;
+			} else {
+				xmmsv_get_int (cur, &oldval);
+			}
+			ival += oldval;
+			xmmsv_unref (cur);
+			cur = xmmsv_new_int (ival);
+			new_val = 1;
+			break;
+
+
+		case AGGREGATE_MIN:
+			if (strval != NULL)
+				return ret;
+			if (cur == NULL || (xmmsv_get_int (cur, &oldval) && oldval > ival)) {
+				cur = xmmsv_new_int (ival);
+				new_val = 1;
+			}
+			break;
+
+		case AGGREGATE_MAX:
+			if (strval != NULL)
+				return ret;
+			if (cur == NULL || (xmmsv_get_int (cur, &oldval) && oldval < ival)) {
+				cur = xmmsv_new_int (ival);
+				new_val = 1;
+			}
+			break;
+
+		case AGGREGATE_RANDOM:
+		{
+			random_data_t *data;
+
+			if (cur == NULL) {
+				random_data_t init = { .n = 0, .data = NULL };
+				cur = xmmsv_new_bin ((unsigned char*)&init, sizeof (random_data_t));
+				new_val = 1;
+			}
+
+			xmmsv_get_bin (cur, (const unsigned char**)&data, &len);
+
+			data->n++;
+			if (g_random_int_range (0, data->n) == 0) {
+				xmmsv_unref (data->data);
+				if (strval != NULL) {
+					data->data = xmmsv_new_string (strval);
+				} else {
+					data->data = xmmsv_new_int (ival);
+				}
+			}
+			break;
+		}
+		case AGGREGATE_AVG:
+		{
+			avg_data_t *data;
+
+			if (cur == NULL) {
+				avg_data_t init = {.n = 0, .sum = 0 };
+				cur = xmmsv_new_bin ((unsigned char*)&init, sizeof (avg_data_t));
+				new_val = 1;
+			}
+
+			xmmsv_get_bin (cur, (const unsigned char**)&data, &len);
+
+			if (strval == NULL) {
+				data->n++;
+				data->sum += ival;
+			}
+			break;
+		}
 		}
 
 		/* Update the previous dict (if there is one) */
-		if (dict != NULL) {
+		if (i > 1 && new_val) {
 			xmmsv_dict_set (dict, key, cur);
-		} else {
+			xmmsv_unref (cur);
+		} else if (new_val) {
 			ret = cur;
 		}
 
@@ -2080,95 +2238,70 @@ result_to_xmmsv (xmmsv_t *ret, int32_t id, const s4_result_t *res,
 	return ret;
 }
 
-/* Takes a list and returns the result after the aggregate function has been
- * applied to it. The returned value has a refcount of 1.
- */
+/* Converts the temporary value returned by result_to_xmmsv into the real value */
 static xmmsv_t *
-aggregate_list (xmmsv_t *list, aggregate_function_t aggr_func)
+aggregate_data (xmmsv_t *value, aggregate_function_t aggr_func)
 {
-	int i, list_size = xmmsv_list_get_size (list);
-	int32_t ival, min = INT32_MAX, max = INT32_MIN, sum = 0, n = 0;
-	const char *str;
-	xmmsv_t *val, *ret = NULL;
-	GHashTable *str_table, *int_table;
+	void *data = NULL;
+	xmmsv_t *ret = NULL, *val;
+	avg_data_t *avg_data;
+	random_data_t *random_data;
+	GHashTable **table;
 	GHashTableIter iter;
+	unsigned int len;
+
+	if (value != NULL && xmmsv_is_type (value, XMMSV_TYPE_BIN))
+		xmmsv_get_bin (value, (const unsigned char**)&data, &len);
 
 	switch (aggr_func) {
 	case AGGREGATE_FIRST:
-		xmmsv_list_get (list, 0, &ret);
-		xmmsv_ref (ret);
-		break;
-	case AGGREGATE_LIST:
-		/* To remove duplicates from the list we create two hash tables
-		 * one for integers and one for strings and insert all strings
-		 * and integers into them. The hash table have no duplicates
-		 * and we simply iterate over it afterwards to get back the values
-		 */
-		str_table = g_hash_table_new (g_str_hash, g_str_equal);
-		int_table = g_hash_table_new (NULL, NULL);
-		ret = xmmsv_new_list ();
-
-		for (i = 0; xmmsv_list_get (list, i, &val); i++) {
-			if (xmmsv_get_int (val, &ival)) {
-				g_hash_table_insert (int_table, GINT_TO_POINTER (ival), (void*)1);
-			} else if (xmmsv_get_string (val, &str)) {
-				g_hash_table_insert (str_table, (void*)str, (void*)1);
-			}
-		}
-
-		g_hash_table_iter_init (&iter, str_table);
-		while (g_hash_table_iter_next (&iter, (void**)&str, NULL)) {
-			xmmsv_list_append_string (ret, str);
-		}
-		g_hash_table_iter_init (&iter, int_table);
-		while (g_hash_table_iter_next (&iter, (void**)&ival, NULL)) {
-			xmmsv_list_append_int (ret, ival);
-		}
-
-		g_hash_table_destroy (str_table);
-		g_hash_table_destroy (int_table);
-		break;
-	case AGGREGATE_SUM:
-	case AGGREGATE_MAX:
 	case AGGREGATE_MIN:
-	case AGGREGATE_AVG:
-		for (i = 0; i < list_size; i++) {
-			int32_t ival;
-			if (xmmsv_list_get_int (list, i, &ival)) {
-				sum += ival;
-				if (ival < min)
-					min = ival;
-				if (ival > max)
-					max = ival;
-				n++;
-			}
-		}
-		if (n > 0) {
-			switch (aggr_func) {
-			case AGGREGATE_SUM: ret = xmmsv_new_int (sum); break;
-			case AGGREGATE_MIN: ret = xmmsv_new_int (min); break;
-			case AGGREGATE_MAX: ret = xmmsv_new_int (max); break;
-			case AGGREGATE_AVG: ret = xmmsv_new_int (sum/n); break;
-			default: break; /* To prevent compiler warnings */
-			}
+	case AGGREGATE_MAX:
+	case AGGREGATE_SUM:
+		ret = xmmsv_ref (value);
+		break;
+
+	case AGGREGATE_RANDOM:
+		random_data = data;
+		if (random_data != NULL) {
+			ret = random_data->data;
 		}
 		break;
-	case AGGREGATE_RANDOM:
-		xmmsv_list_get (list, g_random_int_range (0, n), &ret);
-		xmmsv_ref (ret);
+
+	case AGGREGATE_LIST:
+		table = data;
+		if (table != NULL) {
+			g_hash_table_iter_init (&iter, *table);
+			ret = xmmsv_new_list ();
+
+			while (g_hash_table_iter_next (&iter, NULL, (void**)&val)) {
+				xmmsv_list_append (ret, val);
+			}
+
+			g_hash_table_destroy (*table);
+		}
+		break;
+
+	case AGGREGATE_AVG:
+		avg_data = data;
+		if (avg_data != NULL) {
+			ret = xmmsv_new_int (avg_data->sum / avg_data->n);
+		}
 		break;
 	}
+
+	xmmsv_unref (value);
 
 	return ret;
 }
 
-/* Applies an aggregation function to an xmmsv */
+/* Applies an aggregation function to the leafs in an xmmsv dict tree */
 static xmmsv_t *
-aggregate_result (xmmsv_t *val, aggregate_function_t aggr_func)
+aggregate_result (xmmsv_t *val, int depth, aggregate_function_t aggr_func)
 {
 	if (val == NULL) {
 		return NULL;
-	} else if (xmmsv_is_type (val, XMMSV_TYPE_DICT)) {
+	} else if (depth > 0) {
 		/* If it's a dict we call this function recursively on all its values */
 		xmmsv_dict_iter_t *it;
 		xmmsv_get_dict_iter (val, &it);
@@ -2176,12 +2309,12 @@ aggregate_result (xmmsv_t *val, aggregate_function_t aggr_func)
 		for (; xmmsv_dict_iter_valid (it); xmmsv_dict_iter_next (it)) {
 			xmmsv_t *val;
 			xmmsv_dict_iter_pair (it, NULL, &val);
-			val = aggregate_result (val, aggr_func);
+			val = aggregate_result (val, depth - 1, aggr_func);
 			xmmsv_dict_iter_set (it, val);
 			xmmsv_unref (val);
 		}
-	} else if (xmmsv_is_type (val, XMMSV_TYPE_LIST)) {
-		val = aggregate_list (val, aggr_func);
+	} else {
+		val = aggregate_data (val, aggr_func);
 	}
 
 	return val;
@@ -2191,7 +2324,7 @@ aggregate_result (xmmsv_t *val, aggregate_function_t aggr_func)
 static xmmsv_t *
 metadata_to_xmmsv (s4_resultset_t *set, fetch_spec_t *spec)
 {
-	xmmsv_t *ret = NULL, *tmp;
+	xmmsv_t *ret = NULL;
 	const s4_resultrow_t *row;
 	const s4_result_t *res;
 	int i, j;
@@ -2207,38 +2340,32 @@ metadata_to_xmmsv (s4_resultset_t *set, fetch_spec_t *spec)
 		}
 	}
 
-	/* Optimize for first */
-	if (spec->data.metadata.aggr_func == AGGREGATE_FIRST) {
-		tmp = ret;
-	} else {
-		tmp = aggregate_result (ret, spec->data.metadata.aggr_func);
-		if (tmp != ret) {
-			xmmsv_unref (ret);
-		}
-	}
+	ret = aggregate_result (ret, spec->data.metadata.get_size - 1, spec->data.metadata.aggr_func);
 
-	return tmp;
+	return ret;
 }
 
 /* Divides an S4 set into a list of smaller sets with
  * the same values for the cluster attributes
  */
-static GList *
-cluster_set (s4_resultset_t *set, fetch_spec_t *spec)
+static void *
+cluster_set (s4_resultset_t *set, fetch_spec_t *spec, int return_hashtable)
 {
 	int i, j, levels = spec->data.cluster.cluster_count;
 	s4_resultset_t *cluster;
 	const s4_resultrow_t *row;
 	const s4_result_t *res;
 	GHashTable *cur_table, *root_table;
-	GList *ret = NULL;
+	GList *list = NULL;
+	char buf[12];
 
 	/* Create a hash table for hash tables if we group on more than one attribute */
 	if (levels > 1) {
-		root_table = g_hash_table_new_full (NULL, NULL,
-				NULL, (GDestroyNotify)g_hash_table_destroy);
+		root_table = g_hash_table_new_full (g_str_hash, g_str_equal,
+				free, (GDestroyNotify)g_hash_table_destroy);
 	} else {
-		root_table = g_hash_table_new (NULL, NULL);
+		root_table = g_hash_table_new_full (g_str_hash, g_str_equal,
+				free, (return_hashtable)?(GDestroyNotify)s4_resultset_free:NULL);
 	}
 
 	/* Run through all the rows in the result set.
@@ -2248,7 +2375,8 @@ cluster_set (s4_resultset_t *set, fetch_spec_t *spec)
 		cur_table = root_table;
 		for (j = 0; j < levels; j++) {
 			int col = spec->data.cluster.cols[j];
-			void *value = NULL;
+			const char *value = "(No value)"; /* Used to represent NULL */
+			int32_t ival;
 
 			/* If the value to cluster by is a string we save the pointer
 			 * of it into value (this works because there are no duplicate
@@ -2256,8 +2384,11 @@ cluster_set (s4_resultset_t *set, fetch_spec_t *spec)
 			 */
 			if (s4_resultrow_get_col (row, col, &res)) {
 				const s4_val_t *val = s4_result_get_val (res);
-				if (!s4_val_get_str (val, (const char**)&value))
-					s4_val_get_int (val, (int32_t*)&value);
+				if (!s4_val_get_str (val, &value)) {
+					s4_val_get_int (val, &ival);
+					sprintf (buf, "%i", ival);
+					value = buf;
+				}
 			}
 
 			/* If we have more keys to cluster by after this
@@ -2267,12 +2398,13 @@ cluster_set (s4_resultset_t *set, fetch_spec_t *spec)
 				GHashTable *next_table = g_hash_table_lookup (cur_table, value);
 				if (next_table == NULL) {
 					if (j < (levels - 2)) {
-						next_table = g_hash_table_new_full (NULL, NULL,
-								NULL, (GDestroyNotify)g_hash_table_destroy);
+						next_table = g_hash_table_new_full (g_str_hash, g_str_equal,
+								free, (GDestroyNotify)g_hash_table_destroy);
 					} else {
-						next_table = g_hash_table_new (NULL, NULL);
+						next_table = g_hash_table_new_full (g_str_hash, g_str_equal,
+								free, (return_hashtable)?(GDestroyNotify)s4_resultset_free:NULL);
 					}
-					g_hash_table_insert (cur_table, value, next_table);
+					g_hash_table_insert (cur_table, strdup (value), next_table);
 				}
 				cur_table = next_table;
 			} else {
@@ -2282,28 +2414,36 @@ cluster_set (s4_resultset_t *set, fetch_spec_t *spec)
 				cluster = g_hash_table_lookup (cur_table, value);
 				if (cluster == NULL) {
 					cluster = s4_resultset_create (s4_resultset_get_colcount (set));
-					g_hash_table_insert (cur_table, value, cluster);
-					ret = g_list_prepend (ret, cluster);
+					g_hash_table_insert (cur_table, strdup (value), cluster);
+					list = g_list_prepend (list, cluster);
 				}
 				s4_resultset_add_row (cluster, row);
 			}
 		}
 	}
 
-	g_hash_table_destroy (root_table);
-
-	return g_list_reverse (ret);
+	if (return_hashtable) {
+		g_list_free (list);
+		return root_table;
+	} else {
+		g_hash_table_destroy (root_table);
+		return g_list_reverse (list);
+	}
 }
 
 /* Converts an S4 resultset into an xmmsv_t, based on the fetch specification */
 static xmmsv_t *
 resultset_to_xmmsv (s4_resultset_t *set, fetch_spec_t *spec)
 {
-	xmmsv_t *val, *tmp, *dict, *ret = NULL;
+	xmmsv_t *val, *ret = NULL;
 	GList *sets;
+	GHashTable *set_table;
 	int i;
 
 	switch (spec->type) {
+	case FETCH_COUNT:
+		ret = xmmsv_new_int (s4_resultset_get_rowcount (set));
+		break;
 	case FETCH_METADATA:
 		ret = metadata_to_xmmsv (set, spec);
 		break;
@@ -2321,74 +2461,26 @@ resultset_to_xmmsv (s4_resultset_t *set, fetch_spec_t *spec)
 		break;
 
 	case FETCH_CLUSTER_LIST:
-	case FETCH_CLUSTER_DICT:
-		sets = cluster_set (set, spec);
+		sets = cluster_set (set, spec, 0);
+		ret = xmmsv_new_list ();
+		for (; sets != NULL; sets = g_list_delete_link (sets, sets)) {
+			set = sets->data;
 
-		if (spec->type == FETCH_CLUSTER_LIST) {
-			ret = xmmsv_new_list ();
-			for (; sets != NULL; sets = g_list_delete_link (sets, sets)) {
-				set = sets->data;
-
-				val = resultset_to_xmmsv (set, spec->data.cluster.data);
-				if (val != NULL) {
-					xmmsv_list_append (ret, val);
-					xmmsv_unref (val);
-				}
-				s4_resultset_free (set);
+			val = resultset_to_xmmsv (set, spec->data.cluster.data);
+			if (val != NULL) {
+				xmmsv_list_append (ret, val);
+				xmmsv_unref (val);
 			}
-		} else {
-			ret = xmmsv_new_dict ();
-			for (; sets != NULL; sets = g_list_delete_link (sets, sets)) {
-				set = sets->data;
-
-				val = resultset_to_xmmsv (set, spec->data.cluster.data);
-
-				/* Insert the value in the dict(s) */
-				if (val != NULL) {
-					dict = ret;
-
-					for (i = 0; i < spec->data.cluster.cluster_count; i++) {
-						int col = spec->data.cluster.cols[i];
-						int32_t ival;
-						char buf[12];
-						const char *str;
-						const s4_result_t *res;
-
-						/* Get the attributes from the first row. Since they are in
-						 * the same cluster this should be the same for all the
-						 * entries in the set
-						 */
-						if ((res = s4_resultset_get_result (set, 0, col)) != NULL) {
-							const s4_val_t *s4_val = s4_result_get_val (res);
-							if (!s4_val_get_str (s4_val, &str)) {
-								s4_val_get_int (s4_val, &ival);
-								sprintf (buf, "%i", ival);
-								str = buf;
-							}
-
-							if (i < (spec->data.cluster.cluster_count - 1)) {
-								if (!xmmsv_dict_get (dict, str, &tmp)) {
-									tmp = xmmsv_new_dict ();
-									xmmsv_dict_set (dict, str, tmp);
-									xmmsv_unref (tmp);
-								}
-								dict = tmp;
-							} else {
-								xmmsv_dict_set (dict, str, val);
-							}
-						} else {
-							/* A cluster where one of the cluster-properties
-							 * is not set, we do not store it in the dict
-							 */
-							break;
-						}
-					}
-
-					xmmsv_unref (val);
-				}
-				s4_resultset_free (set);
-			}
+			s4_resultset_free (set);
 		}
+		break;
+
+	case FETCH_CLUSTER_DICT:
+		set_table = cluster_set (set, spec, 1);
+		ret = convert_ghashtable_to_xmmsv (set_table, spec->data.cluster.cluster_count,
+				(void_to_xmmsv_t)resultset_to_xmmsv, spec->data.cluster.data);
+
+		g_hash_table_destroy (set_table);
 		break;
 	}
 
@@ -2441,12 +2533,12 @@ fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info)
 					i++;
 				}
 
-				ret->data.metadata.get[i] = METADATA_NONE;
+				ret->data.metadata.get_size = i;
 				if (i == 1 && ret->data.metadata.get[0] == METADATA_ID)
 					id_only = 1;
 			} else {
+				ret->data.metadata.get_size = 1;
 				ret->data.metadata.get[0] = METADATA_VALUE;
-				ret->data.metadata.get[1] = METADATA_NONE;
 			}
 
 			if (xmmsv_dict_get (fetch, "source-preference", &val)) {
@@ -2566,6 +2658,8 @@ fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info)
 			}
 
 			xmmsv_dict_iter_explicit_destroy (it);
+		} else if (strcmp (type, "count") == 0) {
+			ret->type = FETCH_COUNT;
 		}
 		break;
 	}
@@ -2597,6 +2691,8 @@ fetch_spec_free (fetch_spec_t *spec)
 
 		free (spec->data.organize.keys);
 		free (spec->data.organize.data);
+		break;
+	case FETCH_COUNT: /* Nothing to free */
 		break;
 	}
 
