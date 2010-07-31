@@ -120,8 +120,6 @@ def build(bld):
         }
         obj.install_path = '${PKGCONFIGDIR}'
 
-    bld.install_files('${SHAREDDIR}', 'mind.in.a.box-lament_snipplet.ogg')
-
 
 ####
 ## Configuration

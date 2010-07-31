@@ -27,6 +27,11 @@ manpages (src/clients/cli/xmms2.1, src/clients/et/xmms2-et.1,
           src/clients/nycli/nyxmms2.1):
         Licensed under BSD license
 
+silence-cellule_snippet.ogg:
+        Licensed under the LAL
+        Copyright (C) 2006 Silence
+        http://www.jamendo.com/en/album/830
+
 src/plugins/mad/*.[ch]:
         Licensed under GPL license.
 

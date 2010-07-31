@@ -361,18 +361,6 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	sqlite3_exec (session->sql, "SELECT id, source FROM Sources",
 	              add_to_source, medialib->sources, NULL);
 
-	if (create) {
-		xmms_error_t error;
-
-		xmms_medialib_entry_new (session,
-		                         "file://" SHAREDDIR
-		                         "/mind.in.a.box-lament_snipplet.ogg",
-		                         &error);
-		/* A default playlist containing that song has been created
-		 * with the mlib.
-		 */
-	}
-
 	xmms_medialib_end (session);
 
 	return medialib;
