@@ -1330,7 +1330,7 @@ fetchinfo_get_index (fetch_info_t *info, void *object, const char *key)
 /* A filter for idlists. Checks if the value given (id number)
  * is in the hash table
  */
-static int idlist_filter (s4_val_t *value, s4_condition_t *cond)
+static int idlist_filter (const s4_val_t *value, s4_condition_t *cond)
 {
 	int32_t ival;
 	GHashTable *id_table = s4_cond_get_funcdata (cond);
@@ -1342,7 +1342,7 @@ static int idlist_filter (s4_val_t *value, s4_condition_t *cond)
 }
 
 /* A token filter. Checks if the passed value contains a token */
-static int token_filter (s4_val_t *value, s4_condition_t *cond)
+static int token_filter (const s4_val_t *value, s4_condition_t *cond)
 {
 	const char *token = s4_cond_get_funcdata (cond);
 	const char *s;
