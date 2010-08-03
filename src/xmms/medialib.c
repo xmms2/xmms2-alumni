@@ -665,8 +665,7 @@ xmms_medialib_entry_cleanup (xmms_medialib_entry_t id_num)
 						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_ADDED) &&
 						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS) &&
 						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_LMOD) &&
-						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_LASTSTARTED) &&
-						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_TYPE))
+						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_LASTSTARTED))
 					s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), src);
 			} else if (src != NULL
 					&& strncmp (src, "plugin/", 7) == 0
@@ -797,8 +796,6 @@ xmms_medialib_entry_new_insert (guint32 id,
 			XMMS_MEDIALIB_ENTRY_PROPERTY_URL, url))
 		return 0;
 
-	xmms_medialib_entry_property_set_str (id,
-			XMMS_MEDIALIB_ENTRY_PROPERTY_TYPE, "song");
 	xmms_medialib_entry_status_set (id, XMMS_MEDIALIB_ENTRY_STATUS_NEW);
 	mr = xmms_playlist_mediainfo_reader_get (medialib->playlist);
 	xmms_mediainfo_reader_wakeup (mr);
@@ -1327,6 +1324,12 @@ fetchinfo_get_index (fetch_info_t *info, void *object, const char *key)
 	return GPOINTER_TO_INT (g_hash_table_lookup (obj_table, key));
 }
 
+/* A filter matching everything */
+static int universe_filter (void)
+{
+	return 0;
+}
+
 /* A filter for idlists. Checks if the value given (id number)
  * is in the hash table
  */
@@ -1595,10 +1598,9 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 			}
 			/* Fall through */
 		case XMMS_COLLECTION_TYPE_UNIVERSE:
-			sval = s4_val_new_string ("song");
-			*cond = s4_cond_new_filter (S4_FILTER_EQUAL, "type",
-					sval, default_sp, S4_CMP_CASELESS, 0);
-			s4_val_free (sval);
+			*cond = s4_cond_new_custom_filter (
+					(filter_function_t)universe_filter, NULL, NULL,
+					"song_id", NULL, S4_CMP_BINARY, S4_COND_PARENT);
 			break;
 
 		case XMMS_COLLECTION_TYPE_UNION:
