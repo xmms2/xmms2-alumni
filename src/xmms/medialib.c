@@ -1704,8 +1704,10 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 			int token = 0;
 			const char *token_value;
 
-			xmmsv_coll_attribute_get (coll, "field", &key);
-			if (strcmp (key, "id") == 0) {
+			/* If 'field' is not set, match against every key */
+			if (!xmmsv_coll_attribute_get (coll, "field", &key)) {
+				key = NULL;
+			} else if (strcmp (key, "id") == 0) {
 				key = (char*)"song_id";
 				flags = S4_COND_PARENT;
 			}
@@ -2004,8 +2006,7 @@ typedef struct fetch_spec_St {
 				METADATA_ID,
 				METADATA_KEY,
 				METADATA_VALUE,
-				METADATA_SOURCE,
-				METADATA_NONE
+				METADATA_SOURCE
 			} get[5];
 			int get_size;
 			int col_count;
@@ -2061,6 +2062,8 @@ result_to_xmmsv (xmmsv_t *ret, int32_t id, const s4_result_t *res,
 				break;
 			case METADATA_SOURCE:
 				strval = s4_result_get_src (res);
+				if (strval == NULL)
+					strval = "server";
 				break;
 			case METADATA_ID:
 				ival = id;
@@ -2072,7 +2075,6 @@ result_to_xmmsv (xmmsv_t *ret, int32_t id, const s4_result_t *res,
 					s4_val_get_str (val, &strval);
 				}
 				break;
-			case METADATA_NONE: break; /* Silence compiler warnings */
 			}
 
 			/* If this is not the last property to get we use this property
@@ -2113,14 +2115,14 @@ result_to_xmmsv (xmmsv_t *ret, int32_t id, const s4_result_t *res,
 
 		switch (spec->data.metadata.aggr_func) {
 		case AGGREGATE_FIRST:
-			if (cur != NULL)
-				return ret;
-			if (strval != NULL) {
-				cur = xmmsv_new_string (strval);
-			} else {
-				cur = xmmsv_new_int (ival);
+			if (cur == NULL) {
+				if (strval != NULL) {
+					cur = xmmsv_new_string (strval);
+				} else {
+					cur = xmmsv_new_int (ival);
+				}
+				new_val = 1;
 			}
-			new_val = 1;
 			break;
 
 		case AGGREGATE_LIST:
@@ -2166,18 +2168,14 @@ result_to_xmmsv (xmmsv_t *ret, int32_t id, const s4_result_t *res,
 
 
 		case AGGREGATE_MIN:
-			if (strval != NULL)
-				return ret;
-			if (cur == NULL || (xmmsv_get_int (cur, &oldval) && oldval > ival)) {
+			if (strval == NULL && (cur == NULL || (xmmsv_get_int (cur, &oldval) && oldval > ival))) {
 				cur = xmmsv_new_int (ival);
 				new_val = 1;
 			}
 			break;
 
 		case AGGREGATE_MAX:
-			if (strval != NULL)
-				return ret;
-			if (cur == NULL || (xmmsv_get_int (cur, &oldval) && oldval < ival)) {
+			if (strval == NULL && (cur == NULL || (xmmsv_get_int (cur, &oldval) && oldval < ival))) {
 				cur = xmmsv_new_int (ival);
 				new_val = 1;
 			}
@@ -2727,7 +2725,11 @@ xmms_medialib_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
 	order = xmmsv_new_list ();
 
 	set = xmms_medialib_query_recurs (dag, coll, &info, order, &cond, 1);
-	ret = resultset_to_xmmsv (set, spec);
+	if (set != NULL) {
+		ret = resultset_to_xmmsv (set, spec);
+	} else {
+		ret = NULL;
+	}
 
 	if (set != NULL)
 		s4_resultset_free (set);
