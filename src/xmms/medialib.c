@@ -335,7 +335,7 @@ xmms_medialib_entry_property_get_int (xmms_medialib_entry_t id_num,
 
 	prop = xmms_medialib_entry_property_get (id_num, property);
 	if (prop == NULL || !s4_val_get_int (prop, &ret))
-		ret = -1;
+		return -1;
 
 	s4_val_free (prop);
 
