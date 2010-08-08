@@ -53,6 +53,7 @@ typedef struct xmms_ringbuf_hotspot_St {
 } xmms_ringbuf_hotspot_t;
 
 
+
 /**
  * The usable size of the ringbuffer.
  */

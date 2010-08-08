@@ -44,6 +44,8 @@ xmms_xform_t *xmms_xform_prev_get(xmms_xform_t *xform);
 xmms_xform_t *xmms_xform_eos_get(xmms_xform_t *xform);
 void xmms_xform_eos_set(xmms_xform_t *xform, gboolean b);
 gboolean xmms_xform_is_effect(xmms_xform_t *xform);
+gboolean xmms_xform_song_has_been_skipped_get(xmms_xform_t *xform);
+void xmms_xform_song_has_been_skipped_set(xmms_xform_t *xform, gboolean b);
 
 
 

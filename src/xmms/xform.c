@@ -77,6 +77,9 @@ struct xmms_xform_St {
     /** used for persistant xforms  */
     gboolean is_effect;
     gboolean skipped;
+
+    /** may inform that the song just has been skipped **/
+    gboolean song_has_been_skipped;
 };
 
 typedef struct xmms_xform_hotspot_St {
@@ -396,6 +399,7 @@ xmms_xform_new (xmms_xform_plugin_t *plugin, xmms_xform_t *prev,
 
     /* we consider that it is not persistant yet */
     xform->is_effect = FALSE;
+    xform->song_has_been_skipped = FALSE;
     xform->skipped = FALSE;
 
     if (prev) {
@@ -429,6 +433,13 @@ xmms_xform_new (xmms_xform_plugin_t *plugin, xmms_xform_t *prev,
 
 gboolean xmms_xform_is_effect (xmms_xform_t *xform){
     return xform->is_effect;
+}
+
+gboolean xmms_xform_song_has_been_skipped_get (xmms_xform_t *xform){
+    return xform->song_has_been_skipped;
+}
+void xmms_xform_song_has_been_skipped_set (xmms_xform_t *xform, gboolean b){
+    xform->song_has_been_skipped = b;
 }
 
 xmms_xform_t *xmms_xform_eos_get (xmms_xform_t *xform){
@@ -1748,6 +1759,8 @@ link_effects (xmms_xform_t *last, xmms_medialib_entry_t entry,GList *goal_format
 			fx_tab[i]->skipped = FALSE;
 		}
 
+//		fx_tab[i]->song_has_been_skipped = FALSE;
+
 
 
 	}
@@ -1828,6 +1841,7 @@ add_effects (xmms_xform_t *last, xmms_medialib_entry_t entry,
 	    continue;
 	}
 
+//	last->song_has_been_skipped = FALSE;
 	last = xmms_xform_new_effect (last, entry, goal_formats, name);
     }
 

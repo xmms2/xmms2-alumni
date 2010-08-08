@@ -1,4 +1,5 @@
-/*  XMMS2 - X Music Multiplexer System
+/*  XMMS2 - X Music Multiplexe
+ *  System
  *  Copyright (C) 2003-2009 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
@@ -396,8 +397,8 @@ xmms_output_filler (void *arg)
 	    if (chain) {
 
 		while(chain != NULL && xmms_xform_prev_get(chain) != NULL && xmms_xform_is_effect(xmms_xform_prev_get(chain)))
-//		while(chain != NULL && xmms_xform_is_effect(chain))
 		{
+		    xmms_xform_song_has_been_skipped_set(chain,TRUE);
 		    first_effect = chain;
 		    chain = xmms_xform_prev_get(chain);
 		}
@@ -405,6 +406,7 @@ xmms_output_filler (void *arg)
 		if(chain != NULL)
 		{
 		    xmms_xform_prev_set(first_effect, NULL);
+		    xmms_xform_song_has_been_skipped_set(chain, TRUE);
 		    xmms_object_unref (chain);
 		    chain = NULL;
 		}
@@ -536,12 +538,14 @@ xmms_output_filler (void *arg)
 
 	    while(chain != NULL && xmms_xform_prev_get(chain) != NULL && xmms_xform_is_effect(xmms_xform_prev_get(chain)))
 	    {
+		xmms_xform_song_has_been_skipped_set(chain,FALSE);
 		first_effect = chain;
 		chain = xmms_xform_prev_get(chain);
 	    }
 
 	    if(chain != NULL)
 	    {
+		xmms_xform_song_has_been_skipped_set(chain,FALSE);
 		xmms_xform_prev_set(first_effect, NULL);
 		xmms_object_unref (chain);
 		chain = NULL;

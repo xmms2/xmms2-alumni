@@ -46,4 +46,5 @@ gboolean xmms_ringbuf_iseos (const xmms_ringbuf_t *ringbuf);
 void xmms_ringbuf_set_eos (xmms_ringbuf_t *ringbuf, gboolean eos);
 void xmms_ringbuf_wait_eos (const xmms_ringbuf_t *ringbuf, GMutex *mtx);
 
+
 #endif /* __XMMS_RINGBUF_H__ */
