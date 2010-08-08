@@ -582,6 +582,8 @@ xmmsv_coll_add_order_operator (xmmsv_coll_t *coll, const char *key) {
 
 	if (strcmp (key, "random") == 0) {
 		xmmsv_coll_attribute_set (new, "type", "random");
+	} else if (strcmp (key, "id") == 0) {
+		xmmsv_coll_attribute_set (new, "type", "id");
 	} else {
 		xmmsv_coll_attribute_set (new, "type", "value");
 		xmmsv_coll_attribute_set (new, "field", key);
