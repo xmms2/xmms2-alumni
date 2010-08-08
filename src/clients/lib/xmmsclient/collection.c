@@ -252,6 +252,27 @@ xmmsc_coll_query_ids (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
 }
 
 /**
+ * Checks that the list only contains string values.
+ */
+static int
+check_string_list (xmmsv_t *list)
+{
+	xmmsv_t *valstr;
+	xmmsv_list_iter_t *it;
+
+	for (xmmsv_get_list_iter (list, &it);
+	     xmmsv_list_iter_valid (it);
+	     xmmsv_list_iter_next (it)) {
+		xmmsv_list_iter_entry (it, &valstr);
+		if (xmmsv_get_type (valstr) != XMMSV_TYPE_STRING) {
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+/**
  * List the properties of all media matched by the given collection.
  * A list of ordering properties can be specified, as well as offsets
  * to only retrieve part of the result set. The list of properties to
@@ -285,24 +306,16 @@ xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
 		x_api_error_if (!coll, "fetch list must not be empty", NULL);
 	}
 
-#if 0
 	/* check for invalid property strings */
 	if (!check_string_list (order)) {
 		x_api_error_if (!coll, "invalid order list!", NULL);
-		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid order list!");
-		return NULL;
 	}
 	if (!check_string_list (fetch)) {
-	x_api_error_if (!coll, "with a NULL collection", NULL);
-		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid fetch list!");
-		return NULL;
+		x_api_error_if (!coll, "invalid fetch list", NULL);
 	}
 	if (!check_string_list (group)) {
-	x_api_error_if (!coll, "with a NULL collection", NULL);
-		xmms_error_set (err, XMMS_ERROR_NOENT, "invalid group list!");
-		return NULL;
+		x_api_error_if (!coll, "invalid group list", NULL);
 	}
-#endif
 
 	fetch_spec = xmmsv_new_dict ();
 	xmmsv_dict_set_string (fetch_spec, "_type", "cluster-list");
@@ -324,7 +337,6 @@ xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
 			xmmsv_list_append_string (get, "id");
 			xmmsv_dict_set (meta, "get", get);
 			xmmsv_unref (get);
-			xmmsv_dict_set_string (meta, "keys", "song_id");
 		} else {
 			xmmsv_dict_set_string (meta, "keys", str);
 		}
