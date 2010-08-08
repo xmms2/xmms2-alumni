@@ -1251,7 +1251,7 @@ fetchinfo_add_key (fetch_info_t *info, void *object, const char *key, s4_sourcep
 		g_hash_table_insert (obj_table, (void*)key, GINT_TO_POINTER (index));
 		if (null)
 			key = NULL;
-		s4_fetchspec_add (info->fs, key, sp, S4_FETCH_PARENT | S4_FETCH_DATA);
+		s4_fetchspec_add (info->fs, key, sp, S4_FETCH_DATA);
 	}
 
 	return index;
@@ -1407,12 +1407,12 @@ xmms_medialib_result_sort (s4_resultset_t *set, fetch_info_t *fetch_info, xmmsv_
 			int neg = (*str == '-')?1:0;
 			str += neg;
 
-			if (strcmp (str, "random") == 0) {
+			if (strcmp (str, "__ RANDOM __") == 0) {
 				if (i == 0) {
 					s4_resultset_shuffle (set);
 				}
 				break;
-			} else if (strcmp (str, "id") == 0) {
+			} else if (strcmp (str, "__ ID __") == 0) {
 				s4_order[j] = 1;
 			} else {
 				s4_order[j] = fetchinfo_get_index (fetch_info, NULL, str) + 1;
@@ -1648,9 +1648,12 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 			int token = 0;
 			const char *token_value;
 
-			/* If 'field' is not set, match against every key */
-			if (!xmmsv_coll_attribute_get (coll, "field", &key)) {
-				key = NULL;
+			if (!xmmsv_coll_attribute_get (coll, "type", &key)
+					|| strcmp (key, "property") == 0) {
+				/* If 'field' is not set, match against every key */
+				if (!xmmsv_coll_attribute_get (coll, "field", &key)) {
+					key = NULL;
+				}
 			} else if (strcmp (key, "id") == 0) {
 				key = (char*)"song_id";
 				flags = S4_COND_PARENT;
@@ -1756,10 +1759,15 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 		}
 		case XMMS_COLLECTION_TYPE_ORDER:
 			if (order != NULL) {
-				if (!xmmsv_coll_attribute_get (coll, "type", &key) || strcmp (key, "value") == 0) {
-					xmmsv_coll_attribute_get (coll, "field", &val);
-
-					fetchinfo_add_key (fetch, NULL, val, default_sp);
+				if (!xmmsv_coll_attribute_get (coll, "type", &key)
+						|| strcmp (key, "value") == 0
+						|| strcmp (key, "id") == 0) {
+					if (strcmp (key, "id") == 0) {
+						val = (char*)"__ ID __";
+					} else {
+						xmmsv_coll_attribute_get (coll, "field", &val);
+						fetchinfo_add_key (fetch, NULL, val, default_sp);
+					}
 
 					if (!xmmsv_coll_attribute_get (coll, "order", &key) || strcmp (key, "ASC") == 0) {
 						xmmsv_list_append_string (order, val);
@@ -1769,10 +1777,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 						g_free (val);
 					}
 				} else if (strcmp (key, "random") == 0) {
-					/* FIXME: Do this in a way that doesn't make it
-					 * impossible to sort by an actual field named "random"
-					 */
-					xmmsv_list_append_string (order, "random");
+					xmmsv_list_append_string (order, "__ RANDOM __");
 				}
 			}
 			xmmsv_list_get_coll (operands, 0, &c);
