@@ -27,6 +27,7 @@
 typedef struct xmms_medialib_St xmms_medialib_t;
 
 xmms_medialib_t *xmms_medialib_init (xmms_playlist_t *playlist);
+char *xmms_medialib_uuid (void);
 
 xmms_medialib_entry_t xmms_medialib_entry_not_resolved_get (void);
 guint xmms_medialib_num_not_resolved (void);

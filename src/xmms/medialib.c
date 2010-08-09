@@ -161,7 +161,7 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	cp = xmms_config_property_register ("medialib.path", path, NULL, NULL);
 	conv_conf = xmms_config_property_register ("sqlite2s4.path", "sqlite2s4", NULL, NULL);
 	coll_conf = xmms_config_property_register ("collection.directory",
-			XMMS_BUILD_PATH ("collections"), NULL, NULL);
+			XMMS_BUILD_PATH ("collections", "${uuid}"), NULL, NULL);
 
 /*	xmms_config_property_register ("medialib.analyze_on_startup", "0", NULL, NULL);
 	xmms_config_property_register ("medialib.allow_remote_fs",
@@ -219,6 +219,12 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	medialib->next_id = find_highest_id() + 1;
 
 	return medialib;
+}
+
+char *
+xmms_medialib_uuid ()
+{
+	return s4_get_uuid_string (medialib->s4);
 }
 
 static s4_resultset_t *
