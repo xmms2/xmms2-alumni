@@ -135,6 +135,8 @@ int main (int argc, char *argv[])
 		exit (1);
 	}
 
+	g_thread_init (NULL);
+
 	ret = sqlite3_open (argv[1], &db);
 	if (ret) {
 		fprintf (stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
@@ -177,7 +179,7 @@ int main (int argc, char *argv[])
 		bar = malloc (strlen (coll_path) - strlen ("${uuid}") + uuid_len);
 		memcpy (bar, coll_path, uuid_pos);
 		strcpy (bar + uuid_pos, uuid);
-		strcpy (bar + uuid_len, foo + strlen ("${uuid}"));
+		strcpy (bar + uuid_pos + uuid_len, foo + strlen ("${uuid}"));
 		free (coll_path);
 		coll_path = bar;
 	}

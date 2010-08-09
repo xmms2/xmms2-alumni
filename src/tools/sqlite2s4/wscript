@@ -8,7 +8,7 @@ def build(bld):
           """.split()
     obj.includes = '. ../../include ../../includepriv'
     obj.uselib_local = 's4 xmmstypes'
-    obj.uselib = 'glib2 sqlite3'
+    obj.uselib = 'glib2 gthread2 sqlite3'
 
 def configure(conf):
     conf.check_cfg(package='sqlite3', atleast_version='3.5', uselib_store='sqlite3', args='--cflags --libs', mandatory=1)
