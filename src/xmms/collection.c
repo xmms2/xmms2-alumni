@@ -1100,11 +1100,6 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 				return FALSE;
 			}
 
-			/* "field" attribute */
-			/* with valid value */
-			if (!xmmsv_coll_attribute_get (coll, "field", &attr)) {
-				return FALSE;
-			}
 		} else if (strcmp (attr, "=") == 0
 				|| strcmp (attr, "<") == 0
 				|| strcmp (attr, ">") == 0
@@ -1114,18 +1109,15 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 				return FALSE;
 			}
 
-			/* "field"/"value" attributes */
-			/* with valid values */
-			if (!xmmsv_coll_attribute_get (coll, "field", &attr)) {
-				return FALSE;
-			}
-			/* FIXME: valid fields?
-			else if (...) {
-				return FALSE;
-			}
-			*/
-
 			if (!xmmsv_coll_attribute_get (coll, "value", &attr)) {
+				return FALSE;
+			}
+		}
+
+		/* check that type equals "id", "value"
+		 * or not set (defaults to "value") */
+		if (xmmsv_coll_attribute_get (coll, "type", &attr)) {
+			if (strcmp (attr, "id") && strcmp (attr, "value")) {
 				return FALSE;
 			}
 		}
