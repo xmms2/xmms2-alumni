@@ -25,6 +25,7 @@
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_config.h"
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -39,7 +40,7 @@
  * This is to prevent overwriting anything if we have trouble opening files.
  */
 int disable_saving = 0;
-const gchar *coll_path;
+char *coll_path = NULL;
 
 
 static xmmsv_coll_t *xmms_collection_read_operator (FILE *file);
@@ -93,12 +94,35 @@ static void
 setup_coll_path (void)
 {
 	xmms_config_property_t *coll_conf;
-	char *path = XMMS_BUILD_PATH ("collections");
+	char *path, *foo, *bar, *uuid;
+	int uuid_len;
 
+	if (coll_path != NULL)
+		return;
+
+	path = XMMS_BUILD_PATH ("collections", "${uuid}");
 	coll_conf = xmms_config_property_register ("collection.directory",
 			path, NULL, NULL);
-	coll_path = xmms_config_property_get_string (coll_conf);
+	coll_path = strdup (xmms_config_property_get_string (coll_conf));
 	g_free (path);
+
+	uuid = xmms_medialib_uuid ();
+	uuid_len = strlen (uuid);
+
+	/* Replace all occurences of ${uuid} with the real uuid */
+	while ((foo = strstr (coll_path, "${uuid}")) != NULL) {
+		int uuid_pos = foo - coll_path;
+
+		bar = malloc (strlen (coll_path) + uuid_len - 7);
+		memcpy (bar, coll_path, uuid_pos);
+		strcpy (bar + uuid_pos, uuid);
+		strcpy (bar + uuid_pos + uuid_len, foo + 7);
+
+		free (coll_path);
+		coll_path = bar;
+	}
+
+	free (uuid);
 }
 
 
