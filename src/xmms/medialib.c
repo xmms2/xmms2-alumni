@@ -1648,7 +1648,7 @@ xmms_medialib_query_recurs (xmmsv_coll_t *coll, fetch_info_t *fetch,
 			const char *token_value;
 
 			if (!xmmsv_coll_attribute_get (coll, "type", &key)
-					|| strcmp (key, "property") == 0) {
+					|| strcmp (key, "value") == 0) {
 				/* If 'field' is not set, match against every key */
 				if (!xmmsv_coll_attribute_get (coll, "field", &key)) {
 					key = NULL;
@@ -1739,18 +1739,20 @@ xmms_medialib_query_recurs (xmmsv_coll_t *coll, fetch_info_t *fetch,
 				s4_sourcepref_unref (sp);
 			}
 
-			xmmsv_list_get_coll (operands, 0, &c);
-			if (!is_universe (c)) {
-				s4_condition_t *op_cond;
-				xmms_medialib_query_recurs (c, fetch, order, &op_cond, 0);
-				*cond = s4_cond_new_combiner (S4_COMBINE_AND);
+			if (not) {
+				s4_condition_t *op_cond = *cond;
+				*cond = s4_cond_new_combiner (S4_COMBINE_NOT);
 				s4_cond_add_operand (*cond, op_cond);
 				s4_cond_unref (op_cond);
 			}
 
-			if (not) {
+			xmmsv_list_get_coll (operands, 0, &c);
+			if (!is_universe (c)) {
 				s4_condition_t *op_cond = *cond;
-				*cond = s4_cond_new_combiner (S4_COMBINE_NOT);
+				*cond = s4_cond_new_combiner (S4_COMBINE_AND);
+				s4_cond_add_operand (*cond, op_cond);
+				s4_cond_unref (op_cond);
+				xmms_medialib_query_recurs (c, fetch, order, &op_cond, 0);
 				s4_cond_add_operand (*cond, op_cond);
 				s4_cond_unref (op_cond);
 			}
