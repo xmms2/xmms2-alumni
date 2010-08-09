@@ -121,8 +121,8 @@ static int media_callback (void *u, int argc, char *argv[], char *col[])
 int main (int argc, char *argv[])
 {
 	sqlite3 *db;
-	char *errmsg = NULL;
-	int ret, i;
+	char *coll_path, *foo, *bar, *uuid, *errmsg = NULL;
+	int ret, i, uuid_len;
 	GTree *sources = g_tree_new (tree_cmp);
 	GHashTable **ht;
 
@@ -160,17 +160,34 @@ int main (int argc, char *argv[])
 	ret = sqlite3_exec (db, "select id,key,value,source from Media;",
 			media_callback, sources, &errmsg);
 
-	s4_close (s4);
 
 	ht = malloc (sizeof (GHashTable*) * XMMS_COLLECTION_NUM_NAMESPACES);
 	for (i = 0; i < XMMS_COLLECTION_NUM_NAMESPACES; i++) {
 		ht[i] = g_hash_table_new (g_str_hash, g_str_equal);
 	}
 
+	/* Replace ${uuid} in the coll path with the real uuid */
+	uuid = s4_get_uuid_string (s4);
+	uuid_len = strlen (uuid);
+	coll_path = strdup (argv[3]);
+
+	while ((foo = strstr (coll_path, "${uuid}")) != NULL) {
+		int uuid_pos = foo - coll_path;
+
+		bar = malloc (strlen (coll_path) - strlen ("${uuid}") + uuid_len);
+		memcpy (bar, coll_path, uuid_pos);
+		strcpy (bar + uuid_pos, uuid);
+		strcpy (bar + uuid_len, foo + strlen ("${uuid}"));
+		free (coll_path);
+		coll_path = bar;
+	}
+
 	collection_restore (db, ht);
-	collection_dag_save (ht, argv[3]);
+	collection_dag_save (ht, coll_path);
+	free (coll_path);
 
 	sqlite3_close (db);
+	s4_close (s4);
 
 	return 0;
 }
