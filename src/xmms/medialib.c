@@ -121,7 +121,7 @@ find_highest_id (void)
 	xmmsv_dict_set_string (fetch, "aggregate", "max");
 	xmmsv_dict_set_string (fetch, "get", "id");
 
-	id = xmms_medialib_query (NULL, coll, fetch);
+	id = xmms_medialib_query (coll, fetch);
 	if (!xmmsv_get_int (id, &ret)) {
 		ret = 0;
 	}
@@ -1464,9 +1464,8 @@ static int is_universe (xmmsv_coll_t *coll)
 }
 
 /* Returns non-zero if the collection has an ordering, 0 otherwise */
-static int has_order (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
+static int has_order (xmmsv_coll_t *coll)
 {
-	char *ref, *ns;
 	xmmsv_t *operands = xmmsv_coll_operands_get (coll);
 	xmmsv_coll_t *c;
 	int i;
@@ -1475,12 +1474,12 @@ static int has_order (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 		/* Intersection is orderded if the first operand is ordeed */
 	case XMMS_COLLECTION_TYPE_INTERSECTION:
 		xmmsv_list_get_coll (operands, 0, &c);
-		return has_order (dag, c);
+		return has_order (c);
 
 		/* Union is ordered if all operands are ordered (concat) */
 	case XMMS_COLLECTION_TYPE_UNION:
 		for (i = 0; xmmsv_list_get_coll (operands, i, &c); i++) {
-			if (!has_order (dag, c))
+			if (!has_order (c))
 				return 0;
 		}
 
@@ -1492,10 +1491,8 @@ static int has_order (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 
 	case XMMS_COLLECTION_TYPE_REFERENCE:
 		if (!is_universe (coll)) {
-			xmmsv_coll_attribute_get (coll, "reference", &ref);
-			xmmsv_coll_attribute_get (coll, "namespace", &ns);
-			c = xmms_collection_get_pointer (dag, ref, xmms_collection_get_namespace_id (ns));
-			return has_order (dag, c);
+			xmmsv_list_get_coll (operands, 0, &c);
+			return has_order (c);
 		}
 	case XMMS_COLLECTION_TYPE_COMPLEMENT:
 	case XMMS_COLLECTION_TYPE_UNIVERSE:
@@ -1511,7 +1508,6 @@ static int has_order (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
  * Queries the medialib. Big and ugly function
  * TODO: Make it smaller and prettier
  *
- * @param dag The collection DAG
  * @param coll The collection to query for
  * @param fetch A list of keys to fetch
  * @param order A list of orderings. If an operand adds an ordering
@@ -1522,7 +1518,7 @@ static int has_order (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
  * @return An S4 resultset, or NULL if return_result equals 0
  */
 static s4_resultset_t*
-xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info_t *fetch,
+xmms_medialib_query_recurs (xmmsv_coll_t *coll, fetch_info_t *fetch,
 		xmmsv_t *order, s4_condition_t **cond, int return_result)
 {
 	s4_resultset_t *res = NULL;
@@ -1535,11 +1531,8 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 	switch (xmmsv_coll_get_type (coll)) {
 		case XMMS_COLLECTION_TYPE_REFERENCE:
 			if (!is_universe (coll)) {
-				xmmsv_coll_attribute_get (coll, "reference", &key);
-				xmmsv_coll_attribute_get (coll, "namespace", &val);
-				c = xmms_collection_get_pointer (dag, key,
-						xmms_collection_get_namespace_id (val));
-				res = xmms_medialib_query_recurs (dag, c, fetch, order,
+				xmmsv_list_get_coll (operands, 0, &c);
+				res = xmms_medialib_query_recurs (c, fetch, order,
 						cond, return_result);
 				break;
 			}
@@ -1552,7 +1545,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 
 		case XMMS_COLLECTION_TYPE_UNION:
 		{
-			int concat = has_order (dag, coll) && order != NULL;
+			int concat = has_order (coll) && order != NULL;
 			xmmsv_t *id_list = concat?xmmsv_new_list ():NULL;
 			GHashTable *id_table;
 			s4_resultset_t *set;
@@ -1577,7 +1570,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 					int j;
 
 					/* Query the operand and sort it */
-					set = xmms_medialib_query_recurs (dag, c, fetch, child_order, &op_cond, 1);
+					set = xmms_medialib_query_recurs (c, fetch, child_order, &op_cond, 1);
 					set = xmms_medialib_result_sort (set, fetch, child_order);
 
 					s4_cond_free (op_cond);
@@ -1603,7 +1596,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 					xmmsv_unref (child_order);
 				} else { /* If this is not a concat, just a simple union,
 							we add the operand to the condition */
-					xmms_medialib_query_recurs (dag, c, fetch, NULL, &op_cond, 0);
+					xmms_medialib_query_recurs (c, fetch, NULL, &op_cond, 0);
 					s4_cond_add_operand (*cond, op_cond);
 					s4_cond_unref (op_cond);
 				}
@@ -1624,9 +1617,9 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 				s4_condition_t *op_cond;
 				if (i == 0) {
 					/* We keep the ordering of the first operand */
-					xmms_medialib_query_recurs (dag, c, fetch, order, &op_cond, 0);
+					xmms_medialib_query_recurs (c, fetch, order, &op_cond, 0);
 				} else {
-					xmms_medialib_query_recurs (dag, c, fetch, NULL, &op_cond, 0);
+					xmms_medialib_query_recurs (c, fetch, NULL, &op_cond, 0);
 				}
 				s4_cond_add_operand (*cond, op_cond);
 				s4_cond_unref (op_cond);
@@ -1637,7 +1630,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 			*cond = s4_cond_new_combiner (S4_COMBINE_NOT);
 			if (xmmsv_list_get_coll (operands, 0, &c)) {
 				s4_condition_t *op;
-				xmms_medialib_query_recurs (dag, c, fetch, NULL, &op, 0);
+				xmms_medialib_query_recurs (c, fetch, NULL, &op, 0);
 				s4_cond_add_operand (*cond, op);
 				s4_cond_unref (op);
 			}
@@ -1749,7 +1742,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 			xmmsv_list_get_coll (operands, 0, &c);
 			if (!is_universe (c)) {
 				s4_condition_t *op_cond;
-				xmms_medialib_query_recurs (dag, c, fetch, order, &op_cond, 0);
+				xmms_medialib_query_recurs (c, fetch, order, &op_cond, 0);
 				*cond = s4_cond_new_combiner (S4_COMBINE_AND);
 				s4_cond_add_operand (*cond, op_cond);
 				s4_cond_unref (op_cond);
@@ -1787,7 +1780,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 				}
 			}
 			xmmsv_list_get_coll (operands, 0, &c);
-			xmms_medialib_query_recurs (dag, c, fetch, order, cond, 0);
+			xmms_medialib_query_recurs (c, fetch, order, cond, 0);
 			break;
 		case XMMS_COLLECTION_TYPE_LIMIT:
 		{
@@ -1807,7 +1800,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 			}
 
 			xmmsv_list_get_coll (operands, 0, &c);
-			set = xmms_medialib_query_recurs (dag, c, fetch, child_order, cond, 1);
+			set = xmms_medialib_query_recurs (c, fetch, child_order, cond, 1);
 			xmmsv_unref (child_order);
 
 			child_order = xmmsv_new_list ();
@@ -1838,7 +1831,7 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 		}
 		case XMMS_COLLECTION_TYPE_MEDIASET:
 			xmmsv_list_get_coll (operands, 0, &c);
-			res = xmms_medialib_query_recurs (dag, c, fetch, NULL, cond, return_result);
+			res = xmms_medialib_query_recurs (c, fetch, NULL, cond, return_result);
 			break;
 		case XMMS_COLLECTION_TYPE_IDLIST:
 		{
@@ -1871,12 +1864,11 @@ xmms_medialib_query_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, fetch_info
 /**
  * Returns a random entry from a collection
  *
- * @param dag The collection DAG
  * @param coll The collection to find a random entry in
  * @return A random entry from the collection, 0 if the collection is empty
  */
 xmms_medialib_entry_t
-xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
+xmms_medialib_query_random_id (xmmsv_coll_t *coll)
 {
 	xmmsv_t *fetch_spec = xmmsv_new_dict ();
 	xmmsv_t *get_list = xmmsv_new_list ();
@@ -1889,7 +1881,7 @@ xmms_medialib_query_random_id (xmms_coll_dag_t *dag, xmmsv_coll_t *coll)
 	xmmsv_dict_set_string (fetch_spec, "aggregate", "random");
 	xmmsv_dict_set (fetch_spec, "get", get_list);
 
-	res = xmms_medialib_query (dag, coll, fetch_spec);
+	res = xmms_medialib_query (coll, fetch_spec);
 	xmmsv_get_int (res, &ret);
 
 	xmmsv_unref (get_list);
@@ -2659,13 +2651,12 @@ fetch_spec_free (fetch_spec_t *spec)
 /**
  * Queries the medialib and returns an xmmsv_t with the info requested
  *
- * @param dag The collection DAG
  * @param coll The collection to find
  * @param fetch Specifies what to fetch
  * @return An xmmsv_t with the structure requested in fetch
  */
 xmmsv_t *
-xmms_medialib_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
+xmms_medialib_query (xmmsv_coll_t *coll, xmmsv_t *fetch)
 {
 	s4_resultset_t *set;
 	s4_condition_t *cond;
@@ -2681,7 +2672,7 @@ xmms_medialib_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_t *fetch)
 	spec = fetch_to_spec (fetch, &info);
 	order = xmmsv_new_list ();
 
-	set = xmms_medialib_query_recurs (dag, coll, &info, order, &cond, 1);
+	set = xmms_medialib_query_recurs (coll, &info, order, &cond, 1);
 	if (set != NULL) {
 		ret = resultset_to_xmmsv (set, spec);
 	} else {
