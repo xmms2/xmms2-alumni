@@ -777,7 +777,8 @@ xmms_collection_client_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 	}
 
 	g_mutex_lock (dag->mutex);
-	ret = xmms_medialib_query (dag, coll, fetch);
+	xmms_collection_apply_to_collection (dag, coll, bind_all_references, NULL);
+	ret = xmms_medialib_query (coll, fetch);
 	g_mutex_unlock (dag->mutex);
 
 	return ret;
@@ -923,7 +924,14 @@ xmms_collection_find_alias (xmms_coll_dag_t *dag, guint nsid,
 xmms_medialib_entry_t
 xmms_collection_get_random_media (xmms_coll_dag_t *dag, xmmsv_coll_t *source)
 {
-	return xmms_medialib_query_random_id (dag, source);
+	xmms_medialib_entry_t ret;
+
+	g_mutex_lock (dag->mutex);
+	xmms_collection_apply_to_collection (dag, source, bind_all_references, NULL);
+	ret = xmms_medialib_query_random_id (source);
+	g_mutex_unlock (dag->mutex);
+
+	return ret;
 }
 
 /** @} */
