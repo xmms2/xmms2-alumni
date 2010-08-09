@@ -976,6 +976,10 @@ coll_dump (xmmsv_coll_t *coll, guint level)
 		type = "Reference";
 		break;
 
+	case XMMS_COLLECTION_TYPE_UNIVERSE:
+		type = "Universe";
+		break;
+
 	case XMMS_COLLECTION_TYPE_UNION:
 		type = "Union";
 		break;
@@ -997,7 +1001,7 @@ coll_dump (xmmsv_coll_t *coll, guint level)
 		break;
 
 	default:
-		print_info ("%sUnknown Operator!", indent);
+		type = "Unknown Operator!";
 		break;
 	}
 
