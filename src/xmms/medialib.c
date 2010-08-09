@@ -157,15 +157,11 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	xmms_medialib_register_ipc_commands (XMMS_OBJECT (medialib));
 
 	path = XMMS_BUILD_PATH ("medialib.s4");
-
 	cp = xmms_config_property_register ("medialib.path", path, NULL, NULL);
 	conv_conf = xmms_config_property_register ("sqlite2s4.path", "sqlite2s4", NULL, NULL);
 	coll_conf = xmms_config_property_register ("collection.directory",
 			XMMS_BUILD_PATH ("collections", "${uuid}"), NULL, NULL);
-
-/*	xmms_config_property_register ("medialib.analyze_on_startup", "0", NULL, NULL);
-	xmms_config_property_register ("medialib.allow_remote_fs",
-	                               "0", NULL, NULL);*/
+	g_free (path);
 
 	conf_path = xmms_config_property_get_string (cp);
 	medialib->s4 = s4_open (conf_path, indices, S4_VERIFY | S4_RECOVER);
@@ -177,11 +173,37 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 		 * We'll try to convert it
 		 */
 		if (err == S4E_MAGIC) {
-			gchar *cmdline = g_strjoin (" ", xmms_config_property_get_string (conv_conf),
-					conf_path, path, xmms_config_property_get_string (coll_conf), NULL);
-			gchar *std_out, *std_err;
-			gint exit_status;
+			gchar *std_out, *std_err, *cmdline;
+			gint exit_status, i;
 			GError *error;
+
+			path = NULL;
+
+			/* Replace old suffix with .s4 */
+			for (i = strlen (conf_path) - 1; path == NULL && i >= 0; i--) {
+				switch (conf_path[i]) {
+					/* A slash before a dot, we found no suffix */
+					case '/':
+					case '\\':
+						i = -1;
+						break;
+					/* A dot means we found the start of the suffix */
+					case '.':
+						path = malloc (i + 4);
+						/* Copy everything before the suffix */
+						memcpy (path, conf_path, i);
+						/* And append .s4 */
+						memcpy (path + i, ".s4", 4);
+						break;
+				}
+			}
+			/* If we found no suffix we simply append .s4 */
+			if (path == NULL) {
+				path = g_strconcat (conf_path, ".s4", NULL);
+			}
+
+			cmdline = g_strjoin (" ", xmms_config_property_get_string (conv_conf),
+					conf_path, path, xmms_config_property_get_string (coll_conf), NULL);
 
 			XMMS_DBG ("Trying to run sqlite2s4, command line %s", cmdline);
 
@@ -206,13 +228,13 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 				/* Update the config path */
 				xmms_config_property_set_data (cp, path);
 			}
+
+			g_free (path);
 		} else {
 			/* TODO: Cleaner exit? */
 			xmms_log_fatal ("Could not open the S4 database");
 		}
 	}
-
-	g_free (path);
 
 	default_sp = s4_sourcepref_create (source_pref);
 
