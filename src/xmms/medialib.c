@@ -1782,9 +1782,12 @@ xmms_medialib_query_recurs (xmmsv_coll_t *coll, fetch_info_t *fetch,
 		}
 		case XMMS_COLLECTION_TYPE_ORDER:
 			if (order != NULL) {
-				if (!xmmsv_coll_attribute_get (coll, "type", &key)
-						|| strcmp (key, "value") == 0
-						|| strcmp (key, "id") == 0) {
+				if (!xmmsv_coll_attribute_get (coll, "type", &key)) {
+					key = (char*)"value";
+				}
+				if (strcmp (key, "random") == 0) {
+					xmmsv_list_append_string (order, "__ RANDOM __");
+				} else {
 					if (strcmp (key, "id") == 0) {
 						val = (char*)"__ ID __";
 					} else {
@@ -1799,8 +1802,6 @@ xmms_medialib_query_recurs (xmmsv_coll_t *coll, fetch_info_t *fetch,
 						xmmsv_list_append_string (order, val);
 						g_free (val);
 					}
-				} else if (strcmp (key, "random") == 0) {
-					xmmsv_list_append_string (order, "__ RANDOM __");
 				}
 			}
 			xmmsv_list_get_coll (operands, 0, &c);
