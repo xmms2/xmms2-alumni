@@ -202,6 +202,7 @@ static inline xmmsv_t *__xmmsv_identity_xmmsv (xmmsv_t *v) {return v;}
 #define XMMSV_DICT_ENTRY_INT(k, v) XMMSV_DICT_ENTRY (k, xmmsv_new_int (v))
 #define XMMSV_DICT_END NULL
 xmmsv_t *xmmsv_build_dict (const char *firstkey, ...);
+xmmsv_t *xmmsv_build_dict_va (const char *firstkey, va_list ap);
 
 #define XMMSV_LIST_ENTRY(v) __xmmsv_identity_xmmsv (v)
 #define XMMSV_LIST_ENTRY_STR(v) XMMSV_LIST_ENTRY (xmmsv_new_string (v))
@@ -211,6 +212,13 @@ xmmsv_t *xmmsv_build_dict (const char *firstkey, ...);
 
 xmmsv_t *xmmsv_build_list (xmmsv_t *first_entry, ...);
 xmmsv_t *xmmsv_build_list_va (xmmsv_t *first_entry, va_list ap);
+
+xmmsv_t *xmmsv_build_empty_organize (void);
+xmmsv_t *xmmsv_build_organize (const char *first_key, ...);
+xmmsv_t *xmmsv_build_metadata (xmmsv_t *keys, xmmsv_t *get, const char *aggregate, xmmsv_t *sourcepref);
+xmmsv_t *xmmsv_build_cluster_list (xmmsv_t *cluster_by, xmmsv_t *cluster_data);
+xmmsv_t *xmmsv_build_cluster_dict (xmmsv_t *cluster_by, xmmsv_t *cluster_data);
+xmmsv_t *xmmsv_build_count (void);
 
 #ifdef __cplusplus
 }
