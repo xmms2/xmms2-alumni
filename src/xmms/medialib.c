@@ -164,7 +164,7 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 	g_free (path);
 
 	conf_path = xmms_config_property_get_string (cp);
-	medialib->s4 = s4_open (conf_path, indices, S4_VERIFY | S4_RECOVER);
+	medialib->s4 = s4_open (conf_path, indices, 0);
 
 	/* Could not open the S4 database */
 	if (medialib->s4 == NULL) {
@@ -214,7 +214,7 @@ xmms_medialib_init (xmms_playlist_t *playlist)
 
 			g_free (cmdline);
 
-			medialib->s4 = s4_open (path, indices, S4_VERIFY | S4_RECOVER);
+			medialib->s4 = s4_open (path, indices, 0);
 
 			/* Now we give up */
 			if (medialib->s4 == NULL) {
