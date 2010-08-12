@@ -720,45 +720,18 @@ xmms_collection_query_ids (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 	xmmsv_coll_t *coll2, *coll3;
 
 	/* Creates the fetchspec to use */
-	if (fetch_spec == NULL) {
-		xmmsv_t *get_list = xmmsv_new_list ();
-		xmmsv_t *id_dict = xmmsv_new_dict ();
-
-		xmmsv_list_append_string (get_list, "id");
-
-		xmmsv_dict_set_string (id_dict, "_type", "metadata");
-		xmmsv_dict_set (id_dict, "get", get_list);
-
-		fetch_spec = xmmsv_new_dict ();
-		xmmsv_dict_set_string (fetch_spec, "_type", "cluster-list");
-		xmmsv_dict_set_string (fetch_spec, "cluster-by", "id");
-		xmmsv_dict_set (fetch_spec, "data", id_dict);
-	}
+	fetch_spec = xmmsv_build_cluster_list (
+			xmmsv_new_string ("id"),
+			xmmsv_build_metadata (NULL, xmmsv_new_string ("id"), "first", NULL));
 
 	coll2 = xmmsv_coll_add_order_operators (coll, order);
+	coll3 = xmmsv_coll_add_limit_operator (coll2, lim_start, lim_len);
 
-	if (lim_start != 0 || lim_len != 0) {
-		char str[12];
-		coll3 = xmmsv_coll_new (XMMS_COLLECTION_TYPE_LIMIT);
-		xmmsv_coll_add_operand (coll3, coll2);
+	ret = xmms_collection_client_query (dag, coll3, fetch_spec, err);
 
-		if (lim_start != 0) {
-			sprintf (str, "%i", lim_start);
-			xmmsv_coll_attribute_set (coll3, "start", str);
-		}
-
-		if (lim_len != 0) {
-			sprintf (str, "%i", lim_len);
-			xmmsv_coll_attribute_set (coll3, "length", str);
-		}
-
-		xmmsv_coll_unref (coll2);
-		coll2 = coll3;
-	}
-
-	ret = xmms_collection_client_query (dag, coll2, fetch_spec, err);
-
+	xmmsv_unref (fetch_spec);
 	xmmsv_coll_unref (coll2);
+	xmmsv_coll_unref (coll3);
 
 	return ret;
 }
