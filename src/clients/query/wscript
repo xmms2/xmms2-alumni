@@ -1,6 +1,6 @@
 def build(bld):
     obj = bld.new_task_gen('cc', 'program')
-    obj.target = 'query'
+    obj.target = 'xmms2-query'
     obj.source = """lex.l bison.y""".split()
     obj.includes = '. ../../include'
     obj.uselib_local = 'xmmsclient'
