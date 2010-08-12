@@ -1314,54 +1314,6 @@ static int idlist_filter (const s4_val_t *value, s4_condition_t *cond)
 	return g_hash_table_lookup (id_table, GINT_TO_POINTER (ival)) == NULL;
 }
 
-/* A token filter. Checks if the passed value contains a token */
-static int token_filter (const s4_val_t *value, s4_condition_t *cond)
-{
-	const char *token = s4_cond_get_funcdata (cond);
-	const char *s;
-	int32_t i;
-	s4_cmp_mode_t mode = s4_cond_get_cmp_mode (cond);
-
-	if ((mode == S4_CMP_CASELESS && s4_val_get_casefolded_str (value, &s)) ||
-			s4_val_get_str (value, &s)) {
-		while (*s) {
-			/* Skip whitespaces */
-			for (; isspace (*s); s++);
-
-			/* Compare token */
-			for (i = 0; *s && *s == token[i] && token[i] != '*'; i++, s++);
-
-			/* Check if it matched */
-			if (token[i] == '*' || (!token[i] && (isspace (*s) || !*s))) {
-				return 0;
-			}
-
-			/* Eat the rest of the token */
-			for (; *s && !isspace (*s); s++);
-		}
-	} else if (s4_val_get_int (value, &i)) {
-		char *end;
-		int32_t j = strtol (token, &end, 10);
-
-		if (end != token) {
-			/* If the token is just a number we have to have an exact match */
-			if (*end == '\0' && j == i) {
-				return 0;
-			/* If the character after the last digit is a star we have to
-			 * shift the number until it has the right number of digits
-			 */
-			} else if (*end == '*') {
-				for (; i > j; i /= 10);
-				if (i == j) {
-					return 0;
-				}
-			}
-		}
-	}
-
-	return 1;
-}
-
 /**
  * Creates a new resultset where the order is the same as in the idlist
  *
@@ -1665,9 +1617,6 @@ xmms_medialib_query_recurs (xmmsv_coll_t *coll, fetch_info_t *fetch,
 			s4_cmp_mode_t cmp_mode;
 			int32_t ival;
 			int flags = 0;
-			int not = 0;
-			int token = 0;
-			const char *token_value;
 
 			if (!xmmsv_coll_attribute_get (coll, "type", &key)
 					|| strcmp (key, "value") == 0) {
@@ -1691,37 +1640,33 @@ xmms_medialib_query_recurs (xmmsv_coll_t *coll, fetch_info_t *fetch,
 			} else if (strcmp (val, "has") == 0) {
 				type = S4_FILTER_EXISTS;
 			} else if (strcmp (val, "<=") == 0) {
-				type = S4_FILTER_GREATER;
-				not = 1;
+				type = S4_FILTER_SMALLEREQ;
 			} else if (strcmp (val, ">=") == 0) {
-				type = S4_FILTER_SMALLER;
-				not = 1;
+				type = S4_FILTER_GREATEREQ;
 			} else if (strcmp (val, "!=") == 0) {
-				type = S4_FILTER_EQUAL;
-				not = 1;
+				type = S4_FILTER_NOTEQUAL;
 			} else if (strcmp (val, "token") == 0) {
-				token = 1;
+				type = S4_FILTER_TOKEN;
 			} else { /* Unknown operation, default to equal */
 				type = S4_FILTER_EQUAL;
 			}
 
 			if (xmmsv_coll_attribute_get (coll, "value", &val)) {
-				if (token) {
-					token_value = val;
+				if (xmms_is_int (val, &ival)) {
+					sval = s4_val_new_int (ival);
 				} else {
-					if (xmms_is_int (val, &ival)) {
-						sval = s4_val_new_int (ival);
-					} else {
-						sval = s4_val_new_string (val);
-					}
+					sval = s4_val_new_string (val);
 				}
 			}
 
 			if (!xmmsv_coll_attribute_get (coll, "collation", &val)) {
-				/* For < and > we default to natcoll,
+				/* For <, <=, >= and > we default to natcoll,
 				 * so that strings will order correctly
 				 * */
-				if (type == S4_FILTER_SMALLER || type == S4_FILTER_GREATER) {
+				if (type == S4_FILTER_SMALLER
+						|| type == S4_FILTER_GREATER
+						|| type == S4_FILTER_SMALLEREQ
+						|| type == S4_FILTER_GREATEREQ) {
 					cmp_mode = S4_CMP_COLLATE;
 				} else {
 					cmp_mode = S4_CMP_CASELESS;
@@ -1742,30 +1687,13 @@ xmms_medialib_query_recurs (xmmsv_coll_t *coll, fetch_info_t *fetch,
 				g_strfreev (prefs);
 			}
 
-			if (token) {
-				if (cmp_mode == S4_CMP_CASELESS) {
-					token_value = s4_string_casefold (token_value);
-				} else {
-					token_value = g_strdup (token_value);
-				}
-				*cond = s4_cond_new_custom_filter (token_filter, (void*)token_value,
-						g_free, key, sp, cmp_mode, flags);
-			} else {
-				*cond = s4_cond_new_filter (type, key, sval, sp, cmp_mode, flags);
-			}
+			*cond = s4_cond_new_filter (type, key, sval, sp, cmp_mode, flags);
 
 			if (sval != NULL)
 				s4_val_free (sval);
 
 			if (sp != default_sp) {
 				s4_sourcepref_unref (sp);
-			}
-
-			if (not) {
-				s4_condition_t *op_cond = *cond;
-				*cond = s4_cond_new_combiner (S4_COMBINE_NOT);
-				s4_cond_add_operand (*cond, op_cond);
-				s4_cond_unref (op_cond);
 			}
 
 			xmmsv_list_get_coll (operands, 0, &c);
