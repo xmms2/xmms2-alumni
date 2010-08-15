@@ -2411,28 +2411,29 @@ fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info)
 			ret->type = FETCH_METADATA;
 
 			if (xmmsv_dict_get (fetch, "get", &val)) {
-				for (i = 0; i < 4 && xmmsv_list_get_string (val, i, &str); i++) {
-					if (strcmp (str, "id") == 0) {
-						ret->data.metadata.get[i] = METADATA_ID;
-					} else if (strcmp (str, "key") == 0) {
-						ret->data.metadata.get[i] = METADATA_KEY;
-					} else if (strcmp (str, "value") == 0) {
-						ret->data.metadata.get[i] = METADATA_VALUE;
-					} else if (strcmp (str, "source") == 0) {
-						ret->data.metadata.get[i] = METADATA_SOURCE;
+				if (xmmsv_is_type (val, XMMSV_TYPE_LIST)) {
+					for (i = 0; i < 4 && xmmsv_list_get_string (val, i, &str); i++) {
+						if (strcmp (str, "id") == 0) {
+							ret->data.metadata.get[i] = METADATA_ID;
+						} else if (strcmp (str, "key") == 0) {
+							ret->data.metadata.get[i] = METADATA_KEY;
+						} else if (strcmp (str, "value") == 0) {
+							ret->data.metadata.get[i] = METADATA_VALUE;
+						} else if (strcmp (str, "source") == 0) {
+							ret->data.metadata.get[i] = METADATA_SOURCE;
+						}
 					}
-				}
-				if (xmmsv_get_string (val, &str)) {
+				} else  if (xmmsv_get_string (val, &str)) {
 					if (strcmp (str, "id") == 0) {
-						ret->data.metadata.get[i] = METADATA_ID;
+						ret->data.metadata.get[0] = METADATA_ID;
 					} else if (strcmp (str, "key") == 0) {
-						ret->data.metadata.get[i] = METADATA_KEY;
+						ret->data.metadata.get[0] = METADATA_KEY;
 					} else if (strcmp (str, "value") == 0) {
-						ret->data.metadata.get[i] = METADATA_VALUE;
+						ret->data.metadata.get[0] = METADATA_VALUE;
 					} else if (strcmp (str, "source") == 0) {
-						ret->data.metadata.get[i] = METADATA_SOURCE;
+						ret->data.metadata.get[0] = METADATA_SOURCE;
 					}
-					i++;
+					i = 1;
 				}
 
 				ret->data.metadata.get_size = i;
@@ -2461,18 +2462,17 @@ fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info)
 				ret->data.metadata.cols = malloc (sizeof (int) * ret->data.metadata.col_count);
 				ret->data.metadata.cols[0] = 0;
 			} else if (xmmsv_dict_get (fetch, "keys", &val)) {
-				ret->data.metadata.col_count = xmmsv_list_get_size (val);
-				if (ret->data.metadata.col_count == -1) {
+				if (xmmsv_is_type (val, XMMSV_TYPE_LIST)) {
+					ret->data.metadata.col_count = xmmsv_list_get_size (val);
+					ret->data.metadata.cols = malloc (sizeof (int) * ret->data.metadata.col_count);
+					for (i = 0; xmmsv_list_get_string (val, i, &str); i++) {
+						ret->data.metadata.cols[i] =
+							fetchinfo_add_key (info, fetch, str, sp);
+					}
+				} else if (xmmsv_get_string (val, &str)) {
 					ret->data.metadata.col_count = 1;
-				}
-				ret->data.metadata.cols = malloc (sizeof (int) * ret->data.metadata.col_count);
-				for (i = 0; xmmsv_list_get_string (val, i, &str); i++) {
-					ret->data.metadata.cols[i] =
-						fetchinfo_add_key (info, fetch, str, sp);
-				}
-				if (xmmsv_get_string (val, &str)) {
-					ret->data.metadata.cols[0] =
-						fetchinfo_add_key (info, fetch, str, sp);
+					ret->data.metadata.cols = malloc (sizeof (int));
+					ret->data.metadata.cols[0] = fetchinfo_add_key (info, fetch, str, sp);
 				}
 			} else {
 				ret->data.metadata.col_count = 1;
