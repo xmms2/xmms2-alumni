@@ -113,7 +113,7 @@ setup_coll_path (void)
 	while ((foo = strstr (coll_path, "${uuid}")) != NULL) {
 		int uuid_pos = foo - coll_path;
 
-		bar = malloc (strlen (coll_path) + uuid_len - 7);
+		bar = malloc (strlen (coll_path) + 1 + uuid_len - 7);
 		memcpy (bar, coll_path, uuid_pos);
 		strcpy (bar + uuid_pos, uuid);
 		strcpy (bar + uuid_pos + uuid_len, foo + 7);
