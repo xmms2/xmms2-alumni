@@ -297,12 +297,23 @@ xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
 	return ret;
 }
 
+/**
+ * Finds all media in the collection and fetches it as specified in fetch.
+ *
+ * For a description of the different collection operators and the
+ * fetch specification look at http://xmms2.org/wiki/Collections_2.0
+ *
+ * @param conn  The connection to the server.
+ * @param coll  The collection used to query.
+ * @param fetch The fetch specification.
+ * @return An xmmsv_t with the structure specified in fetch.
+ */
 xmmsc_result_t*
 xmmsc_coll_query (xmmsc_connection_t *conn, xmmsv_coll_t *coll, xmmsv_t *fetch)
 {
 	x_check_conn (conn, NULL);
 	x_api_error_if (!coll, "with a NULL collection", NULL);
-	x_api_error_if (!fetch, "with a NULL fetch list", NULL);
+	x_api_error_if (!fetch, "with a NULL fetch specification", NULL);
 
 	return xmmsc_send_cmd (conn, XMMS_IPC_OBJECT_COLLECTION,
 	                       XMMS_IPC_CMD_QUERY,
