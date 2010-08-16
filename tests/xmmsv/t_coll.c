@@ -84,10 +84,8 @@ CASE (test_coll_universe)
 	c = xmmsv_coll_universe ();
 	CU_ASSERT_PTR_NOT_NULL (c);
 
-	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_REFERENCE);
+	CU_ASSERT_EQUAL (xmmsv_coll_get_type (c), XMMS_COLLECTION_TYPE_UNIVERSE);
 
-	CU_ASSERT_TRUE (xmmsv_coll_attribute_get (c, "reference", &am));
-	CU_ASSERT_STRING_EQUAL (am, "All Media");
 	xmmsv_coll_unref (c);
 }
 
