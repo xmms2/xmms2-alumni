@@ -1773,6 +1773,8 @@ xmms_medialib_query_recurs (xmmsv_coll_t *coll, fetch_info_t *fetch,
 				}
 			}
 
+			s4_resultset_free (set);
+
 			if (order != NULL) {
 				xmmsv_list_append (order, child_order);
 			}
@@ -2659,12 +2661,11 @@ xmms_medialib_query (xmmsv_coll_t *coll, xmmsv_t *fetch, xmms_error_t *err)
 	set = xmms_medialib_query_recurs (coll, &info, order, &cond, 1);
 	if (set != NULL) {
 		ret = resultset_to_xmmsv (set, spec);
+		s4_resultset_free (set);
 	} else {
 		ret = NULL;
 	}
 
-	if (set != NULL)
-		s4_resultset_free (set);
 	s4_cond_free (cond);
 	s4_fetchspec_free (info.fs);
 	g_hash_table_destroy (info.ft);
