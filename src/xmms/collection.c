@@ -751,7 +751,7 @@ xmms_collection_client_query (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 
 	g_mutex_lock (dag->mutex);
 	xmms_collection_apply_to_collection (dag, coll, bind_all_references, NULL);
-	ret = xmms_medialib_query (coll, fetch);
+	ret = xmms_medialib_query (coll, fetch, err);
 	g_mutex_unlock (dag->mutex);
 
 	return ret;
