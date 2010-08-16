@@ -121,7 +121,7 @@ find_highest_id (void)
 	xmmsv_dict_set_string (fetch, "aggregate", "max");
 	xmmsv_dict_set_string (fetch, "get", "id");
 
-	id = xmms_medialib_query (coll, fetch);
+	id = xmms_medialib_query (coll, fetch, NULL);
 	if (!xmmsv_get_int (id, &ret)) {
 		ret = 0;
 	}
@@ -1834,7 +1834,7 @@ xmms_medialib_query_random_id (xmmsv_coll_t *coll)
 	xmmsv_dict_set_string (fetch_spec, "aggregate", "random");
 	xmmsv_dict_set (fetch_spec, "get", get_list);
 
-	res = xmms_medialib_query (coll, fetch_spec);
+	res = xmms_medialib_query (coll, fetch_spec, NULL);
 	xmmsv_get_int (res, &ret);
 
 	xmmsv_unref (get_list);
@@ -2391,7 +2391,7 @@ resultset_to_xmmsv (s4_resultset_t *set, fetch_spec_t *spec)
 
 /* Converts a fetch specification in xmmsv_t form into a fetch_spec_t structure */
 static fetch_spec_t *
-fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info)
+fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info, int *invalid)
 {
 	xmmsv_t *val;
 	const char *str;
@@ -2498,7 +2498,8 @@ fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info)
 			} else if (strcmp (str, "avg") == 0) {
 				ret->data.metadata.aggr_func = AGGREGATE_AVG;
 			} else { /* Unknown aggregation function */
-				ret->data.metadata.aggr_func = AGGREGATE_FIRST;
+				XMMS_DBG ("Unknown aggregation function: %s", str);
+				*invalid = 1;
 			}
 
 			s4_sourcepref_unref (sp);
@@ -2524,9 +2525,19 @@ fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info)
 					ret->data.cluster.cluster_by[0] = str;
 					ret->data.cluster.cols[0] = fetchinfo_add_key (info, val, str, default_sp);
 				}
+			} else {
+				XMMS_DBG ("Required field 'cluster-by' not set in %s", type);
+				*invalid = 1;
+				/* Allocate dummy memory so fetch_spec_free don't crash */
+				ret->data.cluster.cluster_by = malloc (1);
+				ret->data.cluster.cols = malloc (1);
 			}
 			if (xmmsv_dict_get (fetch, "data", &val)) {
-				ret->data.cluster.data = fetch_to_spec (val, info);
+				ret->data.cluster.data = fetch_to_spec (val, info, invalid);
+			} else {
+				XMMS_DBG ("Required field 'data' not set in %s", type);
+				*invalid = 1;
+				ret->data.cluster.data = NULL;
 			}
 
 			if (strcmp (type, "cluster-list") == 0) {
@@ -2554,7 +2565,7 @@ fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info)
 
 				if (strcmp (str, "_type") != 0) {
 					ret->data.organize.keys[i] = str;
-					ret->data.organize.data[i] = fetch_to_spec (val, info);
+					ret->data.organize.data[i] = fetch_to_spec (val, info, invalid);
 					i++;
 				}
 			}
@@ -2562,10 +2573,17 @@ fetch_to_spec (xmmsv_t *fetch, fetch_info_t *info)
 			xmmsv_dict_iter_explicit_destroy (it);
 		} else if (strcmp (type, "count") == 0) {
 			ret->type = FETCH_COUNT;
+		} else {
+			XMMS_DBG ("Type %s not recognized.", type);
+			*invalid = 1;
+			ret->type = FETCH_COUNT;
 		}
 		break;
 	}
 	default:
+		*invalid = 1;
+		XMMS_DBG ("Invalid fetch specification: not a dict");
+		ret->type = FETCH_COUNT;
 		break;
 	}
 
@@ -2576,6 +2594,9 @@ static void
 fetch_spec_free (fetch_spec_t *spec)
 {
 	int i;
+	if (spec == NULL)
+		return;
+
 	switch (spec->type) {
 	case FETCH_METADATA:
 		free (spec->data.metadata.cols);
@@ -2609,20 +2630,30 @@ fetch_spec_free (fetch_spec_t *spec)
  * @return An xmmsv_t with the structure requested in fetch
  */
 xmmsv_t *
-xmms_medialib_query (xmmsv_coll_t *coll, xmmsv_t *fetch)
+xmms_medialib_query (xmmsv_coll_t *coll, xmmsv_t *fetch, xmms_error_t *err)
 {
 	s4_resultset_t *set;
 	s4_condition_t *cond;
 	xmmsv_t *order, *ret;
 	fetch_info_t info;
 	fetch_spec_t *spec;
+	int fetch_invalid = 0;
 
 	info.fs = s4_fetchspec_create ();
 	info.ft = g_hash_table_new_full (g_direct_hash, g_direct_equal,
 			NULL, (GDestroyNotify)g_hash_table_destroy);
 	s4_fetchspec_add (info.fs, "song_id", default_sp, S4_FETCH_PARENT);
 
-	spec = fetch_to_spec (fetch, &info);
+	spec = fetch_to_spec (fetch, &info, &fetch_invalid);
+
+	if (spec == NULL || fetch_invalid) {
+		fetch_spec_free (spec);
+		if (err != NULL) {
+			xmms_error_set (err, XMMS_ERROR_INVAL, "invalid fetch specification");
+		}
+		return NULL;
+	}
+
 	order = xmmsv_new_list ();
 
 	set = xmms_medialib_query_recurs (coll, &info, order, &cond, 1);

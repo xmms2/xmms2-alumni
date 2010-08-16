@@ -45,6 +45,6 @@ void xmms_medialib_add_recursive (xmms_medialib_t *medialib, const gchar *playli
 void xmms_medialib_insert_recursive (xmms_medialib_t *medialib, const gchar *playlist, gint32 pos, const gchar *path, xmms_error_t *error);
 
 xmms_medialib_entry_t xmms_medialib_query_random_id (xmmsv_coll_t *coll);
-xmmsv_t *xmms_medialib_query (xmmsv_coll_t *coll, xmmsv_t *fetch);
+xmmsv_t *xmms_medialib_query (xmmsv_coll_t *coll, xmmsv_t *fetch, xmms_error_t *err);
 
 #endif
