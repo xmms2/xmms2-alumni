@@ -236,7 +236,7 @@ xmmsv_t *xmmsv_serialize (xmmsv_t *v);
 xmmsv_t *xmmsv_deserialize (xmmsv_t *v);
 
 xmmsv_t *xmmsv_build_empty_organize (void);
-xmmsv_t *xmmsv_build_organize (const char *first_key, ...);
+xmmsv_t *xmmsv_build_organize (xmmsv_t *data);
 xmmsv_t *xmmsv_build_metadata (xmmsv_t *keys, xmmsv_t *get, const char *aggregate, xmmsv_t *sourcepref);
 xmmsv_t *xmmsv_build_cluster_list (xmmsv_t *cluster_by, xmmsv_t *cluster_data);
 xmmsv_t *xmmsv_build_cluster_dict (xmmsv_t *cluster_by, xmmsv_t *cluster_data);
