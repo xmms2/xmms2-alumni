@@ -60,17 +60,6 @@ namespace XMMSQt
 			return *this;
 		};
 
-		void add (qint32);
-		void add (quint32);
-		void add (qreal);
-		void add (const QString &);
-		void add (const QStringList &);
-		void add (const QByteArray &);
-		void add (const Coll::Coll &);
-		void add (const QMap<QString, QString> &);
-
-		void addData (const QByteArray &);
-
 		quint32 getUInt32 ();
 		qint32 getInt32 ();
 		qreal getReal ();

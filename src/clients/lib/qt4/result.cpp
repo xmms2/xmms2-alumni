@@ -146,8 +146,9 @@ namespace XMMSQt
 			if (m_restartsignal && ret) {
 				/* return value is true from the code, lets restart this signal */
 				DBGRES ("going to restart signal %d", m_restartsignal);
-				Message msg (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_SIGNAL);
-				msg.add (m_restartsignal);
+				QVariantList params;
+				params.append (m_restartsignal);
+				Message msg (XMMS_IPC_OBJECT_SIGNAL, XMMS_IPC_CMD_SIGNAL, params);
 				Result r = m_client->queueMsg (msg, m_restartsignal);
 				r (m_object, m_slot); /* set the same callback shit */
 			}

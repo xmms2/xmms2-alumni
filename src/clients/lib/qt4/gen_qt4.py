@@ -271,11 +271,11 @@ def emit_signal_body(i, obj, method):
 	i.printline('%s::%s %s' % (camel_case(obj.name), method_name, args))
 	i.enter('{')
 
-#	i.printline('Message msg (%d, %d);' % (obj.id, method.id))
-	i.printline('Message msg (0, 32);')
-	i.printline('msg.add (%d);' % method.id)
+	i.printline('QVariantList params;')
+	i.printline('params.append (%d);' % method.id)
 	for a in arguments:
-		i.printline('msg.add (%s);' % a.name)
+		i.printline('params.append (QVariant::fromValue(%s));' % a.name)
+	i.printline('Message msg (0, 32, params);')
 	i.printline ('return m_client->queueMsg (msg);')
 
 	i.leave('}')
@@ -297,11 +297,11 @@ def emit_broadcast_body(i, obj, method):
 	i.printline('%s::%s %s' % (camel_case(obj.name), method_name, args))
 	i.enter('{')
 
-	#i.printline('Message msg (%d, %d);' % (obj.id, method.id))
-	i.printline('Message msg (0, 33);')
-	i.printline('msg.add (%d);' % method.id)
+	i.printline('QVariantList params;')
+	i.printline('params.append (%d);' % method.id)
 	for a in arguments:
-		i.printline('msg.add (%s);' % a.name)
+		i.printline('params.append (QVariant::fromValue(%s));' % a.name)
+	i.printline('Message msg (0, 33, params);')
 	i.printline ('return m_client->queueMsg (msg);')
 
 	i.leave('}')
