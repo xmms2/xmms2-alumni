@@ -116,22 +116,31 @@ def gen_qt4_hxx_file(ctx, obj, node):
 	i.printline('%s (Client *client) : BaseObject (client)' % camel_case(obj.name))
 	i.printline('{')
 	i.printline('};')
+	i.leave()
 	i.printline()
 
-	for method in obj.methods:
-		emit_method_header(i, obj, method, '')
-		i.printline()
+	if obj.methods:
+		i.enter('public slots:')
+		for method in obj.methods:
+			emit_method_header(i, obj, method, '')
+			i.printline()
+		i.leave()
 
-	for signal in obj.signals:
-		emit_method_header(i, obj, signal, 'signal_')
-		i.printline()
+	if obj.signals:
+		i.enter('public:')
+		for signal in obj.signals:
+			emit_method_header(i, obj, signal, 'signal_')
+			i.printline()
+		i.leave()
 
-	for broadcast in obj.broadcasts:
-		emit_method_header(i, obj, broadcast, 'broadcast_')
-		i.printline()
+	if obj.broadcasts:
+		i.enter('public:')
+		for broadcast in obj.broadcasts:
+			emit_method_header(i, obj, broadcast, 'broadcast_')
+			i.printline()
+		i.leave()
 
 
-	i.leave() # public
 	i.leave('};')
 	i.leave('}')
 
@@ -237,14 +246,11 @@ def emit_method_body(i, obj, method):
 	i.printline('%s::%s %s' % (camel_case(obj.name), method_name, args))
 	i.enter('{')
 
-	#i.printline('QVariantList params;')
-	#for a in arguments:
-	#	i.printline('params.append (QVariant::fromValue(%s));' % a.name)
-	#i.printline('Message msg (%d, %d, params);' % (obj.id, method.id))
-	i.printline('Message msg (%d, %d);' % (obj.id, method.id))
+	i.printline('QVariantList params;')
 	for a in arguments:
-		i.printline('msg.add (%s);' % a.name)
-	i.printline ('return ResultT< %s > (m_client->queueMsg (msg));' % return_type)
+		i.printline('params.append (QVariant::fromValue(%s));' % a.name)
+	i.printline('Message msg (%d, %d, params);' % (obj.id, method.id))
+	i.printline ('return m_client->queueMsg (msg);')
 
 	i.leave('}')
 	
@@ -270,7 +276,7 @@ def emit_signal_body(i, obj, method):
 	i.printline('msg.add (%d);' % method.id)
 	for a in arguments:
 		i.printline('msg.add (%s);' % a.name)
-	i.printline ('return ResultT< %s > (m_client->queueMsg (msg));' % return_type)
+	i.printline ('return m_client->queueMsg (msg);')
 
 	i.leave('}')
 	
@@ -296,7 +302,7 @@ def emit_broadcast_body(i, obj, method):
 	i.printline('msg.add (%d);' % method.id)
 	for a in arguments:
 		i.printline('msg.add (%s);' % a.name)
-	i.printline ('return ResultT< %s > (m_client->queueMsg (msg));' % return_type)
+	i.printline ('return m_client->queueMsg (msg);')
 
 	i.leave('}')
 	
