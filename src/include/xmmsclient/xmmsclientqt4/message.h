@@ -118,6 +118,8 @@ namespace XMMSQt
 		bool put (const QStringList &, QDataStream *) const;
 		bool put (const QVariantMap &, QDataStream *) const;
 
+		QVariant parse (QDataStream *stream);
+		QString parseString (QDataStream *stream);
 	};
 
 }

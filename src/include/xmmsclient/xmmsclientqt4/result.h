@@ -121,10 +121,12 @@ namespace XMMSQt
 
 			void exec (const Message &);
 
-		protected:
-			virtual void exec (const QVariant &v) {/* shouldn't be here */}
+			virtual void execResult (const QVariant &v)
+			{
+				qWarning ("execResult doesn't work yet");
+			}
 
-		private:
+		protected:
 			int m_cookie;
 
 			const char *m_slot;
@@ -141,7 +143,6 @@ namespace XMMSQt
 			void setSlots (QObject *object, const char *slot,
 			               QObject *errobject, const char *errslot);
 
-		protected:
 			quint32 m_restartsignal;
 			bool m_broadcast;
 	};
@@ -159,9 +160,40 @@ namespace XMMSQt
 		public:
 			ResultT< T > (const ResultBase &src) : ResultBase (src) {}
 
-			void exec (const QVariant &v)
+			void execResult (const QVariant &v)
 			{
-				const int mtypeid = qMetaTypeId<T>();
+				if (m_object && m_slot)
+				{
+					QByteArray slotname (QMetaObject::normalizedSignature (m_slot));
+					qDebug (slotname);
+					qint32 methidx = m_object->metaObject ()->indexOfMethod (slotname.constData ());
+
+					if (methidx == -1 ) {
+						qWarning ("Class %s has no slot '%s'",
+						          m_object->metaObject ()->className (),
+						          slot.constData ());
+						return;
+					}
+
+					if (!v.canConvert< T >()) {
+						qWarning ("Cannot convert type");
+						return;
+					}
+
+					const T val = v.value<T>();
+
+					qDebug ("TODO");
+
+				}
+
+				if (v.canConvert< T >())
+				{
+					const T val = v.value<T>();
+				}
+				else
+				{
+					qDebug ("Wrong resulttype");
+				}
 			}
 	};
 
@@ -171,9 +203,9 @@ namespace XMMSQt
 		public:
 			ResultT< void > (const ResultBase &src) : ResultBase (src) {}
 
-			void exec (const QVariant &v)
+			void execResult (const QVariant &v)
 			{
-				Q_ASSERT (v.type () == QVariant::Invalid);
+				//Q_ASSERT (v.type () == QVariant::Invalid);
 			}
 	};
 

@@ -212,6 +212,79 @@ namespace XMMSQt
 		return retarray;
 	}
 
+	QVariant
+	Message::parse (QDataStream *stream)
+	{
+		qint32 type;
+		*stream >> type;
+
+		switch (type) {
+		case XMMSV_TYPE_INT32:
+			{
+				qint32 value;
+				*stream >> value;
+				return QVariant (value);
+			}
+		case XMMSV_TYPE_STRING:
+			return QVariant (parseString (stream));
+		case XMMSV_TYPE_BIN:
+			{
+				qint32 size;
+				*stream >> size;
+
+				QByteArray b (size + 1, 0);
+				stream->readRawData (b.data (), size);
+
+				return QVariant (b);
+			}
+		case XMMSV_TYPE_LIST:
+			{
+				qint32 size;
+				*stream >> size;
+
+				QVariantList list;
+				for (qint32 i = 0; i < size; i++)
+				{
+					list.append (parse (stream));
+				}
+
+				return QVariant (list);
+			}
+		case XMMSV_TYPE_DICT: // FIXME
+			{
+				QVariantMap dict;
+				qint32 size;
+				*stream >> size;
+
+				for (qint32 i = 0; i < size; i++)
+				{
+					QString key = parseString (stream);
+					QVariant value = parse (stream);
+					dict[key] = value;
+				}
+				return QVariant (dict);
+			}
+		case XMMSV_TYPE_COLL: // FIXME
+		case XMMSV_TYPE_NONE: // FIXME
+		case XMMSV_TYPE_ERROR: // FIXME
+		case XMMSV_TYPE_END:  // FIXME
+		default:
+			qDebug ("FIXME");
+			return QVariant ();
+		}
+	}
+
+	QString
+	Message::parseString (QDataStream *stream)
+	{
+		qint32 size;
+		*stream >> size;
+
+		QByteArray b (size + 1, 0);
+		stream->readRawData (b.data (), size);
+
+		return QString::fromUtf8 (b);
+	}
 
 	Coll::Coll *
 	Message::getColl ()
