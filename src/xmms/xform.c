@@ -533,7 +533,15 @@ xmms_xform_metadata_set_str (xmms_xform_t *xform, const char *key,
 static xmmsv_t *
 xmms_xform_metadata_get_val (xmms_xform_t *xform, const char *key)
 {
-	return xmms_medialib_entry_property_get_value (xform->entry, key);
+	gchar src[XMMS_PLUGIN_SHORTNAME_MAX_LEN + 8];
+	xmmsv_t *ret = NULL;
+
+	for (; xform && ret == NULL; xform = xform->prev) {
+		g_snprintf (src, sizeof (src), "plugin/%s", xmms_xform_shortname (xform));
+		ret = xmms_medialib_entry_property_get_value_source (xform->entry, key, src);
+	}
+
+	return ret;
 }
 
 gboolean
