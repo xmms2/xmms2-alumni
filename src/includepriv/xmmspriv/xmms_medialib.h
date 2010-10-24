@@ -41,6 +41,9 @@ gboolean xmms_medialib_check_id (xmms_medialib_entry_t entry);
 
 gboolean xmms_medialib_entry_property_set_str_source (xmms_medialib_entry_t entry, const gchar *property, const gchar *value, const gchar *source);
 gboolean xmms_medialib_entry_property_set_int_source (xmms_medialib_entry_t entry, const gchar *property, gint value, const gchar *source);
+xmmsv_t * xmms_medialib_entry_property_get_value_source (xmms_medialib_entry_t id_num, const gchar *property, const gchar *source);
+gint xmms_medialib_entry_property_get_int_source (xmms_medialib_entry_t id_num, const gchar *property, const gchar *source);
+gchar *xmms_medialib_entry_property_get_str_source (xmms_medialib_entry_t id_num, const gchar *property, const gchar *source);
 void xmms_medialib_add_recursive (xmms_medialib_t *medialib, const gchar *playlist, const gchar *path, xmms_error_t *error);
 void xmms_medialib_insert_recursive (xmms_medialib_t *medialib, const gchar *playlist, gint32 pos, const gchar *path, xmms_error_t *error);
 

@@ -292,6 +292,35 @@ xmms_medialib_entry_property_get (xmms_medialib_entry_t id_num,
 	return ret;
 }
 
+static s4_val_t *
+xmms_medialib_entry_property_get_source (xmms_medialib_entry_t id_num,
+                                         const gchar *property,
+                                         const gchar *source)
+{
+	const char *sources[2] = {source, NULL};
+	s4_sourcepref_t *sp = s4_sourcepref_create (sources);
+	s4_val_t *ret = NULL;
+	s4_val_t *ival = s4_val_new_int (id_num);
+
+	g_return_val_if_fail (property, NULL);
+
+	if (!strcmp (property, XMMS_MEDIALIB_ENTRY_PROPERTY_ID)) {
+		ret = ival;
+	} else {
+		s4_resultset_t *set = xmms_medialib_filter ("song_id", ival, S4_COND_PARENT,
+		                                            sp, property, S4_FETCH_DATA);
+		const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
+
+		if (res != NULL)
+			ret = s4_val_copy (s4_result_get_val (res));
+
+		s4_resultset_free (set);
+	}
+
+	s4_sourcepref_unref (sp);
+
+	return ret;
+}
 
 /**
  * Retrieve a property from an entry
@@ -355,6 +384,90 @@ xmms_medialib_entry_property_get_str (xmms_medialib_entry_t id_num,
 	return ret;
 }
 
+xmmsv_t *
+xmms_medialib_entry_property_get_value_source (xmms_medialib_entry_t id_num,
+                                               const gchar *property,
+                                               const gchar *source)
+{
+	xmmsv_t *ret = NULL;
+	s4_val_t *prop;
+	const char *s;
+	int32_t i;
+
+	prop = xmms_medialib_entry_property_get_source (id_num, property, source);
+	if (prop == NULL)
+		return NULL;
+
+	if (s4_val_get_str (prop, &s))
+		ret = xmmsv_new_string (s);
+	else if (s4_val_get_int (prop, &i))
+		ret = xmmsv_new_int (i);
+
+	s4_val_free (prop);
+
+	return ret;
+}
+
+/**
+ * Retrieve a property from an entry.
+ *
+ * @param id_num Entry to query.
+ * @param property The property to extract. Strings passed should
+ * be defined in medialib.h
+ *
+ * @returns Newly allocated gchar that needs to be freed with g_free
+ */
+
+gchar *
+xmms_medialib_entry_property_get_str_source (xmms_medialib_entry_t id_num,
+                                             const gchar *property,
+                                             const gchar *source)
+{
+	gchar *ret = NULL;
+	s4_val_t *prop;
+	const char *s;
+	int32_t i;
+
+	prop = xmms_medialib_entry_property_get_source (id_num, property, source);
+	if (prop == NULL)
+		return NULL;
+
+	if (s4_val_get_int (prop, &i))
+		ret = g_strdup_printf ("%i", i);
+	else if (s4_val_get_str (prop, &s))
+		ret = g_strdup (s);
+
+	s4_val_free (prop);
+
+	return ret;
+}
+
+/**
+ * Retrieve a property as a int from a entry.
+ *
+ * @param id_num Entry to query.
+ * @param property The property to extract. Strings passed should
+ * be defined in medialib.h
+ *
+ * @returns Property as integer, or -1 if it doesn't exist.
+ */
+gint
+xmms_medialib_entry_property_get_int_source (xmms_medialib_entry_t id_num,
+                                             const gchar *property,
+                                             const gchar *source)
+{
+	gint32 ret;
+	s4_val_t *prop;
+
+	prop = xmms_medialib_entry_property_get_source (id_num, property, source);
+	if (prop == NULL || !s4_val_get_int (prop, &ret))
+		return -1;
+
+	s4_val_free (prop);
+
+	return ret;
+}
+
 /**
  * Retrieve a property as a int from a entry.
  *
@@ -385,17 +498,13 @@ xmms_medialib_entry_property_set_source (xmms_medialib_entry_t id_num,
                                          const char *key, s4_val_t *new_prop,
                                          const gchar *source)
 {
-	const char *sources[2] = {source, NULL};
-	s4_sourcepref_t *sp = s4_sourcepref_create (sources);
-	s4_resultset_t *set = xmms_medialib_filter ("song_id", s4_val_new_int (id_num),
-	                                            S4_COND_PARENT, sp, key, S4_FETCH_DATA);
+	s4_val_t *val = xmms_medialib_entry_property_get_source (id_num, key, source);
 	s4_val_t *id_val = s4_val_new_int (id_num);
-	const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
 
-	if (res != NULL)
-		s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), source);
-
-	s4_resultset_free (set);
+	if (val != NULL) {
+		s4_del (medialib->s4, "song_id", id_val, key, val, source);
+		s4_val_free (val);
+	}
 
 	s4_add (medialib->s4, "song_id", id_val, key, new_prop, source);
 	s4_val_free (id_val);
@@ -1052,16 +1161,12 @@ xmms_medialib_property_remove (xmms_medialib_t *medialib, guint32 id_num,
                                xmms_error_t *error)
 {
 	s4_val_t *id_val = s4_val_new_int (id_num);
-	const char *sources[2] = {source, NULL};
-	s4_sourcepref_t *sp = s4_sourcepref_create (sources);
-	s4_resultset_t *set = xmms_medialib_filter ("song_id", s4_val_new_int (id_num),
-	                                            S4_COND_PARENT, sp, key, S4_FETCH_DATA);
-	const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
+	s4_val_t *val = xmms_medialib_entry_property_get_source (id_num, key, source);
 
-	if (res != NULL)
-		s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), source);
-
-	s4_resultset_free (set);
+	if (val != NULL) {
+		s4_del (medialib->s4, "song_id", id_val, key, val, source);
+		s4_val_free (val);
+	}
 
 	xmms_medialib_entry_send_update (id_num);
 }
