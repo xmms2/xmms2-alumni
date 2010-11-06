@@ -302,6 +302,10 @@ def configure(conf):
             # autogenerate uselib definitions to disable warnings
             conf.env["CCFLAGS_NO%s" % name.replace("-","").upper()] = ["-Wno-%s" % name]
 
+    if Options.options.with_profiling:
+        conf.env["CCFLAGS"] += ["-ftest-coverage", "-fprofile-arcs"]
+        conf.env["LINKFLAGS"] += ["-fprofile-arcs"]
+
     conf.env["CXXFLAGS"] = Utils.to_list(conf.env["CXXFLAGS"]) + ['-g', '-O0']
     conf.env['XMMS_PKGCONF_FILES'] = []
     conf.env['XMMS_OUTPUT_PLUGINS'] = [(-1, "NONE")]
@@ -488,6 +492,10 @@ def set_options(opt):
                    help="Force a specific Windows version (cross-compilation)")
     opt.add_option('--run-tests', action='store_true', default=False,
                    dest='run_tests', help="Run test suite")
+    opt.add_option('--with-profiling', action="store_true", default=False,
+                   dest='with_profiling', help="Enable profiling")
+    opt.add_option('--lcov-report', action="store_true", default=False,
+                   dest='build_lcov', help="Builds an lcov report")
     opt.add_option('--with-ldconfig', action='store_true', default=None,
                    dest='ldconfig', help="Run ldconfig after install even if not root")
     opt.add_option('--without-ldconfig', action='store_false',
@@ -511,3 +519,10 @@ def shutdown():
     if Options.options.run_tests:
         os.system(os.path.join(blddir, "default/tests/test_xmmstypes"))
         os.system(os.path.join(blddir, "default/tests/test_server"))
+
+    if Options.options.build_lcov:
+        cd = os.getcwd()
+        os.chdir(blddir)
+        os.system("lcov -c -b . -d . -o coverage.info")
+        os.system("genhtml -o cov coverage.info")
+        os.chdir(cd)
