@@ -303,8 +303,8 @@ def configure(conf):
             conf.env["CCFLAGS_NO%s" % name.replace("-","").upper()] = ["-Wno-%s" % name]
 
     if Options.options.with_profiling:
-        conf.env["CCFLAGS"] += ["-ftest-coverage", "-fprofile-arcs"]
-        conf.env["LINKFLAGS"] += ["-fprofile-arcs"]
+        conf.env["CCFLAGS"] += ["--coverage"]
+        conf.env["LINKFLAGS"] += ["--coverage"]
 
     conf.env["CXXFLAGS"] = Utils.to_list(conf.env["CXXFLAGS"]) + ['-g', '-O0']
     conf.env['XMMS_PKGCONF_FILES'] = []
