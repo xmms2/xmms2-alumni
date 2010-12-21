@@ -290,7 +290,8 @@ xmms_medialib_uuid ()
 }
 
 static s4_resultset_t *
-xmms_medialib_filter (const char *filter_key, s4_val_t *filter_val,
+xmms_medialib_filter (s4_transaction_t *trans,
+                      const char *filter_key, s4_val_t *filter_val,
                       int filter_flags, s4_sourcepref_t *sourcepref,
                       const char *fetch_key, int fetch_flags)
 {
@@ -298,7 +299,7 @@ xmms_medialib_filter (const char *filter_key, s4_val_t *filter_val,
 	                                           sourcepref, S4_CMP_CASELESS, filter_flags);
 	s4_fetchspec_t *spec = s4_fetchspec_create ();
 	s4_fetchspec_add (spec, fetch_key, sourcepref, fetch_flags);
-	s4_resultset_t *ret = s4_query (medialib->s4, spec, cond);
+	s4_resultset_t *ret = s4_query (medialib->s4, trans, spec, cond);
 
 	s4_cond_free (cond);
 	s4_fetchspec_free (spec);
@@ -319,7 +320,7 @@ xmms_medialib_entry_property_get (xmms_medialib_entry_t id_num,
 	if (!strcmp (property, XMMS_MEDIALIB_ENTRY_PROPERTY_ID)) {
 		ret = ival;
 	} else {
-		s4_resultset_t *set = xmms_medialib_filter ("song_id", ival, S4_COND_PARENT,
+		s4_resultset_t *set = xmms_medialib_filter (NULL, "song_id", ival, S4_COND_PARENT,
 		                                            default_sp, property, S4_FETCH_DATA);
 		const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
 
@@ -429,19 +430,26 @@ xmms_medialib_entry_property_set_source (xmms_medialib_entry_t id_num,
                                          const gchar *source)
 {
 	const char *sources[2] = {source, NULL};
+	s4_transaction_t *t;
 	s4_sourcepref_t *sp = s4_sourcepref_create (sources);
-	s4_resultset_t *set = xmms_medialib_filter ("song_id", s4_val_new_int (id_num),
-	                                            S4_COND_PARENT, sp, key, S4_FETCH_DATA);
 	s4_val_t *id_val = s4_val_new_int (id_num);
-	const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
+	s4_resultset_t *set;
+	const s4_result_t *res;
 
-	if (res != NULL)
-		s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), source);
+	do {
+		t = s4_begin (medialib->s4, 0);
+		set = xmms_medialib_filter (t, "song_id", s4_val_new_int (id_num),
+		                            S4_COND_PARENT, sp, key, S4_FETCH_DATA);
+		res = s4_resultset_get_result (set, 0, 0);
+
+		if (res != NULL)
+			s4_del (medialib->s4, t, "song_id", id_val, key, s4_result_get_val (res), source);
+
+		s4_add (medialib->s4, t, "song_id", id_val, key, new_prop, source);
+	} while (!s4_commit (t));
 
 	s4_resultset_free (set);
 	s4_sourcepref_unref (sp);
-
-	s4_add (medialib->s4, "song_id", id_val, key, new_prop, source);
 	s4_val_free (id_val);
 
 	return TRUE;
@@ -589,25 +597,31 @@ xmms_medialib_client_remove_entry (xmms_medialib_t *medialib,
 void
 xmms_medialib_entry_remove (xmms_medialib_entry_t id_num)
 {
+	s4_transaction_t *t;
 	s4_resultset_t *set;
 	s4_val_t *id_val;
 	int i;
 
 	id_val = s4_val_new_int (id_num);
-	set = xmms_medialib_filter ("song_id", s4_val_new_int (id_num),
-	                            S4_COND_PARENT, NULL, NULL, S4_FETCH_DATA);
 
-	for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
-		const s4_result_t *res = s4_resultset_get_result (set, i, 0);
+	do {
+		t = s4_begin (medialib->s4, 0);
+		set = xmms_medialib_filter (t, "song_id", s4_val_new_int (id_num),
+									S4_COND_PARENT, NULL, NULL, S4_FETCH_DATA);
 
-		for (; res != NULL; res = s4_result_next (res)) {
-			const char *src = s4_result_get_src (res);
+		for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
+			const s4_result_t *res = s4_resultset_get_result (set, i, 0);
 
-			s4_del (medialib->s4, "song_id", id_val, s4_result_get_key (res),
-			        s4_result_get_val (res), src);
+			for (; res != NULL; res = s4_result_next (res)) {
+				const char *src = s4_result_get_src (res);
+
+				s4_del (medialib->s4, t, "song_id", id_val, s4_result_get_key (res),
+						s4_result_get_val (res), src);
+			}
 		}
-	}
-	s4_resultset_free (set);
+		s4_resultset_free (set);
+	} while (!s4_commit (t));
+
 	s4_val_free (id_val);
 
 	/** @todo safe ? */
@@ -695,34 +709,41 @@ process_dir (const gchar *directory,
 void
 xmms_medialib_entry_cleanup (xmms_medialib_entry_t id_num)
 {
+	s4_transaction_t *t;
 	s4_resultset_t *set;
 	s4_val_t *id_val;
 	int i;
 
-	set = xmms_medialib_filter ("song_id", s4_val_new_int (id_num),
-	                            S4_COND_PARENT, NULL, NULL, S4_FETCH_DATA);
 	id_val = s4_val_new_int (id_num);
 
-	for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
-		const s4_result_t *res = s4_resultset_get_result (set, i, 0);
+	do {
+		t = s4_begin (medialib->s4, 0);
+		set = xmms_medialib_filter (t, "song_id", s4_val_new_int (id_num),
+									S4_COND_PARENT, NULL, NULL, S4_FETCH_DATA);
 
-		for (; res != NULL; res = s4_result_next (res)) {
-			const char *src = s4_result_get_src (res);
-			const char *key = s4_result_get_key (res);
-			if (strcmp (XMMS_MEDIALIB_SOURCE_SERVER, src) == 0) {
-				if (strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_URL) &&
-				    strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_ADDED) &&
-				    strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS) &&
-				    strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_LMOD) &&
-				    strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_LASTSTARTED))
-					s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), src);
-			} else if (strncmp (src, "plugin/", 7) == 0
-			           && strcmp (src, "plugin/playlist") != 0) {
-				s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), src);
+		for (i = 0; i < s4_resultset_get_rowcount (set); i++) {
+			const s4_result_t *res = s4_resultset_get_result (set, i, 0);
+
+			for (; res != NULL; res = s4_result_next (res)) {
+				const char *src = s4_result_get_src (res);
+				const char *key = s4_result_get_key (res);
+				if (strcmp (XMMS_MEDIALIB_SOURCE_SERVER, src) == 0) {
+					if (strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_URL) &&
+						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_ADDED) &&
+						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS) &&
+						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_LMOD) &&
+						strcmp (key, XMMS_MEDIALIB_ENTRY_PROPERTY_LASTSTARTED))
+						s4_del (medialib->s4, t, "song_id", id_val, key,
+						        s4_result_get_val (res), src);
+				} else if (strncmp (src, "plugin/", 7) == 0
+						   && strcmp (src, "plugin/playlist") != 0) {
+					s4_del (medialib->s4, t, "song_id", id_val, key,
+					        s4_result_get_val (res), src);
+				}
 			}
 		}
-	}
-	s4_resultset_free (set);
+		s4_resultset_free (set);
+	} while (!s4_commit (t));
 	s4_val_free (id_val);
 }
 
@@ -737,7 +758,7 @@ xmms_medialib_client_rehash (xmms_medialib_t *medialib, gint32 id, xmms_error_t 
 		s4_resultset_t *set;
 		int i;
 
-		set = xmms_medialib_filter (XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
+		set = xmms_medialib_filter (NULL, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
 		                            s4_val_new_int (XMMS_MEDIALIB_ENTRY_STATUS_OK), 0,
 		                            default_sp, "song_id", S4_FETCH_PARENT);
 
@@ -896,7 +917,7 @@ xmms_medialib_client_get_id (xmms_medialib_t *medialib, const gchar *url,
                              xmms_error_t *error)
 {
 	gint32 id = 0;
-	s4_resultset_t *set =xmms_medialib_filter (XMMS_MEDIALIB_ENTRY_PROPERTY_URL,
+	s4_resultset_t *set =xmms_medialib_filter (NULL, XMMS_MEDIALIB_ENTRY_PROPERTY_URL,
 	                                           s4_val_new_string (url), 0, default_sp,
 	                                           "song_id", S4_FETCH_PARENT);
 	const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
@@ -954,7 +975,7 @@ xmms_medialib_entry_to_tree (xmms_medialib_entry_t id_num)
 		return NULL;
 	}
 
-	set = xmms_medialib_filter ("song_id", s4_val_new_int (id_num), S4_COND_PARENT,
+	set = xmms_medialib_filter (NULL, "song_id", s4_val_new_int (id_num), S4_COND_PARENT,
 	                            NULL, NULL, S4_FETCH_PARENT | S4_FETCH_DATA);
 
 	ret = g_tree_new_full ((GCompareDataFunc) strcmp, NULL, g_free,
@@ -1095,17 +1116,24 @@ xmms_medialib_property_remove (xmms_medialib_t *medialib, guint32 id_num,
                                const gchar *source, const gchar *key,
                                xmms_error_t *error)
 {
+	s4_transaction_t *t;
 	s4_val_t *id_val = s4_val_new_int (id_num);
 	const char *sources[2] = {source, NULL};
 	s4_sourcepref_t *sp = s4_sourcepref_create (sources);
-	s4_resultset_t *set = xmms_medialib_filter ("song_id", s4_val_new_int (id_num),
-	                                            S4_COND_PARENT, sp, key, S4_FETCH_DATA);
-	const s4_result_t *res = s4_resultset_get_result (set, 0, 0);
+	s4_resultset_t *set;
+	const s4_result_t *res;
 
-	if (res != NULL)
-		s4_del (medialib->s4, "song_id", id_val, key, s4_result_get_val (res), source);
+	do {
+		t = s4_begin (medialib->s4, 0);
+		set = xmms_medialib_filter (t, "song_id", s4_val_new_int (id_num),
+									S4_COND_PARENT, sp, key, S4_FETCH_DATA);
+		res = s4_resultset_get_result (set, 0, 0);
+		if (res != NULL)
+			s4_del (medialib->s4, t, "song_id", id_val, key,
+			        s4_result_get_val (res), source);
+		s4_resultset_free (set);
+	} while (!s4_commit (t));
 
-	s4_resultset_free (set);
 	s4_sourcepref_unref (sp);
 
 	xmms_medialib_entry_send_update (id_num);
@@ -1158,7 +1186,7 @@ xmms_medialib_entry_not_resolved_get (void)
 	s4_resultset_t *set;
 	const s4_result_t *res;
 
-	set = xmms_medialib_filter (XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
+	set = xmms_medialib_filter (NULL, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
 	                            s4_val_new_int (XMMS_MEDIALIB_ENTRY_STATUS_NEW),
 	                            0, default_sp, "song_id", S4_FETCH_PARENT);
 	res = s4_resultset_get_result (set, 0, 0);
@@ -1177,7 +1205,7 @@ xmms_medialib_num_not_resolved (void)
 	gint ret = 0;
 	s4_resultset_t *set;
 
-	set = xmms_medialib_filter (XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
+	set = xmms_medialib_filter (NULL, XMMS_MEDIALIB_ENTRY_PROPERTY_STATUS,
 	                            s4_val_new_int (XMMS_MEDIALIB_ENTRY_STATUS_NEW),
 	                            0, default_sp, "song_id", S4_FETCH_PARENT);
 
@@ -1838,7 +1866,7 @@ xmms_medialib_query_recurs (xmmsv_coll_t *coll, fetch_info_t *fetch,
 	}
 
 	if (res == NULL && return_result) {
-		res = s4_query (medialib->s4, fetch->fs, *cond);
+		res = s4_query (medialib->s4, NULL, fetch->fs, *cond);
 		res = xmms_medialib_result_sort (res, fetch, order);
 	}
 
