@@ -1955,6 +1955,7 @@ xmms_medialib_query_random_id (xmms_medialib_session_t *session,
 	xmmsv_t *get_list = xmmsv_new_list ();
 	xmmsv_t *res;
 	xmms_medialib_entry_t ret;
+	xmms_error_t err;
 
 	xmmsv_list_append_string (get_list, "id");
 
@@ -1962,7 +1963,7 @@ xmms_medialib_query_random_id (xmms_medialib_session_t *session,
 	xmmsv_dict_set_string (fetch_spec, "aggregate", "random");
 	xmmsv_dict_set (fetch_spec, "get", get_list);
 
-	res = xmms_medialib_query (session, coll, fetch_spec, NULL);
+	res = xmms_medialib_query (session, coll, fetch_spec, &err);
 	xmmsv_get_int (res, &ret);
 
 	xmmsv_unref (get_list);
@@ -2509,8 +2510,10 @@ xmms_medialib_query (xmms_medialib_session_t *session,
 	xmms_fetch_spec_t *spec;
 	int fetch_invalid = 0;
 
+	xmms_error_reset (err);
+
 	info = xmms_fetch_info_new (default_sp);
-	spec = xmms_fetch_spec_new (fetch, info, default_sp, &fetch_invalid);
+	spec = xmms_fetch_spec_new (fetch, info, default_sp, err);
 
 	if (spec == NULL || fetch_invalid) {
 		xmms_fetch_spec_free (spec);
