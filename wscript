@@ -519,6 +519,7 @@ def shutdown():
     if Options.options.run_tests:
         os.system(os.path.join(blddir, "default/tests/test_xmmstypes"))
         os.system(os.path.join(blddir, "default/tests/test_server"))
+        os.system(os.path.join(blddir, "default/tests/test_medialib"))
 
     if Options.options.build_lcov:
         cd = os.getcwd()
