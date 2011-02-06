@@ -149,6 +149,8 @@ int xmmsv_list_iter_insert_string (xmmsv_list_iter_t *it, const char *val);
 int xmmsv_list_iter_insert_int (xmmsv_list_iter_t *it, int32_t val);
 int xmmsv_list_iter_insert_coll (xmmsv_list_iter_t *it, xmmsv_coll_t *val);
 
+xmmsv_t *xmmsv_list_flatten (xmmsv_t *list, int depth);
+
 
 /* Dict */
 int xmmsv_dict_get (xmmsv_t *dictv, const char *key, xmmsv_t **val);
