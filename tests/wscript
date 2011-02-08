@@ -18,6 +18,12 @@ def configure(conf):
     conf.check_cfg(package='valgrind', uselib_store='valgrind', args='--cflags')
 
 def build(bld):
+    obj = bld.new_task_gen('cc', 'objects')
+    obj.target = 'jsonism'
+    obj.source = 'utils/jsonism.c'
+    obj.includes = '. ../src/include'
+    obj.install_path = 0
+
     obj = bld.new_task_gen('cc', 'program')
     obj.target = "test_xmmstypes"
     obj.source = ['runner/main.c', 'runner/valgrind.c'] + types_suite
@@ -59,6 +65,7 @@ def build(bld):
     obj.uselib_local = 'xmmsipc xmmssocket xmmstypes xmmsutils s4'
     obj.uselib = 'cunit ncurses valgrind glib2 gmodule2 gthread2 DISABLE_WRITESTRINGS'
     obj.install_path = None
+    obj.add_objects = 'jsonism'
 
 def set_options(o):
     pass
