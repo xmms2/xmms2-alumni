@@ -196,6 +196,7 @@ int xmmsv_dict_format (char *target, int len, const char *fmt, xmmsv_t *val);
 
 int xmmsv_utf8_validate (const char *str);
 
+int xmmsv_compare (xmmsv_t *a, xmmsv_t *b);
 
 /* These helps us doing compiletime typechecking */
 static inline const char *__xmmsv_identity_const_charp (const char *v) {return v;}
