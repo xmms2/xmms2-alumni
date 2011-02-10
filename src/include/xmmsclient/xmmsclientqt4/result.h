@@ -1,5 +1,5 @@
 /*  XMMS2 - X Music Multiplexer System
- *  Copyright (C) 2003-2010 XMMS2 Team
+ *  Copyright (C) 2003-2011 XMMS2 Team
  *
  *  PLUGINS ARE NOT CONSIDERED TO BE DERIVED WORK !!!
  *
@@ -169,9 +169,11 @@ namespace XMMSQt
 					qint32 methidx = m_object->metaObject ()->indexOfMethod (slotname.constData ());
 
 					if (methidx == -1 ) {
+#ifndef __clang__ // currently clang does not like this
 						qWarning ("Class %s has no slot '%s'",
 						          m_object->metaObject ()->className (),
 						          slot.constData ());
+#endif
 						return;
 					}
 
