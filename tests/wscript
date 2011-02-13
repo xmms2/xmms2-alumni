@@ -20,7 +20,7 @@ def configure(conf):
 def build(bld):
     obj = bld.new_task_gen('cc', 'staticlib')
     obj.target = 'testutils'
-    obj.source = 'utils/jsonism.c utils/value_utils.c'
+    obj.source = 'utils/jsonism.c utils/value_utils.c utils/coll_utils.c'
     obj.includes = '. ../src/include'
     obj.install_path = 0
 
