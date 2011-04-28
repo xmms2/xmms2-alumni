@@ -17,17 +17,23 @@ VALUE_TYPE_LIST   = XMMSV_TYPE_LIST
 VALUE_TYPE_DICT   = XMMSV_TYPE_DICT
 
 COLLECTION_TYPE_REFERENCE    = XMMS_COLLECTION_TYPE_REFERENCE
+COLLECTION_TYPE_UNIVERSE     = XMMS_COLLECTION_TYPE_UNIVERSE
 COLLECTION_TYPE_UNION        = XMMS_COLLECTION_TYPE_UNION
 COLLECTION_TYPE_INTERSECTION = XMMS_COLLECTION_TYPE_INTERSECTION
 COLLECTION_TYPE_COMPLEMENT   = XMMS_COLLECTION_TYPE_COMPLEMENT
 COLLECTION_TYPE_HAS          = XMMS_COLLECTION_TYPE_HAS
-COLLECTION_TYPE_EQUALS       = XMMS_COLLECTION_TYPE_EQUALS
 COLLECTION_TYPE_MATCH        = XMMS_COLLECTION_TYPE_MATCH
+COLLECTION_TYPE_TOKEN        = XMMS_COLLECTION_TYPE_TOKEN
+COLLECTION_TYPE_EQUALS       = XMMS_COLLECTION_TYPE_EQUALS
+COLLECTION_TYPE_NOTEQUAL     = XMMS_COLLECTION_TYPE_NOTEQUAL
 COLLECTION_TYPE_SMALLER      = XMMS_COLLECTION_TYPE_SMALLER
+COLLECTION_TYPE_SMALLEREQ    = XMMS_COLLECTION_TYPE_SMALLEREQ
 COLLECTION_TYPE_GREATER      = XMMS_COLLECTION_TYPE_GREATER
+COLLECTION_TYPE_GREATEREQ    = XMMS_COLLECTION_TYPE_GREATEREQ
+COLLECTION_TYPE_ORDER        = XMMS_COLLECTION_TYPE_ORDER
+COLLECTION_TYPE_LIMIT        = XMMS_COLLECTION_TYPE_LIMIT
+COLLECTION_TYPE_MEDIASET     = XMMS_COLLECTION_TYPE_MEDIASET
 COLLECTION_TYPE_IDLIST       = XMMS_COLLECTION_TYPE_IDLIST
-COLLECTION_TYPE_QUEUE        = XMMS_COLLECTION_TYPE_QUEUE
-COLLECTION_TYPE_PARTYSHUFFLE = XMMS_COLLECTION_TYPE_PARTYSHUFFLE
 
 
 from propdict import PropDict # xmmsclient.propdict
@@ -660,33 +666,69 @@ class Equals(FilterCollection):
 	def __init__(Collection self, parent=None, **kv):
 		FilterCollection.__init__(self, XMMS_COLLECTION_TYPE_EQUALS, parent, **kv)
 
+class NotEqual(FilterCollection):
+	def __init__(Collection self, parent=None, **kv):
+		FilterCollection.__init__(self, XMMS_COLLECTION_TYPE_NOTEQUAL, parent, **kv)
+
 class Smaller(FilterCollection):
 	def __init__(Collection self, parent=None, **kv):
 		FilterCollection.__init__(self, XMMS_COLLECTION_TYPE_SMALLER, parent, **kv)
+
+class SmallerEqual(FilterCollection):
+	def __init__(Collection self, parent=None, **kv):
+		FilterCollection.__init__(self, XMMS_COLLECTION_TYPE_SMALLEREQ, parent, **kv)
 
 class Greater(FilterCollection):
 	def __init__(Collection self, parent=None, **kv):
 		FilterCollection.__init__(self, XMMS_COLLECTION_TYPE_GREATER, parent, **kv)
 
+class GreaterEqual(FilterCollection):
+	def __init__(Collection self, parent=None, **kv):
+		FilterCollection.__init__(self, XMMS_COLLECTION_TYPE_GREATEREQ, parent, **kv)
+
 class Match(FilterCollection):
 	def __init__(Collection self, parent=None, **kv):
 		FilterCollection.__init__(self, XMMS_COLLECTION_TYPE_MATCH, parent, **kv)
+
+class Token(FilterCollection):
+	def __init__(Collection self, parent=None, **kv):
+		FilterCollection.__init__(self, XMMS_COLLECTION_TYPE_TOKEN, parent, **kv)
 
 class Has(FilterCollection):
 	def __init__(Collection self, parent=None, **kv):
 		FilterCollection.__init__(self, XMMS_COLLECTION_TYPE_HAS, parent, **kv)
 
+class Order(BaseCollection):
+	def __init__(Collection self, operand, field=None, ascending=True):
+		kv = dict(operands=[operand], direction="ASC" if ascending else "DESC")
+		if field:
+			kv["field"] = field
+			kv["type"] = "value"
+		else:
+			kv["type"] = "random"
+		BaseCollection.__init__(self, XMMS_COLLECTION_TYPE_ORDER, **kv)
+
+class Mediaset(BaseCollection):
+	def __init__(Collection self, operand):
+		BaseCollection.__init__(self, XMMS_COLLECTION_TYPE_MEDIASET,
+				operands=[operand])
+
+class Limit(BaseCollection):
+	def __init__(Collection self, operand, start=0, length=0):
+		kv = dict(operands=[operand], start=str(start), length=str(length))
+		BaseCollection.__init__(self, XMMS_COLLECTION_TYPE_LIMIT, **kv)
+
 class IDList(BaseCollection):
 	def __init__(Collection self, ids = None):
-		BaseCollection.__init__(self, XMMS_COLLECTION_TYPE_IDLIST, ids=ids)
+		BaseCollection.__init__(self, XMMS_COLLECTION_TYPE_IDLIST, type="list", ids=ids)
 
 class Queue(BaseCollection):
 	def __init__(Collection self):
-		BaseCollection.__init__(self, XMMS_COLLECTION_TYPE_QUEUE)
+		BaseCollection.__init__(self, XMMS_COLLECTION_TYPE_IDLIST, type="queue")
 
 class PShuffle(BaseCollection):
-	def __init__(Collection self, parent):
-		BaseCollection.__init__(self, XMMS_COLLECTION_TYPE_PARTYSHUFFLE)
+	def __init__(Collection self):
+		BaseCollection.__init__(self, XMMS_COLLECTION_TYPE_IDLIST, type="pshuffle")
 
 class Union(BaseCollection):
 	def __init__(Collection self, *a):
@@ -704,11 +746,15 @@ class Complement(BaseCollection):
 cdef create_coll(xmmsv_coll_t *coll):
 	cdef xmmsv_coll_type_t colltype
 	cdef Collection c
+	cdef char *idlist_type
+	cdef object idtype_uni
 
 	colltype = xmmsv_coll_get_type(coll)
 	c = CollectionWrapper()
 	if colltype == XMMS_COLLECTION_TYPE_REFERENCE:
 		c.__class__ = Reference
+	elif colltype == XMMS_COLLECTION_TYPE_UNIVERSE: # coll_parse() needs this
+		c.__class__ = Universe
 	elif colltype == XMMS_COLLECTION_TYPE_UNION:
 		c.__class__ = Union
 	elif colltype == XMMS_COLLECTION_TYPE_INTERSECTION:
@@ -719,18 +765,35 @@ cdef create_coll(xmmsv_coll_t *coll):
 		c.__class__ = Has
 	elif colltype == XMMS_COLLECTION_TYPE_EQUALS:
 		c.__class__ = Equals
+	elif colltype == XMMS_COLLECTION_TYPE_NOTEQUAL:
+		c.__class__ = NotEqual
 	elif colltype == XMMS_COLLECTION_TYPE_MATCH:
 		c.__class__ = Match
+	elif colltype == XMMS_COLLECTION_TYPE_TOKEN:
+		c.__class__ = Token
 	elif colltype == XMMS_COLLECTION_TYPE_SMALLER:
 		c.__class__ = Smaller
+	elif colltype == XMMS_COLLECTION_TYPE_SMALLEREQ:
+		c.__class__ = SmallerEqual
 	elif colltype == XMMS_COLLECTION_TYPE_GREATER:
 		c.__class__ = Greater
+	elif colltype == XMMS_COLLECTION_TYPE_GREATEREQ:
+		c.__class__ = GreaterEqual
+	elif colltype == XMMS_COLLECTION_TYPE_ORDER:
+		c.__class__ = Order
+	elif colltype == XMMS_COLLECTION_TYPE_MEDIASET:
+		c.__class__ = Mediaset
+	elif colltype == XMMS_COLLECTION_TYPE_LIMIT:
+		c.__class__ = Limit
 	elif colltype == XMMS_COLLECTION_TYPE_IDLIST:
-		c.__class__ = IDList
-	elif colltype == XMMS_COLLECTION_TYPE_QUEUE:
-		c.__class__ = Queue
-	elif colltype == XMMS_COLLECTION_TYPE_PARTYSHUFFLE:
-		c.__class__ = PShuffle
+		xmmsv_coll_attribute_get(coll, "type", &idlist_type)
+		idtype_uni = to_unicode(idlist_type)
+		if idtype_uni == "queue":
+			c.__class__ = Queue
+		elif idtype_uni == "pshuffle":
+			c.__class__ = PShuffle
+		else:
+			c.__class__ = IDList
 	else:
 		raise RuntimeError("Unkown collection type")
 
