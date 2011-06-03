@@ -157,7 +157,10 @@ def emit_method_define_code(object, method, c_type):
 				Indenter.printline("arg->retval = %s (%s);" % (c_creator_map[method.return_value.type[0]], funccall))
 	else:
 		Indenter.printline("%s;" % funccall)
-		Indenter.printline("arg->retval = xmmsv_new_none ();")
+		if method.noreply:
+			Indenter.printline("arg->retval = NULL;")
+		else:
+			Indenter.printline("arg->retval = xmmsv_new_none ();")
 
 
 	Indenter.leave("}")
