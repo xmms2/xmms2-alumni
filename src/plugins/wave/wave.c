@@ -34,6 +34,7 @@ typedef struct xmms_wave_data_St {
 	guint16 channels;
 	guint32 samplerate;
 	guint16 bits_per_sample;
+	guint32 channel_mask;
 	guint header_size;
 	guint bytes_total;
 } xmms_wave_data_t;
@@ -47,6 +48,7 @@ typedef enum {
 /*
  * Defines
  */
+#define WAVE_FORMAT_EXTENSIBLE 0xfffe
 #define WAVE_HEADER_MIN_SIZE 44
 
 #define GET_16(buf, val) \
@@ -211,6 +213,8 @@ xmms_wave_init (xmms_xform_t *xform)
 			                             data->channels,
 			                             XMMS_STREAM_TYPE_FMT_SAMPLERATE,
 			                             data->samplerate,
+			                             XMMS_STREAM_TYPE_FMT_CHANNELMASK,
+			                             data->channel_mask,
 			                             XMMS_STREAM_TYPE_END);
 	}
 
@@ -351,6 +355,59 @@ read_wave_header (xmms_wave_data_t *data, guint8 *buf, gint bytes_read)
 	ret = tmp16;
 
 	switch (tmp16) {
+		case WAVE_FORMAT_EXTENSIBLE:
+			if (tmp32 != 40) {
+				xmms_log_error ("Format chunk length not 40.");
+				return WAVE_FORMAT_UNDEFINED;
+			}
+
+			GET_16 (buf, data->channels);
+			XMMS_DBG ("channels %i", data->channels);
+
+			GET_32 (buf, data->samplerate);
+			XMMS_DBG ("samplerate %i", data->samplerate);
+			if (data->samplerate != 8000 && data->samplerate != 11025 &&
+			    data->samplerate != 22050 && data->samplerate != 44100 &&
+			    data->samplerate != 48000 && data->samplerate != 96000) {
+				xmms_log_error ("Invalid samplerate: %i", data->samplerate);
+				return WAVE_FORMAT_UNDEFINED;
+			}
+
+			GET_32 (buf, tmp32);
+			GET_16 (buf, tmp16);
+
+			GET_16 (buf, data->bits_per_sample);
+			XMMS_DBG ("bits per sample %i", data->bits_per_sample);
+			if (data->bits_per_sample != 8 &&
+			    data->bits_per_sample != 16 &&
+			    data->bits_per_sample != 32) {
+				xmms_log_error ("Unhandled bits per sample: %i",
+				                data->bits_per_sample);
+				return WAVE_FORMAT_UNDEFINED;
+			}
+
+			GET_16 (buf, tmp16);
+			if (tmp16 != 22) {
+				xmms_log_error ("Extra information length not 22.");
+				return WAVE_FORMAT_UNDEFINED;
+			}
+
+			/* Parse extended fields */
+			GET_16 (buf, tmp16); /* PCM: valid bits per sample, other: samples per block */
+			GET_32 (buf, data->channel_mask);
+
+			GET_32 (buf, tmp32);
+			if (tmp32 != 0x00000001) return WAVE_FORMAT_UNDEFINED;
+			GET_32 (buf, tmp32);
+			if (tmp32 != 0x00100000) return WAVE_FORMAT_UNDEFINED;
+			GET_32 (buf, tmp32);
+			if (tmp32 != 0xaa000080) return WAVE_FORMAT_UNDEFINED;
+			GET_32 (buf, tmp32);
+			if (tmp32 != 0x719b3800) return WAVE_FORMAT_UNDEFINED;
+			XMMS_DBG ("GUID tag was correctly marked as PCM");
+
+			ret = WAVE_FORMAT_PCM;
+			break;
 		case WAVE_FORMAT_PCM:
 			if (tmp32 != 16) {
 				xmms_log_error ("Format chunk length not 16.");
