@@ -110,6 +110,7 @@ xmms_stream_type_parse (va_list ap)
 		case XMMS_STREAM_TYPE_FMT_FORMAT:
 		case XMMS_STREAM_TYPE_FMT_CHANNELS:
 		case XMMS_STREAM_TYPE_FMT_SAMPLERATE:
+		case XMMS_STREAM_TYPE_FMT_CHANNELMASK:
 			val->type = INT;
 			val->d.num = va_arg (ap, int);
 			break;
