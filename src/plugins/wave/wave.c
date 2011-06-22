@@ -26,6 +26,7 @@
 #include "xmms/xmms_xformplugin.h"
 #include "xmms/xmms_log.h"
 #include "xmms/xmms_medialib.h"
+#include "xmms/xmms_channelmask.h"
 
 #include <glib.h>
 #include <string.h>
@@ -416,7 +417,8 @@ read_wave_header (xmms_wave_data_t *data, guint8 *buf, gint bytes_read)
 
 			GET_16 (buf, data->channels);
 			XMMS_DBG ("channels %i", data->channels);
-			if (data->channels < 1 || data->channels > 2) {
+			data->channel_mask = xmms_channel_mask_get_default (data->channels);
+			if (data->channel_mask == XMMS_CHANNEL_MASK_UNKNOWN) {
 				xmms_log_error ("Unhandled number of channels: %i",
 				                data->channels);
 				return WAVE_FORMAT_UNDEFINED;
