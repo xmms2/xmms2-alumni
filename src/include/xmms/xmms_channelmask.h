@@ -23,7 +23,7 @@
 G_BEGIN_DECLS
 
 typedef enum {
-	XMMS_CHANNEL_MASK_UNDEFINED             = 0x000000,
+	XMMS_CHANNEL_MASK_MONO                  = 0x000000,
 	XMMS_CHANNEL_MASK_FRONT_LEFT            = 0x000001,
 	XMMS_CHANNEL_MASK_FRONT_RIGHT           = 0x000002,
 	XMMS_CHANNEL_MASK_FRONT_CENTER          = 0x000004,
@@ -44,53 +44,66 @@ typedef enum {
 	XMMS_CHANNEL_MASK_TOP_BACK_RIGHT        = 0x020000,
 	/* add new entries here, WAVE compatibility preferred */
 	XMMS_CHANNEL_MASK_UNKNOWN               = 0x80000000,
+
+	XMMS_CHANNEL_MASK_DEFAULT_1CH           = XMMS_CHANNEL_MASK_MONO,
+	XMMS_CHANNEL_MASK_DEFAULT_2CH           = XMMS_CHANNEL_MASK_FRONT_LEFT|
+	                                          XMMS_CHANNEL_MASK_FRONT_RIGHT,
+	XMMS_CHANNEL_MASK_DEFAULT_3CH           = XMMS_CHANNEL_MASK_FRONT_LEFT|
+	                                          XMMS_CHANNEL_MASK_FRONT_RIGHT|
+	                                          XMMS_CHANNEL_MASK_FRONT_CENTER,
+	XMMS_CHANNEL_MASK_DEFAULT_4CH           = XMMS_CHANNEL_MASK_FRONT_LEFT|
+	                                          XMMS_CHANNEL_MASK_FRONT_RIGHT|
+	                                          XMMS_CHANNEL_MASK_BACK_LEFT|
+	                                          XMMS_CHANNEL_MASK_BACK_RIGHT,
+	XMMS_CHANNEL_MASK_DEFAULT_5CH           = XMMS_CHANNEL_MASK_FRONT_LEFT|
+	                                          XMMS_CHANNEL_MASK_FRONT_RIGHT|
+	                                          XMMS_CHANNEL_MASK_FRONT_CENTER|
+	                                          XMMS_CHANNEL_MASK_BACK_LEFT|
+	                                          XMMS_CHANNEL_MASK_BACK_RIGHT,
+	XMMS_CHANNEL_MASK_DEFAULT_6CH           = XMMS_CHANNEL_MASK_FRONT_LEFT|
+	                                          XMMS_CHANNEL_MASK_FRONT_RIGHT|
+	                                          XMMS_CHANNEL_MASK_FRONT_CENTER|
+	                                          XMMS_CHANNEL_MASK_LFE|
+	                                          XMMS_CHANNEL_MASK_BACK_LEFT|
+	                                          XMMS_CHANNEL_MASK_BACK_RIGHT,
 } xmms_channel_mask_t;
+
+
+#define XMMS_CHANNEL_MASK_DEFAULT_MONO (XMMS_CHANNEL_MASK_UNDEFINED)
+#define XMMS_CHANNEL_MASK_DEFAULT_STEREO (XMMS_CHANNEL_MASK_FRONT_LEFT|XMMS_CHANNEL_MASK_FRONT_RIGHT)
+#define XMMS_CHANNEL_MASK_DEFAULT_3CH (XMMS_CHANNEL_MASK_FRONT_LEFT|XMMS_CHANNEL_MASK_FRONT_RIGHT|XMMS_CHANNEL_MASK_FRONT_CENTER)
+#define XMMS_CHANNEL_MASK_DEFAULT_4CH (XMMS_CHANNEL_MASK_FRONT_LEFT|XMMS_CHANNEL_MASK_FRONT_RIGHT|XMMS_CHANNEL_MASK_BACK_LEFT|XMMS_CHANNEL_MASK_BACK_RIGHT)
+#define XMMS_CHANNEL_MASK_DEFAULT
 
 
 static inline xmms_channel_mask_t
 xmms_channel_mask_get_default (gint channels)
 {
 	xmms_channel_mask_t mask;
-
-	mask = XMMS_CHANNEL_MASK_UNDEFINED;
 	switch (channels) {
 	case 1:
-		/* mono is undefined */
+		mask = XMMS_CHANNEL_MASK_DEFAULT_1CH;
 		break;
 	case 2:
-		mask |= XMMS_CHANNEL_MASK_FRONT_LEFT;
-		mask |= XMMS_CHANNEL_MASK_FRONT_RIGHT;
+		mask = XMMS_CHANNEL_MASK_DEFAULT_2CH;
 		break;
 	case 3:
-		mask |= XMMS_CHANNEL_MASK_FRONT_LEFT;
-		mask |= XMMS_CHANNEL_MASK_FRONT_RIGHT;
-		mask |= XMMS_CHANNEL_MASK_FRONT_CENTER;
+		mask = XMMS_CHANNEL_MASK_DEFAULT_3CH;
 		break;
 	case 4:
-		mask |= XMMS_CHANNEL_MASK_FRONT_LEFT;
-		mask |= XMMS_CHANNEL_MASK_FRONT_RIGHT;
-		mask |= XMMS_CHANNEL_MASK_REAR_LEFT;
-		mask |= XMMS_CHANNEL_MASK_REAR_RIGHT;
+		mask = XMMS_CHANNEL_MASK_DEFAULT_4CH;
 		break;
 	case 5:
-		mask |= XMMS_CHANNEL_MASK_FRONT_LEFT;
-		mask |= XMMS_CHANNEL_MASK_FRONT_RIGHT;
-		mask |= XMMS_CHANNEL_MASK_FRONT_CENTER;
-		mask |= XMMS_CHANNEL_MASK_REAR_LEFT;
-		mask |= XMMS_CHANNEL_MASK_REAR_RIGHT;
+		mask = XMMS_CHANNEL_MASK_DEFAULT_5CH;
 		break;
 	case 6:
-		mask |= XMMS_CHANNEL_MASK_FRONT_LEFT;
-		mask |= XMMS_CHANNEL_MASK_FRONT_RIGHT;
-		mask |= XMMS_CHANNEL_MASK_FRONT_CENTER;
-		mask |= XMMS_CHANNEL_MASK_FRONT_LFE;
-		mask |= XMMS_CHANNEL_MASK_REAR_LEFT;
-		mask |= XMMS_CHANNEL_MASK_REAR_RIGHT;
+		mask = XMMS_CHANNEL_MASK_DEFAULT_6CH;
 		break;
 	default:
-		mask |= XMMS_CHANNEL_MASK_UNKNOWN;
+		mask = XMMS_CHANNEL_MASK_UNKNOWN;
 		break;
 	}
+	return mask;
 }
 
 G_END_DECLS
