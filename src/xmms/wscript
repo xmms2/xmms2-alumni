@@ -169,8 +169,6 @@ def configure(conf):
 
     conf.env.append_value('XMMS_PKGCONF_FILES', ('xmms2-plugin', ''))
 
-    conf.check_cfg(package='valgrind', uselib_store='valgrind', args='--cflags')
-
     return True
 
 def set_options(opt):

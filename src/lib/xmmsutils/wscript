@@ -18,8 +18,13 @@ def build(bld):
     else:
         obj.source += ["utils_unix.c"]
 
+    if bld.env["HAVE_VALGRIND"]:
+        obj.source += ["stacktrace.c"]
+    else:
+        obj.source += ["stacktrace_dummy.c"]
+
     obj.includes = '. ../../.. ../../include'
-    obj.uselib = 'rt'
+    obj.uselib = 'rt valgrind'
     obj.target = 'xmmsutils'
     obj.install_path = 0
 

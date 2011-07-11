@@ -28,7 +28,7 @@ def build(bld):
     obj.target = "test_xmmstypes"
     obj.source = ['runner/main.c', 'runner/valgrind.c'] + types_suite
     obj.includes = '. ../ runner/ ../src ../src/include'
-    obj.uselib_local = 'xmmstypes'
+    obj.uselib_local = 'xmmstypes xmmsutils'
     obj.uselib = 'cunit ncurses valgrind DISABLE_WRITESTRINGS'
     obj.install_path = None
 
@@ -36,7 +36,7 @@ def build(bld):
     obj.target = "test_server"
     obj.source = ['runner/main.c', 'runner/valgrind.c', '../src/xmms/streamtype.c', '../src/xmms/object.c'] + server_suite
     obj.includes = '. ../ runner/ ../src ../src/includepriv ../src/include'
-    obj.uselib_local = 'xmmstypes'
+    obj.uselib_local = 'xmmstypes xmmsutils'
     obj.uselib = 'cunit ncurses valgrind glib2 gthread2 DISABLE_WRITESTRINGS'
     obj.install_path = None
 

@@ -7,7 +7,7 @@ def build(bld):
           colls4.c
           """.split()
     obj.includes = '. ../../include ../../includepriv'
-    obj.uselib_local = 's4 xmmstypes'
+    obj.uselib_local = 's4 xmmstypes xmmsutils'
     obj.uselib = 'glib2 gthread2 sqlite3'
 
 def configure(conf):
