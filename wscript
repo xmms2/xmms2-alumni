@@ -55,6 +55,7 @@ subdirs = """
           src/lib/xmmsutils
           src/lib/xmmsvisualization
           src/lib/s4/src/lib/
+          src/lib/s4/tests/
           src/clients/lib/xmmsclient
           src/clients/lib/xmmsclient-glib
           src/include
@@ -287,8 +288,8 @@ def configure(conf):
     conf.env.append_unique("CXXFLAGS", ["-g", "-O0"])
 
     if Options.options.with_profiling:
-        conf.env.append_unique("CCFLAGS", ["--coverage"])
-        conf.env.append_unique("LINKFLAGS", ["--coverage"])
+        conf.env.append_unique("CCFLAGS", ["--coverage", "-pg"])
+        conf.env.append_unique("LINKFLAGS", ["--coverage", "-pg"])
 
     flags = compiler_flags(conf)
 
