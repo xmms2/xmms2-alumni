@@ -76,10 +76,11 @@ def build(bld):
     prog.target = 'xmms2d'
     prog.includes = '. ../.. ../include ../includepriv'
     prog.source = ["main.c"]
-    prog.source.append("compat/signal_%s.c" % env['compat_impl'])
-    prog.source.append("compat/symlink_%s.c" % env['compat_impl'])
-    prog.source.append("compat/checkroot_%s.c" % env['compat_impl'])
-    prog.source.append("compat/thread_name_%s.c" % env['thread_name_impl'])
+
+    source.append("compat/signal_%s.c" % env['compat_impl'])
+    source.append("compat/symlink_%s.c" % env['compat_impl'])
+    source.append("compat/checkroot_%s.c" % env['compat_impl'])
+    source.append("compat/thread_name_%s.c" % env['thread_name_impl'])
 
     source.append("compat/localtime_%s.c" % env["localtime_impl"])
     source.append("compat/statfs_%s.c" % env["statfs_impl"])
@@ -88,20 +89,19 @@ def build(bld):
     else:
         source.append("visualization/dummy.c")
 
+
     if env['xmms_shared_library']:
         lib = bld.new_task_gen('cc', 'shlib')
-        lib.target = 'xmms2core'
-        lib.source = source
-        lib.includes = '. ../.. ../include ../includepriv'
-        lib.uselib = 'glib2 gmodule2 gthread2 statfs socket shm'
-        lib.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization s4'
-
-        prog.uselib_local = 'xmms2core'
     else:
-        prog.source += source
-        prog.uselib_local = ''
+        lib = bld.new_task_gen('cc', 'staticlib')
 
-    prog.uselib_local += ' xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization s4'
+    lib.target = 'xmms2core'
+    lib.source = source
+    lib.includes = '. ../.. ../include ../includepriv'
+    lib.uselib = 'glib2 gmodule2 gthread2 statfs socket shm valgrind'
+    lib.uselib_local = 'xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization s4'
+
+    prog.uselib_local = 'xmms2core xmmsipc xmmssocket xmmsutils xmmstypes xmmsvisualization s4'
     prog.uselib = 'math glib2 gmodule2 gthread2 statfs socket shm valgrind'
 
     if env['xmms_icon']:
