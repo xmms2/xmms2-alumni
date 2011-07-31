@@ -41,24 +41,6 @@ def build(bld):
     obj.uselib = 'cunit ncurses valgrind glib2 gthread2 DISABLE_WRITESTRINGS'
     obj.install_path = None
 
-    bld.new_task_gen(
-        source=['../src/ipc.xml', '../src/xmms/medialib_ipc.py'],
-        target="medialib_ipc.c",
-        rule='${PYTHON} ${SRC[1].abspath()} > ${TGT}',
-        before='cc')
-
-    bld.new_task_gen(
-        source=['../src/ipc.xml', '../src/xmms/config_ipc.py'],
-        target="config_ipc.c",
-        rule='${PYTHON} ${SRC[1].abspath()} > ${TGT}',
-        before='cc')
-
-    bld.new_task_gen(
-        source=['../src/ipc.xml', '../src/xmms/visualization/object_ipc.py'],
-        target='object_ipc.c',
-        rule='${PYTHON} ${SRC[1].abspath()} > ${TGT}',
-        before='cc')
-
     obj = bld.new_task_gen('cc', 'program')
     obj.target = "test_medialib"
     obj.source = [ 'runner/main.c', 'runner/valgrind.c' ] + mlib_suite
@@ -79,7 +61,7 @@ def build(bld):
     obj.target = "medialib-runner"
     obj.source = [ 'server/medialib-runner.c' ]
     obj.includes = '. ../ runner/ ../src ../src/includepriv ../src/include'
-    obj.uselib_local = 'xmmsipc xmmssocket xmmstypes xmmsutils s4 testutils'
+    obj.uselib_local = 'xmms2core xmmsipc xmmssocket xmmstypes xmmsutils s4 testutils'
     obj.uselib = 'glib2 gmodule2 gthread2 DISABLE_WRITESTRINGS'
     obj.install_path = None
 
