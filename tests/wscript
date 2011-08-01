@@ -59,6 +59,14 @@ def build(bld):
     obj.install_path = None
 
     obj = bld.new_task_gen('cc', 'program')
+    obj.target = "test_collection"
+    obj.source = [ 'runner/main.c', 'runner/valgrind.c', 'server/t_collection.c']
+    obj.includes = '. ../ runner/ ../src ../src/includepriv ../src/include'
+    obj.uselib_local = 'xmms2core xmmsipc xmmssocket xmmstypes xmmsutils s4 testutils'
+    obj.uselib = 'cunit ncurses valgrind glib2 gmodule2 gthread2 DISABLE_WRITESTRINGS'
+    obj.install_path = None
+
+    obj = bld.new_task_gen('cc', 'program')
     obj.target = "medialib-runner"
     obj.source = [ 'server/medialib-runner.c' ]
     obj.includes = '. ../ runner/ ../src ../src/includepriv ../src/include'
