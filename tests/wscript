@@ -20,8 +20,9 @@ def configure(conf):
 def build(bld):
     obj = bld.new_task_gen('cc', 'staticlib')
     obj.target = 'testutils'
-    obj.source = 'utils/jsonism.c utils/value_utils.c utils/coll_utils.c utils/ipc_call.c'
-    obj.includes = '. ../src/include'
+    obj.source = 'utils/jsonism.c utils/value_utils.c utils/coll_utils.c utils/ipc_call.c utils/mlib_utils.c'
+    obj.includes = '. ../src/include ../src/includepriv'
+    obj.uselib_local = 's4'
     obj.uselib = 'glib2'
     obj.install_path = 0
 
