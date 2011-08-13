@@ -17,6 +17,7 @@ def build(bld):
     service/interface_entity.c
     service/service.c
     stats.c
+    symbol_hack.c
     xmmsclient.c
     xform.c
     xqueue.c
