@@ -54,6 +54,26 @@ xmms_medialib_session_begin (xmms_medialib_t *medialib)
 	return ret;
 }
 
+xmms_medialib_session_t *
+xmms_medialib_session_begin_read (xmms_medialib_t *medialib)
+{
+	xmms_medialib_session_t *ret = g_new0 (xmms_medialib_session_t, 1);
+
+	xmms_object_ref (medialib);
+	ret->medialib = medialib;
+
+	s4_t *s4 = xmms_medialib_get_database_backend (medialib);
+	ret->trans = s4_begin (s4, S4_TRANS_READONLY);
+
+	ret->added = g_hash_table_new (NULL, NULL);
+	ret->updated = g_hash_table_new (NULL, NULL);
+	ret->removed = g_hash_table_new (NULL, NULL);
+
+	ret->vals = xmmsv_new_list ();
+
+	return ret;
+}
+
 void
 xmms_medialib_session_abort (xmms_medialib_session_t *session)
 {
