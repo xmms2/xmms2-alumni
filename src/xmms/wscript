@@ -29,13 +29,16 @@ source = """
     xform.c
     xform_plugin.c
     streamtype.c
-    converter_plugin.c
     segment_plugin.c
     ringbuf_xform.c
     outputplugin.c
     bindata.c
-    sample.genpy
     utils.c
+    converter_plugin.c
+    sample.c
+    libresample/resample.c
+    libresample/resamplesubs.c
+    libresample/filterkit.c
     visualization/format.c
     visualization/object.c
     visualization/udp.c

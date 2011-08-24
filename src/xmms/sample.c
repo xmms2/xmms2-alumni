@@ -22,12 +22,16 @@
 #include "xmms/xmms_object.h"
 #include "xmms/xmms_log.h"
 
+#include "libresample/libresample.h"
+
 /**
   * @defgroup Sample Sample Converter
   * @ingroup XMMSServer
   * @brief Convert sample formats back and forth.
   * @{
   */
+
+#define MAX_CHANNELS 8
 
 /**
  * The converter module
@@ -38,30 +42,28 @@ struct xmms_sample_converter_St {
 	xmms_stream_type_t *from;
 	xmms_stream_type_t *to;
 
-	gboolean same;
 	gboolean resample;
 
 	/* buffer for result */
-	guint bufsiz;
-	xmms_sample_t *buf;
+	guint finbufsiz;
+	xmms_sample_t *finbuf;
+
+	guint foutbufsiz;
+	xmms_sample_t *foutbuf;
+
+	guint outbufsiz;
+	xmms_sample_t *outbuf;
 
 	guint interpolator_ratio;
 	guint decimator_ratio;
 
 	guint offset;
 
-	xmms_sample_t *state;
-
-	xmms_sample_conv_func_t func;
-
+	void *resamplers[MAX_CHANNELS];
+	double resample_factor;
 };
 
 static void recalculate_resampler (xmms_sample_converter_t *conv, guint from, guint to);
-static xmms_sample_conv_func_t
-xmms_sample_conv_get (guint inchannels, xmms_sample_format_t intype,
-                      guint outchannels, xmms_sample_format_t outtype,
-                      gboolean resample);
-
 
 
 static void
@@ -69,8 +71,9 @@ xmms_sample_converter_destroy (xmms_object_t *obj)
 {
 	xmms_sample_converter_t *conv = (xmms_sample_converter_t *) obj;
 
-	g_free (conv->buf);
-	g_free (conv->state);
+	g_free (conv->finbuf);
+	g_free (conv->foutbuf);
+	g_free (conv->outbuf);
 }
 
 xmms_sample_converter_t *
@@ -79,6 +82,7 @@ xmms_sample_converter_init (xmms_stream_type_t *from, xmms_stream_type_t *to)
 	xmms_sample_converter_t *conv = xmms_object_new (xmms_sample_converter_t, xmms_sample_converter_destroy);
 	gint fformat, fsamplerate, fchannels;
 	gint tformat, tsamplerate, tchannels;
+	gint i;
 
 	fformat = xmms_stream_type_get_int (from, XMMS_STREAM_TYPE_FMT_FORMAT);
 	fsamplerate = xmms_stream_type_get_int (from, XMMS_STREAM_TYPE_FMT_SAMPLERATE);
@@ -91,25 +95,23 @@ xmms_sample_converter_init (xmms_stream_type_t *from, xmms_stream_type_t *to)
 	g_return_val_if_fail (tchannels != -1, NULL);
 	g_return_val_if_fail (tsamplerate != -1, NULL);
 
-	conv->from = from;
-	conv->to = to;
-
-	conv->resample = fsamplerate != tsamplerate;
-
-	conv->func = xmms_sample_conv_get (fchannels, fformat,
-	                                   tchannels, tformat,
-	                                   conv->resample);
-
-	if (!conv->func) {
+	if (fchannels < 1 || fchannels > 2 || tchannels < 1 || tchannels > 2) {
+		xmms_log_error ("Multichannel in converter not handled yet!");
 		xmms_object_unref (conv);
-		xmms_log_error ("Unable to convert from %s/%d/%d to %s/%d/%d.",
-		                xmms_sample_name_get (fformat), fsamplerate, fchannels,
-		                xmms_sample_name_get (tformat), tsamplerate, tchannels);
 		return NULL;
 	}
 
+	conv->from = from;
+	conv->to = to;
+	conv->resample = fsamplerate != tsamplerate;
+
 	if (conv->resample)
 		recalculate_resampler (conv, fsamplerate, tsamplerate);
+
+	conv->resample_factor = conv->decimator_ratio / conv->interpolator_ratio;
+	for (i = 0; i < fchannels; i++) {
+		conv->resamplers[i] = resample_open(1, conv->resample_factor, conv->resample_factor);
+	}
 
 	return conv;
 }
@@ -237,8 +239,6 @@ recalculate_resampler (xmms_sample_converter_t *conv, guint from, guint to)
 	conv->interpolator_ratio = to/a;
 	conv->decimator_ratio = from/a;
 
-	conv->state = g_malloc0 (xmms_sample_frame_size_get (conv->from));
-
 	/*
 	 * calculate filter here
 	 *
@@ -249,6 +249,140 @@ recalculate_resampler (xmms_sample_converter_t *conv, guint from, guint to)
 }
 
 
+
+static void
+samples_to_floats (xmms_sample_format_t format, xmms_sample_t *in, gfloat *out,
+                   guint count, guint index, guint channels)
+{
+	int i;
+
+	switch (format) {
+		case XMMS_SAMPLE_FORMAT_S8: {
+			xmms_samples8_t *tmp = in;
+			for (i=0; i<count; i++) {
+				out[i] = (gfloat)tmp[i*channels+index] / 128.0f;
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_U8: {
+			xmms_sampleu8_t *tmp = in;
+			for (i=0; i<count; i++) {
+				out[i] = (gfloat)tmp[i*channels+index] / 128.0f - 1.0f;
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_S16: {
+			xmms_samples16_t *tmp = in;
+			for (i=0; i<count; i++) {
+				out[i] = (gfloat)tmp[i*channels+index] / 32768.0f;
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_U16: {
+			xmms_sampleu16_t *tmp = in;
+			for (i=0; i<count; i++) {
+				out[i] = (gfloat)tmp[i*channels+index] / 32768.0f - 1.0f;
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_S32: {
+			xmms_samples32_t *tmp = in;
+			for (i=0; i<count; i++) {
+				out[i] = (gfloat)tmp[i*channels+index] / 2147483648.0f;
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_U32: {
+			xmms_sampleu32_t *tmp = in;
+			for (i=0; i<count; i++) {
+				out[i] = (gfloat)tmp[i*channels+index] / 2147483648.0f - 1.0f;
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_FLOAT: {
+			xmms_samplefloat_t *tmp = in;
+			for (i=0; i<count; i++) {
+				out[i] = tmp[i*channels+index];
+			}
+		} break;
+		default: {
+			xmms_log_error ("Unhandled sample format");
+		} break;
+	}
+}
+
+static void
+floats_to_samples (xmms_sample_format_t format, gfloat *in, xmms_sample_t *out,
+                   guint count, guint index, guint channels, gfloat mult)
+{
+	int i;
+
+	switch (format) {
+		case XMMS_SAMPLE_FORMAT_S8: {
+			xmms_samples8_t *tmp = out;
+			for (i=0; i<count; i++) {
+				tmp[i*channels+index] += (xmms_samples8_t) (in[i] * mult * 128.0f);
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_U8: {
+			xmms_sampleu8_t *tmp = out;
+			for (i=0; i<count; i++) {
+				tmp[i*channels+index] /= 2;
+				tmp[i*channels+index] = (xmms_sampleu8_t) ((in[i] + 1.0f) * mult * 0.5f * 128.0f);
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_S16: {
+			xmms_samples16_t *tmp = out;
+			for (i=0; i<count; i++) {
+				tmp[i*channels+index] += (xmms_samples16_t) (in[i] * mult * 32768.0f);
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_U16: {
+			xmms_sampleu16_t *tmp = out;
+			for (i=0; i<count; i++) {
+				tmp[i*channels+index] /= 2;
+				tmp[i*channels+index] = (xmms_sampleu16_t) ((in[i] + 1.0f) * mult * 0.5f * 32768.0f);
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_S32: {
+			xmms_samples32_t *tmp = out;
+			for (i=0; i<count; i++) {
+				tmp[i*channels+index] += (xmms_samples32_t) (in[i] * mult * 2147483648.0f);
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_U32: {
+			xmms_sampleu32_t *tmp = out;
+			for (i=0; i<count; i++) {
+				tmp[i*channels+index] /= 2;
+				tmp[i*channels+index] = (xmms_sampleu32_t) ((in[i] + 1.0f) * mult * 0.5f * 2147483648.0f);
+			}
+		} break;
+		case XMMS_SAMPLE_FORMAT_FLOAT: {
+			xmms_samplefloat_t *tmp = out;
+			for (i=0; i<count; i++) {
+				tmp[i*channels+index] += in[i] * mult;
+			}
+		} break;
+		default: {
+			xmms_log_error ("Unhandled sample format");
+		} break;
+	}
+}
+
+static void
+mix_channels (xmms_sample_format_t format, gfloat *in, xmms_sample_t *out,
+              guint index, guint count, gint fchannels, gint tchannels)
+{
+	if (fchannels == 1) {
+		if (tchannels == 1) {
+			floats_to_samples (format, in, out, count, 0, tchannels, 1.0f);
+		} else if (tchannels == 2) {
+			floats_to_samples (format, in, out, count, 0, tchannels, 1.0f);
+			floats_to_samples (format, in, out, count, 1, tchannels, 1.0f);
+		}
+	} else if (fchannels == 2) {
+		if (tchannels == 1) {
+			floats_to_samples (format, in, out, count, 0, tchannels, 0.5f);
+		} else if (tchannels == 2) {
+			floats_to_samples (format, in, out, count, index, tchannels, 1.0f);
+		}
+	}
+}
+
 /**
  * do the actual converstion between two audio formats.
  */
@@ -256,41 +390,76 @@ void
 xmms_sample_convert (xmms_sample_converter_t *conv, xmms_sample_t *in, guint len, xmms_sample_t **out, guint *outlen)
 {
 	int inusiz, outusiz;
-	int olen;
-	guint res;
+	int ilen, filen, folen, olen;
+	gint fformat, fchannels, tformat, tchannels;
+	guint res, i;
 
 	inusiz = xmms_sample_frame_size_get (conv->from);
-
 	g_return_if_fail (len % inusiz == 0);
 
-	if (conv->same) {
-		*outlen = len;
-		*out = in;
-		return;
-	}
+	fformat = xmms_stream_type_get_int (conv->from, XMMS_STREAM_TYPE_FMT_FORMAT);
+	tformat = xmms_stream_type_get_int (conv->to, XMMS_STREAM_TYPE_FMT_FORMAT);
 
-	len /= inusiz;
+	fchannels = xmms_stream_type_get_int (conv->from, XMMS_STREAM_TYPE_FMT_CHANNELS);
+	g_return_if_fail (fchannels <= 0);
+
+	tchannels = xmms_stream_type_get_int (conv->to, XMMS_STREAM_TYPE_FMT_CHANNELS);
+	g_return_if_fail (tchannels <= 0);
+
+	ilen = len / inusiz;
+	filen = ilen * sizeof (gfloat);
+	if (filen > conv->finbufsiz) {
+		void *t;
+		t = g_realloc (conv->finbuf, filen);
+		g_assert (t); /* XXX */
+		conv->finbuf = t;
+		conv->finbufsiz = filen;
+	}
 
 	outusiz = xmms_sample_frame_size_get (conv->to);
-
 	if (conv->resample) {
-		olen = (len * conv->interpolator_ratio / conv->decimator_ratio) * outusiz + outusiz;
+		olen = (ilen * conv->interpolator_ratio / conv->decimator_ratio + 1);
+		folen = olen * sizeof(gfloat);
 	} else {
-		olen = len * outusiz;
+		folen = ilen * sizeof(gfloat);
+		olen = ilen;
 	}
-	if (olen > conv->bufsiz) {
+
+	if (folen > conv->foutbufsiz) {
 		void *t;
-		t = g_realloc (conv->buf, olen);
+		t = g_realloc (conv->foutbuf, folen);
 		g_assert (t); /* XXX */
-		conv->buf = t;
-		conv->bufsiz = olen;
+		conv->foutbuf = t;
+		conv->foutbufsiz = folen;
+	}
+	if (olen > conv->outbufsiz) {
+		void *t;
+		t = g_realloc (conv->outbuf, olen * outusiz);
+		g_assert (t); /* XXX */
+		conv->outbuf = t;
+		conv->outbufsiz = olen * outusiz;
 	}
 
-	res = conv->func (conv, in, len, conv->buf);
+	for (i=0; i<fchannels; i++) {
+		int inBufferUsed;
 
+		samples_to_floats (fformat, in, conv->finbuf, ilen, i, fchannels);
+		resample_process (conv->resamplers[i],
+		                  conv->resample_factor,
+		                  conv->finbuf, ilen, 0, &inBufferUsed,
+		                  conv->foutbuf, olen);
+		if (inBufferUsed != ilen) {
+			// FIXME: shouldn't happen!
+			xmms_log_error ("All input samples were not consumed!");
+			return;
+		}
+		mix_channels (fformat, conv->foutbuf, conv->outbuf, i, olen, fchannels, tchannels);
+	}
+
+	// FIXME: should set res correctly
+	res = olen;
 	*outlen = res * outusiz;
-	*out = conv->buf;
-
+	*out = conv->outbuf;
 }
 
 gint64
@@ -318,7 +487,6 @@ xmms_sample_convert_reset (xmms_sample_converter_t *conv)
 {
 	if (conv->resample) {
 		conv->offset = 0;
-		memset (conv->state, 0, xmms_sample_frame_size_get (conv->from));
 	}
 }
 
