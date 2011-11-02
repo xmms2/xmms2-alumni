@@ -30,6 +30,7 @@
 #include "xmmsc/xmmsc_util.h"
 #include "xmmspriv/xmms_plugin.h"
 #include "xmmspriv/xmms_config.h"
+#include "xmmspriv/xmms_courier.h"
 #include "xmmspriv/xmms_playlist.h"
 #include "xmmspriv/xmms_playlist_updater.h"
 #include "xmmspriv/xmms_collsync.h"
@@ -97,6 +98,7 @@ struct xmms_main_St {
 	xmms_xform_object_t *xform_object;
 	xmms_mediainfo_reader_t *mediainfo_object;
 	xmms_visualization_t *visualization_object;
+	xmms_courier_t *courier_object;
 	time_t starttime;
 };
 
@@ -298,6 +300,7 @@ xmms_main_destroy (xmms_object_t *object)
 	xmms_object_unref (mainobj->xform_object);
 	xmms_object_unref (mainobj->mediainfo_object);
 	xmms_object_unref (mainobj->visualization_object);
+	xmms_object_unref (mainobj->courier_object);
 
 	xmms_config_save ();
 
@@ -553,7 +556,6 @@ main (int argc, char **argv)
 		return 1;
 	}
 
-
 	mainobj = xmms_object_new (xmms_main_t, xmms_main_destroy);
 
 	mainobj->medialib_object = xmms_medialib_init ();
@@ -561,6 +563,7 @@ main (int argc, char **argv)
 	mainobj->mediainfo_object = xmms_mediainfo_reader_start (mainobj->medialib_object);
 	mainobj->playlist_object = xmms_playlist_init (mainobj->medialib_object,
 	                                               mainobj->colldag_object);
+	mainobj->courier_object = xmms_courier_init ();
 
 	uuid = xmms_medialib_uuid (mainobj->medialib_object);
 	mainobj->collsync_object = xmms_coll_sync_init (uuid,
