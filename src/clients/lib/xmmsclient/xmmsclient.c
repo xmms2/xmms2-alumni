@@ -37,6 +37,7 @@
 #define XMMS_MAX_URI_LEN 1024
 
 static void xmmsc_deinit (xmmsc_connection_t *c);
+static xmms_ipc_msg_t *xmmsc_build_ipc_msg_va (int obj, int cmd, xmmsv_t *first_arg, va_list ap);
 
 /*
  * Public methods
@@ -433,20 +434,43 @@ xmmsc_result_t *
 xmmsc_send_cmd (xmmsc_connection_t *c, int obj, int cmd,
                 xmmsv_t *first_arg, ...)
 {
-	xmms_ipc_msg_t *msg;
-	xmmsv_t *args;
 	va_list ap;
-
-	msg = xmms_ipc_msg_new (obj, cmd);
+	xmms_ipc_msg_t *msg;
 
 	va_start (ap, first_arg);
-	args = xmmsv_build_list_va (first_arg, ap);
+	msg = xmmsc_build_ipc_msg_va (obj, cmd, first_arg, ap);
 	va_end (ap);
+
+	return xmmsc_send_msg (c, msg);
+}
+
+uint32_t
+xmmsc_send_cmd_cookie (xmmsc_connection_t *c, int obj, int cmd,
+                       xmmsv_t *first_arg, ...)
+{
+	va_list ap;
+	xmms_ipc_msg_t *msg;
+
+	va_start (ap, first_arg);
+	msg = xmmsc_build_ipc_msg_va (obj, cmd, first_arg, ap);
+	va_end (ap);
+
+	return xmmsc_write_msg_to_ipc (c, msg);
+}
+
+static xmms_ipc_msg_t *
+xmmsc_build_ipc_msg_va (int obj, int cmd, xmmsv_t *first_arg, va_list ap)
+{
+	xmmsv_t *args;
+	xmms_ipc_msg_t *msg;
+
+	msg = xmms_ipc_msg_new (obj, cmd);
+	args = xmmsv_build_list_va (first_arg, ap);
 
 	xmms_ipc_msg_put_value (msg, args);
 	xmmsv_unref (args);
 
-	return xmmsc_send_msg (c, msg);
+	return msg;
 }
 
 /**

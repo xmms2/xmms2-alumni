@@ -23,6 +23,7 @@
 #include "xmmsc/xmmsc_idnumbers.h"
 #include "xmmsc/xmmsv.h"
 #include "xmmsc/xmmsv_coll.h"
+#include "xmmsc/xmmsv_c2c.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -324,6 +325,20 @@ xmmsv_coll_token_t *xmmsv_coll_default_parse_tokens (const char *str, const char
 /* broadcasts */
 xmmsc_result_t *xmmsc_broadcast_collection_changed (xmmsc_connection_t *c);
 
+/*
+ * C2C ***********************************************
+ */
+
+/* methods */
+xmmsc_result_t *xmmsc_c2c_send (xmmsc_connection_t *c, int dest, xmmsc_c2c_reply_policy_t reply_policy, xmmsv_t *payload);
+xmmsc_result_t *xmmsc_c2c_reply (xmmsc_connection_t *c, int msgid, xmmsc_c2c_reply_policy_t reply_policy, xmmsv_t *payload);
+int32_t xmmsc_c2c_get_own_id (xmmsc_connection_t *c);
+xmmsc_result_t *xmmsc_c2c_get_connected_clients (xmmsc_connection_t *c);
+
+/* broadcasts */
+xmmsc_result_t *xmmsc_broadcast_c2c_message (xmmsc_connection_t *c);
+xmmsc_result_t *xmmsc_broadcast_c2c_client_connected (xmmsc_connection_t *c);
+xmmsc_result_t *xmmsc_broadcast_c2c_client_disconnected (xmmsc_connection_t *c);
 
 /*
  * MACROS
@@ -350,8 +365,12 @@ void xmmsc_result_disconnect (xmmsc_result_t *res);
 xmmsc_result_t *xmmsc_result_ref (xmmsc_result_t *res);
 void xmmsc_result_unref (xmmsc_result_t *res);
 
-void xmmsc_result_notifier_set (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data);
-void xmmsc_result_notifier_set_full (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data, xmmsc_user_data_free_func_t free_func);
+void xmmsc_result_notifier_set_default (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data);
+void xmmsc_result_notifier_set_default_full (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data, xmmsc_user_data_free_func_t free_func);
+void xmmsc_result_notifier_set_raw (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data);
+void xmmsc_result_notifier_set_raw_full (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data, xmmsc_user_data_free_func_t free_func);
+void xmmsc_result_notifier_set_c2c (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data);
+void xmmsc_result_notifier_set_c2c_full (xmmsc_result_t *res, xmmsc_result_notifier_t func, void *user_data, xmmsc_user_data_free_func_t free_func);
 void xmmsc_result_wait (xmmsc_result_t *res);
 
 xmmsv_t *xmmsc_result_get_value (xmmsc_result_t *res);
@@ -361,6 +380,8 @@ xmmsv_t *xmmsc_result_get_value (xmmsc_result_t *res);
 #define xmmsc_result_get_error(res) xmmsv_get_error_old(xmmsc_result_get_value(res))
 
 /* compability */
+#define xmmsc_result_notifier_set xmmsc_result_notifier_set_default
+#define xmmsc_result_notifier_set_full xmmsc_result_notifier_set_default_full
 
 typedef xmmsv_coll_token_type_t xmmsc_coll_token_type_t;
 typedef xmmsv_coll_token_t xmmsc_coll_token_t;
