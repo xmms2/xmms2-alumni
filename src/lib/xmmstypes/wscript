@@ -8,6 +8,7 @@ def build(bld):
     source = """
     c2c.c
     coll.c
+    service.c
     value.c
     xlist.c
     value_serialize.c
