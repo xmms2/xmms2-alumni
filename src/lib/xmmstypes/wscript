@@ -6,6 +6,7 @@
 
 def build(bld):
     source = """
+    c2c.c
     coll.c
     value.c
     xlist.c
