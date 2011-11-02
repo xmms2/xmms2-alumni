@@ -13,6 +13,9 @@ def build(bld):
     playback.c
     playlist.c
     result.c
+    service/client.c
+    service/interface_entity.c
+    service/service.c
     stats.c
     xmmsclient.c
     xform.c

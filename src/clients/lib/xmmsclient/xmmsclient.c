@@ -118,6 +118,8 @@ xmmsc_init (const char *clientname)
 
 	c->visc = 0;
 	c->visv = NULL;
+
+	c->sc_root = NULL;
 	return xmmsc_ref (c);
 }
 
@@ -265,6 +267,10 @@ static void
 xmmsc_deinit (xmmsc_connection_t *c)
 {
 	xmmsc_ipc_destroy (c->ipc);
+
+	if (c->sc_root) {
+		xmmsc_sc_interface_entity_destroy (c->sc_root);
+	}
 
 	free (c->error);
 	free (c->clientname);
