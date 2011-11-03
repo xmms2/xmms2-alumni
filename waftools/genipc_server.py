@@ -3,7 +3,6 @@ import sys
 import genipc
 from indenter import Indenter
 
-#dictionary mapping of types in the xml to C type aliases
 c_type_map = {
 	'string': 'const char *',
 	'int': 'gint32',
