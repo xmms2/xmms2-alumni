@@ -62,7 +62,7 @@
 static void xmms_main_client_quit (xmms_object_t *object, xmms_error_t *error);
 static GTree *xmms_main_client_stats (xmms_object_t *object, xmms_error_t *error);
 static GList *xmms_main_client_list_plugins (xmms_object_t *main, gint32 type, xmms_error_t *err);
-static void xmms_main_client_hello (xmms_object_t *object, gint protocolver, const gchar *client, xmms_error_t *error);
+static gint32 xmms_main_client_hello (xmms_object_t *object, gint protocolver, const gchar *client, gint32 id, xmms_error_t *error);
 static void install_scripts (const gchar *into_dir);
 static void spawn_script_setup (gpointer data);
 
@@ -315,15 +315,17 @@ xmms_main_destroy (xmms_object_t *object)
 /**
  * @internal Function to respond to the 'hello' sent from clients on connect
  */
-static void
-xmms_main_client_hello (xmms_object_t *object, gint protocolver, const gchar *client, xmms_error_t *error)
+static gint32
+xmms_main_client_hello (xmms_object_t *object, gint protocolver, const gchar *client, gint32 id, xmms_error_t *error)
 {
 	if (protocolver != XMMS_IPC_PROTOCOL_VERSION) {
 		xmms_log_info ("Client '%s' with bad protocol version (%d, not %d) connected", client, protocolver, XMMS_IPC_PROTOCOL_VERSION);
 		xmms_error_set (error, XMMS_ERROR_INVAL, "Bad protocol version");
-		return;
+		return 0;
 	}
 	XMMS_DBG ("Client '%s' connected", client);
+
+	return id;
 }
 
 static gboolean

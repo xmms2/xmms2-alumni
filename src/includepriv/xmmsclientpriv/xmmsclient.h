@@ -56,6 +56,9 @@ struct xmmsc_connection_St {
 	int visc;
 	xmmsc_visualization_t **visv;
 
+	/* this client's id, assigned by the server */
+	int32_t id;
+
 	/* we need to hold the connection path to get the hostname */
 	char path[XMMS_PATH_MAX];
 };
