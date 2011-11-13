@@ -18,6 +18,70 @@ require 'xmmsclient_ext'
 module Xmms
 	class Collection
 		# :call-seq:
+		#  c.has_field(field) -> collection
+		#
+		# Returns a new collection for song whose has _field_
+		# in _c_
+		def has_field(field)
+			c = Xmms::Collection.new(Xmms::Collection::TYPE_HAS)
+			c.attributes["field"]=field
+			c.operands<< self
+			c
+		end
+
+		# :call-seq:
+		#  c.field_equal(field,value) -> collection
+		#
+		# Returns a new collection for song whose _field_ is _value_
+		# in _c_
+		def field_equal(field, value)
+			c = Xmms::Collection.new(Xmms::Collection::TYPE_EQUALS)
+			c.attributes["field"]=field
+			c.attributes["value"]=value
+			c.operands<< self
+			c
+		end
+
+		# :call-seq:
+		#  c.field_match(field,value) -> collection
+		#
+		# Returns a new collection for song whose _field_ match _value_
+		# in _c_
+		def field_match(field, value)
+			c = Xmms::Collection.new(Xmms::Collection::TYPE_MATCH)
+			c.attributes["field"]=field
+			c.attributes["value"]=value
+			c.operands<< self
+			c
+		end
+
+		# :call-seq:
+		#  c.field_smaller(field,value) -> collection
+		#
+		# Returns a new collection for song whose _field_ is smaller than _value_
+		# in _c_
+		def field_smaller(field, value)
+			c = Xmms::Collection.new(Xmms::Collection::TYPE_SMALLER)
+			c.attributes["field"]=field
+			c.attributes["value"]=value
+			c.operands<< self
+			c
+		end
+
+		# :call-seq:
+		#  c.field_greater(field,value) -> collection
+		#
+		# Returns a new collection for song whose _field_ is greater than _value_
+		# in _c_
+		def field_greater(field, value)
+			c = Xmms::Collection.new(Xmms::Collection::TYPE_GREATER)
+			c.attributes["field"]=field
+			c.attributes["value"]=value
+			c.operands<< self
+			c
+		end
+
+		# :call-seq:
 		#  c.union(other) -> collection
 		#
 		# Returns a new collection that is the logical OR of
