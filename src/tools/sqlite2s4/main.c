@@ -158,7 +158,7 @@ int main (int argc, char *argv[])
 		exit (1);
 	}
 
-	s4 = s4_open (argv[2], NULL, S4_NEW);
+	s4 = s4_open (argv[2], NULL, S4_NEW | S4_NOSYNC);
 	if (s4 == NULL) {
 		fprintf (stderr, "Can't open s4 file\n");
 		exit (1);
