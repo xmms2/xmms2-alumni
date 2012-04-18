@@ -399,6 +399,26 @@ xmmsv_coll_attributes_get (xmmsv_coll_t *coll)
 	return coll->attributes;
 }
 
+void
+xmmsv_coll_attributes_set (xmmsv_coll_t *coll, xmmsv_t *attributes)
+{
+	xmmsv_t *old;
+
+	x_return_if_fail (coll);
+	x_return_if_fail (attributes);
+
+	old = coll->attributes;
+	coll->attributes = xmmsv_ref (attributes);
+	xmmsv_unref (old);
+}
+
+
+void
+xmmsv_coll_attribute_set (xmmsv_coll_t *coll, const char *key, const char *value)
+{
+	xmmsv_coll_attribute_set_string (coll, key, value);
+}
+
 /**
  * Set an attribute in the given collection.
  *
@@ -407,15 +427,21 @@ xmmsv_coll_attributes_get (xmmsv_coll_t *coll)
  * @param value The value of the attribute.
  */
 void
-xmmsv_coll_attribute_set (xmmsv_coll_t *coll, const char *key, const char *value)
+xmmsv_coll_attribute_set_string (xmmsv_coll_t *coll, const char *key, const char *value)
 {
-	xmmsv_t *v;
+	xmmsv_dict_set_string (coll->attributes, key, value);
+}
 
-	v = xmmsv_new_string (value);
-	x_return_if_fail (v);
+void
+xmmsv_coll_attribute_set_int (xmmsv_coll_t *coll, const char *key, int32_t value)
+{
+	xmmsv_dict_set_int (coll->attributes, key, value);
+}
 
-	xmmsv_dict_set (coll->attributes, key, v);
-	xmmsv_unref (v);
+void
+xmmsv_coll_attribute_set_value (xmmsv_coll_t *coll, const char *key, xmmsv_t *value)
+{
+	xmmsv_dict_set (coll->attributes, key, value);
 }
 
 /**
@@ -433,6 +459,12 @@ xmmsv_coll_attribute_remove (xmmsv_coll_t *coll, const char *key)
 	return xmmsv_dict_remove (coll->attributes, key);
 }
 
+int
+xmmsv_coll_attribute_get (xmmsv_coll_t *coll, const char *key, const char **value)
+{
+	return xmmsv_coll_attribute_get_string (coll, key, value);
+}
+
 /**
  * Retrieve the value of the attribute of the given collection.
  * The return value is 1 if the attribute was found and 0 otherwise.
@@ -445,16 +477,44 @@ xmmsv_coll_attribute_remove (xmmsv_coll_t *coll, const char *key)
  * @return 1 if the attribute was found, 0 otherwise
  */
 int
-xmmsv_coll_attribute_get (xmmsv_coll_t *coll, const char *key, const char **value)
+xmmsv_coll_attribute_get_string (xmmsv_coll_t *coll, const char *key, const char **value)
 {
-	if (xmmsv_dict_entry_get_string (coll->attributes, key, value)) {
-		return 1;
-	}
-	*value = NULL;
-	return 0;
+	return xmmsv_dict_entry_get_string (coll->attributes, key, value);
 }
 
+/**
+ * Retrieve the value of the attribute of the given collection.
+ * The return value is 1 if the attribute was found and 0 otherwise.
+ * The value of the attribute is owned by the collection and must not
+ * be freed by the caller.
+ *
+ * @param coll The collection to retrieve the attribute from.
+ * @param key  The name of the attribute.
+ * @param value The value of the attribute if found (owned by the collection).
+ * @return 1 if the attribute was found, 0 otherwise
+ */
+int
+xmmsv_coll_attribute_get_int (xmmsv_coll_t *coll, const char *key, int32_t *value)
+{
+	return xmmsv_dict_entry_get_int (coll->attributes, key, value);
+}
 
+/**
+ * Retrieve the value of the attribute of the given collection.
+ * The return value is 1 if the attribute was found and 0 otherwise.
+ * The value of the attribute is owned by the collection and must not
+ * be freed by the caller.
+ *
+ * @param coll The collection to retrieve the attribute from.
+ * @param key  The name of the attribute.
+ * @param value The value of the attribute if found (owned by the collection).
+ * @return 1 if the attribute was found, 0 otherwise
+ */
+int
+xmmsv_coll_attribute_get_value (xmmsv_coll_t *coll, const char *key, xmmsv_t **value)
+{
+	return xmmsv_dict_get (coll->attributes, key, value);
+}
 
 /**
  * Return a collection referencing the whole media library.
