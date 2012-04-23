@@ -191,7 +191,7 @@ is_universe (xmmsv_coll_t *coll)
 			ret = TRUE;
 			break;
 		case XMMS_COLLECTION_TYPE_REFERENCE:
-			if (xmmsv_coll_attribute_get (coll, "reference", &target_name)
+			if (xmmsv_coll_attribute_get_string (coll, "reference", &target_name)
 			    && strcmp (target_name, "All Media") == 0)
 				ret = TRUE;
 			break;
@@ -331,7 +331,7 @@ get_filter_type_and_compare_mode (xmmsv_coll_t *coll,
 
 	*type = filter_type_from_collection (coll);
 
-	if (!xmmsv_coll_attribute_get (coll, "collation", &value)) {
+	if (!xmmsv_coll_attribute_get_string (coll, "collation", &value)) {
 		/* For <, <=, >= and > we default to natcoll,
 		 * so that strings will order correctly
 		 */
@@ -372,9 +372,9 @@ filter_condition (xmms_medialib_session_t *session,
 	s4_condition_t *cond;
 	s4_val_t *value = NULL;
 
-	if (!xmmsv_coll_attribute_get (coll, "type", &filter_type) || strcmp (filter_type, "value") == 0) {
+	if (!xmmsv_coll_attribute_get_string (coll, "type", &filter_type) || strcmp (filter_type, "value") == 0) {
 		/* If 'field' is not set, match against every key */
-		if (!xmmsv_coll_attribute_get (coll, "field", &key)) {
+		if (!xmmsv_coll_attribute_get_string (coll, "field", &key)) {
 			key = NULL;
 		}
 	} else {
@@ -382,7 +382,7 @@ filter_condition (xmms_medialib_session_t *session,
 		flags = S4_COND_PARENT;
 	}
 
-	if (xmmsv_coll_attribute_get (coll, "value", &val)) {
+	if (xmmsv_coll_attribute_get_string (coll, "value", &val)) {
 		gchar *endptr;
 
 		ival = strtol (val, &endptr, 10);
@@ -393,7 +393,7 @@ filter_condition (xmms_medialib_session_t *session,
 		}
 	}
 
-	if (xmmsv_coll_attribute_get (coll, "source-preference", &val)) {
+	if (xmmsv_coll_attribute_get_string (coll, "source-preference", &val)) {
 		gchar **prefs;
 		prefs = g_strsplit (val, ":", -1);
 		sp = s4_sourcepref_create ((const gchar **) prefs);
@@ -493,13 +493,13 @@ limit_condition (xmms_medialib_session_t *session, xmmsv_coll_t *coll,
 	guint start, stop;
 	const gchar *key;
 
-	if (xmmsv_coll_attribute_get (coll, "start", &key)) {
+	if (xmmsv_coll_attribute_get_string (coll, "start", &key)) {
 		start = atoi (key);
 	} else {
 		start = 0;
 	}
 
-	if (xmmsv_coll_attribute_get (coll, "length", &key)) {
+	if (xmmsv_coll_attribute_get_string (coll, "length", &key)) {
 		stop = atoi (key) + start;
 	} else {
 		stop = UINT_MAX;
@@ -629,7 +629,7 @@ order_condition (xmms_medialib_session_t *session, xmmsv_coll_t *coll,
 
 	entry = xmmsv_new_dict ();
 
-	if (!xmmsv_coll_attribute_get (coll, "type", &key)) {
+	if (!xmmsv_coll_attribute_get_string (coll, "type", &key)) {
 		key = (gchar *) "value";
 	}
 
@@ -645,7 +645,7 @@ order_condition (xmms_medialib_session_t *session, xmmsv_coll_t *coll,
 
 	s4_sourcepref_unref (sourcepref);
 
-	if (!xmmsv_coll_attribute_get (coll, "direction", &key)) {
+	if (!xmmsv_coll_attribute_get_string (coll, "direction", &key)) {
 		xmmsv_dict_set_int (entry, "direction", S4_ORDER_ASCENDING);
 	} else if (strcmp (key, "ASC") == 0) {
 		xmmsv_dict_set_int (entry, "direction", S4_ORDER_ASCENDING);
@@ -855,4 +855,3 @@ xmms_medialib_query_recurs (xmms_medialib_session_t *session,
 
 	return ret;
 }
-

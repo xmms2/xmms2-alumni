@@ -1612,7 +1612,7 @@ void configure_collection (xmmsc_result_t *res, cli_infos_t *infos,
 	val = xmmsc_result_get_value (res);
 
 	if (xmmsv_get_coll (val, &coll)) {
-		xmmsc_coll_attribute_set (coll, attrname, attrvalue);
+		xmmsv_coll_attribute_set_string (coll, attrname, attrvalue);
 		coll_save (infos, coll, ns, name, TRUE);
 	} else {
 		g_printf (_("Invalid collection!\n"));
@@ -1635,7 +1635,7 @@ configure_playlist (xmmsc_result_t *res, cli_infos_t *infos, const gchar *playli
 
 	if (xmmsv_get_coll (val, &coll)) {
 		if (typestr) {
-			xmmsv_coll_attribute_set (coll, "type", typestr);
+			xmmsv_coll_attribute_set_string (coll, "type", typestr);
 		}
 		if (history >= 0) {
 			coll_int_attribute_set (coll, "history", history);
@@ -1658,7 +1658,7 @@ configure_playlist (xmmsc_result_t *res, cli_infos_t *infos, const gchar *playli
 		}
 		if (jumplist) {
 			/* FIXME: Check for the existence of the target ? */
-			xmmsv_coll_attribute_set (coll, "jumplist", jumplist);
+			xmmsv_coll_attribute_set_string (coll, "jumplist", jumplist);
 		}
 
 		saveres = xmmsc_coll_save (infos->sync, coll, playlist,
@@ -1687,7 +1687,7 @@ collection_print_config (xmmsc_result_t *res, cli_infos_t *infos,
 			xmmsv_dict_foreach (xmmsv_coll_attributes_get (coll),
 			                    coll_print_attributes, NULL);
 		} else {
-			if (xmmsv_coll_attribute_get (coll, attrname, &attrvalue)) {
+			if (xmmsv_coll_attribute_get_string (coll, attrname, &attrvalue)) {
 				g_printf ("[%s] %s\n", attrname, attrvalue);
 			} else {
 				g_printf (_("Invalid attribute!\n"));
@@ -1745,7 +1745,7 @@ coll_int_attribute_set (xmmsv_coll_t *coll, const char *key, gint value)
 	gchar buf[MAX_INT_VALUE_BUFFER_SIZE + 1];
 
 	g_snprintf (buf, MAX_INT_VALUE_BUFFER_SIZE, "%d", value);
-	xmmsv_coll_attribute_set (coll, key, buf);
+	xmmsv_coll_attribute_set_string (coll, key, buf);
 }
 
 static xmmsv_coll_t *
@@ -1754,8 +1754,8 @@ coll_make_reference (const char *name, xmmsc_coll_namespace_t ns)
 	xmmsv_coll_t *ref;
 
 	ref = xmmsv_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
-	xmmsv_coll_attribute_set (ref, "reference", name);
-	xmmsv_coll_attribute_set (ref, "namespace", ns);
+	xmmsv_coll_attribute_set_string (ref, "reference", name);
+	xmmsv_coll_attribute_set_string (ref, "namespace", ns);
 
 	return ref;
 }
@@ -1782,11 +1782,11 @@ pl_print_config (xmmsv_coll_t *coll, const char *name)
 	const gchar *jumplist = NULL;
 	xmmsv_t *v;
 
-	xmmsv_coll_attribute_get (coll, "type", &type);
+	xmmsv_coll_attribute_get_string (coll, "type", &type);
 
-	xmmsv_coll_attribute_get (coll, "upcoming", &upcoming);
-	xmmsv_coll_attribute_get (coll, "history", &history);
-	xmmsv_coll_attribute_get (coll, "jumplist", &jumplist);
+	xmmsv_coll_attribute_get_string (coll, "upcoming", &upcoming);
+	xmmsv_coll_attribute_get_string (coll, "history", &history);
+	xmmsv_coll_attribute_get_string (coll, "jumplist", &jumplist);
 
 	g_printf (_("name: %s\n"), name);
 
@@ -1803,8 +1803,8 @@ pl_print_config (xmmsv_coll_t *coll, const char *name)
 	if (xmmsv_list_get (xmmsv_coll_operands_get (coll), 0, &v) &&
 	    xmmsv_get_coll (v, &op)) {
 		/* FIXME: Operand might be something different than a reference */
-		xmmsv_coll_attribute_get (op, "reference", &input);
-		xmmsv_coll_attribute_get (op, "namespace", &input_ns);
+		xmmsv_coll_attribute_get_string (op, "reference", &input);
+		xmmsv_coll_attribute_get_string (op, "namespace", &input_ns);
 
 		g_printf (_("input: %s/%s\n"), input_ns, input);
 	}

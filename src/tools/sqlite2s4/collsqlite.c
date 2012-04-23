@@ -97,7 +97,7 @@ create_coll (xmmsv_coll1_type_t type)
 
 	if (idlist_type != NULL) {
 		ret = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
-		xmmsv_coll_attribute_set (ret, "type", idlist_type);
+		xmmsv_coll_attribute_set_string (ret, "type", idlist_type);
 	} else {
 		ret = xmmsv_coll_new (new_type);
 	}
@@ -122,16 +122,16 @@ augment_coll (xmmsv_coll_t *coll)
 	case XMMS_COLLECTION_TYPE_SMALLEREQ:
 	case XMMS_COLLECTION_TYPE_GREATER:
 	case XMMS_COLLECTION_TYPE_GREATEREQ:
-		if (xmmsv_coll_attribute_get (coll, "field", &key)
+		if (xmmsv_coll_attribute_get_string (coll, "field", &key)
 		    && strcmp (key, "id") == 0) {
-			xmmsv_coll_attribute_set (coll, "type", "id");
+			xmmsv_coll_attribute_set_string (coll, "type", "id");
 		} else {
-			xmmsv_coll_attribute_set (coll, "type", "value");
+			xmmsv_coll_attribute_set_string (coll, "type", "value");
 		}
 		break;
 
 	case XMMS_COLLECTION_TYPE_REFERENCE:
-		if (xmmsv_coll_attribute_get (coll, "reference", &key)
+		if (xmmsv_coll_attribute_get_string (coll, "reference", &key)
 		    && strcmp (key, "All Media") == 0) {
 			ret = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNIVERSE);
 			xmmsv_coll_unref (coll);
@@ -212,7 +212,7 @@ attribute_callback (void *userdata, int cols, char **col_strs, char **col_names)
 			value = col_strs[i];
 		}
 	}
-	xmmsv_coll_attribute_set (coll, key, value);
+	xmmsv_coll_attribute_set_string (coll, key, value);
 
 	return 0;
 }

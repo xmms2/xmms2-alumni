@@ -240,8 +240,8 @@ CASE (test_client_find)
 	/* should not be found */
 	universe = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNIVERSE);
 	equals = xmmsv_coll_new (XMMS_COLLECTION_TYPE_EQUALS);
-	xmmsv_coll_attribute_set (equals, "type", "id");
-	xmmsv_coll_attribute_set (equals, "value", "1337");
+	xmmsv_coll_attribute_set_string (equals, "type", "id");
+	xmmsv_coll_attribute_set_string (equals, "value", "1337");
 	xmmsv_coll_add_operand (equals, universe);
 	xmmsv_coll_unref (universe);
 

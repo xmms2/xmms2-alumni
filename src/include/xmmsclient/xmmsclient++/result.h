@@ -465,7 +465,7 @@ namespace Xmms
 					case XMMS_COLLECTION_TYPE_IDLIST: {
 						const char *type = NULL;
 
-						if (!xmmsv_coll_attribute_get (coll, "type", &type)) {
+						if (!xmmsv_coll_attribute_get_string (coll, "type", &type)) {
 							collptr.reset( new Coll::Idlist( coll ) );
 						} else if (!strcmp(type, "queue")) {
 							collptr.reset( new Coll::Queue( coll ) );

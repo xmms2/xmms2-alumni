@@ -56,7 +56,7 @@ xmmsv_coll_new (class, type, ...)
 
 			hv_iterinit (args);
 			while ((iter = hv_iternext (args))) {
-				xmmsv_coll_attribute_set (RETVAL, HePV (iter, PL_na), SvPV_nolen (HeVAL (iter)));
+				xmmsv_coll_attribute_set_string (RETVAL, HePV (iter, PL_na), SvPV_nolen (HeVAL (iter)));
 			}
 		}
 		else {
@@ -64,7 +64,7 @@ xmmsv_coll_new (class, type, ...)
 				croak ("expected even number of attributes/values");
 
 			for (i = 2; i <= nargs; i += 2) {
-				xmmsv_coll_attribute_set (RETVAL, SvPV_nolen (ST (i)), SvPV_nolen (ST (i+1)));
+				xmmsv_coll_attribute_set_string (RETVAL, SvPV_nolen (ST (i)), SvPV_nolen (ST (i+1)));
 			}
 		}
 	OUTPUT:
@@ -491,7 +491,7 @@ Set an attribute C<$key> to C<$value> in the given collection.
 =cut
 
 void
-xmmsv_coll_attribute_set (coll, key, value)
+xmmsv_coll_attribute_set_string (coll, key, value)
 		xmmsv_coll_t *coll
 		const char *key
 		const char *value
@@ -504,7 +504,7 @@ xmmsv_coll_attribute_set (coll, key, value)
 
 =item Return Value: $success
 
-=back 
+=back
 
   my $success = $coll->attribute_remove;
 
@@ -530,12 +530,12 @@ xmmsv_coll_attribute_remove (coll, key)
 
   my $value = $coll->attribute_get('field');
 
-Retrieve the C<$value> of the attribute C<$key> of the given collection. 
+Retrieve the C<$value> of the attribute C<$key> of the given collection.
 
 =cut
 
 NO_OUTPUT int
-xmmsv_coll_attribute_get (xmmsv_coll_t *coll, const char *key, OUTLIST const char *val)
+xmmsv_coll_attribute_get_string (xmmsv_coll_t *coll, const char *key, OUTLIST const char *val)
 	INIT:
 		PERL_UNUSED_VAR (targ);
 	POSTCALL:

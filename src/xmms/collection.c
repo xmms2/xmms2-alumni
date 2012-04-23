@@ -569,7 +569,7 @@ xmms_collection_client_find (xmms_coll_dag_t *dag, gint32 mid, const gchar *name
 	xmms_collection_foreach_in_namespace (dag, nsid, build_match_table, match_table);
 
 	filter_coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_EQUALS);
-	xmmsv_coll_attribute_set (filter_coll, "type", "id");
+	xmmsv_coll_attribute_set_string (filter_coll, "type", "id");
 	xmms_collection_set_int_attr (filter_coll, "value", mid);
 
 	/* While not all collections have been checked, check next */
@@ -875,7 +875,7 @@ xmms_collection_get_int_attr (xmmsv_coll_t *coll, const gchar *attrname, gint *v
 	const gchar *str;
 	gchar *endptr;
 
-	if (xmmsv_coll_attribute_get (coll, attrname, &str)) {
+	if (xmmsv_coll_attribute_get_string (coll, attrname, &str)) {
 		buf = strtol (str, &endptr, 10);
 
 		/* Valid integer string */
@@ -905,7 +905,7 @@ xmms_collection_set_int_attr (xmmsv_coll_t *coll, const gchar *attrname,
 
 	written = g_snprintf (str, sizeof (str), "%d", newval);
 	if (written < XMMS_MAX_INT_ATTRIBUTE_LEN) {
-		xmmsv_coll_attribute_set (coll, attrname, str);
+		xmmsv_coll_attribute_set_string (coll, attrname, str);
 		retval = TRUE;
 	}
 
@@ -1055,13 +1055,13 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 		}
 
 		/* check if referenced collection exists */
-		xmmsv_coll_attribute_get (coll, "reference", &attr);
+		xmmsv_coll_attribute_get_string (coll, "reference", &attr);
 		if (attr == NULL) {
 			*err = "Invalid collection: REFERENCE without \"reference\"-"
 			      "attribute.";
 			return FALSE;
 		} else if (strcmp (attr, "All Media") != 0) {
-			xmmsv_coll_attribute_get (coll, "namespace", &attr2);
+			xmmsv_coll_attribute_get_string (coll, "namespace", &attr2);
 
 			if (attr2 == NULL) {
 				*err = "Invalid collection: REFERENCE without \"namespace\"-"
@@ -1164,7 +1164,7 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 		}
 
 		if (type != XMMS_COLLECTION_TYPE_HAS &&
-		    !xmmsv_coll_attribute_get (coll, "value", &attr)) {
+		    !xmmsv_coll_attribute_get_string (coll, "value", &attr)) {
 
 			*err = "Invalid collection: non-HAS FILTER without \"value\"-"
 			       "attribute.";
@@ -1173,7 +1173,7 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 
 		/* check that type equals "id", "value"
 		 * or not set (defaults to "value") */
-		if (xmmsv_coll_attribute_get (coll, "type", &attr)) {
+		if (xmmsv_coll_attribute_get_string (coll, "type", &attr)) {
 			if (strcmp (attr, "id") && strcmp (attr, "value")) {
 				*err = "Invalid collection: FILTER with invalid \"type\"-"
 				       "attribute.";
@@ -1183,7 +1183,7 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 		break;
 
 	case XMMS_COLLECTION_TYPE_IDLIST:
-		if (!xmmsv_coll_attribute_get (coll, "type", &attr)) {
+		if (!xmmsv_coll_attribute_get_string (coll, "type", &attr)) {
 			attr = (char*)"list";
 		}
 
@@ -1223,7 +1223,7 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 			return FALSE;
 		}
 
-		if (xmmsv_coll_attribute_get (coll, "direction", &attr)
+		if (xmmsv_coll_attribute_get_string (coll, "direction", &attr)
 		    && strcmp (attr, "ASC") != 0
 		    && strcmp (attr, "DESC") != 0) {
 			*err = "Invalid collection: ORDER with invalid \"order\"-"
@@ -1231,7 +1231,7 @@ xmms_collection_validate_recurs (xmms_coll_dag_t *dag, xmmsv_coll_t *coll,
 			return FALSE;
 		}
 
-		if (!xmmsv_coll_attribute_get (coll, "type", &attr)
+		if (!xmmsv_coll_attribute_get_string (coll, "type", &attr)
 		    || strcmp (attr, "value") == 0) {
 			xmmsv_t *field;
 
@@ -1571,8 +1571,8 @@ bind_all_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *par
 		const gchar *target_namespace;
 		gint   target_nsid;
 
-		xmmsv_coll_attribute_get (coll, "reference", &target_name);
-		xmmsv_coll_attribute_get (coll, "namespace", &target_namespace);
+		xmmsv_coll_attribute_get_string (coll, "reference", &target_name);
+		xmmsv_coll_attribute_get_string (coll, "namespace", &target_namespace);
 		if (target_name == NULL || target_namespace == NULL ||
 		    strcmp (target_name, "All Media") == 0) {
 			return;
@@ -1610,8 +1610,8 @@ rebind_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *paren
 
 		/* FIXME: Or only compare operand vs oldtarget ? */
 
-		xmmsv_coll_attribute_get (coll, "reference", &target_name);
-		xmmsv_coll_attribute_get (coll, "namespace", &target_namespace);
+		xmmsv_coll_attribute_get_string (coll, "reference", &target_name);
+		xmmsv_coll_attribute_get_string (coll, "namespace", &target_namespace);
 		if (strcmp (infos->name, target_name) != 0 ||
 		    strcmp (infos->namespace, target_namespace) != 0) {
 			return;
@@ -1637,11 +1637,11 @@ rename_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *paren
 
 		infos = (coll_rename_infos_t*)udata;
 
-		xmmsv_coll_attribute_get (coll, "reference", &target_name);
-		xmmsv_coll_attribute_get (coll, "namespace", &target_namespace);
+		xmmsv_coll_attribute_get_string (coll, "reference", &target_name);
+		xmmsv_coll_attribute_get_string (coll, "namespace", &target_namespace);
 		if (strcmp (infos->oldname, target_name) == 0 &&
 		    strcmp (infos->namespace, target_namespace) == 0) {
-			xmmsv_coll_attribute_set (coll, "reference", infos->newname);
+			xmmsv_coll_attribute_set_string (coll, "reference", infos->newname);
 		}
 	}
 }
@@ -1675,8 +1675,8 @@ strip_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent
 			continue;
 		}
 
-		xmmsv_coll_attribute_get (op, "reference", &target_name);
-		xmmsv_coll_attribute_get (op, "namespace", &target_namespace);
+		xmmsv_coll_attribute_get_string (op, "reference", &target_name);
+		xmmsv_coll_attribute_get_string (op, "namespace", &target_namespace);
 		if (strcmp (infos->name, target_name) != 0 ||
 		    strcmp (infos->namespace, target_namespace) != 0) {
 			continue;
@@ -1706,8 +1706,8 @@ check_for_reference (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *par
 	if (xmmsv_coll_get_type (coll) == XMMS_COLLECTION_TYPE_REFERENCE && !check->found) {
 		const gchar *target_name, *target_namespace;
 
-		xmmsv_coll_attribute_get (coll, "reference", &target_name);
-		xmmsv_coll_attribute_get (coll, "namespace", &target_namespace);
+		xmmsv_coll_attribute_get_string (coll, "reference", &target_name);
+		xmmsv_coll_attribute_get_string (coll, "namespace", &target_namespace);
 		if (strcmp (check->target_name, target_name) == 0 &&
 		    strcmp (check->target_namespace, target_namespace) == 0) {
 			check->found = TRUE;

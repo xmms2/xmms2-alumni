@@ -724,8 +724,8 @@ cli_search (cli_infos_t *infos, command_context_t *ctx)
 		/* All various artists entries that match the user query. */
 		compilation = xmmsv_coll_new (XMMS_COLLECTION_TYPE_MATCH);
 		xmmsv_coll_add_operand (compilation, query);
-		xmmsv_coll_attribute_set (compilation, "field", "compilation");
-		xmmsv_coll_attribute_set (compilation, "value", "1");
+		xmmsv_coll_attribute_set_string (compilation, "field", "compilation");
+		xmmsv_coll_attribute_set_string (compilation, "value", "1");
 
 		/* All entries that aren't various artists, or don't match the user query */
 		complement = xmmsv_coll_new (XMMS_COLLECTION_TYPE_COMPLEMENT);
@@ -843,8 +843,8 @@ cli_list (cli_infos_t *infos, command_context_t *ctx)
 	/* Has filter, retrieve ids from intersection */
 	if (query != NULL) {
 		pl = xmmsv_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
-		xmmsv_coll_attribute_set (pl, "namespace", XMMS_COLLECTION_NS_PLAYLISTS);
-		xmmsv_coll_attribute_set (pl, "reference", playlist);
+		xmmsv_coll_attribute_set_string (pl, "namespace", XMMS_COLLECTION_NS_PLAYLISTS);
+		xmmsv_coll_attribute_set_string (pl, "reference", playlist);
 
 		filter = xmmsv_coll_new (XMMS_COLLECTION_TYPE_INTERSECTION);
 		xmmsv_coll_add_operand (filter, query);
@@ -1651,7 +1651,7 @@ cli_pl_config (cli_infos_t *infos, command_context_t *ctx)
 		if (typestr == NULL) {
 			val = xmmsc_result_get_value (res);
 			if (xmmsv_get_coll (val, &coll)) {
-				xmmsv_coll_attribute_get (coll, "type", &typestr);
+				xmmsv_coll_attribute_get_string (coll, "type", &typestr);
 			} else {
 				g_printf (_("Cannot find the playlist to configure!\n"));
 				cli_infos_loop_resume (infos);

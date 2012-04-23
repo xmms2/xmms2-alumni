@@ -260,12 +260,10 @@ CASE (test_xmmsv_serialize_coll_match)
 
 	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_MATCH);
 
-	xmmsv_coll_attribute_set (coll, "field", "artist");
-	xmmsv_coll_attribute_set (coll, "value", "*sentenced*");
+	xmmsv_coll_attribute_set_string (coll, "field", "artist");
+	xmmsv_coll_attribute_set_string (coll, "value", "*sentenced*");
 
-	/* TODO: Workaround until the attributes API has been reworked. */
-	attrs = xmmsv_coll_attributes_get (coll);
-	xmmsv_dict_set_int (attrs, "seed", 31337);
+	xmmsv_coll_attribute_set_int (coll, "seed", 31337);
 
 	all_media = xmmsv_coll_universe ();
 	xmmsv_coll_add_operand (coll, all_media);
@@ -295,10 +293,10 @@ CASE (test_xmmsv_serialize_coll_match)
 	CU_ASSERT_EQUAL (xmmsv_dict_get_size (xmmsv_coll_attributes_get (coll)),
 	                 3);
 
-	CU_ASSERT_TRUE (xmmsv_coll_attribute_get (coll, "field", &s));
+	CU_ASSERT_TRUE (xmmsv_coll_attribute_get_string (coll, "field", &s));
 	CU_ASSERT_STRING_EQUAL (s, "artist");
 
-	CU_ASSERT_TRUE (xmmsv_coll_attribute_get (coll, "value", &s));
+	CU_ASSERT_TRUE (xmmsv_coll_attribute_get_string (coll, "value", &s));
 	CU_ASSERT_STRING_EQUAL (s, "*sentenced*");
 
 	attrs = xmmsv_coll_attributes_get (coll);

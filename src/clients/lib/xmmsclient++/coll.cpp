@@ -91,13 +91,13 @@ namespace Xmms
 
 	void Coll::setAttribute( const string &attrname, const string &value )
 	{
-		xmmsv_coll_attribute_set( coll_, attrname.c_str(), value.c_str() );
+		xmmsv_coll_attribute_set_string( coll_, attrname.c_str(), value.c_str() );
 	}
 
 	string Coll::getAttribute( const string &attrname ) const
 	{
 		const char *val;
-		if( !xmmsv_coll_attribute_get( coll_, attrname.c_str(), &val ) ) {
+		if( !xmmsv_coll_attribute_get_string( coll_, attrname.c_str(), &val ) ) {
 			throw no_such_key_error( "No such attribute: " + attrname );
 		}
 

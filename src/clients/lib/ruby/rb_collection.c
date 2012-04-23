@@ -343,7 +343,7 @@ c_attrs_aref (VALUE self, VALUE key)
 	tmp = rb_iv_get (self, "collection");
 	Data_Get_Struct (tmp, RbCollection, coll);
 
-	s = xmmsv_coll_attribute_get (coll->real, StringValuePtr (key), &value);
+	s = xmmsv_coll_attribute_get_string (coll->real, StringValuePtr (key), &value);
 	if (!s)
 		return Qnil;
 
@@ -362,8 +362,8 @@ c_attrs_aset (VALUE self, VALUE key, VALUE value)
 	tmp = rb_iv_get (self, "collection");
 	Data_Get_Struct (tmp, RbCollection, coll);
 
-	xmmsv_coll_attribute_set (coll->real, StringValuePtr (key),
-	                          StringValuePtr (value));
+	xmmsv_coll_attribute_set_string (coll->real, StringValuePtr (key),
+	                                 StringValuePtr (value));
 
 	return Qnil;
 }
@@ -380,7 +380,7 @@ c_attrs_has_key (VALUE self, VALUE key)
 	tmp = rb_iv_get (self, "collection");
 	Data_Get_Struct (tmp, RbCollection, coll);
 
-	s = xmmsc_coll_attribute_get (coll->real, StringValuePtr (key), NULL);
+	s = xmmsv_coll_attribute_get_string (coll->real, StringValuePtr (key), NULL);
 
 	return s ? Qtrue : Qfalse;
 }
@@ -396,7 +396,7 @@ c_attrs_delete (VALUE self, VALUE key)
 	tmp = rb_iv_get (self, "collection");
 	Data_Get_Struct (tmp, RbCollection, coll);
 
-	xmmsc_coll_attribute_remove (coll->real, StringValuePtr (key));
+	xmmsv_coll_attribute_remove (coll->real, StringValuePtr (key));
 
 	return Qnil;
 }

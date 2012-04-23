@@ -142,7 +142,7 @@ xmms_playlist_update_unlocked (xmms_playlist_t *playlist, const gchar *plname)
 
 	plcoll = xmms_playlist_get_coll (playlist, plname, NULL);
 	if (plcoll) {
-		xmmsv_coll_attribute_get (plcoll, "type", &type);
+		xmmsv_coll_attribute_get_string (plcoll, "type", &type);
 		if (g_strcmp0 (type, "queue") == 0) {
 			xmms_playlist_update_queue (playlist, plname, plcoll);
 		} else if (g_strcmp0 (type, "pshuffle") == 0) {
@@ -350,7 +350,7 @@ xmms_playlist_advance_do (xmms_playlist_t *playlist)
 	if (plcoll == NULL) {
 		ret = FALSE;
 	} else if ((size = xmms_playlist_coll_get_size (plcoll)) == 0) {
-		if (xmmsv_coll_attribute_get (plcoll, "jumplist", &jumplist)) {
+		if (xmmsv_coll_attribute_get_string (plcoll, "jumplist", &jumplist)) {
 			xmms_playlist_client_load (buffer, jumplist, &err);
 			if (xmms_error_isok (&err)) {
 				ret = xmms_playlist_advance_do (playlist);
@@ -365,7 +365,7 @@ xmms_playlist_advance_do (xmms_playlist_t *playlist)
 		currpos++;
 
 		if (currpos == size && !playlist->repeat_all &&
-		    xmmsv_coll_attribute_get (plcoll, "jumplist", &jumplist)) {
+		    xmmsv_coll_attribute_get_string (plcoll, "jumplist", &jumplist)) {
 
 			xmms_collection_set_int_attr (plcoll, "position", -1);
 			XMMS_PLAYLIST_CURRPOS_MSG (-1, XMMS_ACTIVE_PLAYLIST);
@@ -999,7 +999,7 @@ xmms_playlist_set_current_position_do (xmms_playlist_t *playlist, guint32 pos,
 	size = xmms_playlist_coll_get_size (plcoll);
 
 	if (pos == size &&
-	    xmmsv_coll_attribute_get (plcoll, "jumplist", &jumplist)) {
+	    xmmsv_coll_attribute_get_string (plcoll, "jumplist", &jumplist)) {
 
 		xmms_collection_set_int_attr (plcoll, "position", 0);
 		XMMS_PLAYLIST_CURRPOS_MSG (0, XMMS_ACTIVE_PLAYLIST);

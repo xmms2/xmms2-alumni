@@ -179,19 +179,19 @@ CASE (test_coll_attributes)
 	c = xmmsv_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
 	CU_ASSERT_PTR_NOT_NULL (c);
 
-	xmmsv_coll_attribute_set (c, "k1", "v1");
-	xmmsv_coll_attribute_set (c, "k2", "v2");
-	xmmsv_coll_attribute_set (c, "k3", "v3");
+	xmmsv_coll_attribute_set_string (c, "k1", "v1");
+	xmmsv_coll_attribute_set_string (c, "k2", "v2");
+	xmmsv_coll_attribute_set_string (c, "k3", "v3");
 
-	CU_ASSERT_TRUE (xmmsv_coll_attribute_get (c, "k1", &v));
+	CU_ASSERT_TRUE (xmmsv_coll_attribute_get_string (c, "k1", &v));
 	CU_ASSERT_STRING_EQUAL (v, "v1");
-	CU_ASSERT_TRUE (xmmsv_coll_attribute_get (c, "k2", &v));
+	CU_ASSERT_TRUE (xmmsv_coll_attribute_get_string (c, "k2", &v));
 	CU_ASSERT_STRING_EQUAL (v, "v2");
-	CU_ASSERT_TRUE (xmmsv_coll_attribute_get (c, "k3", &v));
+	CU_ASSERT_TRUE (xmmsv_coll_attribute_get_string (c, "k3", &v));
 	CU_ASSERT_STRING_EQUAL (v, "v3");
 
 	/* non existent key */
-	CU_ASSERT_FALSE (xmmsv_coll_attribute_get (c, "k4", &v));
+	CU_ASSERT_FALSE (xmmsv_coll_attribute_get_string (c, "k4", &v));
 
 	cnt = 0;
 	sum = 0;
@@ -213,8 +213,8 @@ CASE (test_coll_attributes)
 	CU_ASSERT_EQUAL (xmmsv_dict_get_size (xmmsv_coll_attributes_get (c)), 3);
 
 	/* replace */
-	xmmsv_coll_attribute_set (c, "k2", "v2new");
-	CU_ASSERT_TRUE (xmmsv_coll_attribute_get (c, "k2", &v));
+	xmmsv_coll_attribute_set_string (c, "k2", "v2new");
+	CU_ASSERT_TRUE (xmmsv_coll_attribute_get_string (c, "k2", &v));
 	CU_ASSERT_STRING_EQUAL (v, "v2new");
 
 	xmmsv_coll_unref (c);

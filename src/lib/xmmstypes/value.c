@@ -556,7 +556,7 @@ xmmsv_coll_copy (xmmsv_coll_t *orig_coll)
 	while (xmmsv_dict_iter_valid (itd)) {
 		xmmsv_dict_iter_pair (itd, &key, &v);
 		xmmsv_get_string (v, &s);
-		xmmsv_coll_attribute_set (new_coll, key, s);
+		xmmsv_coll_attribute_set_string (new_coll, key, s);
 		xmmsv_dict_iter_next (itd);
 	}
 	xmmsv_dict_iter_free (itd);

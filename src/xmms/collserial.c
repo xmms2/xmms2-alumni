@@ -295,7 +295,7 @@ read_attributes (xmmsv_coll_t *coll, FILE *file)
 		read_string (file, key);
 		fgetc (file); /* To remove the colon separating the strings */
 		read_string (file, val);
-		xmmsv_coll_attribute_set (coll, key, val);
+		xmmsv_coll_attribute_set_string (coll, key, val);
 	}
 }
 

@@ -608,9 +608,9 @@ CASE(test_party_shuffle)
 
 	/* reconfigure the active playlist as party shuffle */
 	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
-	xmmsv_coll_attribute_set (coll, "type", "pshuffle");
-	xmmsv_coll_attribute_set (coll, "history", "1");
-	xmmsv_coll_attribute_set (coll, "upcoming", "2");
+	xmmsv_coll_attribute_set_string (coll, "type", "pshuffle");
+	xmmsv_coll_attribute_set_string (coll, "history", "1");
+	xmmsv_coll_attribute_set_string (coll, "upcoming", "2");
 
 	universe = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNIVERSE);
 	xmmsv_coll_add_operand (coll, universe);
