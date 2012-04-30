@@ -20,8 +20,8 @@
 #include "xmmsc/xmmsv.h"
 #include "xmmspriv/xmms_list.h"
 
-typedef struct xmmsv_dict_St xmmsv_dict_t;
-typedef struct xmmsv_list_St xmmsv_list_t;
+typedef struct xmmsv_dict_internal_St xmmsv_dict_internal_t;
+typedef struct xmmsv_list_internal_St xmmsv_list_internal_t;
 
 struct xmmsv_St {
 	union {
@@ -29,8 +29,8 @@ struct xmmsv_St {
 		int32_t int32;
 		char *string;
 		xmmsv_coll_t *coll;
-		xmmsv_list_t *list;
-		xmmsv_dict_t *dict;
+		xmmsv_list_internal_t *list;
+		xmmsv_dict_internal_t *dict;
 
 		struct {
 			unsigned char *data;
@@ -52,7 +52,7 @@ struct xmmsv_St {
 
 xmmsv_t *xmmsv_new (xmmsv_type_t type);
 
-void _xmmsv_list_free (xmmsv_list_t *dict);
-void _xmmsv_dict_free (xmmsv_dict_t *dict);
+void _xmmsv_list_free (xmmsv_list_internal_t *dict);
+void _xmmsv_dict_free (xmmsv_dict_internal_t *dict);
 
 #endif
