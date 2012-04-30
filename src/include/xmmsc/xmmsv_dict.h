@@ -31,6 +31,7 @@ extern "C" {
  */
 
 xmmsv_t *xmmsv_new_dict (void);
+
 int xmmsv_dict_get (xmmsv_t *dictv, const char *key, xmmsv_t **val);
 int xmmsv_dict_set (xmmsv_t *dictv, const char *key, xmmsv_t *val);
 int xmmsv_dict_remove (xmmsv_t *dictv, const char *key);

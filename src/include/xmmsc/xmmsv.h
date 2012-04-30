@@ -25,6 +25,5 @@
 
 #include "xmmsc/xmmsv_util.h"
 #include "xmmsc/xmmsv_build.h"
-#include "xmmsc/xmmsv_deprecated.h"
 
 #endif
