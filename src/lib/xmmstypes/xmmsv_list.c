@@ -893,7 +893,12 @@ xmmsv_list_flatten (xmmsv_t *list, int depth)
 
 GEN_LIST_EXTRACTOR_FUNC (string, const char *)
 GEN_LIST_EXTRACTOR_FUNC (int, int32_t)
-GEN_LIST_EXTRACTOR_FUNC (coll, xmmsv_coll_t *)
+
+int
+xmmsv_list_get_coll (xmmsv_t *val, int pos, xmmsv_coll_t **r)
+{
+	return xmmsv_list_get (val, pos, r);
+}
 
 /* macro-magically define list set functions */
 #define GEN_LIST_SET_FUNC(typename, type)	  \
@@ -912,7 +917,12 @@ GEN_LIST_EXTRACTOR_FUNC (coll, xmmsv_coll_t *)
 
 GEN_LIST_SET_FUNC (string, const char *)
 GEN_LIST_SET_FUNC (int, int32_t)
-GEN_LIST_SET_FUNC (coll, xmmsv_coll_t *)
+
+int
+xmmsv_list_set_coll (xmmsv_t *list, int pos, xmmsv_coll_t *elem)
+{
+	return xmmsv_list_set (list, pos, elem);
+}
 
 /* macro-magically define list insert functions */
 #define GEN_LIST_INSERT_FUNC(typename, type)	  \
@@ -931,7 +941,12 @@ GEN_LIST_SET_FUNC (coll, xmmsv_coll_t *)
 
 GEN_LIST_INSERT_FUNC (string, const char *)
 GEN_LIST_INSERT_FUNC (int, int32_t)
-GEN_LIST_INSERT_FUNC (coll, xmmsv_coll_t *)
+
+int
+xmmsv_list_insert_coll (xmmsv_t *list, int pos, xmmsv_coll_t *elem)
+{
+	return xmmsv_list_insert (list, pos, elem);
+}
 
 /* macro-magically define list append functions */
 #define GEN_LIST_APPEND_FUNC(typename, type)	  \
@@ -950,7 +965,12 @@ GEN_LIST_INSERT_FUNC (coll, xmmsv_coll_t *)
 
 GEN_LIST_APPEND_FUNC (string, const char *)
 GEN_LIST_APPEND_FUNC (int, int32_t)
-GEN_LIST_APPEND_FUNC (coll, xmmsv_coll_t *)
+
+int
+xmmsv_list_append_coll (xmmsv_t *list, xmmsv_coll_t *elem)
+{
+	return xmmsv_list_append (list, elem);
+}
 
 /* macro-magically define list_iter extractors */
 #define GEN_LIST_ITER_EXTRACTOR_FUNC(typename, type)	  \
@@ -966,7 +986,12 @@ GEN_LIST_APPEND_FUNC (coll, xmmsv_coll_t *)
 
 GEN_LIST_ITER_EXTRACTOR_FUNC (string, const char *)
 GEN_LIST_ITER_EXTRACTOR_FUNC (int, int32_t)
-GEN_LIST_ITER_EXTRACTOR_FUNC (coll, xmmsv_coll_t *)
+
+int
+xmmsv_list_iter_entry_coll (xmmsv_list_iter_t *it, xmmsv_coll_t **r)
+{
+	return xmmsv_list_iter_entry (it, r);
+}
 
 /* macro-magically define list_iter insert functions */
 #define GEN_LIST_ITER_INSERT_FUNC(typename, type)	  \
@@ -985,4 +1010,9 @@ GEN_LIST_ITER_EXTRACTOR_FUNC (coll, xmmsv_coll_t *)
 
 GEN_LIST_ITER_INSERT_FUNC (string, const char *)
 GEN_LIST_ITER_INSERT_FUNC (int, int32_t)
-GEN_LIST_ITER_INSERT_FUNC (coll, xmmsv_coll_t *)
+
+int
+xmmsv_list_iter_insert_coll (xmmsv_list_iter_t *it, xmmsv_coll_t *elem)
+{
+	return xmmsv_list_iter_insert (it, elem);
+}

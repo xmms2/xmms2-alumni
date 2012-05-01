@@ -6,10 +6,10 @@
 
 def build(bld):
     source = """
-    coll.c
     xmmsv_general.c
     xmmsv_list.c
     xmmsv_dict.c
+    xmmsv_coll.c
     xmmsv_bitbuffer.c
     xmmsv_copy.c
     xmmsv_build.c

@@ -116,27 +116,6 @@ xmmsv_new_string (const char *s)
 	return val;
 }
 
-
-/**
- * Allocates a new collection #xmmsv_t.
- * @param c The value to store in the #xmmsv_t.
- * @return The new #xmmsv_t. Must be unreferenced with #xmmsv_unref.
- */
-xmmsv_t *
-xmmsv_new_coll (xmmsv_coll_t *c)
-{
-	xmmsv_t *val;
-
-	x_return_val_if_fail (c, NULL);
-
-	val = xmmsv_new (XMMSV_TYPE_COLL);
-	if (val) {
-		val->value.coll = c;
-		xmmsv_coll_ref (c);
-	}
-	return val;
-}
-
 /**
  * Allocates a new binary data #xmmsv_t.
  * @param data The data to store in the #xmmsv_t.
@@ -239,7 +218,7 @@ xmmsv_free (xmmsv_t *val)
 			val->value.string = NULL;
 			break;
 		case XMMSV_TYPE_COLL:
-			xmmsv_coll_unref (val->value.coll);
+			_xmmsv_coll_free (val->value.coll);
 			val->value.coll = NULL;
 			break;
 		case XMMSV_TYPE_BIN :
@@ -381,7 +360,7 @@ xmmsv_get_coll (const xmmsv_t *val, xmmsv_coll_t **c)
 		return 0;
 	}
 
-	*c = val->value.coll;
+	*c = (xmmsv_coll_t *) val;
 
 	return 1;
 }

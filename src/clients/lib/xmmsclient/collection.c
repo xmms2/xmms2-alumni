@@ -113,7 +113,7 @@ xmmsc_coll_save (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
 	                       XMMS_IPC_CMD_COLLECTION_SAVE,
 	                       XMMSV_LIST_ENTRY_STR (name),
 	                       XMMSV_LIST_ENTRY_STR (ns),
-	                       XMMSV_LIST_ENTRY_COLL (coll),
+	                       XMMSV_LIST_ENTRY (xmmsv_ref (coll)),
 	                       XMMSV_LIST_END);
 }
 
@@ -272,7 +272,7 @@ xmmsc_coll_query_infos (xmmsc_connection_t *conn, xmmsv_coll_t *coll,
 
 	return xmmsc_send_cmd (conn, XMMS_IPC_OBJECT_COLLECTION,
 	                       XMMS_IPC_CMD_QUERY_INFOS,
-	                       XMMSV_LIST_ENTRY_COLL (limited),
+	                       XMMSV_LIST_ENTRY (limited),
 	                       XMMSV_LIST_ENTRY (xmmsv_ref (fetch)),
 	                       XMMSV_LIST_ENTRY (group),
 	                       XMMSV_LIST_END);
@@ -298,7 +298,7 @@ xmmsc_coll_query (xmmsc_connection_t *conn, xmmsv_coll_t *coll, xmmsv_t *fetch)
 
 	return xmmsc_send_cmd (conn, XMMS_IPC_OBJECT_COLLECTION,
 	                       XMMS_IPC_CMD_QUERY,
-	                       XMMSV_LIST_ENTRY_COLL (coll),
+	                       XMMSV_LIST_ENTRY (xmmsv_ref (coll)),
 	                       XMMSV_LIST_ENTRY (xmmsv_ref (fetch)),
 	                       XMMSV_LIST_END);
 }

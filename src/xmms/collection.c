@@ -1688,9 +1688,7 @@ strip_references (xmms_coll_dag_t *dag, xmmsv_coll_t *coll, xmmsv_coll_t *parent
 
 		xmmsv_list_iter_remove (iter);
 
-		tmp = xmmsv_new_coll (infos->oldtarget);
-		xmmsv_list_iter_insert (iter, tmp);
-		xmmsv_unref (tmp);
+		xmmsv_list_iter_insert (iter, infos->oldtarget);
 	}
 	xmmsv_list_iter_explicit_destroy (iter);
 }

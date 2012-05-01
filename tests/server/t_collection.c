@@ -60,7 +60,7 @@ CASE (test_client_save) {
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_COLLECTION_SAVE,
 	                        xmmsv_new_string ("Test"),
 	                        xmmsv_new_string (XMMS_COLLECTION_NS_COLLECTIONS),
-	                        xmmsv_new_coll (universe));
+	                        xmmsv_ref (universe));
 	CU_ASSERT (xmmsv_is_type (result, XMMSV_TYPE_NONE));
 	xmmsv_unref (result);
 
@@ -73,7 +73,7 @@ CASE (test_client_save) {
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_COLLECTION_SAVE,
 	                        xmmsv_new_string ("Test"),
 	                        xmmsv_new_string (XMMS_COLLECTION_NS_COLLECTIONS),
-	                        xmmsv_new_coll (universe));
+	                        xmmsv_ref (universe));
 	CU_ASSERT (xmmsv_is_type (result, XMMSV_TYPE_NONE));
 	xmmsv_unref (result);
 
@@ -109,7 +109,7 @@ CASE (test_client_get) {
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_COLLECTION_SAVE,
 	                        xmmsv_new_string ("Test"),
 	                        xmmsv_new_string (XMMS_COLLECTION_NS_COLLECTIONS),
-	                        xmmsv_new_coll (universe));
+	                        xmmsv_ref (universe));
 	CU_ASSERT (xmmsv_is_type (result, XMMSV_TYPE_NONE));
 	xmmsv_unref (result);
 	xmmsv_coll_unref (universe);
@@ -139,7 +139,7 @@ CASE (test_client_remove)
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_COLLECTION_SAVE,
 	                        xmmsv_new_string ("Test"),
 	                        xmmsv_new_string (XMMS_COLLECTION_NS_COLLECTIONS),
-	                        xmmsv_new_coll (universe));
+	                        xmmsv_ref (universe));
 	CU_ASSERT (xmmsv_is_type (result, XMMSV_TYPE_NONE));
 	xmmsv_unref (result);
 	xmmsv_coll_unref (universe);
@@ -183,7 +183,7 @@ CASE (test_client_rename)
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_COLLECTION_SAVE,
 	                        xmmsv_new_string ("Test A"),
 	                        xmmsv_new_string (XMMS_COLLECTION_NS_COLLECTIONS),
-	                        xmmsv_new_coll (universe));
+	                        xmmsv_ref (universe));
 	CU_ASSERT (xmmsv_is_type (result, XMMSV_TYPE_NONE));
 	xmmsv_unref (result);
 	xmmsv_coll_unref (universe);
@@ -222,7 +222,7 @@ CASE (test_client_find)
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_COLLECTION_SAVE,
 	                        xmmsv_new_string ("Test A"),
 	                        xmmsv_new_string (XMMS_COLLECTION_NS_COLLECTIONS),
-	                        xmmsv_new_coll (universe));
+	                        xmmsv_ref (universe));
 	CU_ASSERT (xmmsv_is_type (result, XMMSV_TYPE_NONE));
 	xmmsv_unref (result);
 	xmmsv_coll_unref (universe);
@@ -232,7 +232,7 @@ CASE (test_client_find)
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_COLLECTION_SAVE,
 	                        xmmsv_new_string ("Test B"),
 	                        xmmsv_new_string (XMMS_COLLECTION_NS_COLLECTIONS),
-	                        xmmsv_new_coll (universe));
+	                        xmmsv_ref (universe));
 	CU_ASSERT (xmmsv_is_type (result, XMMSV_TYPE_NONE));
 	xmmsv_unref (result);
 	xmmsv_coll_unref (universe);
@@ -248,7 +248,7 @@ CASE (test_client_find)
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_COLLECTION_SAVE,
 	                        xmmsv_new_string ("Test C"),
 	                        xmmsv_new_string (XMMS_COLLECTION_NS_COLLECTIONS),
-	                        xmmsv_new_coll (equals));
+	                        xmmsv_ref (equals));
 	CU_ASSERT (xmmsv_is_type (result, XMMSV_TYPE_NONE));
 	xmmsv_unref (result);
 	xmmsv_coll_unref (equals);
@@ -274,7 +274,7 @@ CASE (test_client_list)
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_COLLECTION_SAVE,
 	                        xmmsv_new_string ("Test A"),
 	                        xmmsv_new_string (XMMS_COLLECTION_NS_COLLECTIONS),
-	                        xmmsv_new_coll (universe));
+	                        xmmsv_ref (universe));
 	CU_ASSERT (xmmsv_is_type (result, XMMSV_TYPE_NONE));
 	xmmsv_unref (result);
 	xmmsv_coll_unref (universe);
@@ -283,7 +283,7 @@ CASE (test_client_list)
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_COLLECTION_SAVE,
 	                        xmmsv_new_string ("Test B"),
 	                        xmmsv_new_string (XMMS_COLLECTION_NS_PLAYLISTS),
-	                        xmmsv_new_coll (idlist));
+	                        xmmsv_ref (idlist));
 	CU_ASSERT (xmmsv_is_type (result, XMMSV_TYPE_NONE));
 	xmmsv_unref (result);
 	xmmsv_coll_unref (idlist);
@@ -340,7 +340,7 @@ CASE (test_client_query_infos)
 	                          XMMSV_LIST_END);
 
 	result = XMMS_IPC_CALL (dag, XMMS_IPC_CMD_QUERY_INFOS,
-	                        xmmsv_new_coll (ordered),
+	                        xmmsv_ref (ordered),
 	                        fetch, group);
 	xmmsv_coll_unref (ordered);
 
