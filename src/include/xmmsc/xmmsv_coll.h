@@ -17,6 +17,8 @@
 #ifndef __XMMS_COLL_H__
 #define __XMMS_COLL_H__
 
+#include <stddef.h>
+
 #include "xmmsc/xmmsc_compiler.h"
 #include "xmmsc/xmmsc_stdint.h"
 #include "xmmsc/xmmsc_idnumbers.h"

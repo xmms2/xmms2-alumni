@@ -70,6 +70,9 @@ int xmmsv_get_bin (const xmmsv_t *val, const unsigned char **r, unsigned int *rl
 
 xmmsv_coll_t *xmmsv_coll_copy (xmmsv_coll_t *orig_coll);
 
+char *xmmsv_to_json (xmmsv_t *value);
+xmmsv_t *xmmsv_from_json (const char *);
+
 /* legacy aliases */
 int xmmsv_is_error (const xmmsv_t *val) XMMS_DEPRECATED;
 

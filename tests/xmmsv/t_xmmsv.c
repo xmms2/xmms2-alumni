@@ -21,6 +21,7 @@
 #include <limits.h>
 #include <string.h>
 #include <xmmsc/xmmsv.h>
+#include <xmmsc/xmmsc_util.h>
 
 SETUP (xmmsv) {
 	return 0;
@@ -1079,4 +1080,147 @@ CASE (test_xmmsv_deep_copy_bitbuffer)
 	CU_ASSERT_EQUAL ('t', b[3]);
 
 	xmmsv_unref (val_cpy);
+}
+
+CASE (test_xmmsv_to_json)
+{
+	xmmsv_t *value, *universe;
+	char *json;
+
+	/* basic string */
+	value = xmmsv_new_string ("test");
+	json = xmmsv_to_json (value);
+	CU_ASSERT_STRING_EQUAL ("\"test\"", json);
+	free (json);
+	xmmsv_unref (value);
+
+	/* longer string */
+	value = xmmsv_new_string ("0123456789012345");
+	json = xmmsv_to_json (value);
+	CU_ASSERT_STRING_EQUAL ("\"0123456789012345\"", json);
+	free (json);
+	xmmsv_unref (value);
+
+	/* even longer string */
+	value = xmmsv_new_string ("012345678901234567890123456789012");
+	json = xmmsv_to_json (value);
+	CU_ASSERT_STRING_EQUAL ("\"012345678901234567890123456789012\"", json);
+	free (json);
+	xmmsv_unref (value);
+
+	/* longest integer */
+	value = xmmsv_new_int (-1000000000);
+	json = xmmsv_to_json (value);
+	CU_ASSERT_STRING_EQUAL ("-1000000000", json);
+	free (json);
+	xmmsv_unref (value);
+
+	/* empty list */
+	value = xmmsv_new_list ();
+	json = xmmsv_to_json (value);
+	CU_ASSERT_STRING_EQUAL ("[]", json);
+	free (json);
+	xmmsv_unref (value);
+
+	/* list */
+	value = xmmsv_build_list (XMMSV_LIST_ENTRY_STR ("a"),
+	                          XMMSV_LIST_ENTRY_INT (123),
+	                          XMMSV_LIST_ENTRY_STR ("b"),
+	                          XMMSV_LIST_END);
+	json = xmmsv_to_json (value);
+	CU_ASSERT_STRING_EQUAL ("[\"a\",123,\"b\"]", json);
+	free (json);
+	xmmsv_unref (value);
+
+	/* empty dict */
+	value = xmmsv_new_dict ();
+	json = xmmsv_to_json (value);
+	CU_ASSERT_STRING_EQUAL ("{\"type\":\"dict\",\"inner\":{}}", json);
+	free (json);
+	xmmsv_unref (value);
+
+	/* dict */
+	value = xmmsv_build_dict (XMMSV_DICT_ENTRY_STR ("a", "a"),
+	                          XMMSV_DICT_ENTRY_INT ("1", 123),
+	                          XMMSV_DICT_ENTRY_STR ("b", "b"),
+	                          XMMSV_DICT_END);
+	json = xmmsv_to_json (value);
+	CU_ASSERT_STRING_EQUAL ("{\"type\":\"dict\",\"inner\":{\"1\":123,\"a\":\"a\",\"b\":\"b\"}}", json);
+	free (json);
+	xmmsv_unref (value);
+
+	/* coll */
+	value = xmmsv_new_coll (XMMS_COLLECTION_TYPE_EQUALS);
+	xmmsv_coll_attribute_set_string (value, "field", "tracknr");
+	xmmsv_coll_attribute_set_int (value, "value", 42);
+
+	universe = xmmsv_new_coll (XMMS_COLLECTION_TYPE_UNIVERSE);
+	xmmsv_coll_add_operand (value, universe);
+	xmmsv_unref (universe);
+
+	xmmsv_coll_idlist_append (value, 1);
+	xmmsv_coll_idlist_append (value, 2);
+
+	json = xmmsv_to_json (value);
+	CU_ASSERT_STRING_EQUAL ("{\"type\":\"coll\",\"inner\":{\"type\":\"equals\",\"operands\":[{\"type\":\"universe\"}],\"attributes\":{\"field\":\"tracknr\",\"value\":42},\"idlist\":[1,2]}}", json);
+	free (json);
+	xmmsv_unref (value);
+}
+
+CASE(test_json_deserialize)
+{
+	xmmsv_t *value, *dict, *list, *coll, *universe;
+	char *json, *roundtrip;
+
+	coll = xmmsv_new_coll (XMMS_COLLECTION_TYPE_EQUALS);
+	xmmsv_coll_attribute_set_string (coll, "field", "tracknr");
+	xmmsv_coll_attribute_set_int (coll, "value", 42);
+
+	universe = xmmsv_new_coll (XMMS_COLLECTION_TYPE_UNIVERSE);
+	xmmsv_coll_add_operand (coll, universe);
+	xmmsv_unref (universe);
+
+	xmmsv_coll_idlist_append (coll, 1);
+	xmmsv_coll_idlist_append (coll, 2);
+
+	xmmsv_ref (coll);
+
+	list = xmmsv_build_list (XMMSV_LIST_ENTRY (coll),
+	                         XMMSV_LIST_ENTRY_INT (42),
+	                         XMMSV_LIST_ENTRY_STR ("test"),
+	                         XMMSV_LIST_END);
+
+	xmmsv_ref (list);
+
+	dict = xmmsv_build_dict (XMMSV_DICT_ENTRY ("coll", coll),
+	                         XMMSV_DICT_ENTRY ("list", list),
+	                         XMMSV_DICT_ENTRY_INT ("A", 42),
+	                         XMMSV_DICT_ENTRY_STR ("B", "test"),
+	                         XMMSV_DICT_END);
+
+	/* roundtrip the dict */
+	json = xmmsv_to_json (dict);
+	xmmsv_unref (dict);
+
+	value = xmmsv_from_json (json);
+	roundtrip = xmmsv_to_json (value);
+
+	CU_ASSERT_STRING_EQUAL (json, roundtrip);
+
+	free (json);
+	free (roundtrip);
+	xmmsv_unref (value);
+
+	/* roundtrip the list */
+	json = xmmsv_to_json (list);
+	xmmsv_unref (list);
+
+	value = xmmsv_from_json (json);
+	roundtrip = xmmsv_to_json (value);
+
+	CU_ASSERT_STRING_EQUAL (json, roundtrip);
+
+	free (json);
+	free (roundtrip);
+	xmmsv_unref (value);
 }

@@ -50,17 +50,9 @@ def configure(conf):
     conf.check_cfg(package='valgrind', uselib_store='valgrind', args='--cflags', mandatory=False)
 
 def build(bld):
-    bld(features = "c",
-        target = "testutils_json",
-        source = "utils/json.c",
-        uselib = "DISABLE_MISSINGPROTOTYPES DISABLE_WRITESTRINGS",
-        install_path = None,
-        )
-
     bld(features = "c cstlib",
         target = "testutils",
         source = testutils_src,
-        add_objects = "testutils_json",
         includes = ". ../src/include ../src/includepriv",
         uselib = "glib2",
         use = "s4",
@@ -71,7 +63,7 @@ def build(bld):
         target = 'test_xmmstypes',
         source = test_xmmstypes_src,
         includes = '. .. runner ../src ../src/include',
-        use = 'xmmstypes xmmsutils',
+        use = 'xmmstypes xmmsutils testutils',
         uselib = 'cunit ncurses valgrind DISABLE_WRITESTRINGS',
         install_path = None
         )

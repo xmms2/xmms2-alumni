@@ -14,21 +14,29 @@ def build(bld):
     xmmsv_copy.c
     xmmsv_build.c
     xmmsv_util.c
+    xmmsv_to_json.c
+    xmmsv_from_json.c
     xlist.c
     value_serialize.c
     """.split()
 
+    bld(features = "c",
+        target = "libjson",
+        source = "json.c",
+        uselib = "DISABLE_MISSINGPROTOTYPES DISABLE_WRITESTRINGS",
+        install_path = None,
+        )
+
     bld(features = 'c cstlib',
         target = 'xmmstypes',
         source = source,
+        add_objects = "libjson",
         includes = '. ../../.. ../../include ../../includepriv',
         install_path = None
         )
 
-
 def configure(conf):
     return True
-
 
 def options(opt):
     pass

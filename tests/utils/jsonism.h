@@ -18,7 +18,6 @@
 
 #include "xmmsc/xmmsv.h"
 
-xmmsv_t *xmmsv_from_xson (const char *spec);
-xmmsv_t *xmmsv_from_json (const char *spec);
+xmmsv_t *xmmsv_from_xson (const char *json);
 
 #endif

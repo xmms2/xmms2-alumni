@@ -19,6 +19,7 @@ void xmms_dump_stack (void);
 #define x_new(type, num) malloc (sizeof (type) * (num))
 #define x_malloc0(size) calloc (1, size)
 #define x_malloc(size) malloc (size)
+#define x_realloc(ptr, size) realloc(ptr, size)
 
 /* This is not nice but there's no very clean way around the ugly warnings,
  * glibc does about the same but on compile time (this could be moved to waf?) */
