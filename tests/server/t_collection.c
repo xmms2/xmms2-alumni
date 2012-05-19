@@ -10,7 +10,6 @@
 
 #include "utils/jsonism.h"
 #include "utils/value_utils.h"
-#include "utils/coll_utils.h"
 #include "utils/ipc_call.h"
 #include "utils/mlib_utils.h"
 
@@ -82,8 +81,8 @@ CASE (test_client_save) {
 	signals = xmms_future_await (future, 2);
 
 	/* XMMS_COLLECTION_CHANGED_ADD = 0, XMMS_COLLECTION_CHANGED_UPDATE = 1 */
-	expected = xmmsv_from_xson ("[{ 'type': 0, 'namespace': 'Collections', 'name': 'Test' },"
-	                            " { 'type': 1, 'namespace': 'Collections', 'name': 'Test' }]");
+	expected = xmmsv_from_xson ("[{ 'type': 'dict', 'inner': { 'type': 0, 'namespace': 'Collections', 'name': 'Test' } },"
+	                            " { 'type': 'dict', 'inner': { 'type': 1, 'namespace': 'Collections', 'name': 'Test' } }]");
 	CU_ASSERT (xmmsv_compare (expected, signals));
 	xmmsv_unref (signals);
 	xmmsv_unref (expected);
@@ -153,8 +152,8 @@ CASE (test_client_remove)
 	signals = xmms_future_await (future, 2);
 
 	/* XMMS_COLLECTION_CHANGED_ADD = 0, XMMS_COLLECTION_CHANGED_REMOVE = 3 */
-	expected = xmmsv_from_xson ("[{ 'type': 0, 'namespace': 'Collections', 'name': 'Test' },"
-	                            " { 'type': 3, 'namespace': 'Collections', 'name': 'Test' }]");
+	expected = xmmsv_from_xson ("[{ 'type': 'dict', 'inner': { 'type': 0, 'namespace': 'Collections', 'name': 'Test' } },"
+	                            " { 'type': 'dict', 'inner': { 'type': 3, 'namespace': 'Collections', 'name': 'Test' } }]");
 	CU_ASSERT (xmmsv_compare (expected, signals));
 	xmmsv_unref (signals);
 	xmmsv_unref (expected);
@@ -344,18 +343,21 @@ CASE (test_client_query_infos)
 	                        fetch, group);
 	xmmsv_coll_unref (ordered);
 
-	expected = xmmsv_from_xson ("[{                             "
+	expected = xmmsv_from_xson ("[                              "
+	                            " { 'type': 'dict', 'inner': {  "
 	                            "  'artist': 'Red Fang',        "
 	                            "   'album': 'Red Fang',        "
 	                            " 'tracknr':  1,                "
 	                            "   'title': 'Prehistoric Dog'  "
-	                            "}, {                           "
+	                            " } },                          "
+	                            " { 'type': 'dict', 'inner': {  "
 	                            "   'album': 'Red Fang',        "
 	                            " 'tracknr':  2,                "
 	                            "   'title': 'Reverse Thunder', "
 	                            "  'artist': 'Red Fang',        "
 	                            "    'date': '2009'             "
-	                            "}]                             ");
+	                            " } }                           "
+	                            "]                              ");
 
 	CU_ASSERT (xmmsv_compare (expected, result));
 

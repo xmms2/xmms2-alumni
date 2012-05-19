@@ -19,7 +19,6 @@
 #include <string.h>
 
 #include "value_utils.h"
-#include "coll_utils.h"
 
 static int _xmmsv_compare (xmmsv_t *a, xmmsv_t *b, int ordered);
 
@@ -33,6 +32,38 @@ int
 xmmsv_compare_unordered (xmmsv_t *a, xmmsv_t *b)
 {
 	return _xmmsv_compare (a, b, 0);
+}
+
+static int
+xmmsv_coll_compare (xmmsv_coll_t *a, xmmsv_coll_t *b)
+{
+	xmmsv_coll_type_t type;
+	xmmsv_t *_a, *_b;
+
+	type = xmmsv_coll_get_type (a);
+	if (xmmsv_coll_get_type (b) != type) {
+		return 0;
+	}
+
+	_a = xmmsv_coll_idlist_get (a);
+	_b = xmmsv_coll_idlist_get (b);
+	if (!xmmsv_compare (_a, _b)) {
+		return 0;
+	}
+
+	_a = xmmsv_coll_attributes_get (a);
+	_b = xmmsv_coll_attributes_get (b);
+	if (!xmmsv_compare (_a, _b)) {
+		return 0;
+	}
+
+	_a = xmmsv_coll_operands_get (a);
+	_b = xmmsv_coll_operands_get (b);
+	if (!xmmsv_compare (_a, _b)) {
+		return 0;
+	}
+
+	return 1;
 }
 
 static int
@@ -154,113 +185,4 @@ _xmmsv_compare (xmmsv_t *a, xmmsv_t *b, int ordered)
 	}
 
 	return 1;
-}
-
-static void
-_xmms_dump_indent (int indent)
-{
-	int i;
-	for (i = 0; i < indent; i++)
-		printf ("  ");
-}
-
-static void
-_xmms_dump (xmmsv_t *value, int indent)
-{
-	int type;
-
-	if (value == NULL) {
-		printf ("xmmsv_t is NULL!\n");
-		return;
-	}
-
-	if (xmmsv_is_error (value)) {
-		const char *message;
-		xmmsv_get_error (value, &message);
-		printf ("error: %s\n", message);
-		return;
-	}
-
-	type = xmmsv_get_type (value);
-
-	switch (type) {
-	case XMMSV_TYPE_INT32: {
-		int val;
-		xmmsv_get_int (value, &val);
-		printf ("%d", val);
-		break;
-	}
-	case XMMSV_TYPE_STRING: {
-		const char *val;
-		xmmsv_get_string (value, &val);
-		printf ("'%s'", val);
-		break;
-	}
-	case XMMSV_TYPE_LIST: {
-		xmmsv_list_iter_t *iter;
-		xmmsv_get_list_iter (value, &iter);
-
-		printf ("[");
-		while (xmmsv_list_iter_valid (iter)) {
-			xmmsv_t *item;
-
-			xmmsv_list_iter_entry (iter, &item);
-
-			_xmms_dump (item, indent + 1);
-
-			xmmsv_list_iter_next (iter);
-			if (xmmsv_list_iter_valid (iter))
-				printf (", ");
-		}
-		printf ("]");
-		break;
-	}
-	case XMMSV_TYPE_DICT: {
-		xmmsv_dict_iter_t *iter;
-
-		xmmsv_get_dict_iter (value, &iter);
-
-		printf ("{\n");
-		while (xmmsv_dict_iter_valid (iter)) {
-			const char *key;
-			xmmsv_t *item;
-
-			xmmsv_dict_iter_pair (iter, &key, &item);
-
-			_xmms_dump_indent (indent + 1);
-			printf ("'%s': ", key);
-			_xmms_dump (item, indent + 1);
-
-			xmmsv_dict_iter_next (iter);
-			if (xmmsv_dict_iter_valid (iter))
-				printf (", ");
-			printf ("\n");
-		}
-		_xmms_dump_indent (indent);
-		printf ("}");
-
-		break;
-	}
-	case XMMSV_TYPE_COLL: {
-		xmmsv_coll_t *coll;
-		xmmsv_get_coll (value, &coll);
-		xmmsv_coll_dump_indented (coll, indent);
-		break;
-	}
-	default:
-		printf ("invalid type: %d\n", type);
-	}
-}
-
-void
-xmmsv_dump_indented (xmmsv_t *value, int indent)
-{
-	_xmms_dump (value, indent);
-}
-
-void
-xmmsv_dump (xmmsv_t *value)
-{
-	_xmms_dump (value, 0);
-	printf ("\n");
 }

@@ -3,7 +3,6 @@
 testutils_src = """
 utils/jsonism.c
 utils/value_utils.c
-utils/coll_utils.c
 utils/ipc_call.c
 utils/mlib_utils.c
 """.split()
@@ -81,7 +80,7 @@ def build(bld):
         target = "test_medialib",
         source = test_mlib_src,
         includes = '. .. runner ../src ../src/includepriv ../src/include',
-        use = "xmms2core xmmsipc xmmssocket xmmstypes xmmsutils s4 testutils",
+        use = "testutils xmms2core xmmsipc xmmssocket xmmstypes xmmsutils s4",
         uselib = "cunit ncurses valgrind glib2 gmodule2 gthread2 DISABLE_WRITESTRINGS",
         install_path = None
         )
@@ -90,7 +89,7 @@ def build(bld):
         target = "test_playlist",
         source = test_playlist_src,
         includes = '. .. runner ../src ../src/includepriv ../src/include',
-        use = "xmms2core xmmsipc xmmssocket xmmstypes xmmsutils s4 testutils",
+        use = "testutils xmms2core xmmsipc xmmssocket xmmstypes xmmsutils s4",
         uselib = "cunit ncurses valgrind glib2 gmodule2 gthread2 DISABLE_WRITESTRINGS",
         install_path = None
         )
@@ -99,7 +98,7 @@ def build(bld):
         target = "test_collection",
         source = test_collection_src,
         includes = '. .. runner ../src ../src/includepriv ../src/include',
-        use = "xmms2core xmmsipc xmmssocket xmmstypes xmmsutils s4 testutils",
+        use = "testutils xmms2core xmmsipc xmmssocket xmmstypes xmmsutils s4",
         uselib = "cunit ncurses valgrind glib2 gmodule2 gthread2 DISABLE_WRITESTRINGS",
         install_path = None
         )
@@ -117,7 +116,7 @@ def build(bld):
         target = "medialib-runner",
         source = mlib_runner_src,
         includes = '. .. runner ../src ../src/includepriv ../src/include',
-        use = "xmms2core xmmsipc xmmssocket xmmstypes xmmsutils s4 testutils",
+        use = "xmms2core xmmsipc xmmssocket testutils xmmstypes xmmsutils s4",
         uselib = "glib2 gmodule2 gthread2 DISABLE_WRITESTRINGS",
         install_path = None,
         ut_cwd = "."
