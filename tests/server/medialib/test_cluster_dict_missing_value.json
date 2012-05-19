@@ -1,25 +1,27 @@
-{
+{ "type": "dict", "inner": {
     "medialib": [
-        { "album": "Lungs for Life", "title": "Decade" },
-        { "album": "Lungs for Life", "title": "Breathing Place" },
-        { "title": "Prehistoric Dog" }
+        { "type": "dict", "inner": { "album": "Lungs for Life", "title": "Decade" } },
+        { "type": "dict", "inner": { "album": "Lungs for Life", "title": "Breathing Place" } },
+        { "type": "dict", "inner": { "title": "Prehistoric Dog" } }
     ],
-    "collection": { "type": "universe" },
-    "specification": {
+    "collection": { "type": "coll", "inner": {
+        "type": "universe"
+    } },
+    "specification": { "type": "dict", "inner": {
         "type": "cluster-dict",
         "cluster-by": "value",
         "cluster-field": "album",
-        "data": {
+        "data": { "type": "dict", "inner": {
             "type": "metadata",
             "fields": ["title"],
             "get": ["value"],
             "aggregate": "list"
-        }
-    },
-    "expected": {
-        "result": {
+        } }
+    } },
+    "expected": { "type": "dict", "inner": {
+        "result": { "type": "dict", "inner": {
             "Lungs for Life": ["Decade", "Breathing Place"],
             "(No value)": ["Prehistoric Dog"]
-        }
-    }
-}
+        } }
+    } }
+} }

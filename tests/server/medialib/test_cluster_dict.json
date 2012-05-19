@@ -1,27 +1,29 @@
-{
+{ "type": "dict", "inner": {
     "medialib": [
-        { "tracknr": 1, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Decade" },
-        { "tracknr": 2, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Breathing Place" },
-        { "tracknr": 3, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Ensueno (Morning mix)" },
-        { "tracknr": 1, "artist": "Red Fang", "album": "Red Fang", "title": "Prehistoric Dog" },
-        { "tracknr": 4, "artist": "Red Fang", "album": "Red Fang", "title": "Humans Remain Human Remains" },
-        { "tranknr": 3, "artist": "Red Fang", "album": "Red Fang", "title": "Night Destroyer" },
-        { "tracknr": 2, "artist": "Red Fang", "album": "Red Fang", "title": "Reverse Thunder" }
+        { "type": "dict", "inner": { "tracknr": 1, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Decade" } },
+        { "type": "dict", "inner": { "tracknr": 2, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Breathing Place" } },
+        { "type": "dict", "inner": { "tracknr": 3, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Ensueno (Morning mix)" } },
+        { "type": "dict", "inner": { "tracknr": 1, "artist": "Red Fang", "album": "Red Fang", "title": "Prehistoric Dog" } },
+        { "type": "dict", "inner": { "tracknr": 4, "artist": "Red Fang", "album": "Red Fang", "title": "Humans Remain Human Remains" } },
+        { "type": "dict", "inner": { "tranknr": 3, "artist": "Red Fang", "album": "Red Fang", "title": "Night Destroyer" } },
+        { "type": "dict", "inner": { "tracknr": 2, "artist": "Red Fang", "album": "Red Fang", "title": "Reverse Thunder" } }
     ],
-    "collection": { "type": "universe" },
-    "specification": {
+    "collection": { "type": "coll", "inner": {
+        "type": "universe"
+     } },
+    "specification": { "type": "dict", "inner": {
         "type": "cluster-dict",
         "cluster-by": "value",
         "cluster-field": "album",
-        "data": {
+        "data": { "type": "dict", "inner": {
             "type": "metadata",
             "fields": ["title"],
             "get": ["value"],
             "aggregate": "list"
-        }
-    },
-    "expected": {
-        "result": {
+        } }
+    } },
+    "expected": { "type": "dict", "inner": {
+        "result": { "type": "dict", "inner": {
             "Red Fang": [
                 "Prehistoric Dog",
                 "Reverse Thunder",
@@ -33,6 +35,6 @@
                 "Ensueno (Morning mix)",
                 "Breathing Place"
             ]
-        }
-    }
-}
+        } }
+    } }
+} }

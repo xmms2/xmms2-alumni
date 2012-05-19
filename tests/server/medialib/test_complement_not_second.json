@@ -1,11 +1,11 @@
-{
+{ "type": "dict", "inner": {
     "medialib": [
-        { "tracknr": 1, "artist": "Red Fang", "album": "Red Fang", "title": "Prehistoric Dog" },
-        { "tracknr": 1, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Decade" },
-        { "tracknr": 2, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Breathing Place" },
-        { "tracknr": 3, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Ensueno (Morning mix)" }
+        { "type": "dict", "inner": { "tracknr": 1, "artist": "Red Fang", "album": "Red Fang", "title": "Prehistoric Dog" } },
+        { "type": "dict", "inner": { "tracknr": 1, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Decade" } },
+        { "type": "dict", "inner": { "tracknr": 2, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Breathing Place" } },
+        { "type": "dict", "inner": { "tracknr": 3, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Ensueno (Morning mix)" } }
     ],
-    "collection": {
+    "collection": { "type": "coll", "inner": {
         "type": "complement",
         "operands": [{
             "type": "smaller",
@@ -16,22 +16,22 @@
             },
             "operands": [{ "type": "universe" }]
         }]
-    },
-    "specification": {
+    } },
+    "specification": { "type": "dict", "inner": {
         "type": "cluster-list",
         "cluster-by": "id",
-        "data": {
+        "data": { "type": "dict", "inner": {
             "type": "organize",
-            "data": {
-                "id": {
+            "data": { "type": "dict", "inner": {
+                "id": { "type": "dict", "inner": {
                     "get": ["id"],
                     "type": "metadata",
                     "aggregate": "first"
-                }
-            }
-        }
-    },
-    "expected": {
-        "result": [ { "id": 4 } ]
-    }
-}
+                } }
+            } }
+        } }
+    } },
+    "expected": { "type": "dict", "inner": {
+        "result": [ { "type": "dict", "inner": { "id": 4 } } ]
+    } }
+} }

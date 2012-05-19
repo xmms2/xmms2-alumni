@@ -1,29 +1,29 @@
-{
+{ "type": "dict", "inner": {
     "medialib": [
-        {
+        { "type": "dict", "inner": {
             "A/artist": "correct artist",
             "B/artist": "wrong artist",
             "A/title": "correct title",
             "B/title": "wrong title"
-        }
+        } }
     ],
-    "collection": {
+    "collection": { "type": "coll", "inner": {
         "type": "universe"
-    },
-    "specification": {
+    } },
+    "specification": { "type": "dict", "inner": {
         "type": "cluster-dict",
         "cluster-by": "value",
         "cluster-field": "artist",
         "source-preference": ["A"],
-        "data": {
+        "data": { "type": "dict", "inner": {
             "type": "metadata",
             "get": ["value"],
             "fields": ["title"]
-        }
-    },
-    "expected": {
-        "result": {
+        } }
+    } },
+    "expected": { "type": "dict", "inner": {
+        "result": { "type": "dict", "inner": {
             "correct artist": "correct title"
-        }
-    }
-}
+        } }
+    } }
+} }

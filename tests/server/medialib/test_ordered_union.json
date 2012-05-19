@@ -1,91 +1,87 @@
-{
+{ "type": "dict", "inner": {
     "medialib": [
-        { "tracknr": 1, "artist": "Red Fang", "album": "Red Fang", "title": "Prehistoric Dog" },
-        { "tracknr": 2, "artist": "Red Fang", "album": "Red Fang", "title": "Reverse Thunder" },
-        { "tracknr": 3, "artist": "Red Fang", "album": "Red Fang", "title": "Night Destroyer" },
-        { "tracknr": 4, "artist": "Red Fang", "album": "Red Fang", "title": "Humans Remain Human Remains" },
-        { "tracknr": 1, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Decade" },
-        { "tracknr": 2, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Breathing Place" },
-        { "tracknr": 3, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Ensueno (Morning mix)" }
+        { "type": "dict", "inner": { "tracknr": 1, "artist": "Red Fang", "album": "Red Fang", "title": "Prehistoric Dog" } },
+        { "type": "dict", "inner": { "tracknr": 2, "artist": "Red Fang", "album": "Red Fang", "title": "Reverse Thunder" } },
+        { "type": "dict", "inner": { "tracknr": 3, "artist": "Red Fang", "album": "Red Fang", "title": "Night Destroyer" } },
+        { "type": "dict", "inner": { "tracknr": 4, "artist": "Red Fang", "album": "Red Fang", "title": "Humans Remain Human Remains" } },
+        { "type": "dict", "inner": { "tracknr": 1, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Decade" } },
+        { "type": "dict", "inner": { "tracknr": 2, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Breathing Place" } },
+        { "type": "dict", "inner": { "tracknr": 3, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Ensueno (Morning mix)" } }
     ],
-    "collection": {
-        "type": "order",
-        "attributes": { "type": "position" },
-        "operands": [{
-            "type": "union",
-            "operands": [
-                {
-                    "type": "order",
-                    "attributes": {
-                        "type": "value",
-                        "field": "tracknr"
-                    },
-                    "operands": [{
-                        "type": "equals",
-                        "attributes": {
-                            "type": "value",
-                            "field": "artist",
-                            "value": "Vibrasphere"
-                        },
-                        "operands": [{ "type": "universe" }]
-                    }]
+    "collection": { "type": "coll", "inner": {
+        "type": "union",
+        "operands": [
+            {
+                "type": "order",
+                "attributes": {
+                    "type": "value",
+                    "field": "tracknr"
                 },
-                {
-                    "type": "order",
+                "operands": [{
+                    "type": "equals",
                     "attributes": {
                         "type": "value",
-                        "field": "tracknr"
+                        "field": "artist",
+                        "value": "Vibrasphere"
                     },
-                    "operands": [{
-                        "type": "equals",
-                        "attributes": {
-                            "type": "value",
-                            "field": "artist",
-                            "value": "Red Fang"
-                        },
-                        "operands": [{ "type": "universe" }]
-                    }]
-                }
-            ]
-        }]
-    },
-    "specification": {
+                    "operands": [{ "type": "universe" }]
+                }]
+            },
+            {
+                "type": "order",
+                "attributes": {
+                    "type": "value",
+                    "field": "tracknr"
+                },
+                "operands": [{
+                    "type": "equals",
+                    "attributes": {
+                        "type": "value",
+                        "field": "artist",
+                        "value": "Red Fang"
+                    },
+                    "operands": [{ "type": "universe" }]
+                }]
+            }
+        ]
+    } },
+    "specification": { "type": "dict", "inner": {
         "type": "cluster-list",
         "cluster-by": "value",
         "cluster-field": "title",
-        "data": {
+        "data": { "type": "dict", "inner": {
             "type": "organize",
-            "data": {
-                "id": {
+            "data": { "type": "dict", "inner": {
+                "id": { "type": "dict", "inner": {
                     "type": "metadata",
                     "get": ["id"],
                     "aggregate": "first"
-                },
-                "tracknr": {
+                } },
+                "tracknr": { "type": "dict", "inner": {
                     "type": "metadata",
                     "fields": ["tracknr"],
                     "get": ["value"],
                     "aggregate": "first"
-                },
-                "title": {
+                } },
+                "title": { "type": "dict", "inner": {
                     "type": "metadata",
                     "fields": ["title"],
                     "get": ["value"],
                     "aggregate": "first"
-                }
-            }
-        }
-    },
-    "expected": {
+                } }
+            } }
+        } }
+    } },
+    "expected": { "type": "dict", "inner": {
         "ordered": 1,
         "result": [
-            { "id": 5, "tracknr": 1, "title": "Decade" },
-            { "id": 6, "tracknr": 2, "title": "Breathing Place" },
-            { "id": 7, "tracknr": 3, "title": "Ensueno (Morning mix)"},
-            { "id": 1, "tracknr": 1, "title": "Prehistoric Dog" },
-            { "id": 2, "tracknr": 2, "title": "Reverse Thunder" },
-            { "id": 3, "tracknr": 3, "title": "Night Destroyer" },
-            { "id": 4, "tracknr": 4, "title": "Humans Remain Human Remains" }
+            { "type": "dict", "inner": { "id": 5, "tracknr": 1, "title": "Decade" } },
+            { "type": "dict", "inner": { "id": 6, "tracknr": 2, "title": "Breathing Place" } },
+            { "type": "dict", "inner": { "id": 7, "tracknr": 3, "title": "Ensueno (Morning mix)"} },
+            { "type": "dict", "inner": { "id": 1, "tracknr": 1, "title": "Prehistoric Dog" } },
+            { "type": "dict", "inner": { "id": 2, "tracknr": 2, "title": "Reverse Thunder" } },
+            { "type": "dict", "inner": { "id": 3, "tracknr": 3, "title": "Night Destroyer" } },
+            { "type": "dict", "inner": { "id": 4, "tracknr": 4, "title": "Humans Remain Human Remains" } }
         ]
-    }
-}
+    } }
+} }

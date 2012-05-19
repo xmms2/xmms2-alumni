@@ -1,16 +1,16 @@
-{
+{ "type": "dict", "inner": {
     "medialib": [
-        { "tracknr": 1, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Decade" },
-        { "tracknr": 2, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Breathing Place" },
-        { "tracknr": 3, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Ensueno (Morning mix)" }
+        { "type": "dict", "inner":{ "tracknr": 1, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Decade" } },
+        { "type": "dict", "inner":{ "tracknr": 2, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Breathing Place" } },
+        { "type": "dict", "inner":{ "tracknr": 3, "artist": "Vibrasphere", "album": "Lungs for Life", "title": "Ensueno (Morning mix)" } }
     ],
-    "collection": {
+    "collection": { "type": "coll", "inner": {
         "type": "universe"
-    },
-    "specification": {
+    } },
+    "specification": { "type": "dict", "inner": {
         "type": "count"
-    },
-    "expected": {
+    } },
+    "expected": { "type": "dict", "inner": {
         "result": 3
-    }
-}
+    } }
+} }

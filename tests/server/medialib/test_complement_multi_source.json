@@ -1,10 +1,10 @@
-{
+{ "type": "dict", "inner": {
     "medialib": [
-        { "generic/rating": 1, "other/rating": 2, "title": "song a" },
-        { "generic/rating": 2, "other/rating": 1, "title": "song b" },
-        {                                         "title": "song c" }
+        { "type": "dict", "inner": { "generic/rating": 1, "other/rating": 2, "title": "song a" } },
+        { "type": "dict", "inner": { "generic/rating": 2, "other/rating": 1, "title": "song b" } },
+        { "type": "dict", "inner": {                                         "title": "song c" } }
     ],
-    "collection": {
+    "collection": { "type": "coll", "inner": {
         "type": "complement",
         "operands": [{
             "type": "equals",
@@ -15,18 +15,18 @@
             },
             "operands": [{ "type": "universe" }]
         }]
-    },
-    "specification": {
+    } },
+    "specification": { "type": "dict", "inner": {
         "type": "cluster-list",
         "cluster-by": "id",
-        "data": {
+        "data": { "type": "dict", "inner": {
             "type": "metadata",
             "get": ["value"],
             "fields": ["title"],
             "aggregate": "first"
-        }
-    },
-    "expected": {
+        } }
+    } },
+    "expected": { "type": "dict", "inner": {
         "result": [ "song c" ]
-    }
-}
+    } }
+} }

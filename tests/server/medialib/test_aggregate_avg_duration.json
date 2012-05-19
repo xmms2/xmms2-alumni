@@ -1,19 +1,19 @@
-{
+{ "type": "dict", "inner": {
     "medialib": [
-        { "duration": 10 },
-        { "duration": 20 },
-        { "duration": 30 }
+        { "type": "dict", "inner": { "duration": 10 } },
+        { "type": "dict", "inner": { "duration": 20 } },
+        { "type": "dict", "inner": { "duration": 30 } }
     ],
-    "collection": {
+    "collection": { "type": "coll", "inner": {
         "type": "universe"
-    },
-    "specification": {
+    } },
+    "specification": { "type": "dict", "inner": {
         "type": "metadata",
         "fields": ["duration"],
         "get": ["value"],
         "aggregate": "avg"
-    },
-    "expected": {
+    } },
+    "expected": { "type": "dict", "inner": {
         "result": 20
-    }
-}
+    } }
+} }

@@ -25,7 +25,6 @@
 
 #include "utils/jsonism.h"
 #include "utils/value_utils.h"
-#include "utils/coll_utils.h"
 
 typedef void (*xmms_path_predicate)(const gchar *filename, xmmsv_t *list);
 
@@ -140,14 +139,6 @@ filter_testcase (const gchar *path, xmmsv_t *list)
 	g_assert (xmmsv_dict_has_key (dict, "collection"));
 	g_assert (xmmsv_dict_has_key (dict, "specification"));
 	g_assert (xmmsv_dict_has_key (dict, "expected"));
-
-	g_assert (xmmsv_dict_get (dict, "collection", &data));
-	g_assert (xmmsv_is_type (data, XMMSV_TYPE_DICT));
-
-	coll = xmmsv_coll_from_dict (data);
-
-	xmmsv_dict_set (dict, "collection", coll);
-	xmmsv_unref (coll);
 
 	filename = g_path_get_basename (path);
 	xmmsv_dict_set_string (dict, "name", filename);
@@ -289,6 +280,8 @@ run_unit_test (xmms_medialib_t *mlib, const gchar *name, xmmsv_t *content,
 		}
 
 	} else {
+		gchar *json;
+
 		if (format == FORMAT_CSV) {
 			g_print ("\"%s\", 0\n", name);
 		} else {
@@ -299,10 +292,13 @@ run_unit_test (xmms_medialib_t *mlib, const gchar *name, xmmsv_t *content,
 			}
 		}
 
-		g_printerr ("The result: ");
-		xmmsv_dump (ret);
-		g_printerr ("Does not equal: ");
-		xmmsv_dump (value);
+		json = xmmsv_to_json (ret);
+		g_printerr ("The result: %s", json);
+		g_free (json);
+
+		json = xmmsv_to_json (value);
+		g_printerr ("Does not equal: %s", json);
+		g_free (json);
 	}
 
 	xmmsv_unref (ret);

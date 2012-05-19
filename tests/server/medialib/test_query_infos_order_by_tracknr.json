@@ -1,11 +1,11 @@
-{
+{ "type": "dict", "inner": {
     "medialib": [
-        { "tracknr": 2, "artist": "Red Fang", "album": "Red Fang", "title": "Reverse Thunder" },
-        { "tracknr": 1, "artist": "Red Fang", "album": "Red Fang", "title": "Prehistoric Dog" },
-        { "tracknr": 4, "artist": "Red Fang", "album": "Red Fang", "title": "Humans Remain Human Remains" },
-        { "tracknr": 3, "artist": "Red Fang", "album": "Red Fang", "title": "Night Destroyer" }
+        { "type": "dict", "inner": { "tracknr": 2, "artist": "Red Fang", "album": "Red Fang", "title": "Reverse Thunder" } },
+        { "type": "dict", "inner": { "tracknr": 1, "artist": "Red Fang", "album": "Red Fang", "title": "Prehistoric Dog" } },
+        { "type": "dict", "inner": { "tracknr": 4, "artist": "Red Fang", "album": "Red Fang", "title": "Humans Remain Human Remains" } },
+        { "type": "dict", "inner": { "tracknr": 3, "artist": "Red Fang", "album": "Red Fang", "title": "Night Destroyer" } }
     ],
-    "collection": {
+    "collection": { "type": "coll", "inner": {
         "type": "limit",
         "attributes": {
             "start": "1",
@@ -19,39 +19,39 @@
             },
             "operands": [{"type": "universe"}]
         }]
-    },
-    "specification": {
+    } },
+    "specification": { "type": "dict", "inner": {
         "type": "cluster-list",
         "cluster-by": "value",
         "cluster-field": "title",
-        "data": {
+        "data": { "type": "dict", "inner": {
             "type": "organize",
-            "data": {
-                "id": {
+            "data": { "type": "dict", "inner": {
+                "id": { "type": "dict", "inner": {
                     "type": "metadata",
                     "get": ["id"],
                     "aggregate": "first"
-                },
-                "tracknr": {
+                } },
+                "tracknr": { "type": "dict", "inner": {
                     "type": "metadata",
                     "fields": ["tracknr"],
                     "get": ["value"],
                     "aggregate": "first"
-                },
-                "title": {
+                } },
+                "title": { "type": "dict", "inner": {
                     "type": "metadata",
                     "fields": ["title"],
                     "get": ["value"],
                     "aggregate": "first"
-                }
-            }
-        }
-    },
-    "expected": {
+                } }
+            } }
+        } }
+    } },
+    "expected": { "type": "dict", "inner": {
         "result": [
-            { "id": 1, "tracknr": 2, "title": "Reverse Thunder" },
-            { "id": 4, "tracknr": 3, "title": "Night Destroyer" }
+            { "type": "dict", "inner":{ "id": 1, "tracknr": 2, "title": "Reverse Thunder" } },
+            { "type": "dict", "inner":{ "id": 4, "tracknr": 3, "title": "Night Destroyer" } }
         ],
         "ordered": 1
-    }
-}
+    } }
+} }
