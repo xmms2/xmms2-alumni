@@ -1787,7 +1787,7 @@ cli_coll_create (cli_infos_t *infos, command_context_t *ctx)
 		/* empty collection == NOT 'All Media' */
 		univ = xmmsc_coll_universe ();
 
-		coll = xmmsc_coll_new (XMMS_COLLECTION_TYPE_COMPLEMENT);
+		coll = xmmsv_new_coll (XMMS_COLLECTION_TYPE_COMPLEMENT);
 		xmmsc_coll_add_operand (coll, univ);
 		xmmsc_coll_unref (univ);
 	} else {

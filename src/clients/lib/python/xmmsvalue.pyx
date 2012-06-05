@@ -699,7 +699,7 @@ class CollectionWrapper(Collection):
 
 class BaseCollection(CollectionWrapper):
 	def __init__(Collection self, int _colltype, **kargs):
-		self.coll = xmmsv_coll_new(<xmmsv_coll_type_t> _colltype)
+		self.coll = xmmsv_new_coll(<xmmsv_coll_type_t> _colltype)
 		if self.coll == NULL:
 			raise RuntimeError("Bad collection")
 

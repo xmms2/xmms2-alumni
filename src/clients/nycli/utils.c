@@ -1753,7 +1753,7 @@ coll_make_reference (const char *name, xmmsc_coll_namespace_t ns)
 {
 	xmmsv_coll_t *ref;
 
-	ref = xmmsv_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
+	ref = xmmsv_new_coll (XMMS_COLLECTION_TYPE_REFERENCE);
 	xmmsv_coll_attribute_set_string (ref, "reference", name);
 	xmmsv_coll_attribute_set_string (ref, "namespace", ns);
 

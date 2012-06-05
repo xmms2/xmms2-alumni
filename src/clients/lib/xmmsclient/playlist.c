@@ -85,7 +85,7 @@ xmmsc_playlist_create (xmmsc_connection_t *c, const char *playlist)
 	x_check_conn (c, NULL);
 	x_api_error_if (!playlist, "playlist name cannot be NULL", NULL);
 
-	plcoll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
+	plcoll = xmmsv_new_coll (XMMS_COLLECTION_TYPE_IDLIST);
 	xmmsv_coll_attribute_set_string (plcoll, "type", "list");
 	res = xmmsc_coll_save (c, plcoll, playlist, XMMS_COLLECTION_NS_PLAYLISTS);
 
@@ -109,11 +109,11 @@ xmmsc_playlist_shuffle (xmmsc_connection_t *c, const char *playlist)
 		playlist = XMMS_ACTIVE_PLAYLIST;
 	}
 
-	reference = xmmsv_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
+	reference = xmmsv_new_coll (XMMS_COLLECTION_TYPE_REFERENCE);
 	xmmsv_coll_attribute_set_string (reference, "namespace", "Playlists");
 	xmmsv_coll_attribute_set_string (reference, "reference", playlist);
 
-	shuffled = xmmsv_coll_new (XMMS_COLLECTION_TYPE_ORDER);
+	shuffled = xmmsv_new_coll (XMMS_COLLECTION_TYPE_ORDER);
 	xmmsv_coll_attribute_set_string (shuffled, "type", "random");
 
 	xmmsv_coll_add_operand (shuffled, reference);
@@ -149,7 +149,7 @@ xmmsc_playlist_sort (xmmsc_connection_t *c, const char *playlist, xmmsv_t *prope
 	x_api_error_if (!contains_strings_only,
 	                "property list may only contain strings", NULL);
 
-	reference = xmmsv_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
+	reference = xmmsv_new_coll (XMMS_COLLECTION_TYPE_REFERENCE);
 	xmmsv_coll_attribute_set_string (reference, "namespace", "Playlists");
 	xmmsv_coll_attribute_set_string (reference, "reference", playlist);
 
@@ -178,7 +178,7 @@ xmmsc_playlist_clear (xmmsc_connection_t *c, const char *playlist)
 		playlist = XMMS_ACTIVE_PLAYLIST;
 	}
 
-	empty = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
+	empty = xmmsv_new_coll (XMMS_COLLECTION_TYPE_IDLIST);
 
 	return xmmsc_send_cmd (c, XMMS_IPC_OBJECT_PLAYLIST, XMMS_IPC_CMD_REPLACE,
 	                       XMMSV_LIST_ENTRY_STR (playlist),
@@ -258,7 +258,7 @@ xmmsc_playlist_insert_id (xmmsc_connection_t *c, const char *playlist, int pos, 
 		playlist = XMMS_ACTIVE_PLAYLIST;
 	}
 
-	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
+	coll = xmmsv_new_coll (XMMS_COLLECTION_TYPE_IDLIST);
 	xmmsv_coll_idlist_append (coll, id);
 
 	return xmmsc_send_cmd (c, XMMS_IPC_OBJECT_PLAYLIST, XMMS_IPC_CMD_INSERT_COLL,
@@ -494,7 +494,7 @@ xmmsc_playlist_add_id (xmmsc_connection_t *c, const char *playlist, int id)
 		playlist = XMMS_ACTIVE_PLAYLIST;
 	}
 
-	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
+	coll = xmmsv_new_coll (XMMS_COLLECTION_TYPE_IDLIST);
 	xmmsv_coll_idlist_append (coll, id);
 
 	return xmmsc_send_cmd (c, XMMS_IPC_OBJECT_PLAYLIST, XMMS_IPC_CMD_ADD_COLL,

@@ -34,7 +34,7 @@ namespace Xmms
 
 	Coll::Coll( Type type )
 	{
-		coll_ = xmmsv_coll_new( type );
+		coll_ = xmmsv_new_coll( type );
 		if( !coll_ ) {
 			throw std::runtime_error( "Failed to create a Coll object" );
 		}

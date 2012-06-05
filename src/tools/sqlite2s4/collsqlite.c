@@ -96,10 +96,10 @@ create_coll (xmmsv_coll1_type_t type)
 	}
 
 	if (idlist_type != NULL) {
-		ret = xmmsv_coll_new (XMMS_COLLECTION_TYPE_IDLIST);
+		ret = xmmsv_new_coll (XMMS_COLLECTION_TYPE_IDLIST);
 		xmmsv_coll_attribute_set_string (ret, "type", idlist_type);
 	} else {
-		ret = xmmsv_coll_new (new_type);
+		ret = xmmsv_new_coll (new_type);
 	}
 
 	return ret;
@@ -133,8 +133,8 @@ augment_coll (xmmsv_coll_t *coll)
 	case XMMS_COLLECTION_TYPE_REFERENCE:
 		if (xmmsv_coll_attribute_get_string (coll, "reference", &key)
 		    && strcmp (key, "All Media") == 0) {
-			ret = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNIVERSE);
 			xmmsv_coll_unref (coll);
+			ret = xmmsv_new_coll (XMMS_COLLECTION_TYPE_UNIVERSE);
 		}
 		break;
 

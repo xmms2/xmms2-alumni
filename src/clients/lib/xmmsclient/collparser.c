@@ -540,7 +540,7 @@ coll_parse_sequence (xmmsv_coll_token_t *tokens, const char *field,
 
 	/* Take the union if several element in the sequence */
 	if (end != NULL) {
-		parent = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNION);
+		parent = xmmsv_new_coll (XMMS_COLLECTION_TYPE_UNION);
 	} else {
 		parent = NULL;
 		end = start + strlen (start);
@@ -561,7 +561,7 @@ coll_parse_sequence (xmmsv_coll_token_t *tokens, const char *field,
 			if (len_from > 0) {
 				buf = string_substr (start, seq);
 				num = string_intadd (buf, -1);
-				coll_from = xmmsv_coll_new (XMMS_COLLECTION_TYPE_GREATER);
+				coll_from = xmmsv_new_coll (XMMS_COLLECTION_TYPE_GREATER);
 				if (id) {
 					xmmsv_coll_attribute_set_string (coll_from, "type", "id");
 				} else {
@@ -578,7 +578,7 @@ coll_parse_sequence (xmmsv_coll_token_t *tokens, const char *field,
 			if (len_to > 0) {
 				buf = string_substr (seq + 1, end);
 				num = string_intadd (buf, 1);
-				coll_to = xmmsv_coll_new (XMMS_COLLECTION_TYPE_SMALLER);
+				coll_to = xmmsv_new_coll (XMMS_COLLECTION_TYPE_SMALLER);
 				if (id) {
 					xmmsv_coll_attribute_set_string (coll_to, "type", "id");
 				} else {
@@ -598,7 +598,7 @@ coll_parse_sequence (xmmsv_coll_token_t *tokens, const char *field,
 		/* Just an integer, match it */
 		} else {
 			num = string_substr (start, end);
-			coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_EQUALS);
+			coll = xmmsv_new_coll (XMMS_COLLECTION_TYPE_EQUALS);
 			if (id) {
 				xmmsv_coll_attribute_set_string (coll, "type", "id");
 			} else {
@@ -688,7 +688,7 @@ coll_parse_notop (xmmsv_coll_token_t *tokens, xmmsv_coll_t **ret)
 		return tokens;
 	}
 
-	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_COMPLEMENT);
+	coll = xmmsv_new_coll (XMMS_COLLECTION_TYPE_COMPLEMENT);
 	xmmsv_coll_add_operand (coll, operand);
 	xmmsv_coll_unref (operand);
 
@@ -727,7 +727,7 @@ coll_parse_andop_append (xmmsv_coll_token_t *tokens, xmmsv_coll_t *operator,
 	}
 
 	if (!operator) {
-		operator = xmmsv_coll_new (XMMS_COLLECTION_TYPE_INTERSECTION);
+		operator = xmmsv_new_coll (XMMS_COLLECTION_TYPE_INTERSECTION);
 		xmmsv_coll_add_operand (operator, first);
 		tk = coll_parse_andop_append (tk, operator, &tmp);
 
@@ -769,7 +769,7 @@ coll_parse_orop_append (xmmsv_coll_token_t *tokens, xmmsv_coll_t *operator,
 
 	if (tk && tk->type == XMMS_COLLECTION_TOKEN_OPSET_UNION) {
 		if (!operator) {
-			operator = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNION);
+			operator = xmmsv_new_coll (XMMS_COLLECTION_TYPE_UNION);
 		}
 	}
 
@@ -818,7 +818,7 @@ coll_parse_reference (xmmsv_coll_token_t *tokens, xmmsv_coll_t **ret)
 		reference = slash + 1;
 	}
 
-	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_REFERENCE);
+	coll = xmmsv_new_coll (XMMS_COLLECTION_TYPE_REFERENCE);
 	xmmsv_coll_attribute_set_string (coll, "namespace", namespace);
 	xmmsv_coll_attribute_set_string (coll, "reference", reference);
 
@@ -869,7 +869,7 @@ coll_parse_unaryfilter (xmmsv_coll_token_t *tokens, xmmsv_coll_t **ret)
 		return tokens;
 	}
 
-	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_HAS);
+	coll = xmmsv_new_coll (XMMS_COLLECTION_TYPE_HAS);
 	xmmsv_coll_attribute_set_string (coll, "field", prop);
 	coll_append_universe (coll);
 
@@ -992,10 +992,10 @@ coll_parse_autofilter (xmmsv_coll_token_t *token, xmmsv_coll_t **ret)
 		return token;
 	}
 
-	coll = xmmsv_coll_new (XMMS_COLLECTION_TYPE_UNION);
+	coll = xmmsv_new_coll (XMMS_COLLECTION_TYPE_UNION);
 
 	for (i = 0; coll_autofilter[i] != NULL; i++) {
-		operand = xmmsv_coll_new (operation);
+		operand = xmmsv_new_coll (operation);
 		xmmsv_coll_attribute_set_string (operand, "field", coll_autofilter[i]);
 		xmmsv_coll_attribute_set_string (operand, "value", strval);
 		xmmsv_coll_add_operand (coll, operand);

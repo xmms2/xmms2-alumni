@@ -57,7 +57,7 @@ cdef extern from "xmmsc/xmmsv.h":
 	xmmsv_t *xmmsv_new_error  (char *errstr)
 	xmmsv_t *xmmsv_new_int    (int i)
 	xmmsv_t *xmmsv_new_string (char *s)
-	xmmsv_t *xmmsv_new_coll   (xmmsv_coll_t *coll)
+	xmmsv_coll_t *xmmsv_new_coll (xmmsv_coll_type_t typ)
 	xmmsv_t *xmmsv_new_bin    (unsigned char *data, unsigned int len)
 
 	xmmsv_t *xmmsv_new_list ()
