@@ -1201,6 +1201,14 @@ vim:expandtab
     </object>
 
     <object>
+        <name>coll_sync</name>
+        <method>
+            <name>sync</name>
+            <documentation>Save collections to disk.</documentation>
+        </method>
+    </object>
+
+    <object>
         <name>collection</name>
 
         <method>
@@ -1483,11 +1491,6 @@ vim:expandtab
                     <collection />
                 </type>
             </return_value>
-        </method>
-
-        <method>
-            <name>sync</name>
-            <documentation>FIXME.</documentation>
         </method>
 
         <broadcast>
