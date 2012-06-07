@@ -38,13 +38,16 @@ collections C<%attributes>, if given.
 =cut
 
 xmmsv_coll_t *
-xmmsv_coll_new (class, type, ...)
+xmmsv_new_coll (class, type, ...)
 		xmmsv_coll_type_t type
+	ALIAS:
+		Audio::XMMSClient::Collection::new = 1
 	PREINIT:
 		int i, nargs;
 		HV *args;
 		HE *iter;
 	CODE:
+		PERL_UNUSED_VAR (ix);
 		RETVAL = xmmsv_coll_new (type);
 
 		nargs = items - 2;
