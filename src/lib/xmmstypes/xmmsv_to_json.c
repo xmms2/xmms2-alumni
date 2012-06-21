@@ -348,7 +348,7 @@ _serialize_get_coll_name (xmmsv_t *coll, const char **type)
 			return true;
 		default:
 			*type = NULL;
-			return false;
+			x_api_error ("Trying to serialize invalid collection type", false);
 	}
 	return false;
 }
@@ -434,6 +434,7 @@ _serialize_get_serializer (xmmsv_t *value)
 		case XMMSV_TYPE_COLL:
 			return _serialize_coll_object;
 		default:
+			x_internal_error ("Trying to serialize unsupported type");
 			return NULL;
 	}
 }
