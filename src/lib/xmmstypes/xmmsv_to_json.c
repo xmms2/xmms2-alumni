@@ -79,13 +79,54 @@ _serialize_ensure_capacity (serialize_t *data, int length)
 	return true;
 }
 
+static int
+_serialize_escape (char c, char out[7])
+{
+	out[4] = '\\';
+	out[5] = c;
+
+	switch (c) {
+		case '\b':
+			out[5] = 'b';
+			return 2;
+		case '\f':
+			out[5] = 'f';
+			return 2;
+		case '\t':
+			out[5] = 't';
+			return 2;
+		case '\r':
+			out[5] = 'r';
+			return 2;
+		case '\n':
+			out[5] = 'n';
+			return 2;
+		case '\\':
+		case '"':
+		case '/':
+			return 2;
+		default:
+			if (c < ' ') {
+				snprintf (out, 7, "\\u00%.2x", c);
+				return 6;
+			}
+	}
+
+	return 1;
+}
+
 static bool
 _serialize_char (serialize_t *data, char c)
 {
-	if (!_serialize_ensure_capacity (data, 1))
+	char tmp[7] = { '\0' };
+	int size = _serialize_escape (c, tmp);
+
+	if (!_serialize_ensure_capacity (data, size))
 		return false;
 
-	data->buffer[data->position++] = c;
+	data->position += snprintf (data->buffer + data->position,
+	                            data->capacity - data->position,
+	                            "%s", tmp + 6 - size);
 
 	return true;
 }
@@ -99,9 +140,14 @@ _serialize_cstring (serialize_t *data, const char *value)
 	if (!_serialize_ensure_capacity (data, length))
 		return false;
 
-	data->position += snprintf (data->buffer + data->position,
-	                            data->capacity - data->position,
-	                            "\"%s\"", value);
+	data->buffer[data->position++] = '\"';
+	while (*value) {
+		_serialize_char (data, *value++);
+	}
+
+	if (!_serialize_ensure_capacity (data, 1))
+		return false;
+	data->buffer[data->position++] = '\"';
 
 	return true;
 }

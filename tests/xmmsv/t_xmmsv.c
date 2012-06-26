@@ -1108,6 +1108,13 @@ CASE (test_xmmsv_to_json)
 	free (json);
 	xmmsv_unref (value);
 
+	/* string with control characters */
+	value = xmmsv_new_string ("\"\\/\1\n\b\f\r\t");
+	json = xmmsv_to_json (value);
+	CU_ASSERT_STRING_EQUAL ("\"\\\"\\\\\\/\\u0001\\n\\b\\f\\r\\t\"", json);
+	free (json);
+	xmmsv_unref (value);
+
 	/* longest integer */
 	value = xmmsv_new_int (-1000000000);
 	json = xmmsv_to_json (value);
@@ -1223,4 +1230,20 @@ CASE(test_json_deserialize)
 	free (json);
 	free (roundtrip);
 	xmmsv_unref (value);
+
+	dict = xmmsv_build_dict (XMMSV_DICT_ENTRY_STR ("escape", "\"\\/\1\b\n\r\t\f"),
+	                         XMMSV_DICT_END);
+
+	json = xmmsv_to_json (dict);
+	xmmsv_unref (dict);
+
+	value = xmmsv_from_json (json);
+	roundtrip = xmmsv_to_json (value);
+
+	CU_ASSERT_STRING_EQUAL (json, roundtrip);
+
+	free (json);
+	free (roundtrip);
+	xmmsv_unref (value);
+
 }
