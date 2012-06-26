@@ -106,7 +106,7 @@ _serialize_escape (char c, char out[7])
 		case '/':
 			return 2;
 		default:
-			if (c < ' ') {
+			if (c < ' ' && c >= 0) {
 				snprintf (out, 7, "\\u00%.2x", c);
 				return 6;
 			}

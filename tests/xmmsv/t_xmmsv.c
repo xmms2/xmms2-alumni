@@ -1109,9 +1109,9 @@ CASE (test_xmmsv_to_json)
 	xmmsv_unref (value);
 
 	/* string with control characters */
-	value = xmmsv_new_string ("\"\\/\1\n\b\f\r\t");
+	value = xmmsv_new_string ("\"\\/\1\n\b\f\r\tä");
 	json = xmmsv_to_json (value);
-	CU_ASSERT_STRING_EQUAL ("\"\\\"\\\\\\/\\u0001\\n\\b\\f\\r\\t\"", json);
+	CU_ASSERT_STRING_EQUAL ("\"\\\"\\\\\\/\\u0001\\n\\b\\f\\r\\tä\"", json);
 	free (json);
 	xmmsv_unref (value);
 
@@ -1231,7 +1231,7 @@ CASE(test_json_deserialize)
 	free (roundtrip);
 	xmmsv_unref (value);
 
-	dict = xmmsv_build_dict (XMMSV_DICT_ENTRY_STR ("escape", "\"\\/\1\b\n\r\t\f"),
+	dict = xmmsv_build_dict (XMMSV_DICT_ENTRY_STR ("escape", "\"\\/\1\b\n\r\t\fä"),
 	                         XMMSV_DICT_END);
 
 	json = xmmsv_to_json (dict);
