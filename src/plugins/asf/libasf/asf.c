@@ -31,10 +31,11 @@
 static int
 asf_fileio_read_cb(void *stream, void *buffer, int size)
 {
+	FILE *fstream = stream;
 	int ret;
 
-	ret = fread(buffer, 1, size, stream);
-	if (!ret && !feof(stream))
+	ret = fread(buffer, 1, size, fstream);
+	if (!ret && !feof(fstream))
 		return -1;
 
 	return ret;
@@ -43,7 +44,9 @@ asf_fileio_read_cb(void *stream, void *buffer, int size)
 static int64_t
 asf_fileio_seek_cb(void *stream, int64_t offset)
 {
-	return fseek(stream, offset, SEEK_SET);
+	FILE *fstream = stream;
+
+	return fseek(fstream, offset, SEEK_SET);
 }
 
 asf_file_t *
